@@ -69,6 +69,14 @@ export class CreateServiceOrderDto {
   deliveryCommitmentSourceAt?: string;
 
   @IsOptional()
+  @IsDateString()
+  actualPickupDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  actualDeliveryDate?: string;
+
+  @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;
 

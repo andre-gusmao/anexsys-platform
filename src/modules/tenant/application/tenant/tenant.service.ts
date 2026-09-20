@@ -29,6 +29,8 @@ export class TenantService {
       legalName: dto.legalName.trim(),
       displayName: dto.displayName.trim(),
       status: TenantStatus.ACTIVE,
+      warrantyAdjustmentPeriodDays: dto.warrantyAdjustmentPeriodDays ?? 7,
+      warrantyExecutionPeriodDays: dto.warrantyExecutionPeriodDays ?? 7,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -74,6 +76,12 @@ export class TenantService {
 
     tenant.legalName = dto.legalName?.trim() ?? tenant.legalName;
     tenant.displayName = dto.displayName?.trim() ?? tenant.displayName;
+    if (dto.warrantyAdjustmentPeriodDays !== undefined) {
+      tenant.warrantyAdjustmentPeriodDays = dto.warrantyAdjustmentPeriodDays;
+    }
+    if (dto.warrantyExecutionPeriodDays !== undefined) {
+      tenant.warrantyExecutionPeriodDays = dto.warrantyExecutionPeriodDays;
+    }
     tenant.updatedBy = dto.actorUserId;
 
     const saved = await this.tenantRepository.save(tenant);
@@ -84,6 +92,10 @@ export class TenantService {
       entityId: saved.id,
       action: 'tenant.updated',
       eventType: 'governance.write',
+      metadata: {
+        warrantyAdjustmentPeriodDays: saved.warrantyAdjustmentPeriodDays,
+        warrantyExecutionPeriodDays: saved.warrantyExecutionPeriodDays,
+      },
     });
 
     return saved;

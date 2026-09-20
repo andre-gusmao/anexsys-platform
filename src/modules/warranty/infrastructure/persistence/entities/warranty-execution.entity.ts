@@ -1,5 +1,5 @@
 import { Column, Entity } from 'typeorm';
-import { WarrantyExecutionStatus } from 'src/shared/domain/enums';
+import { WarrantyExecutionStatus, WarrantyStartSource } from 'src/shared/domain/enums';
 import { MutableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'warranty_executions' })
@@ -37,8 +37,11 @@ export class WarrantyExecutionEntity extends MutableBusinessEntity {
   @Column({ name: 'execution_reason', type: 'text' })
   executionReason!: string;
 
-  @Column({ name: 'actual_delivery_date', type: 'date' })
-  actualDeliveryDate!: string;
+  @Column({ name: 'warranty_start_date', type: 'date' })
+  warrantyStartDate!: string;
+
+  @Column({ name: 'warranty_start_source', type: 'varchar', length: 20 })
+  warrantyStartSource!: WarrantyStartSource;
 
   @Column({ name: 'warranty_period_days', type: 'integer', default: 7 })
   warrantyPeriodDays!: number;

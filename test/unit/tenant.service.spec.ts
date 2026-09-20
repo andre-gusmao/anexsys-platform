@@ -34,7 +34,48 @@ describe('TenantService', () => {
 
     assert.equal(tenant.code, 'ATELIER');
     assert.equal(tenant.status, TenantStatus.ACTIVE);
+    assert.equal(tenant.warrantyAdjustmentPeriodDays, 7);
+    assert.equal(tenant.warrantyExecutionPeriodDays, 7);
     assert.equal(auditCalls[0]?.action, 'tenant.created');
+  });
+
+  it('updates tenant warranty configuration periods', async () => {
+    const auditCalls: Array<Record<string, unknown>> = [];
+    const tenantRepository = {
+      async findById(id: string) {
+        assert.equal(id, 'tenant-1');
+        return {
+          id: 'tenant-1',
+          code: 'TENANT1',
+          legalName: 'Tenant 1',
+          displayName: 'Tenant 1',
+          warrantyAdjustmentPeriodDays: 7,
+          warrantyExecutionPeriodDays: 7,
+        };
+      },
+      async findByCode() {
+        return null;
+      },
+      async save(payload: Record<string, unknown>) {
+        return payload;
+      },
+    };
+    const service = new TenantService(tenantRepository as never, {
+      async record(payload: Record<string, unknown>) {
+        auditCalls.push(payload);
+      },
+    } as never);
+
+    const tenant = await service.update('tenant-1', {
+      warrantyAdjustmentPeriodDays: 10,
+      warrantyExecutionPeriodDays: 14,
+      actorUserId: 'actor-1',
+    });
+
+    assert.equal(tenant.warrantyAdjustmentPeriodDays, 10);
+    assert.equal(tenant.warrantyExecutionPeriodDays, 14);
+    assert.equal(auditCalls[0]?.metadata?.warrantyAdjustmentPeriodDays, 10);
+    assert.equal(auditCalls[0]?.metadata?.warrantyExecutionPeriodDays, 14);
   });
 
   it('rejects duplicate tenant code on update', async () => {

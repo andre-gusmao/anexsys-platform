@@ -1,4 +1,5 @@
-import { IsString, IsUUID, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, IsUUID, Length, Min } from 'class-validator';
 
 export class CreateTenantDto {
   @IsString()
@@ -10,6 +11,18 @@ export class CreateTenantDto {
 
   @IsString()
   displayName!: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyAdjustmentPeriodDays?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyExecutionPeriodDays?: number;
 
   @IsUUID()
   actorUserId!: string;

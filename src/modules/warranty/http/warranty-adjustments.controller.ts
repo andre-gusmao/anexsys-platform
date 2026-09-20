@@ -1,6 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
-import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -24,14 +23,6 @@ class CreateWarrantyAdjustmentBody {
   @IsString()
   adjustmentReason!: string;
 
-  @IsDateString()
-  actualDeliveryDate!: string;
-
-  @Type(() => Number)
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  warrantyPeriodDays?: number;
 }
 
 class UpdateWarrantyAdjustmentBody {

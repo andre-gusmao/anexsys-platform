@@ -5,8 +5,6 @@ export interface CreateWarrantyExecutionDto {
   productionOrderId: string;
   affectedServiceOrderItemIds: string[];
   executionReason: string;
-  actualDeliveryDate: string;
-  warrantyPeriodDays?: number | null;
   correctiveOperationalResourceId?: string | null;
   customerRejectionId?: string | null;
   qualityRecordId?: string | null;

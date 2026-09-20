@@ -204,3 +204,8 @@ export enum WarrantyExecutionStatus {
   IN_PROGRESS = 'in_progress',
   RESOLVED = 'resolved',
 }
+
+export enum WarrantyStartSource {
+  PICKUP = 'pickup',
+  DELIVERY = 'delivery',
+}

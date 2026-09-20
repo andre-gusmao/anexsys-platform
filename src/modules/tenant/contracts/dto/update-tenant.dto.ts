@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, IsUUID, Length, Min } from 'class-validator';
 
 export class UpdateTenantDto {
   @IsOptional()
@@ -13,6 +14,18 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsString()
   displayName?: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyAdjustmentPeriodDays?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyExecutionPeriodDays?: number;
 
   @IsUUID()
   actorUserId!: string;

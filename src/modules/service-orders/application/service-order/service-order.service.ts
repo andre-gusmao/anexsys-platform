@@ -86,6 +86,8 @@ export class ServiceOrderService {
       openedAt,
       deliveryCommitmentSourceAt,
       promisedDeliveryDate,
+      actualPickupDate: dto.actualPickupDate ?? null,
+      actualDeliveryDate: dto.actualDeliveryDate ?? null,
       deliveryType: dto.deliveryType ?? DeliveryType.STANDARD,
       operationalPriority: dto.operationalPriority?.trim() || null,
       commercialResponsibleActorId,
@@ -252,6 +254,12 @@ export class ServiceOrderService {
     if (dto.deliveryCommitmentSourceAt !== undefined) {
       serviceOrder.deliveryCommitmentSourceAt = new Date(dto.deliveryCommitmentSourceAt);
     }
+    if (dto.actualPickupDate !== undefined) {
+      serviceOrder.actualPickupDate = dto.actualPickupDate;
+    }
+    if (dto.actualDeliveryDate !== undefined) {
+      serviceOrder.actualDeliveryDate = dto.actualDeliveryDate;
+    }
     if (dto.deliveryType !== undefined) {
       serviceOrder.deliveryType = dto.deliveryType;
     }
@@ -303,6 +311,8 @@ export class ServiceOrderService {
       metadata: {
         deliveryType: saved.deliveryType,
         promisedDeliveryDate: saved.promisedDeliveryDate,
+        actualPickupDate: saved.actualPickupDate,
+        actualDeliveryDate: saved.actualDeliveryDate,
       },
     });
 

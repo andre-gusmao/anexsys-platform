@@ -8,7 +8,7 @@ import { CreateProductionOrderVersionDto } from 'src/modules/production-orders/c
 import { ProductionOrderOperationalAssignmentRepository } from 'src/modules/production-orders/infrastructure/persistence/repositories/production-order-operational-assignment.repository';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
-import { ProductionOrderVersionReason, WarrantyAdjustmentStatus, WarrantyExecutionStatus } from 'src/shared/domain/enums';
+import { ProductionOrderVersionReason, WarrantyAdjustmentStatus, WarrantyExecutionStatus, WarrantyStartSource } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { CreateWarrantyAdjustmentDto } from '../../contracts/dto/create-warranty-adjustment.dto';
@@ -85,8 +85,10 @@ export class WarrantyService {
   }
 
   async createAdjustment(dto: CreateWarrantyAdjustmentDto): Promise<WarrantyAdjustmentEntity> {
+    const tenant = await this.tenantService.getById(dto.tenantId);
     const serviceOrderDetails = await this.serviceOrderService.getDetails(dto.tenantId, dto.serviceOrderId);
-    this.assertWarrantyEligibility(dto.actualDeliveryDate, dto.openedAt ?? null, dto.warrantyPeriodDays ?? 7);
+    const warrantyStart = this.resolveWarrantyStart(serviceOrderDetails.serviceOrder);
+    this.assertWarrantyEligibility(warrantyStart.date, dto.openedAt ?? null, tenant.warrantyAdjustmentPeriodDays);
     if (dto.serviceOrderItemId && !serviceOrderDetails.items.some((item) => item.id === dto.serviceOrderItemId)) {
       throw new DomainValidationError('Warranty Adjustment item must belong to the referenced Service Order.');
     }
@@ -98,8 +100,9 @@ export class WarrantyService {
       serviceOrderItemId: dto.serviceOrderItemId ?? null,
       customerRejectionId: dto.customerRejectionId ?? null,
       adjustmentReason: dto.adjustmentReason.trim(),
-      actualDeliveryDate: dto.actualDeliveryDate,
-      warrantyPeriodDays: dto.warrantyPeriodDays ?? 7,
+      warrantyStartDate: warrantyStart.date,
+      warrantyStartSource: warrantyStart.source,
+      warrantyPeriodDays: tenant.warrantyAdjustmentPeriodDays,
       openedAt: dto.openedAt ? new Date(dto.openedAt) : new Date(),
       status: WarrantyAdjustmentStatus.OPEN,
       createdBy: dto.actorUserId,
@@ -139,10 +142,12 @@ export class WarrantyService {
   }
 
   async createExecution(dto: CreateWarrantyExecutionDto): Promise<WarrantyExecutionEntity> {
+    const tenant = await this.tenantService.getById(dto.tenantId);
     const serviceOrderDetails = await this.serviceOrderService.getDetails(dto.tenantId, dto.serviceOrderId);
     const productionOrderDetails = await this.productionOrderService.getDetails(dto.tenantId, dto.productionOrderId);
     this.serviceOrderService.assertBranchAccess(serviceOrderDetails.serviceOrder, [productionOrderDetails.productionOrder.branchId]);
-    this.assertWarrantyEligibility(dto.actualDeliveryDate, dto.openedAt ?? null, dto.warrantyPeriodDays ?? 7);
+    const warrantyStart = this.resolveWarrantyStart(serviceOrderDetails.serviceOrder);
+    this.assertWarrantyEligibility(warrantyStart.date, dto.openedAt ?? null, tenant.warrantyExecutionPeriodDays);
     const linkedItemIds = new Set(productionOrderDetails.items.map((item) => item.id));
     if (dto.affectedServiceOrderItemIds.length === 0) {
       throw new DomainValidationError('Warranty Execution requires at least one affected Service Order item.');
@@ -175,8 +180,9 @@ export class WarrantyService {
       originalOperationalResourceId: originalAssignment?.operationalResourceId ?? null,
       correctiveOperationalResourceId: dto.correctiveOperationalResourceId ?? null,
       executionReason: dto.executionReason.trim(),
-      actualDeliveryDate: dto.actualDeliveryDate,
-      warrantyPeriodDays: dto.warrantyPeriodDays ?? 7,
+      warrantyStartDate: warrantyStart.date,
+      warrantyStartSource: warrantyStart.source,
+      warrantyPeriodDays: tenant.warrantyExecutionPeriodDays,
       openedAt: dto.openedAt ? new Date(dto.openedAt) : new Date(),
       resolvedAt: null,
       status: dto.correctiveOperationalResourceId ? WarrantyExecutionStatus.ASSIGNED : WarrantyExecutionStatus.OPEN,
@@ -244,13 +250,23 @@ export class WarrantyService {
     return saved;
   }
 
-  private assertWarrantyEligibility(actualDeliveryDate: string, openedAt: string | null, warrantyPeriodDays: number) {
-    const delivery = new Date(`${actualDeliveryDate}T00:00:00.000Z`);
+  private assertWarrantyEligibility(warrantyStartDate: string, openedAt: string | null, warrantyPeriodDays: number) {
+    const delivery = new Date(`${warrantyStartDate}T00:00:00.000Z`);
     const opened = openedAt ? new Date(openedAt) : new Date();
     const deadline = new Date(delivery);
     deadline.setUTCDate(deadline.getUTCDate() + warrantyPeriodDays);
     if (opened.getTime() < delivery.getTime() || opened.getTime() > deadline.getTime()) {
       throw new DomainValidationError('Warranty case is outside the allowed warranty period.');
     }
+  }
+
+  private resolveWarrantyStart(serviceOrder: { actualPickupDate?: string | null; actualDeliveryDate?: string | null }) {
+    if (serviceOrder.actualPickupDate) {
+      return { date: serviceOrder.actualPickupDate, source: WarrantyStartSource.PICKUP };
+    }
+    if (serviceOrder.actualDeliveryDate) {
+      return { date: serviceOrder.actualDeliveryDate, source: WarrantyStartSource.DELIVERY };
+    }
+    throw new DomainValidationError('Warranty start requires an actual pickup date or actual delivery date on the Service Order.');
   }
 }

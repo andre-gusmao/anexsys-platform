@@ -10,7 +10,8 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsOptional, IsString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
 import { Public } from 'src/platform/auth/public.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
@@ -27,6 +28,18 @@ class CreateTenantBody {
 
   @IsString()
   displayName!: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyAdjustmentPeriodDays?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyExecutionPeriodDays?: number;
 }
 
 class UpdateTenantBody {
@@ -42,6 +55,18 @@ class UpdateTenantBody {
   @IsOptional()
   @IsString()
   displayName?: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyAdjustmentPeriodDays?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  warrantyExecutionPeriodDays?: number;
 }
 
 @Controller('tenants')

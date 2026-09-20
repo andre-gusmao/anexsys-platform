@@ -83,6 +83,14 @@ class CreateServiceOrderBody {
   deliveryCommitmentSourceAt?: string;
 
   @IsOptional()
+  @IsDateString()
+  actualPickupDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  actualDeliveryDate?: string;
+
+  @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;
 
@@ -137,6 +145,14 @@ class UpdateServiceOrderBody {
   @IsOptional()
   @IsDateString()
   deliveryCommitmentSourceAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  actualPickupDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  actualDeliveryDate?: string;
 
   @IsOptional()
   @IsEnum(DeliveryType)

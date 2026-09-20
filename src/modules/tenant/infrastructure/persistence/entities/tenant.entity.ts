@@ -17,6 +17,12 @@ export class TenantEntity extends MutableBusinessEntity {
   @Column({ name: 'status', type: 'varchar', length: 30, default: TenantStatus.ACTIVE })
   status!: TenantStatus;
 
+  @Column({ name: 'warranty_adjustment_period_days', type: 'integer', default: 7 })
+  warrantyAdjustmentPeriodDays!: number;
+
+  @Column({ name: 'warranty_execution_period_days', type: 'integer', default: 7 })
+  warrantyExecutionPeriodDays!: number;
+
   @OneToMany(() => BranchEntity, (branch) => branch.tenant)
   branches?: BranchEntity[];
 }

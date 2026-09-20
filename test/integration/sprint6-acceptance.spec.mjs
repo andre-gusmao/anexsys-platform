@@ -34,8 +34,10 @@ let reworkCaseId = '';
 let warrantyAdjustmentId = '';
 let warrantyExecutionId = '';
 
-function currentUtcDate() {
-  return new Date().toISOString().slice(0, 10);
+function utcDateDaysAgo(days) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
 }
 
 async function adminClient(database = 'postgres') {
@@ -135,6 +137,8 @@ before(async () => {
   for (const permissionCode of [
     'customers.read',
     'customers.write',
+    'tenants.read',
+    'tenants.write',
     'service_orders.read',
     'service_orders.write',
     'production_orders.read',
@@ -410,6 +414,33 @@ describe('Sprint 6 acceptance', () => {
   });
 
   it('supports warranty adjustment and quality-driven warranty execution workflows', async () => {
+    const deliveryDate = utcDateDaysAgo(9);
+    const pickupDate = utcDateDaysAgo(8);
+
+    const configuredTenant = await http(`/tenants/${tenantId}`, {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer ' + adminToken, 'x-tenant-id': tenantId },
+      body: JSON.stringify({
+        warrantyAdjustmentPeriodDays: 10,
+        warrantyExecutionPeriodDays: 14,
+      }),
+    });
+    assert.equal(configuredTenant.status, 200);
+    assert.equal(configuredTenant.json.warrantyAdjustmentPeriodDays, 10);
+    assert.equal(configuredTenant.json.warrantyExecutionPeriodDays, 14);
+
+    const updatedServiceOrder = await http(`/service-orders/${serviceOrderId}`, {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer ' + adminToken, 'x-tenant-id': tenantId },
+      body: JSON.stringify({
+        actualDeliveryDate: deliveryDate,
+        actualPickupDate: pickupDate,
+      }),
+    });
+    assert.equal(updatedServiceOrder.status, 200);
+    assert.equal(updatedServiceOrder.json.actualDeliveryDate, deliveryDate);
+    assert.equal(updatedServiceOrder.json.actualPickupDate, pickupDate);
+
     const adjustment = await http('/warranty-adjustments', {
       method: 'POST',
       headers: { authorization: 'Bearer ' + adminToken, 'x-tenant-id': tenantId },
@@ -418,11 +449,13 @@ describe('Sprint 6 acceptance', () => {
         serviceOrderItemId,
         customerRejectionId,
         adjustmentReason: 'Too loose at sleeve',
-        actualDeliveryDate: currentUtcDate(),
       }),
     });
     assert.equal(adjustment.status, 201);
     warrantyAdjustmentId = adjustment.json.id;
+    assert.equal(adjustment.json.warrantyStartDate, pickupDate);
+    assert.equal(adjustment.json.warrantyStartSource, 'pickup');
+    assert.equal(adjustment.json.warrantyPeriodDays, 10);
 
     const updatedAdjustment = await http(`/warranty-adjustments/${warrantyAdjustmentId}`, {
       method: 'PATCH',
@@ -451,7 +484,6 @@ describe('Sprint 6 acceptance', () => {
       body: JSON.stringify({
         executionReason: 'Repair failed and zipper must be replaced',
         affectedServiceOrderItemIds: [serviceOrderItemId],
-        actualDeliveryDate: currentUtcDate(),
         correctiveOperationalResourceId: correctiveResourceId2,
       }),
     });
@@ -466,6 +498,9 @@ describe('Sprint 6 acceptance', () => {
     });
     assert.equal(executionDetails.status, 200);
     assert.equal(executionDetails.json.warrantyExecution.productionOrderId, productionOrderId);
+    assert.equal(executionDetails.json.warrantyExecution.warrantyStartDate, pickupDate);
+    assert.equal(executionDetails.json.warrantyExecution.warrantyStartSource, 'pickup');
+    assert.equal(executionDetails.json.warrantyExecution.warrantyPeriodDays, 14);
 
     const resolved = await http(`/warranty-executions/${warrantyExecutionId}/resolve`, {
       method: 'POST',

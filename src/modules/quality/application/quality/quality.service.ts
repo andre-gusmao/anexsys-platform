@@ -220,9 +220,7 @@ export class QualityService {
       productionOrderId: productionOrder.id,
       affectedServiceOrderItemIds: dto.affectedServiceOrderItemIds,
       executionReason: dto.executionReason,
-      actualDeliveryDate: dto.actualDeliveryDate,
       correctiveOperationalResourceId: dto.correctiveOperationalResourceId ?? null,
-      warrantyPeriodDays: dto.warrantyPeriodDays ?? 7,
       qualityRecordId: saved.id,
     });
     await this.auditService.record({ tenantId, branchId: saved.branchId, actorUserId: dto.actorUserId, entityType: 'quality_record', entityId: saved.id, action: 'quality_record.warranty_execution.requested', eventType: 'quality.workflow', metadata: { warrantyExecutionId: warrantyExecution.id } });
