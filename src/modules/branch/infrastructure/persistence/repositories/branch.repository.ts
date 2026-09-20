@@ -26,6 +26,10 @@ export class BranchRepository {
     return this.repository.find({ where: { tenantId }, order: { displayName: 'ASC' } });
   }
 
+  async findByTenantAndCode(tenantId: string, code: string): Promise<BranchEntity | null> {
+    return this.repository.findOne({ where: { tenantId, code } });
+  }
+
   async findChildren(parentBranchId: string): Promise<BranchEntity[]> {
     return this.repository.find({ where: { parentBranchId }, order: { displayName: 'ASC' } });
   }

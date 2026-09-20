@@ -342,7 +342,6 @@ describe('Sprint 1 acceptance', () => {
         authorization: 'Bearer ' + adminToken,
         'x-tenant-id': tenantOneId,
       },
-      body: JSON.stringify({ sessionId: adminSessionId }),
     });
 
     assert.equal(logout.status, 201);

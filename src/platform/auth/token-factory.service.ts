@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 
 export interface AuthTokenPayload {
   sub: string;
   tenantId: string;
+  sessionId: string;
   branchIds: string[];
   permissions: string[];
 }
@@ -30,16 +31,17 @@ export interface IssuedAuthTokens {
 export class TokenFactoryService {
   constructor(private readonly jwtService: JwtService) {}
 
-  async issueTokens(payload: AuthTokenPayload, refreshTokenId: string = randomUUID()): Promise<IssuedAuthTokens> {
+  async issueTokens(payload: Omit<AuthTokenPayload, 'sessionId'>, refreshTokenId: string = randomUUID()): Promise<IssuedAuthTokens> {
+    const tokenPayload = { ...payload, sessionId: refreshTokenId };
     const accessToken = await this.jwtService.signAsync(
-      { ...payload, tokenType: 'access' satisfies AccessTokenPayload['tokenType'] },
+      { ...tokenPayload, tokenType: 'access' satisfies AccessTokenPayload['tokenType'] },
       {
         expiresIn: '15m',
       },
     );
     const refreshToken = await this.jwtService.signAsync(
       {
-        ...payload,
+        ...tokenPayload,
         jti: refreshTokenId,
         nonce: randomUUID(),
         tokenType: 'refresh' satisfies RefreshTokenPayload['tokenType'],
@@ -67,5 +69,11 @@ export class TokenFactoryService {
 
   hashToken(rawToken: string): string {
     return createHash('sha256').update(rawToken).digest('hex');
+  }
+
+  compareTokenHash(rawToken: string, hashedToken: string): boolean {
+    const incomingBuffer = Buffer.from(this.hashToken(rawToken), 'hex');
+    const storedBuffer = Buffer.from(hashedToken, 'hex');
+    return incomingBuffer.length === storedBuffer.length && timingSafeEqual(incomingBuffer, storedBuffer);
   }
 }

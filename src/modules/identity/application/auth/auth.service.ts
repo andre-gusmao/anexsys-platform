@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
 import { TokenFactoryService } from 'src/platform/auth/token-factory.service';
@@ -123,18 +122,20 @@ export class AuthService {
       throw new AuthenticationFailedError('Refresh token session mismatch.');
     }
 
-    const incomingHash = this.tokenFactoryService.hashToken(dto.refreshToken);
-    if (incomingHash !== session.refreshTokenHash) {
+    if (!this.tokenFactoryService.compareTokenHash(dto.refreshToken, session.refreshTokenHash)) {
       throw new AuthenticationFailedError('Refresh token is invalid.');
     }
 
     const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(payload.tenantId, payload.sub);
-    const issuedTokens = await this.tokenFactoryService.issueTokens({
-      sub: payload.sub,
-      tenantId: payload.tenantId,
-      branchIds: effectiveAccess.branchIds,
-      permissions: effectiveAccess.permissions,
-    }, session.id);
+    const issuedTokens = await this.tokenFactoryService.issueTokens(
+      {
+        sub: payload.sub,
+        tenantId: payload.tenantId,
+        branchIds: effectiveAccess.branchIds,
+        permissions: effectiveAccess.permissions,
+      },
+      session.id,
+    );
 
     session.refreshTokenHash = issuedTokens.refreshTokenHash;
     session.lastUsedAt = new Date();

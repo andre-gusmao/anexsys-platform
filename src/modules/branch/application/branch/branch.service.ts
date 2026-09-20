@@ -22,12 +22,18 @@ export class BranchService {
     await this.tenantService.getById(dto.tenantId);
     await this.assertParentBranch(dto.tenantId, dto.parentBranchId ?? null);
 
+    const normalizedCode = dto.code.trim().toUpperCase();
+    const existingBranch = await this.branchRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+    if (existingBranch) {
+      throw new DomainValidationError(`Branch code '${normalizedCode}' already exists for this tenant.`);
+    }
+
     const normalizedCalendarName = dto.businessCalendarName?.trim() || null;
 
     const branch = this.branchRepository.create({
       id: randomUUID(),
       tenantId: dto.tenantId,
-      code: dto.code.trim().toUpperCase(),
+      code: normalizedCode,
       legalName: dto.legalName.trim(),
       displayName: dto.displayName.trim(),
       status: BranchStatus.ACTIVE,
@@ -70,7 +76,15 @@ export class BranchService {
     const branch = await this.getById(id);
     await this.assertParentBranch(branch.tenantId, dto.parentBranchId ?? branch.parentBranchId, id);
 
-    branch.code = dto.code?.trim().toUpperCase() ?? branch.code;
+    if (dto.code && dto.code.trim().toUpperCase() !== branch.code) {
+      const normalizedCode = dto.code.trim().toUpperCase();
+      const existingBranch = await this.branchRepository.findByTenantAndCode(branch.tenantId, normalizedCode);
+      if (existingBranch && existingBranch.id !== id) {
+        throw new DomainValidationError(`Branch code '${normalizedCode}' already exists for this tenant.`);
+      }
+      branch.code = normalizedCode;
+    }
+
     branch.legalName = dto.legalName?.trim() ?? branch.legalName;
     branch.displayName = dto.displayName?.trim() ?? branch.displayName;
     branch.parentBranchId = dto.parentBranchId === undefined ? branch.parentBranchId : dto.parentBranchId;

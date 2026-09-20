@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
+import { ensureRequestContext, PlatformRequest, resolveBranchId, resolveTenantId } from 'src/platform/http/request-context';
 import { TokenFactoryService } from './token-factory.service';
 import { IS_PUBLIC_KEY } from './public.decorator';
-import { PlatformRequest, resolveBranchId, resolveTenantId } from 'src/platform/http/request-context';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -30,7 +30,8 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<PlatformRequest>();
-    const rawToken = request.requestContext?.authToken;
+    const requestContext = ensureRequestContext(request);
+    const rawToken = requestContext.authToken;
     if (!rawToken) {
       throw new UnauthorizedException('Authorization bearer token is required.');
     }
@@ -53,20 +54,18 @@ export class JwtAuthGuard implements CanActivate {
       throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
     }
 
-    request.requestContext.authenticatedPrincipal = {
+    requestContext.authenticatedPrincipal = {
       userId: payload.sub,
       tenantId: payload.tenantId,
-      branchIds: payload.branchIds,
+      sessionId: payload.sessionId,
+      branchIds: effectiveAccess.branchIds,
       tokenPermissions: payload.permissions,
       effectivePermissions: effectiveAccess.permissions,
       effectiveBranchIds: effectiveAccess.branchIds,
     };
 
-    if (!request.requestContext.requestedTenantId) {
-      request.requestContext.requestedTenantId = payload.tenantId;
-    }
-    if (!request.requestContext.requestedBranchId && effectiveAccess.branchIds.length === 1) {
-      request.requestContext.requestedBranchId = effectiveAccess.branchIds[0];
+    if (!requestContext.requestedTenantId) {
+      requestContext.requestedTenantId = payload.tenantId;
     }
 
     return true;

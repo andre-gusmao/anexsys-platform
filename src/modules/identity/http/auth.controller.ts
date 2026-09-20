@@ -6,7 +6,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { IsString, IsUUID, MinLength } from 'class-validator';
-import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
 import { CurrentRequest } from 'src/platform/http/request-context.decorators';
 import { Public } from 'src/platform/auth/public.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -30,17 +29,11 @@ class RefreshTokenBody {
   refreshToken!: string;
 }
 
-class LogoutBody {
-  @IsUUID()
-  sessionId!: string;
-}
-
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly identityService: IdentityService,
-    private readonly authorizationService: AuthorizationService,
   ) {}
 
   @Public()
@@ -56,32 +49,34 @@ export class AuthController {
   }
 
   @Post('logout')
-  async logout(@Body() body: LogoutBody, @CurrentRequest() request: PlatformRequest) {
+  async logout(@CurrentRequest() request: PlatformRequest) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
-    if (!actorUserId) {
-      throw new UnauthorizedException('Authenticated user is required.');
+    const sessionId = request.requestContext.authenticatedPrincipal?.sessionId;
+    if (!actorUserId || !sessionId) {
+      throw new UnauthorizedException('Authenticated session is required.');
     }
 
-    await this.authService.logout({ sessionId: body.sessionId, actorUserId });
+    await this.authService.logout({ sessionId, actorUserId });
     return { success: true };
   }
 
   @Get('me')
   async getMe(@CurrentRequest() request: PlatformRequest) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
-    const tenantId = request.requestContext.authenticatedPrincipal?.tenantId;
-    if (!actorUserId || !tenantId) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!principal) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
 
-    const user = await this.identityService.getById(actorUserId);
-    const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(tenantId, actorUserId);
+    const user = await this.identityService.getById(principal.userId);
 
     return {
       user,
-      effectiveAccess,
+      effectiveAccess: {
+        branchIds: principal.effectiveBranchIds,
+        permissions: principal.effectivePermissions,
+      },
       context: {
-        tenantId,
+        tenantId: principal.tenantId,
         branchId: request.requestContext.requestedBranchId,
       },
     };

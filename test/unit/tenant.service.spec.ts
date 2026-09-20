@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import { TenantStatus } from 'src/shared/domain/enums';
+import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 
 describe('TenantService', () => {
   it('creates an active tenant with normalized code and writes audit', async () => {
@@ -34,5 +35,24 @@ describe('TenantService', () => {
     assert.equal(tenant.code, 'ATELIER');
     assert.equal(tenant.status, TenantStatus.ACTIVE);
     assert.equal(auditCalls[0]?.action, 'tenant.created');
+  });
+
+  it('rejects duplicate tenant code on update', async () => {
+    const tenantRepository = {
+      async findById(id: string) {
+        assert.equal(id, 'tenant-1');
+        return { id: 'tenant-1', code: 'TENANT1', legalName: 'Tenant 1', displayName: 'Tenant 1' };
+      },
+      async findByCode(code: string) {
+        assert.equal(code, 'TENANT2');
+        return { id: 'tenant-2', code: 'TENANT2' };
+      },
+    };
+    const service = new TenantService(tenantRepository as never, {} as never);
+
+    await assert.rejects(
+      () => service.update('tenant-1', { code: 'tenant2', actorUserId: 'actor-1' }),
+      DomainValidationError,
+    );
   });
 });

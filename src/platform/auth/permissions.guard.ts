@@ -1,7 +1,7 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ensureRequestContext, PlatformRequest } from 'src/platform/http/request-context';
 import { REQUIRED_PERMISSIONS_KEY } from './permissions.decorator';
-import { PlatformRequest } from 'src/platform/http/request-context';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -18,7 +18,11 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<PlatformRequest>();
-    const effectivePermissions = request.requestContext.authenticatedPrincipal?.effectivePermissions ?? [];
+    const requestContext = ensureRequestContext(request);
+    const effectivePermissions = requestContext.authenticatedPrincipal?.effectivePermissions;
+    if (!effectivePermissions) {
+      throw new UnauthorizedException('Authenticated permission context is required.');
+    }
 
     const missingPermission = requiredPermissions.find((permission) => !effectivePermissions.includes(permission));
     if (missingPermission) {
