@@ -9,6 +9,9 @@ import { CustomerEntity } from 'src/modules/crm/infrastructure/persistence/entit
 import { CustomerContactEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-contact.entity';
 import { CustomerInteractionEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-interaction.entity';
 import { MeasurementRecordEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-record.entity';
+import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
+import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
+import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
 import { UserCredentialEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-credential.entity';
 import { UserIdentityEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-identity.entity';
 import { UserSessionEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-session.entity';
@@ -21,6 +24,9 @@ export const typeOrmEntities = [
   CustomerContactEntity,
   CustomerInteractionEntity,
   MeasurementRecordEntity,
+  BusinessCalendarDayEntity,
+  ServiceOrderEntity,
+  ServiceOrderItemEntity,
   UserIdentityEntity,
   UserCredentialEntity,
   UserSessionEntity,

@@ -55,3 +55,31 @@ export enum InteractionChannel {
   WHATSAPP = 'whatsapp',
   EMAIL = 'email',
 }
+
+export enum DeliveryType {
+  STANDARD = 'Standard',
+  PRIORITY = 'Priority',
+  EXPRESS = 'Express',
+}
+
+export enum SurchargeMethod {
+  FIXED = 'fixed',
+  PERCENTAGE = 'percentage',
+}
+
+export enum ServiceOrderStatus {
+  OPEN = 'open',
+  APPROVED = 'approved',
+  CANCELLED = 'cancelled',
+}
+
+export enum ServiceOrderItemStatus {
+  OPEN = 'open',
+  CANCELLED = 'cancelled',
+}
+
+export enum CalendarDayScope {
+  TENANT = 'tenant',
+  BRANCH = 'branch',
+  HOLIDAY = 'holiday',
+}

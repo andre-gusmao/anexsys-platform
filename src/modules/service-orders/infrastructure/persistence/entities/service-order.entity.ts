@@ -1,0 +1,66 @@
+import { Column, Entity } from 'typeorm';
+import { DeliveryType, ServiceOrderStatus, SurchargeMethod } from 'src/shared/domain/enums';
+import { SoftDeletableBusinessEntity } from 'src/shared/persistence/base.entity';
+
+@Entity({ name: 'service_orders' })
+export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
+  @Column({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string;
+
+  @Column({ name: 'branch_id', type: 'uuid' })
+  branchId!: string;
+
+  @Column({ name: 'customer_id', type: 'uuid' })
+  customerId!: string;
+
+  @Column({ name: 'workflow_definition_id', type: 'uuid', nullable: true })
+  workflowDefinitionId!: string | null;
+
+  @Column({ name: 'current_status_definition_id', type: 'uuid', nullable: true })
+  currentStatusDefinitionId!: string | null;
+
+  @Column({ name: 'order_no', type: 'varchar', length: 50 })
+  orderNo!: string;
+
+  @Column({ name: 'opened_at', type: 'timestamptz' })
+  openedAt!: Date;
+
+  @Column({ name: 'delivery_commitment_source_at', type: 'timestamptz' })
+  deliveryCommitmentSourceAt!: Date;
+
+  @Column({ name: 'promised_delivery_date', type: 'date' })
+  promisedDeliveryDate!: string;
+
+  @Column({ name: 'delivery_type', type: 'varchar', length: 20, default: DeliveryType.STANDARD })
+  deliveryType!: DeliveryType;
+
+  @Column({ name: 'operational_priority', type: 'varchar', length: 50, nullable: true })
+  operationalPriority!: string | null;
+
+  @Column({ name: 'commercial_responsible_actor_id', type: 'uuid' })
+  commercialResponsibleActorId!: string;
+
+  @Column({ name: 'technical_measurement_responsible_actor_id', type: 'uuid' })
+  technicalMeasurementResponsibleActorId!: string;
+
+  @Column({ name: 'delivery_surcharge_method', type: 'varchar', length: 20, nullable: true })
+  deliverySurchargeMethod!: SurchargeMethod | null;
+
+  @Column({ name: 'delivery_surcharge_value', type: 'numeric', precision: 18, scale: 2, nullable: true })
+  deliverySurchargeValue!: string | null;
+
+  @Column({ name: 'commercial_notes', type: 'text', nullable: true })
+  commercialNotes!: string | null;
+
+  @Column({ name: 'customer_notes', type: 'text', nullable: true })
+  customerNotes!: string | null;
+
+  @Column({ name: 'status', type: 'varchar', length: 30, default: ServiceOrderStatus.OPEN })
+  status!: ServiceOrderStatus;
+
+  @Column({ name: 'total_value', type: 'numeric', precision: 18, scale: 2, nullable: true })
+  totalValue!: string | null;
+
+  @Column({ name: 'discount_value', type: 'numeric', precision: 18, scale: 2, nullable: true })
+  discountValue!: string | null;
+}
