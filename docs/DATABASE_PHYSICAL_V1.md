@@ -3,7 +3,7 @@
 
 ## Document Purpose
 
-This document transforms the approved ANEXSYS logical data model into a complete PostgreSQL-oriented physical data model using only the following approved sources of truth:
+This document transforms the approved ANEXSYS logical data model into a complete PostgreSQL-oriented physical data model using the frozen baseline documents as source of truth and the approved downstream modeling documents as design inputs:
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
 - `/docs/frozen/DATABASE_GUIDELINES_V1.md`
@@ -242,7 +242,7 @@ All foreign-key chains must preserve tenant consistency, especially for:
 - `operational_resource_branch_scopes` allows additional branch allocations over time
 
 ### 5.3 Branch-scoped transactional tables
-The following directly branch-owned transactional tables must carry `branch_id not null`, while support/link tables may derive branch scope through their parent foreign-key lineage:
+The following tables carry `branch_id not null` either as direct branch ownership or as explicit branch-scoped integrity reinforcement, while some other support/link tables may derive branch scope only through parent foreign-key lineage:
 - `service_orders`
 - `service_order_items`
 - `production_orders`
@@ -827,6 +827,8 @@ Key columns:
 
 Constraints:
 - UQ: `(pickup_authorization_id, token_value)`
+- CHECK: `expires_at >= issued_at`
+- CHECK: `used_at` is null or `used_at >= issued_at`
 
 #### `pickup_qr_codes`
 Key columns:
@@ -842,6 +844,8 @@ Key columns:
 
 Constraints:
 - UQ: `(pickup_authorization_id, code_value)`
+- CHECK: `expires_at >= issued_at`
+- CHECK: `used_at` is null or `used_at >= issued_at`
 
 #### `temporary_pickup_codes`
 Key columns:
@@ -857,6 +861,8 @@ Key columns:
 
 Constraints:
 - UQ: `(pickup_authorization_id, code_value)`
+- CHECK: `expires_at >= issued_at`
+- CHECK: `used_at` is null or `used_at >= issued_at`
 
 #### `storage_locations`
 Key columns:
@@ -892,6 +898,7 @@ Key columns:
 Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
 - UQ: filtered uniqueness on `(service_order_id)` when `is_current = true`
+- CHECK: `is_current = true` requires `released_at is null`, and `released_at is not null` requires `is_current = false`
 
 #### `physical_bag_support_contexts`
 Purpose:
@@ -996,6 +1003,7 @@ Constraints:
 - UQ: filtered uniqueness on `(production_order_id)` when `is_active = true`
 - UQ: `(tenant_id, code_value)`
 - CHECK: `reissue_no >= 1`
+- CHECK: `is_active = true` requires `revoked_at is null`, and `revoked_at is not null` requires `is_active = false`
 
 #### `qr_events`
 Key columns:
@@ -1034,6 +1042,7 @@ Key columns:
 Constraints:
 - immutable append-only table
 - CHECK: at least one governed business reference is present
+- lineage rule: when more than one of `service_order_id`, `production_order_id`, and `pickup_authorization_id` is populated, all populated references must resolve to the same Service Order lineage
 
 #### `audit_events`
 Key columns:
