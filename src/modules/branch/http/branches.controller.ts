@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UnauthorizedException,
@@ -94,7 +95,7 @@ export class BranchesController {
   @Permissions('branches.read')
   @Get(':branchId')
   async getById(
-    @Param('branchId') branchId: string,
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -104,7 +105,7 @@ export class BranchesController {
   @Permissions('branches.write')
   @Patch(':branchId')
   async update(
-    @Param('branchId') branchId: string,
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
     @Body() body: UpdateBranchBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
@@ -121,7 +122,7 @@ export class BranchesController {
   @Permissions('branches.write')
   @Post(':branchId/activate')
   async activate(
-    @Param('branchId') branchId: string,
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -137,7 +138,7 @@ export class BranchesController {
   @Permissions('branches.write')
   @Post(':branchId/deactivate')
   async deactivate(
-    @Param('branchId') branchId: string,
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -153,7 +154,7 @@ export class BranchesController {
   @Permissions('branches.read')
   @Get(':branchId/children')
   async listChildren(
-    @Param('branchId') branchId: string,
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {

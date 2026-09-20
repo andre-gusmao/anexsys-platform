@@ -9,6 +9,7 @@ import { LogoutDto } from '../../contracts/dto/logout.dto';
 import { RefreshTokenDto } from '../../contracts/dto/refresh-token.dto';
 import { UserStatus, SessionStatus } from 'src/shared/domain/enums';
 import { UserCredentialRepository } from '../../infrastructure/persistence/repositories/user-credential.repository';
+import { UserSessionEntity } from '../../infrastructure/persistence/entities/user-session.entity';
 import { UserSessionRepository } from '../../infrastructure/persistence/repositories/user-session.repository';
 import { IdentityService } from '../identity/identity.service';
 
@@ -174,17 +175,12 @@ export class AuthService {
   }
 
 
-  private async revokeRefreshSession(session: {
-    status: SessionStatus;
-    revokedAt: Date | null;
-    updatedAt: Date;
-    updatedBy: string;
-  }, actorUserId: string): Promise<void> {
+  private async revokeRefreshSession(session: UserSessionEntity, actorUserId: string): Promise<void> {
     session.status = SessionStatus.REVOKED;
     session.revokedAt = new Date();
     session.updatedAt = new Date();
     session.updatedBy = actorUserId;
-    await this.userSessionRepository.save(session as any);
+    await this.userSessionRepository.save(session);
   }
 
   async logout(dto: LogoutDto): Promise<void> {

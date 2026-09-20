@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -186,7 +187,7 @@ export class CustomersController {
   @Permissions('customers.read')
   @Get(':customerId')
   async getById(
-    @Param('customerId') customerId: string,
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -230,7 +231,7 @@ export class CustomersController {
   @Permissions('customers.write')
   @Patch(':customerId')
   async update(
-    @Param('customerId') customerId: string,
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
     @Body() body: UpdateCustomerBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
@@ -258,7 +259,7 @@ export class CustomersController {
   @Permissions('measurements.read')
   @Get(':customerId/measurements')
   async listMeasurements(
-    @Param('customerId') customerId: string,
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -275,7 +276,7 @@ export class CustomersController {
   @Permissions('measurements.write')
   @Post(':customerId/measurements')
   async createMeasurements(
-    @Param('customerId') customerId: string,
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
     @Body() body: CreateMeasurementsBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,

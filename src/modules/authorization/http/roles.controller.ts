@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -69,7 +70,7 @@ export class RolesController {
 
   @Permissions('roles.read')
   @Get(':roleId')
-  async getById(@Param('roleId') roleId: string, @CurrentTenantId() tenantId: string | null) {
+  async getById(@Param('roleId', new ParseUUIDPipe()) roleId: string, @CurrentTenantId() tenantId: string | null) {
     if (!tenantId) {
       throw new BadRequestException('Tenant context is required.');
     }
@@ -85,7 +86,7 @@ export class RolesController {
   @Permissions('roles.write')
   @Post(':roleId/permissions')
   async assignPermission(
-    @Param('roleId') roleId: string,
+    @Param('roleId', new ParseUUIDPipe()) roleId: string,
     @Body() body: AssignPermissionBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
