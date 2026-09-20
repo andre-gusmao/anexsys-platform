@@ -38,7 +38,7 @@ Core approved model:
 - 1 Customer -> many Service Orders
 - 1 Service Order -> many Service Order Items
 - 1 Service Order -> exactly 1 Primary Production Order
-- the Primary Production Order may contain all Service Order Items of that Service Order
+- the Primary Production Order represents all Service Order Items of that Service Order
 - Production Order versioning exists only for rework, warranty execution, and corrective production
 - the physical bag is only a storage and transport container for Service Order pieces and the printed Production Order (A5)
 - QR Codes belong exclusively to the Production Order
@@ -135,9 +135,9 @@ Operational responsibility must be traceable through Production Order execution 
 | Relationship | Cardinality | Guideline |
 |---|---|---|
 | Primary Production Order -> Service Order | many -> 1 | Each Primary Production Order belongs to exactly one Service Order |
-| Primary Production Order -> Service Order Item | 1 -> many | The Primary Production Order may include all items belonging to the Service Order |
-| Primary Production Order -> Production Order Version | 1 -> many over time | Versions exist only when corrective lineage is required |
-| Production Order Version -> Original Production Order | many -> 1 | Every corrective version must trace back to the original Production Order |
+| Primary Production Order -> Service Order Item | 1 -> many | The Primary Production Order represents all items belonging to the Service Order |
+| Primary Production Order -> Production Order Version | 1 -> many over time | Versions exist only when corrective lineage is required and remain under the same Service Order lineage |
+| Production Order Version -> Original Production Order | many -> 1 | Every corrective version must trace back to the original Production Order and supplements the original lineage rather than replacing the original record |
 | Production Order -> Operational Resource Assignment | many -> many over time | Responsibility is event-based and auditable |
 | Production Order -> QR Code | 1 -> 1 active operational code | QR ownership belongs exclusively to the Production Order |
 | Physical Bag Context -> Service Order | many -> 1 when used | A physical bag follows the Service Order context |
@@ -207,6 +207,10 @@ Every corrective version must preserve:
 - Original Operational Resource
 - Corrective Operational Resource
 - Audit history
+
+Every corrective version remains under the same Service Order as the Primary Production Order.
+
+Corrective versions supplement the original operational lineage for rework, warranty execution, or corrective production and do not replace the existence of the original Production Order.
 
 ### 5.6 Financial isolation rule
 
@@ -443,8 +447,9 @@ The following model is mandatory for conceptual data design in this guideline:
 - 1 Customer may have multiple Service Orders.
 - 1 Service Order contains multiple Service Order Items.
 - 1 Service Order generates exactly 1 Primary Production Order.
-- The Primary Production Order may contain all Service Order Items belonging to that Service Order.
+- The Primary Production Order represents all Service Order Items belonging to that Service Order.
 - Production Order versioning is used only for rework, warranty execution, and corrective production.
+- Corrective versions remain under the same Service Order and supplement the original Production Order lineage rather than replacing the original record.
 
 ---
 
