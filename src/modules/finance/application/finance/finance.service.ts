@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
@@ -76,6 +77,12 @@ export class FinanceService {
 
   async createPayment(dto: CreatePaymentDto) {
     const serviceOrderDetails = await this.serviceOrderService.getDetails(dto.tenantId, dto.serviceOrderId);
+    const status = dto.status ?? PaymentRecordStatus.RECEIVED;
+    const receivedAt = dto.receivedAt
+      ? new Date(dto.receivedAt)
+      : [PaymentRecordStatus.RECEIVED, PaymentRecordStatus.SETTLED].includes(status)
+        ? new Date()
+        : null;
     const payment = this.paymentRecordRepository.create({
       id: randomUUID(),
       tenantId: dto.tenantId,
@@ -86,15 +93,25 @@ export class FinanceService {
       paymentProvider: dto.paymentProvider ?? null,
       paymentDirection: dto.paymentDirection ?? PaymentDirection.INBOUND,
       paymentAmount: this.formatMoney(dto.paymentAmount),
-      receivedAt: dto.receivedAt ? new Date(dto.receivedAt) : new Date(),
+      receivedAt,
       authorizedAt: dto.authorizedAt ? new Date(dto.authorizedAt) : null,
       reconciledAt: dto.reconciledAt ? new Date(dto.reconciledAt) : null,
-      status: dto.status ?? PaymentRecordStatus.RECEIVED,
+      status,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
-    const savedPayment = await this.paymentRecordRepository.save(payment);
-    const savedAllocations = await this.persistAllocations(savedPayment, serviceOrderDetails.items, dto.allocations ?? null, dto.actorUserId, dto.tenantId);
+    const { savedPayment, savedAllocations } = await this.paymentRecordRepository.runInTransaction(async (manager) => {
+      const savedPayment = await manager.getRepository(PaymentRecordEntity).save(payment);
+      const savedAllocations = await this.persistAllocations(
+        savedPayment,
+        serviceOrderDetails.items,
+        dto.allocations ?? null,
+        dto.actorUserId,
+        dto.tenantId,
+        manager,
+      );
+      return { savedPayment, savedAllocations };
+    });
     await this.auditService.record({
       tenantId: dto.tenantId,
       branchId: savedPayment.branchId,
@@ -156,13 +173,20 @@ export class FinanceService {
     const orderTotal = this.toMoney(details.serviceOrder.totalValue ?? this.calculateItemsTotal(details.items));
     const amountPaid = this.calculateNetPaid(payments);
     const outstandingBalance = Math.max(orderTotal - amountPaid, 0);
+    const effectivePayments = new Map(
+      payments
+        .filter((payment) => ![PaymentRecordStatus.FAILED, PaymentRecordStatus.REVERSED].includes(payment.status))
+        .map((payment) => [payment.id, payment] as const),
+    );
     const itemAllocations = new Map<string, number>();
+    let allocatedAmount = 0;
     for (const allocation of allocations) {
+      const payment = effectivePayments.get(allocation.paymentRecordId);
+      if (!payment) continue;
+      const allocationAmount = this.toMoney(allocation.allocatedAmount) * (payment.paymentDirection === PaymentDirection.OUTBOUND ? -1 : 1);
+      allocatedAmount += allocationAmount;
       if (!allocation.serviceOrderItemId) continue;
-      itemAllocations.set(
-        allocation.serviceOrderItemId,
-        (itemAllocations.get(allocation.serviceOrderItemId) ?? 0) + this.toMoney(allocation.allocatedAmount),
-      );
+      itemAllocations.set(allocation.serviceOrderItemId, (itemAllocations.get(allocation.serviceOrderItemId) ?? 0) + allocationAmount);
     }
     const items = details.items.map((item) => {
       const totalValue = this.calculateItemTotal(item);
@@ -187,7 +211,7 @@ export class FinanceService {
       orderTotal: this.formatMoney(orderTotal),
       amountPaid: this.formatMoney(amountPaid),
       outstandingBalance: this.formatMoney(outstandingBalance),
-      unallocatedPaymentAmount: this.formatMoney(Math.max(amountPaid - this.sumMoney(allocations.map((allocation) => allocation.allocatedAmount)), 0)),
+      unallocatedPaymentAmount: this.formatMoney(Math.max(amountPaid - allocatedAmount, 0)),
       paymentStatus,
       paymentTermsDays: details.serviceOrder.paymentTermsDays,
       deliveryBlocked: tenant.blockDeliveryWithOutstandingBalance && outstandingBalance > 0,
@@ -252,20 +276,13 @@ export class FinanceService {
 
   async resolveFinancialException(id: string, tenantId: string, dto: ResolveFinancialExceptionDto): Promise<FinancialExceptionEntity> {
     const entity = await this.getFinancialExceptionById(id, tenantId);
+    if (entity.status === FinancialExceptionStatus.RESOLVED) {
+      throw new DomainValidationError('Financial Exception is already resolved.');
+    }
     entity.status = FinancialExceptionStatus.RESOLVED;
     entity.resolvedAt = new Date();
     entity.updatedBy = dto.actorUserId;
     const saved = await this.financialExceptionRepository.save(entity);
-    await this.auditService.record({
-      tenantId,
-      branchId: saved.branchId,
-      actorUserId: dto.actorUserId,
-      entityType: 'financial_exception',
-      entityId: saved.id,
-      action: 'financial_exception.approved',
-      eventType: 'finance.workflow',
-      metadata: { resolutionNotes: dto.resolutionNotes?.trim() || null },
-    });
     await this.auditService.record({
       tenantId,
       branchId: saved.branchId,
@@ -309,13 +326,13 @@ export class FinanceService {
     const payments = await this.paymentRecordRepository.search(tenantId, {
       branchId: filters.branchId,
       paymentMethod: filters.paymentMethod,
+      paymentDirection: PaymentDirection.INBOUND,
+      statuses: [PaymentRecordStatus.RECEIVED, PaymentRecordStatus.SETTLED],
+      fromReceivedDate: filters.fromDate,
+      toReceivedDate: filters.toDate,
       accessibleBranchIds: filters.accessibleBranchIds,
     });
     return payments
-      .filter((payment) => payment.paymentDirection === PaymentDirection.INBOUND)
-      .filter((payment) => [PaymentRecordStatus.RECEIVED, PaymentRecordStatus.SETTLED].includes(payment.status))
-      .filter((payment) => !filters.fromDate || !payment.receivedAt || payment.receivedAt.toISOString().slice(0, 10) >= filters.fromDate)
-      .filter((payment) => !filters.toDate || !payment.receivedAt || payment.receivedAt.toISOString().slice(0, 10) <= filters.toDate)
       .map((payment) => ({
         paymentId: payment.id,
         serviceOrderId: payment.serviceOrderId,
@@ -334,8 +351,9 @@ export class FinanceService {
     requestedAllocations: Array<{ serviceOrderItemId?: string | null; allocatedAmount: number }> | null,
     actorUserId: string,
     tenantId: string,
+    manager?: EntityManager,
   ): Promise<PartialPaymentEntity[]> {
-    const existing = await this.partialPaymentRepository.findByPaymentRecord(payment.id);
+    const existing = await this.partialPaymentRepository.findByPaymentRecord(payment.id, manager);
     const existingAllocated = this.sumMoney(existing.map((allocation) => allocation.allocatedAmount));
     const remainingAmount = this.toMoney(payment.paymentAmount) - existingAllocated;
     if (remainingAmount < 0) {
@@ -343,13 +361,22 @@ export class FinanceService {
     }
 
     const itemTotals = new Map(items.map((item) => [item.id, this.calculateItemTotal(item)]));
-    const serviceOrderAllocations = await this.partialPaymentRepository.findByServiceOrder(payment.serviceOrderId);
+    const payments = await this.paymentRecordRepository.findByServiceOrder(payment.serviceOrderId);
+    const effectivePayments = new Map(
+      payments
+        .filter((candidate) => ![PaymentRecordStatus.FAILED, PaymentRecordStatus.REVERSED].includes(candidate.status))
+        .map((candidate) => [candidate.id, candidate] as const),
+    );
+    const serviceOrderAllocations = await this.partialPaymentRepository.findByServiceOrder(payment.serviceOrderId, manager);
     const itemAllocatedTotals = new Map<string, number>();
     for (const allocation of serviceOrderAllocations) {
       if (!allocation.serviceOrderItemId) continue;
+      const relatedPayment = effectivePayments.get(allocation.paymentRecordId);
+      if (!relatedPayment) continue;
+      const allocationAmount = this.toMoney(allocation.allocatedAmount) * (relatedPayment.paymentDirection === PaymentDirection.OUTBOUND ? -1 : 1);
       itemAllocatedTotals.set(
         allocation.serviceOrderItemId,
-        (itemAllocatedTotals.get(allocation.serviceOrderItemId) ?? 0) + this.toMoney(allocation.allocatedAmount),
+        (itemAllocatedTotals.get(allocation.serviceOrderItemId) ?? 0) + allocationAmount,
       );
     }
 
@@ -389,7 +416,7 @@ export class FinanceService {
     });
 
     if (entities.length === 0) return [];
-    return this.partialPaymentRepository.saveMany(entities);
+    return manager ? this.partialPaymentRepository.saveManyInTransaction(entities, manager) : this.partialPaymentRepository.saveMany(entities);
   }
 
   private expandAllocation(
@@ -412,7 +439,7 @@ export class FinanceService {
     itemAllocatedTotals: Map<string, number>,
   ) {
     const remaining = { value: amount };
-    const allocations: Array<{ serviceOrderItemId: string; allocatedAmount: number }> = [];
+    const allocations: Array<{ serviceOrderItemId?: string; allocatedAmount: number }> = [];
     for (const item of items) {
       if (remaining.value <= 0) break;
       const outstanding = (itemTotals.get(item.id) ?? 0) - (itemAllocatedTotals.get(item.id) ?? 0);
@@ -420,6 +447,9 @@ export class FinanceService {
       const allocatedAmount = Math.min(outstanding, remaining.value);
       allocations.push({ serviceOrderItemId: item.id, allocatedAmount: Number(allocatedAmount.toFixed(2)) });
       remaining.value = Number((remaining.value - allocatedAmount).toFixed(2));
+    }
+    if (remaining.value > 0) {
+      allocations.push({ allocatedAmount: Number(remaining.value.toFixed(2)) });
     }
     return allocations;
   }

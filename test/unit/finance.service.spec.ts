@@ -37,6 +37,31 @@ function createFinanceFixture() {
       payments.push(entity);
       return entity;
     },
+    async runInTransaction<T>(callback: (manager: any) => Promise<T>) {
+      return callback({
+        getRepository(entity: { name?: string }) {
+          if (entity?.name === 'PaymentRecordEntity') {
+            return {
+              save: async (value: Record<string, any>) => {
+                payments.push(value);
+                return value;
+              },
+            };
+          }
+          return {
+            save: async (values: Array<Record<string, any>>) => {
+              allocations.push(...values);
+              return values;
+            },
+            find: async ({ where }: Record<string, any>) => {
+              if (where.paymentRecordId) return allocations.filter((allocation) => allocation.paymentRecordId === where.paymentRecordId);
+              if (where.serviceOrderId) return allocations.filter((allocation) => allocation.serviceOrderId === where.serviceOrderId);
+              return [];
+            },
+          };
+        },
+      });
+    },
     async findById(id: string) {
       return payments.find((payment) => payment.id === id) ?? null;
     },
@@ -49,6 +74,10 @@ function createFinanceFixture() {
         if (filters.paymentMethod && payment.paymentMethod !== filters.paymentMethod) return false;
         if (filters.serviceOrderId && payment.serviceOrderId !== filters.serviceOrderId) return false;
         if (filters.status && payment.status !== filters.status) return false;
+        if (filters.statuses?.length && !filters.statuses.includes(payment.status)) return false;
+        if (filters.paymentDirection && payment.paymentDirection !== filters.paymentDirection) return false;
+        if (filters.fromReceivedDate && (!payment.receivedAt || payment.receivedAt.toISOString().slice(0, 10) < filters.fromReceivedDate)) return false;
+        if (filters.toReceivedDate && (!payment.receivedAt || payment.receivedAt.toISOString().slice(0, 10) > filters.toReceivedDate)) return false;
         return (filters.accessibleBranchIds ?? []).includes(payment.branchId);
       });
     },
@@ -59,6 +88,10 @@ function createFinanceFixture() {
       return { createdAt: new Date(), updatedAt: new Date(), ...payload };
     },
     async saveMany(entities: Array<Record<string, any>>) {
+      allocations.push(...entities);
+      return entities;
+    },
+    async saveManyInTransaction(entities: Array<Record<string, any>>) {
       allocations.push(...entities);
       return entities;
     },
@@ -244,7 +277,57 @@ describe('FinanceService', () => {
     assert.equal(resolved.status, FinancialExceptionStatus.RESOLVED);
     assert.equal(Boolean(resolved.resolvedAt), true);
     assert.equal(audits.some((audit) => audit.action === 'financial_exception.created'), true);
-    assert.equal(audits.some((audit) => audit.action === 'financial_exception.approved'), true);
     assert.equal(audits.some((audit) => audit.action === 'financial_exception.resolved'), true);
+  });
+
+  it('returns actual cashflow using only inbound received or settled payments', async () => {
+    const { service, payments } = createFinanceFixture();
+    payments.push(
+      {
+        id: 'payment-1',
+        tenantId: 'tenant-1',
+        branchId: 'branch-1',
+        serviceOrderId: 'service-order-1',
+        paymentMethod: PaymentMethod.PIX,
+        paymentDirection: PaymentDirection.INBOUND,
+        paymentAmount: '25.00',
+        receivedAt: new Date('2026-09-20T10:00:00.000Z'),
+        reconciledAt: null,
+        status: PaymentRecordStatus.RECEIVED,
+      },
+      {
+        id: 'payment-2',
+        tenantId: 'tenant-1',
+        branchId: 'branch-1',
+        serviceOrderId: 'service-order-1',
+        paymentMethod: PaymentMethod.PIX,
+        paymentDirection: PaymentDirection.OUTBOUND,
+        paymentAmount: '5.00',
+        receivedAt: new Date('2026-09-20T10:30:00.000Z'),
+        reconciledAt: null,
+        status: PaymentRecordStatus.RECEIVED,
+      },
+      {
+        id: 'payment-3',
+        tenantId: 'tenant-1',
+        branchId: 'branch-1',
+        serviceOrderId: 'service-order-1',
+        paymentMethod: PaymentMethod.PIX,
+        paymentDirection: PaymentDirection.INBOUND,
+        paymentAmount: '8.00',
+        receivedAt: new Date('2026-09-20T11:00:00.000Z'),
+        reconciledAt: null,
+        status: PaymentRecordStatus.FAILED,
+      },
+    );
+
+    const actual = await service.getActualCashflow('tenant-1', {
+      accessibleBranchIds: ['branch-1'],
+      paymentMethod: PaymentMethod.PIX,
+    });
+
+    assert.equal(actual.length, 1);
+    assert.equal(actual[0]?.paymentId, 'payment-1');
+    assert.equal(actual[0]?.paymentAmount, '25.00');
   });
 });

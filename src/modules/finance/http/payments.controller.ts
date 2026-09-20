@@ -1,6 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -62,6 +62,7 @@ class CreatePaymentBody {
 
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => PaymentAllocationBody)
   allocations?: PaymentAllocationBody[];
@@ -69,6 +70,7 @@ class CreatePaymentBody {
 
 class AddAllocationsBody {
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => PaymentAllocationBody)
   allocations!: PaymentAllocationBody[];
@@ -132,6 +134,6 @@ export class PaymentsController {
     if (!tenantId || !principal) throw new UnauthorizedException('Authenticated tenant context is required.');
     const details = await this.financeService.getPaymentDetails(tenantId, paymentId);
     this.serviceOrderService.assertBranchAccess(details.serviceOrder, principal.effectiveBranchIds);
-    return this.financeService.addAllocations(paymentId, tenantId, { actorUserId: principal.userId, allocations: body.allocations as never });
+    return this.financeService.addAllocations(paymentId, tenantId, { actorUserId: principal.userId, allocations: body.allocations });
   }
 }
