@@ -2651,7 +2651,7 @@ The following areas were modified or added in V1.2:
 ### 48.5 New concepts introduced
 - Service Order versus Production Order document boundary
 - Delivery Date Engine for calendar-aware delivery-date suggestion aligned to delivery type and buffer rules
-- visually managed Production Order delivery date presentation
+- Visually managed Production Order delivery date presentation
 - Production Buffer / Safety Window with internal deadlines
 - Production Bag ownership transfer governance
 - Rework Attribution Model
