@@ -730,7 +730,7 @@ Production Orders must never display prices, discounts, margins, profit, commiss
 
 ### 8.1 Production order objective
 
-A Production Order is the operational execution document generated from a Service Order to produce or complete one or more authorized service order items. It must remain operational in purpose and must never become the customer-facing or financial source document.
+A Production Order is the operational execution document generated from a Service Order to produce or complete one or more authorized service order items. Exactly one base Production Order must be generated per Service Order, and that Production Order may cover one or more authorized Service Order Items within the same Service Order scope. It must remain operational in purpose and must never become the customer-facing or financial source document.
 
 ### 8.2 Production order lifecycle
 

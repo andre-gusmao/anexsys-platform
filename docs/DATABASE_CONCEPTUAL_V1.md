@@ -50,8 +50,8 @@ The conceptual model must preserve the approved operational structure:
 - 1 Service Order -> many Service Order Items
 - 1 Service Order -> exactly 1 Primary Production Order
 - 1 Primary Production Order -> many Production Order Versions when corrective lineage is required
-- Operational Resources work through Production Orders
-- QR Codes belong only to Production Orders
+- Operational Resources work through the Production Order
+- QR Codes belong only to the Production Order
 - Production Order Versions exist only within Primary Production Order lineage for Rework, Warranty Execution, and Corrective Production
 
 Terminology rule:
