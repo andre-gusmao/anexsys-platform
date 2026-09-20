@@ -21,12 +21,24 @@ import { FinancialExceptionEntity } from 'src/modules/finance/infrastructure/per
 import { PartialPaymentEntity } from 'src/modules/finance/infrastructure/persistence/entities/partial-payment.entity';
 import { PaymentRecordEntity } from 'src/modules/finance/infrastructure/persistence/entities/payment-record.entity';
 import { FiscalDocumentEntity } from 'src/modules/fiscal/infrastructure/persistence/entities/fiscal-document.entity';
+import { CameraSnapshotEntity } from 'src/modules/custody/infrastructure/persistence/entities/camera-snapshot.entity';
+import { CctvReferenceEntity } from 'src/modules/custody/infrastructure/persistence/entities/cctv-reference.entity';
+import { CustodyEventEntity } from 'src/modules/custody/infrastructure/persistence/entities/custody-event.entity';
+import { PhysicalBagSupportContextEntity } from 'src/modules/custody/infrastructure/persistence/entities/physical-bag-support-context.entity';
+import { StorageLocationAssignmentEntity } from 'src/modules/custody/infrastructure/persistence/entities/storage-location-assignment.entity';
+import { StorageLocationEntity } from 'src/modules/custody/infrastructure/persistence/entities/storage-location.entity';
 import { ProductionOrderOperationalAssignmentEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-operational-assignment.entity';
 import { ProductionOrderItemLinkEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-item-link.entity';
 import { ProductionOrderVersionEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-version.entity';
 import { ProductionOrderEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order.entity';
 import { QrCodeEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/qr-code.entity';
 import { QrEventEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/qr-event.entity';
+import { CommunicationEventEntity } from 'src/modules/pickup/infrastructure/persistence/entities/communication-event.entity';
+import { DigitalApprovalEntity } from 'src/modules/pickup/infrastructure/persistence/entities/digital-approval.entity';
+import { PickupAuthorizationEntity } from 'src/modules/pickup/infrastructure/persistence/entities/pickup-authorization.entity';
+import { PickupQrCodeEntity } from 'src/modules/pickup/infrastructure/persistence/entities/pickup-qr-code.entity';
+import { PickupTokenEntity } from 'src/modules/pickup/infrastructure/persistence/entities/pickup-token.entity';
+import { TemporaryPickupCodeEntity } from 'src/modules/pickup/infrastructure/persistence/entities/temporary-pickup-code.entity';
 import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
@@ -60,6 +72,18 @@ export const typeOrmEntities = [
   PartialPaymentEntity,
   FinancialExceptionEntity,
   FiscalDocumentEntity,
+  PickupAuthorizationEntity,
+  PickupTokenEntity,
+  PickupQrCodeEntity,
+  TemporaryPickupCodeEntity,
+  CommunicationEventEntity,
+  DigitalApprovalEntity,
+  StorageLocationEntity,
+  StorageLocationAssignmentEntity,
+  PhysicalBagSupportContextEntity,
+  CustodyEventEntity,
+  CctvReferenceEntity,
+  CameraSnapshotEntity,
   BusinessCalendarDayEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,

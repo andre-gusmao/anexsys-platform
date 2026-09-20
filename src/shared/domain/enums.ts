@@ -272,3 +272,74 @@ export enum FiscalDocumentStatus {
   CANCELLED = 'cancelled',
   ERROR = 'error',
 }
+
+export enum PickupAuthorizationStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  COMPLETED = 'completed',
+  EXPIRED = 'expired',
+}
+
+export enum PickupAuthorizationPath {
+  CUSTOMER = 'customer',
+  FAMILY_MEMBER = 'family_member',
+  EMPLOYEE = 'employee',
+  COURIER = 'courier',
+  MOTORCYCLE_COURIER = 'motorcycle_courier',
+  THIRD_PARTY = 'third_party',
+}
+
+export enum PickupCredentialStatus {
+  ACTIVE = 'active',
+  USED = 'used',
+  EXPIRED = 'expired',
+  REVOKED = 'revoked',
+}
+
+export enum PickupCredentialType {
+  TOKEN = 'token',
+  QR_CODE = 'qr_code',
+  TEMPORARY_CODE = 'temporary_code',
+  REMOTE_APPROVAL = 'remote_approval',
+}
+
+export enum StorageLocationStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
+export enum CustodyEventStage {
+  INTAKE = 'intake',
+  PRODUCTION_START = 'production_start',
+  PRODUCTION_TRANSFER = 'production_transfer',
+  QUALITY = 'quality',
+  REWORK = 'rework',
+  WARRANTY = 'warranty',
+  STORAGE = 'storage',
+  DELIVERY = 'delivery',
+  PICKUP = 'pickup',
+  RETURN = 'return',
+}
+
+export enum CommunicationDirection {
+  OUTBOUND = 'outbound',
+  INBOUND = 'inbound',
+}
+
+export enum CommunicationDeliveryStatus {
+  PENDING = 'pending',
+  SENT = 'sent',
+  DELIVERED = 'delivered',
+  FAILED = 'failed',
+}
+
+export enum DigitalApprovalType {
+  PICKUP_AUTHORIZATION = 'pickup_authorization',
+}
+
+export enum DigitalApprovalDecision {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}

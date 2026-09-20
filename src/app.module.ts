@@ -16,10 +16,12 @@ import { ReworkModule } from './modules/rework/rework.module';
 import { WarrantyModule } from './modules/warranty/warranty.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { FiscalModule } from './modules/fiscal/fiscal.module';
+import { CustodyModule } from './modules/custody/custody.module';
 import { JwtAuthGuard } from './platform/auth/jwt-auth.guard';
 import { PermissionsGuard } from './platform/auth/permissions.guard';
 import { RequestContextMiddleware } from './platform/http/request-context.middleware';
 import { buildTypeOrmOptions } from './platform/database/typeorm/typeorm.config';
+import { PickupModule } from './modules/pickup/pickup.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { buildTypeOrmOptions } from './platform/database/typeorm/typeorm.config'
     WarrantyModule,
     FinanceModule,
     FiscalModule,
+    CustodyModule,
+    PickupModule,
     IdentityModule,
     AuthorizationModule,
   ],
