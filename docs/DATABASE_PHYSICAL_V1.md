@@ -464,6 +464,7 @@ Key columns:
 - `current_status_definition_id uuid null FK -> status_definitions.id`
 - `order_no varchar(50) not null`
 - `opened_at timestamptz`
+- `delivery_commitment_source_at timestamptz` authoritative source moment used by the Delivery Date Engine
 - `promised_delivery_date date`
 - `delivery_type varchar(20)` with approved taxonomy `Standard`, `Priority`, `Express`
 - `commercial_responsible_actor_id uuid`

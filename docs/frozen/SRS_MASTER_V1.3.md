@@ -2588,7 +2588,7 @@ Assessment method and ownership:
 
 ### 46.1 Historical versioned assessment entry (Preserved from V1.2)
 
-- Historical appendix entry preserved from the V1.2 release baseline: 2026-09-20 / V1.2 release baseline
+- Historical appendix entry preserved verbatim as V1.2 release-baseline metadata
 - Checklist result: all 20 controls marked implemented
 - Computed score: **100/100**
 

@@ -32,7 +32,7 @@ Current repository design document locations referenced by this baseline:
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
 
-Current downstream repository planning document added in this delivery stage:
+Current downstream repository planning document already produced from this baseline:
 
 - `/docs/BACKEND_IMPLEMENTATION_V1.md`
 
