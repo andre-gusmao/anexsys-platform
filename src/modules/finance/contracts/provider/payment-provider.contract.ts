@@ -1,0 +1,31 @@
+import { PaymentMethod, PaymentProviderName } from 'src/shared/domain/enums';
+
+export interface PaymentProviderInitiationRequest {
+  provider: PaymentProviderName;
+  referenceNo: string;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  serviceOrderId: string;
+}
+
+export interface PaymentProviderAuthorizationResult {
+  provider: PaymentProviderName;
+  referenceNo: string;
+  authorized: boolean;
+  authorizedAt?: string | null;
+  failureReason?: string | null;
+}
+
+export interface PaymentProviderSettlementResult {
+  provider: PaymentProviderName;
+  referenceNo: string;
+  settled: boolean;
+  settledAt?: string | null;
+  receivedAmount?: number | null;
+}
+
+export interface PaymentProviderAdapter {
+  readonly provider: PaymentProviderName;
+  initiatePayment(request: PaymentProviderInitiationRequest): Promise<PaymentProviderAuthorizationResult>;
+  reconcileSettlement(referenceNo: string): Promise<PaymentProviderSettlementResult>;
+}

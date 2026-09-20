@@ -88,6 +88,7 @@ export class ServiceOrderService {
       promisedDeliveryDate,
       actualPickupDate: dto.actualPickupDate ?? null,
       actualDeliveryDate: dto.actualDeliveryDate ?? null,
+      paymentTermsDays: dto.paymentTermsDays ?? 0,
       deliveryType: dto.deliveryType ?? DeliveryType.STANDARD,
       operationalPriority: dto.operationalPriority?.trim() || null,
       commercialResponsibleActorId,
@@ -260,6 +261,9 @@ export class ServiceOrderService {
     if (dto.actualDeliveryDate !== undefined) {
       serviceOrder.actualDeliveryDate = dto.actualDeliveryDate;
     }
+    if (dto.paymentTermsDays !== undefined) {
+      serviceOrder.paymentTermsDays = dto.paymentTermsDays;
+    }
     if (dto.deliveryType !== undefined) {
       serviceOrder.deliveryType = dto.deliveryType;
     }
@@ -313,6 +317,7 @@ export class ServiceOrderService {
         promisedDeliveryDate: saved.promisedDeliveryDate,
         actualPickupDate: saved.actualPickupDate,
         actualDeliveryDate: saved.actualDeliveryDate,
+        paymentTermsDays: saved.paymentTermsDays,
       },
     });
 

@@ -76,6 +76,12 @@ export class CreateServiceOrderDto {
   @IsDateString()
   actualDeliveryDate?: string;
 
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  paymentTermsDays?: number;
+
   @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;

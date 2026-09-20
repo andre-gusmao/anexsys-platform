@@ -209,3 +209,52 @@ export enum WarrantyStartSource {
   PICKUP = 'pickup',
   DELIVERY = 'delivery',
 }
+
+export enum PaymentMethod {
+  CASH = 'cash',
+  CARD = 'card',
+  PIX = 'pix',
+  BANK_TRANSFER = 'bank_transfer',
+  OTHER = 'other',
+}
+
+export enum PaymentDirection {
+  INBOUND = 'inbound',
+  OUTBOUND = 'outbound',
+}
+
+export enum PaymentRecordStatus {
+  AUTHORIZED = 'authorized',
+  RECEIVED = 'received',
+  SETTLED = 'settled',
+  REVERSED = 'reversed',
+  FAILED = 'failed',
+}
+
+export enum ServiceOrderPaymentStatus {
+  PENDING = 'pending',
+  PARTIAL = 'partial',
+  PAID = 'paid',
+}
+
+export enum FinancialExceptionType {
+  REFUND = 'refund',
+  CHARGEBACK = 'chargeback',
+  REVERSAL = 'reversal',
+  OVERPAYMENT = 'overpayment',
+  UNDERPAYMENT = 'underpayment',
+  DUPLICATE_PAYMENT = 'duplicate_payment',
+  ALLOCATION_CORRECTION = 'allocation_correction',
+  FAILED_SETTLEMENT = 'failed_settlement',
+}
+
+export enum FinancialExceptionStatus {
+  OPEN = 'open',
+  RESOLVED = 'resolved',
+}
+
+export enum PaymentProviderName {
+  STONE = 'stone',
+  CIELO = 'cielo',
+  PAGBANK = 'pagbank',
+}

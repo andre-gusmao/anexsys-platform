@@ -90,6 +90,12 @@ class CreateServiceOrderBody {
   @IsDateString()
   actualDeliveryDate?: string;
 
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  paymentTermsDays?: number;
+
   @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;
@@ -153,6 +159,12 @@ class UpdateServiceOrderBody {
   @IsOptional()
   @IsDateString()
   actualDeliveryDate?: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  paymentTermsDays?: number;
 
   @IsOptional()
   @IsEnum(DeliveryType)

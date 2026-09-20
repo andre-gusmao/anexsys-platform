@@ -1,0 +1,137 @@
+import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Type } from 'class-transformer';
+import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
+import { Permissions } from 'src/platform/auth/permissions.decorator';
+import { PlatformRequest } from 'src/platform/http/request-context';
+import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
+import { PaymentDirection, PaymentMethod, PaymentProviderName, PaymentRecordStatus } from 'src/shared/domain/enums';
+import { FinanceService } from '../application/finance/finance.service';
+import { SearchPaymentsDto } from '../contracts/dto/search-payments.dto';
+
+class PaymentAllocationBody {
+  @IsOptional()
+  @IsUUID()
+  serviceOrderItemId?: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  allocatedAmount!: number;
+}
+
+class CreatePaymentBody {
+  @IsUUID()
+  serviceOrderId!: string;
+
+  @IsOptional()
+  @IsString()
+  paymentReferenceNo?: string;
+
+  @IsEnum(PaymentMethod)
+  paymentMethod!: PaymentMethod;
+
+  @IsOptional()
+  @IsEnum(PaymentProviderName)
+  paymentProvider?: PaymentProviderName;
+
+  @IsOptional()
+  @IsEnum(PaymentDirection)
+  paymentDirection?: PaymentDirection;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  paymentAmount!: number;
+
+  @IsOptional()
+  @IsDateString()
+  receivedAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  authorizedAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  reconciledAt?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentRecordStatus)
+  status?: PaymentRecordStatus;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentAllocationBody)
+  allocations?: PaymentAllocationBody[];
+}
+
+class AddAllocationsBody {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentAllocationBody)
+  allocations!: PaymentAllocationBody[];
+}
+
+@Controller('payments')
+export class PaymentsController {
+  constructor(private readonly financeService: FinanceService, private readonly serviceOrderService: ServiceOrderService) {}
+
+  @Permissions('finance.read')
+  @Get()
+  async list(@Query() query: SearchPaymentsDto, @CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) throw new UnauthorizedException('Authenticated tenant context is required.');
+    if (query.branchId && !principal.effectiveBranchIds.includes(query.branchId)) throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
+    if (query.serviceOrderId) {
+      const serviceOrder = await this.serviceOrderService.getById(query.serviceOrderId, tenantId);
+      this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    }
+    return this.financeService.searchPayments(tenantId, { ...query, accessibleBranchIds: principal.effectiveBranchIds });
+  }
+
+  @Permissions('finance.write')
+  @Post()
+  async create(@Body() body: CreatePaymentBody, @CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) throw new UnauthorizedException('Authenticated tenant context is required.');
+    const serviceOrder = await this.serviceOrderService.getById(body.serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.financeService.createPayment({
+      tenantId,
+      actorUserId: principal.userId,
+      serviceOrderId: body.serviceOrderId,
+      paymentReferenceNo: body.paymentReferenceNo,
+      paymentMethod: body.paymentMethod,
+      paymentProvider: body.paymentProvider,
+      paymentDirection: body.paymentDirection,
+      paymentAmount: body.paymentAmount,
+      receivedAt: body.receivedAt,
+      authorizedAt: body.authorizedAt,
+      reconciledAt: body.reconciledAt,
+      status: body.status,
+      allocations: body.allocations,
+    });
+  }
+
+  @Permissions('finance.read')
+  @Get(':paymentId')
+  async getById(@Param('paymentId', new ParseUUIDPipe()) paymentId: string, @CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) throw new UnauthorizedException('Authenticated tenant context is required.');
+    const details = await this.financeService.getPaymentDetails(tenantId, paymentId);
+    this.serviceOrderService.assertBranchAccess(details.serviceOrder, principal.effectiveBranchIds);
+    return details;
+  }
+
+  @Permissions('finance.write')
+  @Post(':paymentId/allocations')
+  async addAllocations(@Param('paymentId', new ParseUUIDPipe()) paymentId: string, @Body() body: AddAllocationsBody, @CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) throw new UnauthorizedException('Authenticated tenant context is required.');
+    const details = await this.financeService.getPaymentDetails(tenantId, paymentId);
+    this.serviceOrderService.assertBranchAccess(details.serviceOrder, principal.effectiveBranchIds);
+    return this.financeService.addAllocations(paymentId, tenantId, { actorUserId: principal.userId, allocations: body.allocations as never });
+  }
+}

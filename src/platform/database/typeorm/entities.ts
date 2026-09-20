@@ -17,6 +17,9 @@ import { CustomerRejectionEntity } from 'src/modules/quality/infrastructure/pers
 import { ReworkCaseEntity } from 'src/modules/rework/infrastructure/persistence/entities/rework-case.entity';
 import { WarrantyAdjustmentEntity } from 'src/modules/warranty/infrastructure/persistence/entities/warranty-adjustment.entity';
 import { WarrantyExecutionEntity } from 'src/modules/warranty/infrastructure/persistence/entities/warranty-execution.entity';
+import { FinancialExceptionEntity } from 'src/modules/finance/infrastructure/persistence/entities/financial-exception.entity';
+import { PartialPaymentEntity } from 'src/modules/finance/infrastructure/persistence/entities/partial-payment.entity';
+import { PaymentRecordEntity } from 'src/modules/finance/infrastructure/persistence/entities/payment-record.entity';
 import { ProductionOrderOperationalAssignmentEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-operational-assignment.entity';
 import { ProductionOrderItemLinkEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-item-link.entity';
 import { ProductionOrderVersionEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-version.entity';
@@ -52,6 +55,9 @@ export const typeOrmEntities = [
   ReworkCaseEntity,
   WarrantyAdjustmentEntity,
   WarrantyExecutionEntity,
+  PaymentRecordEntity,
+  PartialPaymentEntity,
+  FinancialExceptionEntity,
   BusinessCalendarDayEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,

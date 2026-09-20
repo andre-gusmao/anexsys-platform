@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsUUID, Length, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Length, Min } from 'class-validator';
 
 export class CreateTenantDto {
   @IsString()
@@ -23,6 +23,10 @@ export class CreateTenantDto {
   @IsInt()
   @Min(1)
   warrantyExecutionPeriodDays?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  blockDeliveryWithOutstandingBalance?: boolean;
 
   @IsUUID()
   actorUserId!: string;

@@ -31,6 +31,7 @@ export class TenantService {
       status: TenantStatus.ACTIVE,
       warrantyAdjustmentPeriodDays: dto.warrantyAdjustmentPeriodDays ?? 7,
       warrantyExecutionPeriodDays: dto.warrantyExecutionPeriodDays ?? 7,
+      blockDeliveryWithOutstandingBalance: dto.blockDeliveryWithOutstandingBalance ?? false,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -82,6 +83,9 @@ export class TenantService {
     if (dto.warrantyExecutionPeriodDays !== undefined) {
       tenant.warrantyExecutionPeriodDays = dto.warrantyExecutionPeriodDays;
     }
+    if (dto.blockDeliveryWithOutstandingBalance !== undefined) {
+      tenant.blockDeliveryWithOutstandingBalance = dto.blockDeliveryWithOutstandingBalance;
+    }
     tenant.updatedBy = dto.actorUserId;
 
     const saved = await this.tenantRepository.save(tenant);
@@ -95,6 +99,7 @@ export class TenantService {
       metadata: {
         warrantyAdjustmentPeriodDays: saved.warrantyAdjustmentPeriodDays,
         warrantyExecutionPeriodDays: saved.warrantyExecutionPeriodDays,
+        blockDeliveryWithOutstandingBalance: saved.blockDeliveryWithOutstandingBalance,
       },
     });
 

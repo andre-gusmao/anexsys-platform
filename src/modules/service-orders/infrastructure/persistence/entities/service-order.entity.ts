@@ -37,6 +37,9 @@ export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'actual_delivery_date', type: 'date', nullable: true })
   actualDeliveryDate!: string | null;
 
+  @Column({ name: 'payment_terms_days', type: 'integer', default: 0 })
+  paymentTermsDays!: number;
+
   @Column({ name: 'delivery_type', type: 'varchar', length: 20, default: DeliveryType.STANDARD })
   deliveryType!: DeliveryType;
 
