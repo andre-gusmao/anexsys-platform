@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { BranchModule } from './modules/branch/branch.module';
+import { CrmModule } from './modules/crm/crm.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { JwtAuthGuard } from './platform/auth/jwt-auth.guard';
@@ -21,6 +22,7 @@ import { buildTypeOrmOptions } from './platform/database/typeorm/typeorm.config'
     AuditModule,
     TenantModule,
     BranchModule,
+    CrmModule,
     IdentityModule,
     AuthorizationModule,
   ],

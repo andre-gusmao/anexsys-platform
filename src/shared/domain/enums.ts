@@ -30,3 +30,28 @@ export enum BranchScopeType {
   MANAGER = 'manager',
   ADMIN = 'admin',
 }
+
+export enum CustomerType {
+  PERSON = 'person',
+  COMPANY = 'company',
+}
+
+export enum CustomerStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  BLOCKED = 'blocked',
+}
+
+export enum CustomerInteractionType {
+  PROFILE_CREATED = 'profile_created',
+  PROFILE_UPDATED = 'profile_updated',
+  STATUS_CHANGED = 'status_changed',
+  MEASUREMENT_RECORDED = 'measurement_recorded',
+}
+
+export enum InteractionChannel {
+  SYSTEM = 'system',
+  PHONE = 'phone',
+  WHATSAPP = 'whatsapp',
+  EMAIL = 'email',
+}

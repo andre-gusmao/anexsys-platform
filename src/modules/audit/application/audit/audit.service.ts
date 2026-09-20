@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { AuditEventEntity } from '../../infrastructure/persistence/entities/audit-event.entity';
 import { AuditEventRepository } from '../../infrastructure/persistence/repositories/audit-event.repository';
 
 export interface AuditWriteInput {
@@ -32,5 +33,9 @@ export class AuditService {
     });
 
     await this.auditEventRepository.save(event);
+  }
+
+  async listByEntity(tenantId: string, entityType: string, entityId: string, limit: number = 50): Promise<AuditEventEntity[]> {
+    return this.auditEventRepository.findByEntity(tenantId, entityType, entityId, limit);
   }
 }

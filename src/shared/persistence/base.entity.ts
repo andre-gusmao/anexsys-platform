@@ -19,3 +19,14 @@ export abstract class MutableBusinessEntity {
   @Column({ name: 'row_version', type: 'bigint', default: () => '1' })
   rowVersion!: string;
 }
+
+export abstract class SoftDeletableBusinessEntity extends MutableBusinessEntity {
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted!: boolean;
+
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt!: Date | null;
+
+  @Column({ name: 'deleted_by', type: 'uuid', nullable: true })
+  deletedBy!: string | null;
+}

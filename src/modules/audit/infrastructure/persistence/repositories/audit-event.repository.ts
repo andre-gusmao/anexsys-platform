@@ -17,4 +17,12 @@ export class AuditEventRepository {
   async save(event: AuditEventEntity): Promise<AuditEventEntity> {
     return this.repository.save(event);
   }
+
+  async findByEntity(tenantId: string, entityType: string, entityId: string, limit: number = 50): Promise<AuditEventEntity[]> {
+    return this.repository.find({
+      where: { tenantId, entityType, entityId },
+      order: { occurredAt: 'DESC' },
+      take: limit,
+    });
+  }
 }
