@@ -479,7 +479,8 @@ Owned by Audit and Custody domain:
 
 ### 7.4 Finance cardinalities
 
-- 1 Payment Record -> one or many Service Order Items through allocation meaning
+- 1 Payment Record -> zero or many Partial Payments when the recorded receipt is allocated in portions
+- 1 Partial Payment -> exactly 1 Service Order or Service Order Item allocation scope
 - 1 Service Order Item -> many Partial Payments over time
 - 1 Service Order -> one or many Fiscal Documents
 - 1 Fiscal Document -> one Service Order or one Service Order Item scope at issuance time
@@ -505,11 +506,12 @@ Owned by Audit and Custody domain:
 | Customer | Measurement Record | 1 -> many | measurements are versioned over time |
 | Customer | Service Order | 1 -> many | service orders inherit customer identity |
 | Service Order | Service Order Item | 1 -> many | item cannot exist outside parent order |
-| Service Order | Production Order | 1 -> 1 primary | exactly one Primary Production Order per Service Order |
+| Service Order | Primary Production Order | 1 -> 1 | exactly one Primary Production Order per Service Order |
 | Primary Production Order | Production Order Version | 1 -> many over time | versions only for rework, warranty execution, corrective production |
 | Service Order | Payment Record | 1 -> many | payment records remain commercially anchored |
 | Service Order | Financial Exception | 1 -> many | financial exceptions preserve commercial source-of-truth context |
-| Service Order Item | Partial Payment | 1 -> many | partial settlement allowed |
+| Payment Record | Partial Payment | 1 -> many when partially allocated | partial settlement allocations belong to a recorded payment |
+| Service Order Item | Partial Payment | 1 -> many | item scope may receive many partial allocations over time |
 | Service Order / Item | Fiscal Document | 1 -> many | fiscal issuance may be per order or per item |
 | Service Order | Pickup Authorization | 1 -> many | many authorization attempts/history allowed |
 | Pickup Authorization | Pickup Token | 1 -> many | token lifecycle is policy-driven |
@@ -542,11 +544,12 @@ Owned by Audit and Custody domain:
 ### 9.2 Service Order hierarchy
 
 - Service Order is parent of Service Order Item
-- Service Order is parent commercial anchor of Payment Record, Partial Payment allocation meaning, Financial Exception, Fiscal Document scope, Pickup Authorization, Digital Approval reference, and Communication Event reference
+- Service Order is parent commercial anchor of Payment Record, Financial Exception, Fiscal Document scope, Pickup Authorization, Digital Approval reference, and Communication Event reference
+- Payment Record is parent of Partial Payment when a recorded receipt is only partially allocated across order or item scope
 
 ### 9.3 Production hierarchy
 
-- Production Order is child of Service Order in business lineage
+- Primary Production Order is child of Service Order in business lineage
 - Production Order Version is child of Primary Production Order lineage
 - QR Code is child of Production Order operational identity
 - QR Event is child of Production Order execution traceability
@@ -576,14 +579,14 @@ Owned by Audit and Custody domain:
 | Customer | generates history through | Customer Interaction | service relationship continuity |
 | Customer | has measurements through | Measurement Record | versioned measurement profile |
 | Service Order | contains | Service Order Item | itemized commercial scope |
-| Service Order | generates | Production Order | primary operational execution anchor |
+| Service Order | generates | Primary Production Order | primary operational execution anchor |
 | Service Order | references | Digital Approval | customer-facing consent or approval |
 | Service Order | references | Communication Event | customer-facing communication history |
 | Service Order | is settled by | Payment Record | commercial settlement trace |
 | Service Order | may open | Financial Exception | exceptional settlement or allocation correction flow |
 | Service Order / Item | is documented by | Fiscal Document | fiscal/legal record |
 | Production Order | represents execution of | Service Order Item | operational execution scope |
-| Production Order | is versioned by | Production Order Version | corrective lineage |
+| Primary Production Order | is versioned by | Production Order Version | corrective lineage |
 | Production Order | is performed by | Operational Resource | execution accountability participant |
 | Production Order | is identified by | QR Code | exclusive operational scan authority |
 | QR Code | generates | QR Event | operational scan history |
@@ -812,7 +815,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 ### 15.2 Payment relationships
 
 - Payment Record relates to Service Order as the commercial payment anchor
-- Partial Payment relates to Service Order Item or order-level scope where allocation applies
+- Partial Payment belongs to a Payment Record and relates to the Service Order or Service Order Item scope that receives the partial allocation
 - Financial Exception relates to the Service Order and associated payment context whenever the standard settlement flow requires governed correction, approval, or explanation
 - multiple partial payments may exist over time
 - payment status may be visible at order and item levels
