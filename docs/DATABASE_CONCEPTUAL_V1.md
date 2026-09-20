@@ -147,8 +147,11 @@ Owns:
 - Fiscal Document
 
 Purpose:
-- represent settlement activity and fiscal document lifecycle
+- represent settlement activity, partial settlement allocation, and fiscal document lifecycle
 - remain subordinate to Service Order commercial truth
+- preserve a conceptual distinction where:
+  - Payment Record owns the trace of a payment transaction, receipt, authorization, reconciliation, and settlement outcome
+  - Partial Payment owns the business fact that only part of the Service Order or Service Order Item financial obligation has been settled or allocated
 
 ### 2.7 Delivery, Pickup, and Physical Traceability Domain
 
@@ -266,8 +269,8 @@ Aggregate guidance:
 | Quality and Corrective | Rework Case | internally triggered corrective execution case |
 | Quality and Corrective | Warranty Adjustment | post-delivery fit/adjustment responsibility |
 | Quality and Corrective | Warranty Execution | post-delivery operational defect responsibility |
-| Finance and Fiscal | Payment Record | payment transaction and settlement trace |
-| Finance and Fiscal | Partial Payment | partial financial settlement allocation |
+| Finance and Fiscal | Payment Record | payment transaction, receipt, authorization, reconciliation, and settlement trace |
+| Finance and Fiscal | Partial Payment | business fact of partial financial settlement or allocation against order or item scope |
 | Finance and Fiscal | Fiscal Document | legal/fiscal issuance record |
 | Delivery and Pickup | Pickup Authorization | release authorization for pickup |
 | Delivery and Pickup | Pickup Token | shareable pickup credential or tokenized authorization artifact |
@@ -340,6 +343,10 @@ Owned by Finance and Fiscal domain, anchored to Service Order truth:
 - payment allocation
 - settlement status
 - Fiscal Document lifecycle
+
+Conceptual boundary:
+- Payment Record answers which payment transaction or receipt occurred
+- Partial Payment answers which portion of the commercial obligation was settled or allocated
 
 ### 5.6 Physical traceability ownership
 
