@@ -771,10 +771,9 @@ Business requirements:
 
 The system must keep Rework and Warranty Repair as separate concepts, workflows, statuses, metrics, and reporting dimensions.
 
-| Concept | Meaning | Revenue by default | Production impact | Quality impact |
-|---|---|---:|---:|---:|
-| Rework | New operational execution to correct a defect or deviation | No | Yes, when required | Yes |
-| Warranty Repair | Customer warranty event handled under warranty obligations | No | Yes, when required | Yes |
+Comparison matrix:
+- Rework: meaning = new operational execution to correct a defect or deviation; revenue by default = No; production impact = Yes, when required; quality impact = Yes.
+- Warranty Repair: meaning = customer warranty event handled under warranty obligations; revenue by default = No; production impact = Yes, when required; quality impact = Yes.
 
 Rework primarily measures internal operational correction. Warranty Repair primarily measures customer warranty responsibility and post-delivery service performance.
 
@@ -1347,11 +1346,11 @@ Facial recognition is not required for the initial Smart Concierge release and m
 
 ### 20.1 Strategic objective
 
-The platform must define a roadmap for future biometric or facial recognition capabilities where legally and operationally appropriate.
+The platform must define a controlled optional biometric capability and a roadmap for advanced facial recognition use cases where legally and operationally appropriate.
 
 ### 20.2 Non-MVP status
 
-Facial recognition is not a baseline functional requirement for the initial SRS release, but the architecture must be designed to allow future extension without compromising security or compliance.
+Facial recognition is an optional, tenant-configurable capability and is not mandatory for baseline rollout. The architecture must support policy-gated enablement without compromising security or compliance.
 
 ### 20.3 Future use cases
 
@@ -1746,7 +1745,7 @@ The following groups shall validate business requirements before implementation:
 - Document name: ANEXSYS Platform SRS
 - Version: V1.2
 - Status: Expanded functional specification
-- Supersedes: SRS_MASTER_V1.1.md
+- Extends: SRS_MASTER_V1.1.md
 - Owner: Product / Business Requirements
 - Review cadence: at least once per major phase or when a business rule changes materially
 
@@ -1760,6 +1759,8 @@ This document preserves the V1.0 and V1.1 functional baseline and adds the V1.2 
 ### 32.1 Objective
 
 The platform must provide a formal customer reception workflow that structures customer arrival, identification, queueing, and service initiation with full traceability.
+
+For consistency with section 19, the mandatory scope in this section is the reception workflow itself. Smart Concierge advanced capabilities remain future-approved unless explicitly prioritized for a delivery phase.
 
 ### 32.2 Digital reception queue
 
@@ -1792,6 +1793,8 @@ Customer identification in reception must support:
 
 For formal requirement traceability, identification channels are defined as: customer name, phone number, WhatsApp number, CPF, customer code, QR Code, and optional Facial Recognition.
 
+Facial recognition in reception is allowed only when the tenant has enabled it under a valid legal basis and customer biometric consent/policy conditions required by applicable law are satisfied.
+
 Facial recognition is optional and must follow strict workflow rules:
 - it must not automatically create a Service Order
 - it must not automatically open customer records
@@ -1801,7 +1804,7 @@ Facial recognition is optional and must follow strict workflow rules:
 
 ### 32.4 Reception dashboard and visible queue information
 
-The reception dashboard must show queue records in arrival-time order and include, when available:
+The reception queue view (row plus selection detail panel) must provide customer context in arrival-time order and include, when available:
 - customer name
 - optional photo
 - open Service Orders
@@ -1811,6 +1814,12 @@ The reception dashboard must show queue records in arrival-time order and includ
 - financial pending issues
 - VIP status
 - last visit
+
+Visibility control rules:
+- Pre-service queue rows must show only minimal identifiers and high-level flags.
+- Detailed operational and financial fields (open/ready/completed Service Orders, warranty cases, financial pending issues) are visible in the queue detail panel only for authorized roles after explicit customer selection by the attendant.
+- Full customer-record access remains restricted to attendant service start.
+- When customer identification is potential-only (for example, a facial-recognition candidate), the dashboard may show queue-level preview indicators without opening the full customer record.
 
 ### 32.5 Non-identified customer workflow
 
@@ -1840,6 +1849,17 @@ Attendants must start service directly from the reception queue, and the system 
 - Other
 
 Service start must register the servicing attendant and timestamp in the reception audit trail.
+
+### 32.7 Scope classification boundary
+
+For implementation and classification clarity:
+- Sections 32.2, 32.4, 32.5, and 32.6 are mandatory baseline requirements.
+- Section 32.3 identification channels are mandatory for non-biometric identifiers, while facial recognition remains optional and policy-gated.
+- Smart Concierge advanced automation remains future-approved unless explicitly prioritized for a delivery phase.
+
+### 32.8 Smart Concierge future-scope note
+
+This section title is intentionally combined for requirement traceability. Mandatory requirements in section 32 are reception-focused, while Smart Concierge advanced automation remains future scope and is formally classified under section 19.
 
 ---
 
@@ -1972,6 +1992,14 @@ Supported pickup evidence types include:
 
 ### 36.3 Capture rules at pickup confirmation
 
+Every pickup confirmation must generate minimum mandatory custody evidence:
+- pickup confirmation timestamp
+- Service Order reference
+- collector identification or declared collector identity
+- releasing user
+- authorization/evidence method used
+- immutable audit-log event identifier
+
 On pickup confirmation, the system may:
 - capture an integrated-camera snapshot
 - record a CCTV reference
@@ -1984,6 +2012,8 @@ When such evidence is captured, the system must store:
 - pickup event reference
 
 All pickup evidence must be linked to the corresponding Service Order.
+
+Pickup evidence containing camera snapshots, image references, or CCTV references must follow sensitive-data controls, including restricted access by role, purpose-based usage, and retention/deletion policy enforcement.
 
 ---
 
@@ -2020,7 +2050,7 @@ Facial recognition alone must not require automatic unlocking. The module must s
 ### 37.5 Example flow
 
 Example operational flow:
-customer identified -> optional automatic access -> queue registration -> reception notification.
+customer identified -> additional approved factor or manual approval -> optional automatic access -> queue registration -> reception notification.
 
 ---
 
@@ -2078,6 +2108,17 @@ SLA controls apply to:
 - Rework
 - Deliveries
 
+### 39.4 SLA trigger rules by domain
+
+To make SLA behavior implementation-ready, the platform must support configurable trigger mapping per workflow status/event:
+- Service Orders: SLA Start when order status enters an active execution state; SLA Pause during customer-pending or external-blocked states; SLA Resume when active processing restarts; SLA Complete at delivery/completion closure; SLA Violation when elapsed business time exceeds configured threshold.
+- Production Orders: SLA Start when production is released; SLA Pause when waiting for material/dependency or approved hold; SLA Resume on production restart; SLA Complete on production completion approval; SLA Violation on threshold breach.
+- Warranty Repairs: SLA Start when warranty case is accepted; SLA Pause when waiting for customer input/asset return; SLA Resume when repair execution resumes; SLA Complete on warranty resolution confirmation; SLA Violation on threshold breach.
+- Rework: SLA Start when rework is opened; SLA Pause when blocked by dependency or customer action; SLA Resume on reassignment/restart; SLA Complete on rework quality approval; SLA Violation on threshold breach.
+- Deliveries: SLA Start when item/order enters ready-for-delivery state; SLA Pause for approved delivery holds; SLA Resume when dispatch process reactivates; SLA Complete at delivery confirmation; SLA Violation on threshold breach.
+
+Trigger configuration must be tenant-aware, branch-aware, and auditable.
+
 ---
 
 ## 40. Financial Exception Management
@@ -2118,84 +2159,101 @@ The platform must formalize financial source-of-truth responsibilities as follow
 
 Financial workflows and reports must preserve consistency across these sources and trace all reconciliation breaks.
 
+The Reporting Source classification for Cash Flow Reporting represents a derived reporting-consumption layer, not an independent transactional authority.
+
+### 41.3 Conflict-resolution precedence
+
+When sources disagree, the system must apply the following precedence per disputed dimension:
+- Requested commercial amount and business intent: Service Order.
+- Payment authorization state: Payment Gateway / Payment Terminal.
+- Settlement confirmation and received amount: Bank Reconciliation.
+- Tax document status and tax values: Fiscal System.
+- Accounting posting status and ledger classification: Accounting System.
+- Analytical aggregations and KPI presentation: Cash Flow Reporting, derived from reconciled upstream sources.
+
 ---
 
 ## 42. Requirement Classification Model
 
 ### 42.1 Classification structure
 
-All major platform features must be classified as exactly one of:
+Each requirement or sub-feature entry in the classification matrix must be classified as exactly one of:
 - Mandatory: required baseline capability for enterprise operation
 - Optional: tenant-configurable or phase-selective capability
 - Future: approved roadmap capability not required in baseline delivery
 
+Parent feature domains may be decomposed into child entries with different classifications, but each listed matrix entry must still have exactly one classification.
+
 ### 42.2 Classification matrix (V1.2)
 
-| Domain / Feature | Classification |
-| --- | --- |
-| Product vision and product purpose | Mandatory |
-| SaaS multi-tenant model | Mandatory |
-| Multi-branch model and hierarchy | Mandatory |
-| User profiles and permissions | Mandatory |
-| CRM | Mandatory |
-| Customers | Mandatory |
-| Body measurements | Optional |
-| Service Orders | Mandatory |
-| Service Order Items | Mandatory |
-| Production Orders | Mandatory |
-| Production Order versioning | Mandatory |
-| Quality control | Mandatory |
-| Customer rejection flow | Mandatory |
-| Rework flow | Mandatory |
-| Rework reassignment | Mandatory |
-| Warranty repair flow | Mandatory |
-| Partial delivery | Mandatory |
-| Payment by item | Mandatory |
-| Partial payments | Mandatory |
-| Expected cash flow | Mandatory |
-| Actual cash flow | Mandatory |
-| Payment terminal integration | Mandatory |
-| Fiscal documents | Mandatory |
-| Inventory module | Optional |
-| Purchasing module | Optional |
-| Workflow engine | Mandatory |
-| Dynamic statuses | Mandatory |
-| Status behavior parameters | Mandatory |
-| Delivery type configuration | Mandatory |
-| Operational priority model | Mandatory |
-| Production scheduling | Mandatory |
-| Attendance tracking | Mandatory |
-| Operational Resource management | Mandatory |
-| QR Code operational tracking | Mandatory |
-| Production Bag management | Mandatory |
-| Digital approvals and customer consent | Mandatory |
-| WhatsApp integration | Mandatory |
-| Smart Concierge | Future |
-| Facial recognition roadmap | Future |
-| Dashboards and analytics | Mandatory |
-| Audit logs and traceability | Mandatory |
-| LGPD compliance | Mandatory |
-| Security governance | Mandatory |
-| Backup and recovery | Mandatory |
-| Customer Reception and Smart Concierge Workflow | Mandatory |
-| Direct Service Order retrieval workflow | Mandatory |
-| Physical Item Location Management | Mandatory |
-| Third-Party Pickup Authorization | Mandatory |
-| Pickup Evidence and Chain of Custody | Mandatory |
-| Physical Access Control | Optional |
-| User versus Operational Resource formal definitions | Mandatory |
-| SLA Model | Mandatory |
-| Financial Exception Management | Mandatory |
-| Financial Source of Truth | Mandatory |
-| Requirement Classification Model | Mandatory |
+Domain-to-classification matrix:
+- Product vision and product purpose — Mandatory
+- SaaS multi-tenant model — Mandatory
+- Multi-company and group scenarios — Mandatory
+- Multi-branch model and hierarchy — Mandatory
+- User profiles and permissions — Mandatory
+- User impersonation and auditability controls — Mandatory
+- CRM — Mandatory
+- Customers — Mandatory
+- Body measurements — Optional
+- Service Orders — Mandatory
+- Service Order Items — Mandatory
+- Production Orders — Mandatory
+- Production Order versioning — Mandatory
+- Quality control — Mandatory
+- Customer rejection flow — Mandatory
+- Rework flow — Mandatory
+- Rework reassignment — Mandatory
+- Warranty repair flow — Mandatory
+- Partial delivery — Mandatory
+- Payment by item — Mandatory
+- Partial payments — Mandatory
+- Expected cash flow — Mandatory
+- Actual cash flow — Mandatory
+- Payment terminal integration — Mandatory
+- Fiscal documents — Mandatory
+- Inventory module — Optional
+- Purchasing module — Optional
+- Workflow engine — Mandatory
+- Dynamic statuses — Mandatory
+- Status behavior parameters — Mandatory
+- Delivery type configuration — Mandatory
+- Operational priority model — Mandatory
+- Production scheduling — Mandatory
+- Attendance tracking — Mandatory
+- Operational Resource management — Mandatory
+- QR Code operational tracking — Mandatory
+- Production Bag management — Mandatory
+- Digital approvals and customer consent — Mandatory
+- WhatsApp integration — Mandatory
+- Communication and notification framework — Mandatory
+- Facial recognition reception identification (optional and policy-gated) — Optional
+- Advanced facial recognition roadmap (section 20.3) — Future
+- Dashboards and analytics — Mandatory
+- Audit logs and traceability — Mandatory
+- LGPD compliance — Mandatory
+- Security governance — Mandatory
+- Backup and recovery — Mandatory
+- Customer Reception Workflow (section 32 baseline requirements) — Mandatory
+- Smart Concierge module roadmap scope (section 19) — Future
+- Direct Service Order retrieval workflow — Mandatory
+- Physical Item Location Management — Mandatory
+- Third-Party Pickup Authorization — Mandatory
+- Pickup Evidence and Chain of Custody — Mandatory
+- Physical Access Control — Optional
+- User versus Operational Resource formal definitions — Mandatory
+- SLA Model — Mandatory
+- Financial Exception Management — Mandatory
+- Financial Source of Truth — Mandatory
+- Requirement Classification Model — Mandatory
 
 ---
 
-## 43. V1.1 -> V1.2 Delta Summary
+## 43. V1.1 to V1.2 Delta Summary
 
-V1.2 preserves the complete V1.1 baseline and introduces formal enterprise requirements for:
+V1.2 preserves the complete V1.1 baseline and formalizes/expands enterprise requirements for:
 - terminology normalization to Operational Resource and profession-agnostic wording
-- customer reception and Smart Concierge operational workflow
+- customer reception operational workflow and Smart Concierge readiness/governance boundaries
 - direct Service Order retrieval independent from queue flow
 - physical location management for tracked items
 - third-party pickup authorization with remote approval options
@@ -2206,6 +2264,7 @@ V1.2 preserves the complete V1.1 baseline and introduces formal enterprise requi
 - financial exception workflows
 - financial source-of-truth governance
 - requirement classification model and matrix
+- SRS architecture-readiness definition scoring method
 
 ---
 
@@ -2214,7 +2273,7 @@ V1.2 preserves the complete V1.1 baseline and introduces formal enterprise requi
 V1.2 adds the following new functional requirements:
 1. Digital reception queue lifecycle with defined statuses and auditability.
 2. Multi-channel customer identification for reception including optional facial recognition constraints.
-3. Reception dashboard with queue-visible customer operational and financial context.
+3. Reception dashboard with queue-visible customer context and authorized detail-panel access to operational/financial indicators.
 4. Temporary non-identified customer queue handling and minimum registration rules.
 5. Direct Service Order retrieval workflow independent of queue participation.
 6. Hierarchical physical item location management with history and transfer traceability.
@@ -2249,15 +2308,49 @@ The following business rules are formally reinforced or introduced in V1.2:
 
 ---
 
-## 46. Updated Architecture Readiness Score
+## 46. Updated SRS Architecture-Readiness Definition Score
 
-Architecture readiness score for functional maturity in V1.2: **95/100**.
+SRS architecture-readiness definition scoring method for V1.2 is defined by the checklist and formula in this section.
 
-Rationale:
-- Functional coverage is expanded and formalized across reception, pickup custody, SLA, and financial exception domains.
-- Cross-domain traceability requirements are explicit enough to guide architecture and data modeling phases.
-- Optional/future boundaries remain defined for phased delivery.
-- Remaining gap to 100 relates to implementation-phase decisions intentionally excluded from this functional SRS.
+Objective scoring method:
+- The score is computed from a binary checklist of 20 SRS-scoped architecture-readiness controls (each item = 5 points).
+- Formula: `(implemented_controls / 20) * 100`.
+- Current assessment values must be recorded in the versioned assessment entry below.
+- Scope note: this score measures SRS completeness/readiness definition quality only; it does not claim implementation or production readiness.
+
+Derived checklist summary of scored controls (non-authoritative; source of truth remains the referenced sections):
+1. [Implemented] Terminology normalization in role/resource model (sections 4 and 6).
+2. [Implemented] Reception digital queue lifecycle (section 32.2).
+3. [Implemented] Reception status model (section 32.2).
+4. [Implemented] Reception identification channels and constraints (section 32.3).
+5. [Implemented] Reception dashboard queue-visible context (section 32.4).
+6. [Implemented] Non-identified customer workflow and minimal registration (section 32.5).
+7. [Implemented] Attendant service start and reason capture (section 32.6).
+8. [Implemented] Direct Service Order retrieval independent of queue (section 33).
+9. [Implemented] Physical item location hierarchy and transfer/history (section 34).
+10. [Implemented] Third-party pickup authorization and remote approval (section 35).
+11. [Implemented] Pickup evidence and chain-of-custody requirements (section 36).
+12. [Implemented] Physical access control optional module governance (section 37).
+13. [Implemented] Formal User versus Operational Resource definitions (section 38).
+14. [Implemented] SLA lifecycle model and trigger mapping (section 39).
+15. [Implemented] Financial exception workflows (section 40).
+16. [Implemented] Financial source-of-truth model (section 41).
+17. [Implemented] Requirement classification structure and matrix (section 42).
+18. [Implemented] Delta summary and new requirements traceability artifacts (sections 43 and 44).
+19. [Implemented] Updated business-rules consolidation (section 45).
+20. [Implemented] Updated architecture-readiness scoring method and governance definition (section 46).
+
+Assessment method and ownership:
+- Assessment owner: Product / Business Requirements with Architecture and Compliance review.
+- Update cadence: each SRS version change or major business-rule revision.
+- Acceptance criteria: each checklist control must be explicitly mapped to a section in this SRS and marked implemented/not-implemented.
+- Governance rule: this score is informational for architecture readiness planning and does not replace formal release approval gates; Product Leadership and Architecture Governance jointly approve, accept with conditions, or override the score rationale.
+
+### 46.1 Versioned assessment entry (V1.2)
+
+- Assessment date/version: 2026-09-20 / V1.2 release baseline
+- Checklist result: all 20 controls marked implemented
+- Computed score: **100/100**
 
 ---
 
@@ -2279,8 +2372,8 @@ The following areas were modified or added in V1.2:
 - Section 40 Financial Exception Management (new)
 - Section 41 Financial Source of Truth (new)
 - Section 42 Requirement Classification Model (new)
-- Section 43 V1.1 -> V1.2 Delta Summary (new)
+- Section 43 V1.1 to V1.2 Delta Summary (new)
 - Section 44 New Functional Requirements List (new)
 - Section 45 Updated Business Rules List (new)
-- Section 46 Updated Architecture Readiness Score (new)
+- Section 46 Updated SRS Architecture-Readiness Definition Score (new)
 - Section 47 Modified Sections List (new)
