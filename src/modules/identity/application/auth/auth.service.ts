@@ -32,7 +32,8 @@ export class AuthService {
     branchIds: string[];
     permissions: string[];
   }> {
-    const user = await this.identityService.getByTenantAndEmail(dto.tenantId, dto.email);
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const user = await this.identityService.getByTenantAndEmail(dto.tenantId, normalizedEmail);
     if (!user || user.status !== UserStatus.ACTIVE) {
       throw new AuthenticationFailedError();
     }
@@ -51,12 +52,12 @@ export class AuthService {
         entityId: null,
         action: 'auth.login.failed',
         eventType: 'authentication.failed',
-        metadata: { email: dto.email.toLowerCase() },
+        metadata: { email: normalizedEmail },
       });
       throw new AuthenticationFailedError();
     }
 
-    const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(user.id);
+    const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(user.tenantId, user.id);
     const issuedTokens = await this.tokenFactoryService.issueTokens({
       sub: user.id,
       tenantId: user.tenantId,
@@ -104,6 +105,9 @@ export class AuthService {
 
   async refreshTokens(dto: RefreshTokenDto): Promise<{ accessToken: string; refreshToken: string; sessionId: string }> {
     const payload = await this.tokenFactoryService.verifyRefreshToken(dto.refreshToken);
+    if (payload.tokenType !== 'refresh') {
+      throw new AuthenticationFailedError('Refresh token is invalid.');
+    }
     const session = await this.userSessionRepository.findActiveById(payload.jti);
     if (!session || session.expiresAt.getTime() <= Date.now()) {
       throw new AuthenticationFailedError('Refresh token is not active.');
@@ -118,13 +122,13 @@ export class AuthService {
       throw new AuthenticationFailedError('Refresh token is invalid.');
     }
 
-    const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(payload.sub);
+    const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(payload.tenantId, payload.sub);
     const issuedTokens = await this.tokenFactoryService.issueTokens({
       sub: payload.sub,
       tenantId: payload.tenantId,
       branchIds: effectiveAccess.branchIds,
       permissions: effectiveAccess.permissions,
-    });
+    }, session.id);
 
     session.refreshTokenHash = issuedTokens.refreshTokenHash;
     session.lastUsedAt = new Date();
@@ -143,6 +147,10 @@ export class AuthService {
     const session = await this.userSessionRepository.findActiveById(dto.sessionId);
     if (!session) {
       return;
+    }
+
+    if (session.userId !== dto.actorUserId) {
+      throw new AuthenticationFailedError('Session revocation is not allowed.');
     }
 
     session.status = SessionStatus.REVOKED;

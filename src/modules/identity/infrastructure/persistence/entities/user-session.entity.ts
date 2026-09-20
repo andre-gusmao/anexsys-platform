@@ -1,9 +1,9 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { SessionStatus } from 'src/shared/domain/enums';
 
 @Entity({ name: 'user_sessions' })
 export class UserSessionEntity {
-  @Column({ primary: true, name: 'id', type: 'uuid' })
+  @PrimaryColumn('uuid', { name: 'id' })
   id!: string;
 
   @Column({ name: 'tenant_id', type: 'uuid' })

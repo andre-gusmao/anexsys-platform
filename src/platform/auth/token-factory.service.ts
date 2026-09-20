@@ -25,17 +25,14 @@ export interface IssuedAuthTokens {
 export class TokenFactoryService {
   constructor(private readonly jwtService: JwtService) {}
 
-  async issueTokens(payload: AuthTokenPayload): Promise<IssuedAuthTokens> {
-    const refreshTokenId = randomUUID();
+  async issueTokens(payload: AuthTokenPayload, refreshTokenId: string = randomUUID()): Promise<IssuedAuthTokens> {
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
-      subject: payload.sub,
     });
     const refreshToken = await this.jwtService.signAsync(
       { ...payload, jti: refreshTokenId, tokenType: 'refresh' },
       {
         expiresIn: '7d',
-        subject: payload.sub,
       },
     );
 

@@ -18,7 +18,7 @@ export class UserBranchScopeRepository {
     return this.repository.save(scope);
   }
 
-  async findByUserId(userId: string): Promise<UserBranchScopeEntity[]> {
-    return this.repository.find({ where: { userId } });
+  async findByUserId(tenantId: string, userId: string): Promise<UserBranchScopeEntity[]> {
+    return this.repository.find({ where: { tenantId, userId } });
   }
 }

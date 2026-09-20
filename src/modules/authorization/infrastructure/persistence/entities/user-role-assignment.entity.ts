@@ -1,11 +1,7 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { MutableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'user_role_assignments' })
-@Index('uq_user_role_assignments_active_role_branch', ['userId', 'roleId', 'assignedBranchId'], {
-  unique: true,
-  where: 'revoked_at IS NULL',
-})
 export class UserRoleAssignmentEntity extends MutableBusinessEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
   tenantId!: string;

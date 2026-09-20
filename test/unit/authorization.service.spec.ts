@@ -21,7 +21,9 @@ describe('AuthorizationService', () => {
       },
     };
     const userRoleAssignmentRepository = {
-      async findActiveByUserId() {
+      async findActiveByUserId(tenantId: string, userId: string) {
+        assert.equal(tenantId, 'tenant-1');
+        assert.equal(userId, 'user-1');
         return [
           { roleId: 'role-1', assignedBranchId: 'branch-1' },
           { roleId: 'role-2', assignedBranchId: null },
@@ -29,7 +31,9 @@ describe('AuthorizationService', () => {
       },
     };
     const userBranchScopeRepository = {
-      async findByUserId() {
+      async findByUserId(tenantId: string, userId: string) {
+        assert.equal(tenantId, 'tenant-1');
+        assert.equal(userId, 'user-1');
         return [
           { branchId: 'branch-2', scopeType: 'member' },
           { branchId: 'branch-1', scopeType: 'manager' },
@@ -48,7 +52,7 @@ describe('AuthorizationService', () => {
       {} as never,
     );
 
-    const effectiveAccess = await service.getEffectiveAccessForUser('user-1');
+    const effectiveAccess = await service.getEffectiveAccessForUser('tenant-1', 'user-1');
 
     assert.deepEqual(effectiveAccess, {
       branchIds: ['branch-2', 'branch-1'],

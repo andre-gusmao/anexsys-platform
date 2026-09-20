@@ -18,9 +18,10 @@ export class UserRoleAssignmentRepository {
     return this.repository.save(assignment);
   }
 
-  async findActiveByUserId(userId: string): Promise<UserRoleAssignmentEntity[]> {
+  async findActiveByUserId(tenantId: string, userId: string): Promise<UserRoleAssignmentEntity[]> {
     return this.repository.find({
       where: {
+        tenantId,
         userId,
         revokedAt: IsNull(),
       },

@@ -189,14 +189,14 @@ export class AuthorizationService {
     return this.permissionRepository.findByTenant(tenantId);
   }
 
-  async getEffectiveAccessForUser(userId: string): Promise<{ branchIds: string[]; permissions: string[] }> {
-    const assignments = await this.userRoleAssignmentRepository.findActiveByUserId(userId);
+  async getEffectiveAccessForUser(tenantId: string, userId: string): Promise<{ branchIds: string[]; permissions: string[] }> {
+    const assignments = await this.userRoleAssignmentRepository.findActiveByUserId(tenantId, userId);
     const roleIds = assignments.map((assignment) => assignment.roleId);
     const rolePermissions = await this.rolePermissionRepository.findByRoleIds(roleIds);
     const permissions = await this.permissionRepository.findByIds([
       ...new Set(rolePermissions.map((rolePermission) => rolePermission.permissionId)),
     ]);
-    const branchScopes = await this.userBranchScopeRepository.findByUserId(userId);
+    const branchScopes = await this.userBranchScopeRepository.findByUserId(tenantId, userId);
 
     const branchIds = [
       ...branchScopes.map((scope) => scope.branchId),
@@ -211,8 +211,8 @@ export class AuthorizationService {
     };
   }
 
-  async userHasBranchScope(userId: string, branchId: string, scopeType?: BranchScopeType): Promise<boolean> {
-    const scopes = await this.userBranchScopeRepository.findByUserId(userId);
+  async userHasBranchScope(tenantId: string, userId: string, branchId: string, scopeType?: BranchScopeType): Promise<boolean> {
+    const scopes = await this.userBranchScopeRepository.findByUserId(tenantId, userId);
     return scopes.some((scope) => scope.branchId === branchId && (!scopeType || scope.scopeType === scopeType));
   }
 

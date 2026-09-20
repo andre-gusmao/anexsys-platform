@@ -35,9 +35,10 @@ export class IdentityService {
       }
     }
 
-    const existing = await this.userIdentityRepository.findByTenantAndEmail(dto.tenantId, dto.email);
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const existing = await this.userIdentityRepository.findByTenantAndEmail(dto.tenantId, normalizedEmail);
     if (existing) {
-      throw new DomainValidationError(`User email '${dto.email}' already exists for this tenant.`);
+      throw new DomainValidationError(`User email '${normalizedEmail}' already exists for this tenant.`);
     }
 
     const userId = randomUUID();
@@ -45,7 +46,7 @@ export class IdentityService {
       id: userId,
       tenantId: dto.tenantId,
       defaultBranchId: dto.defaultBranchId ?? null,
-      email: dto.email.trim().toLowerCase(),
+      email: normalizedEmail,
       displayName: dto.displayName.trim(),
       status: UserStatus.ACTIVE,
       createdBy: dto.actorUserId,
