@@ -156,6 +156,7 @@ Soft-deletable business tables should additionally include:
 | Workflow and SLA | `workflow_definitions` | `id` | lifecycle policy root |
 | Workflow and SLA | `status_definitions` | `id` | status catalog under workflow |
 | Workflow and SLA | `sla_rules` | `id` | timing and violation policy rules |
+| Workflow and SLA | `sla_rule_triggers` | `id` | multi-status and event trigger mappings for SLA rules |
 | QR and Operational Tracking | `qr_codes` | `id` | production-order operational QR authority |
 | QR and Operational Tracking | `qr_events` | `id` | QR scan trace |
 | Audit and Traceability | `custody_events` | `id` | chain-of-custody event log |
@@ -209,6 +210,7 @@ The following tables are tenant-scoped:
 - `workflow_definitions`
 - `status_definitions`
 - `sla_rules`
+- `sla_rule_triggers`
 - `qr_codes`
 - `qr_events`
 - `custody_events`
@@ -260,6 +262,7 @@ The following tables must carry `branch_id not null`:
 - `storage_locations`
 - `storage_location_assignments`
 - `physical_bag_support_contexts`
+- `sla_rule_triggers`
 - `qr_codes`
 - `qr_events`
 - `custody_events`
@@ -395,7 +398,7 @@ Constraints:
 - PK: `id`
 - FK: `tenant_id -> tenants.id`
 - FK: `branch_id -> branches.id`
-- UQ: filtered uniqueness on `(tenant_id, cpf_cnpj)` when `cpf_cnpj` is present and `is_deleted = false`
+- duplicate CPF/CNPJ values are allowed physically so onboarding duplicate-detection and review workflows can stage and resolve legacy duplicates before business consolidation
 - CHECK: `customer_type` in approved customer-type values
 
 #### `customer_contacts`
@@ -469,7 +472,6 @@ Key columns:
 - `customer_notes text`
 - `total_value numeric(18,2) null`
 - `discount_value numeric(18,2) null`
-- `status varchar(30)`
 - standard audit + soft-delete columns
 
 Constraints:
@@ -527,7 +529,6 @@ Key columns:
 - `piece_description text`
 - `measurements_snapshot jsonb null`
 - `observations text`
-- `status varchar(30)`
 - standard audit + soft-delete columns
 
 Constraints:
@@ -954,16 +955,26 @@ Key columns:
 - `tenant_id uuid FK -> tenants.id`
 - `workflow_definition_id uuid FK -> workflow_definitions.id`
 - `rule_name text`
-- `start_status_id uuid null FK -> status_definitions.id`
-- `pause_status_id uuid null FK -> status_definitions.id`
-- `resume_status_id uuid null FK -> status_definitions.id`
-- `complete_status_id uuid null FK -> status_definitions.id`
-- `violation_status_id uuid null FK -> status_definitions.id`
 - `calendar_scope varchar(30)`
 - `target_duration_hours numeric(18,2) null`
 - `buffer_days numeric(18,2) null`
 - `is_active boolean`
 - standard audit + soft-delete columns
+
+#### `sla_rule_triggers`
+Key columns:
+- `id uuid PK`
+- `tenant_id uuid FK -> tenants.id`
+- `sla_rule_id uuid FK -> sla_rules.id`
+- `status_definition_id uuid null FK -> status_definitions.id`
+- `trigger_event_code varchar(60) null`
+- `trigger_role varchar(20)` for start/pause/resume/complete/violation
+- `sequence_no integer`
+- standard audit columns
+
+Constraints:
+- CHECK: exactly one of `status_definition_id` or `trigger_event_code` is populated
+- UQ: `(sla_rule_id, trigger_role, status_definition_id, trigger_event_code)`
 
 ### 7.10 QR and Operational Tracking tables
 
@@ -973,6 +984,7 @@ Key columns:
 - `tenant_id uuid FK -> tenants.id`
 - `branch_id uuid FK -> branches.id`
 - `production_order_id uuid FK -> production_orders.id`
+- `reissue_no integer`
 - `code_value text`
 - `issued_at timestamptz`
 - `is_active boolean`
@@ -980,9 +992,10 @@ Key columns:
 - standard audit columns
 
 Constraints:
-- UQ: `(production_order_id)` to preserve one QR identity row per Production Order
+- UQ: `(production_order_id, reissue_no)`
+- UQ: filtered uniqueness on `(production_order_id)` when `is_active = true`
 - UQ: `(tenant_id, code_value)`
-- lifecycle rule: QR reissue or revocation updates the same QR identity row under audit rather than creating a second QR identity row for the same Production Order
+- CHECK: `reissue_no >= 1`
 
 #### `qr_events`
 Key columns:
@@ -993,6 +1006,7 @@ Key columns:
 - `production_order_id uuid FK -> production_orders.id`
 - `operational_resource_id uuid null FK -> operational_resources.id`
 - `scan_type varchar(60)`
+- `scanned_code_value text`
 - `scanned_at timestamptz`
 - `scan_result varchar(30)`
 - `event_payload jsonb null`
@@ -1163,6 +1177,8 @@ Constraints:
 ### 9.6 Workflow lineage
 - `status_definitions.workflow_definition_id -> workflow_definitions.id`
 - `sla_rules.workflow_definition_id -> workflow_definitions.id`
+- `sla_rule_triggers.sla_rule_id -> sla_rules.id`
+- `sla_rule_triggers.status_definition_id -> status_definitions.id`
 - transactional workflow references point to `workflow_definitions` and `status_definitions`
 
 ---
@@ -1203,6 +1219,7 @@ Workflow is physically represented through:
 - `workflow_definitions`
 - `status_definitions`
 - `sla_rules`
+- `sla_rule_triggers`
 
 Transactional linkage is achieved through:
 - `service_orders.workflow_definition_id`
@@ -1215,6 +1232,7 @@ Transactional linkage is achieved through:
 This preserves:
 - policy reuse
 - explicit current status
+- multi-status and event-based SLA trigger mapping
 - tenant-specific workflow behavior
 - SLA governance without moving source-of-truth ownership away from transactional tables
 
@@ -1232,6 +1250,7 @@ Primary physical event tables:
 Event rules:
 - event tables are append-only
 - event records capture actor, time, type, and context
+- QR events preserve the scanned QR value snapshot so historical reissues remain distinguishable
 - event tables do not replace transactional source-of-truth tables
 - Production Order execution events remain anchored to Production Order, not to bag support context
 
@@ -1336,7 +1355,7 @@ Responsibility rule:
 | `production_orders` | `production_order_versions` | `production_order_versions.production_order_id` | one production order has many versions |
 | `production_orders` | `production_order_operational_assignments` | `production_order_operational_assignments.production_order_id` | one production order has many resource assignments over time |
 | `production_orders` | `production_execution_events` | `production_execution_events.production_order_id` | one production order has many execution events |
-| `production_orders` | `qr_codes` | `qr_codes.production_order_id` | one production order owns one active QR code |
+| `production_orders` | `qr_codes` | `qr_codes.production_order_id` | one production order may own many QR identity rows over time but only one active QR row |
 | `qr_codes` | `qr_events` | `qr_events.qr_code_id` | one QR code emits many QR events |
 | `production_orders` | `quality_records` | `quality_records.production_order_id` | one production order has many quality records |
 | `production_orders` | `rework_cases` | `rework_cases.production_order_id` | one production order may have many rework cases |
@@ -1355,6 +1374,7 @@ Responsibility rule:
 | `production_orders` | `physical_bag_support_contexts` | `physical_bag_support_contexts.production_order_id` | one production order may use many support bag contexts |
 | `workflow_definitions` | `status_definitions` | `status_definitions.workflow_definition_id` | one workflow defines many statuses |
 | `workflow_definitions` | `sla_rules` | `sla_rules.workflow_definition_id` | one workflow defines many SLA rules |
+| `sla_rules` | `sla_rule_triggers` | `sla_rule_triggers.sla_rule_id` | one SLA rule may define many trigger mappings |
 | `service_orders` | `custody_events` | `custody_events.service_order_id` | one service order may emit many custody events |
 | `production_orders` | `custody_events` | `custody_events.production_order_id` | one production order may emit many custody events |
 | `custody_events` | `cctv_references` | `cctv_references.custody_event_id` | one custody event may have many CCTV references |
