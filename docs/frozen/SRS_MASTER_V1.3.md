@@ -2723,7 +2723,7 @@ Rationale:
 
 ---
 
-## 52. Remaining Gaps Before Architecture Design
+## 52. Remaining Post-Baseline Implementation Refinements
 
 - Confirm the tenant policy for when physical bags/containers are used or replaced operationally while preserving Service Order and Production Order traceability.
 - Confirm the tenant-configurable policy set for warranty periods, priority defaults, and Production Buffer defaults when tenants do not override them.
