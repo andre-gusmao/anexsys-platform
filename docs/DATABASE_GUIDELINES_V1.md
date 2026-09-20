@@ -3,7 +3,7 @@
 
 ## Document Purpose
 
-This document defines the conceptual data-modeling guidelines for ANEXSYS based on `docs/SRS_MASTER_V1.3.md` and the approved production model provided for this task.
+This document defines the conceptual data-modeling guidelines for ANEXSYS according to the approved final operational model.
 
 This document defines:
 - domain ownership
@@ -25,44 +25,26 @@ This document does not define:
 - APIs
 - infrastructure
 
-Authoring note:
-- `docs/ARQUITETURA_V1.md` was not present in the current repository clone at authoring time
-- therefore, this guideline is grounded in `docs/SRS_MASTER_V1.3.md` plus the explicitly approved production model for this task
-- where current SRS wording and the explicitly approved production model differ, this document adopts the approved production model as the governing rule for conceptual database modeling
-
 ---
 
 ## Executive Summary
 
-ANEXSYS should be modeled as a set of bounded business domains with clear ownership boundaries.
+ANEXSYS must be modeled with three clearly separated conceptual authorities:
+- Service Order = commercial and financial source of truth
+- Production Order = operational execution source of truth
+- Physical Bag = physical support element only
 
-For conceptual database design, the approved production model in this document is authoritative for Production Bag, Production Order, and operational-responsibility cardinalities.
-
-The core business flow is:
-- Customer owns the commercial relationship
-- Service Order owns the commercial commitment, financial truth, and customer-facing lifecycle
-- Production Bag owns the governed physical-production grouping for exactly one Service Order and one Customer
-- Production Order owns operational execution inside the Production Bag scope
-- Operational Resource owns execution capacity and responsibility history
-- Quality, Rework, and Warranty own post-execution validation and correction records
-- Finance owns settlement and exception records, but the Service Order remains the business source of truth for commercial amounts
-- Workflow owns configurable lifecycle rules
-- Audit owns immutable cross-domain traceability
-
-The approved production model governs the conceptual database boundary:
+Core approved model:
 - 1 Customer -> many Service Orders
-- 1 Service Order -> exactly 1 Production Bag
-- 1 Production Bag -> exactly 1 Customer
-- 1 Production Bag -> exactly 1 current Primary Operational Resource
-- 1 Production Bag may contain multiple Service Order Items belonging to the same Service Order
-- 1 Production Bag may contain multiple Production Orders belonging to the same Service Order
-- responsibility transfers must be auditable
+- 1 Service Order -> many Service Order Items
+- 1 Service Order -> exactly 1 Primary Production Order
+- the Primary Production Order may contain all Service Order Items of that Service Order
+- Production Order versioning exists only for rework, warranty execution, and corrective production
+- the physical bag is only a storage and transport container for Service Order pieces and the printed Production Order (A5)
+- QR Codes belong exclusively to the Production Order
+- Operational Resources assume responsibility through Production Order QR-driven execution events
 
-The main conceptual rule is separation of ownership:
-- Service Order owns commercial and financial meaning
-- Production Order owns operational execution meaning
-- Production Bag owns governed physical grouping and current primary operational accountability
-- cross-domain consumers may reference, but must not redefine, another domain's source-of-truth data
+This guideline treats the Production Order as the operational root and treats the physical bag only as optional physical context.
 
 ---
 
@@ -72,27 +54,23 @@ The main conceptual rule is separation of ownership:
 
 Each core business fact must have exactly one owning domain.
 
-### 1.2 Aggregate boundary discipline
+### 1.2 Commercial versus operational separation
 
-Each aggregate must protect its own invariants, lifecycle, and internal consistency.
+Commercial and financial truth belongs to the Service Order domain.
 
-### 1.3 Cross-domain reference discipline
+Operational execution truth belongs to the Production Order domain.
 
-Cross-domain relationships should use stable business identities and explicit references rather than shared ownership of mutable state.
+### 1.3 Physical support demotion
 
-### 1.4 Auditability by design
+The physical bag is not a primary business entity and must not be modeled as an independent workflow or business authority.
 
-Responsibility changes, workflow transitions, QR-triggered execution events, quality decisions, and financial exceptions must all be traceable to an owning domain and an immutable audit trail.
+### 1.4 Version lineage discipline
 
-### 1.5 Separation of commercial and operational data
+Corrective production history must preserve lineage back to the original Production Order rather than creating disconnected operational records.
 
-Production execution data must not become the source of truth for prices, discounts, payment status, commissions, margins, or profit.
+### 1.5 Audit-first responsibility model
 
-### 1.6 Conceptual-model precedence
-
-This document is the governing conceptual data-modeling interpretation for downstream database analysis.
-
-When `docs/SRS_MASTER_V1.3.md` contains operational wording that differs from the explicitly approved production model for this task, the approved production model in this guideline takes precedence for aggregates, ownership, and cardinalities.
+Operational responsibility must be traceable through Production Order execution events, especially QR-driven start, assumption, status update, workflow event registration, and Operational Diary updates.
 
 ---
 
@@ -100,18 +78,18 @@ When `docs/SRS_MASTER_V1.3.md` contains operational wording that differs from th
 
 | Bounded Context | Primary Responsibility | Owns | Does Not Own |
 |---|---|---|---|
-| Tenant and Branch Governance | Tenant scope, branch structure, tenant-specific policy boundary | Tenant, Branch, tenant-level configuration scope | Commercial orders, operational execution, financial settlement details |
-| Identity and Access | User identity, roles, permissions, access scope | User, Role, Permission Scope, access policy | Operational productivity, commercial ownership, audit meaning |
-| Customer and CRM | Customer relationship and interaction history | Customer, customer profile, contact data, communication history | Production execution, financial settlement logic |
-| Service Order Management | Commercial commitment and customer-facing order lifecycle | Service Order, Service Order Item, delivery commitment, commercial responsibility, technical measurement responsibility | Production execution state, quality inspection outcomes, payment authorization outcomes |
-| Production Execution | Governed operational grouping and execution control | Production Bag, Production Order, Production Order Version, execution assignment, bag responsibility transfer history | Commercial price truth, settlement truth |
-| Operational Resource Management | Execution capacity and resource accountability | Operational Resource, skills, availability, assignment history, productivity indicators | Service Order financial meaning, quality approval rules |
-| Quality and Corrective Flows | Quality validation and corrective case ownership | Quality Record, Customer Rejection, Rework, Warranty Adjustment, Warranty Execution | Commercial pricing, branch governance |
-| Delivery and Pickup | Handover, retrieval, location visibility, collector authorization | Pickup Authorization, Pickup Evidence, physical retrieval context, location visibility usage | Commercial valuation, production planning |
-| Finance and Settlement | Payment, reconciliation, financial exception handling | Payment Allocation, Settlement Record, Financial Exception, cash-flow reporting inputs | Operational execution truth |
-| Workflow and SLA Policy | Configurable lifecycle rules and time-policy logic | Workflow Definition, Status Definition, Transition Policy, SLA Policy, delivery-date calculation policy | Customer identity, commercial line values, physical custody evidence |
-| Audit and Traceability | Immutable cross-domain traceability | Audit Event, QR Scan Event, Chain-of-Custody Event | Business meaning of the originating transaction |
-| Reporting and Analytics | Read-model and KPI consolidation | Derived KPI views, dashboards, analytical projections | Transactional source-of-truth facts |
+| Tenant and Branch Governance | Tenant scope, branch scope, branch-local policy | Tenant, Branch, tenant policy scope | Commercial orders, production execution, financial settlement |
+| Identity and Access | Access control and permission scope | User, Role, Permission Scope | Commercial truth, operational truth |
+| Customer and CRM | Customer relationship and interaction continuity | Customer, contact profile, communication history | Production execution, settlement logic |
+| Service Order Management | Commercial and financial business commitment | Service Order, Service Order Item, commercial responsibility, technical measurement responsibility, delivery commitment | Operational execution truth, quality approval truth |
+| Production Execution | Operational execution and version lineage | Primary Production Order, Production Order Version lineage, execution assignments, execution events, Production Order QR ownership | Commercial pricing truth, independent bag authority |
+| Operational Resource Management | Operational capacity and skills | Operational Resource, availability, skills, qualification history, productivity indicators | Service Order financial truth, workflow policy ownership |
+| Quality and Corrective Flows | Inspection and corrective operational outcomes | Quality Record, Rework, Warranty Adjustment, Warranty Execution, corrective attribution | Customer master ownership, financial truth |
+| Delivery and Pickup | Retrieval and handover control | Pickup Authorization, Pickup Evidence, physical location visibility, physical bag usage context | Production execution truth, pricing truth |
+| Finance and Settlement | Settlement and financial exception handling | Payment Allocation, Settlement Record, Financial Exception | Production execution state |
+| Workflow and SLA Policy | Rules that govern status and timing behavior | Workflow Definition, Status Definition, Transition Policy, SLA Policy | Transactional ownership of Service Orders or Production Orders |
+| Audit and Traceability | Immutable cross-domain traceability | Audit Event, QR Scan Event, Chain-of-Custody Event | Commercial ownership, operational ownership |
+| Reporting and Analytics | Derived analytical views | KPI projections, dashboards, analytical read models | Transactional source-of-truth facts |
 
 ---
 
@@ -119,23 +97,24 @@ When `docs/SRS_MASTER_V1.3.md` contains operational wording that differs from th
 
 | Aggregate Root | Bounded Context | Core Responsibility | Key Invariants |
 |---|---|---|---|
-| Tenant | Tenant and Branch Governance | Defines top-level business isolation boundary | One tenant governs its own branches, users, policies, and business data scope |
-| Branch | Tenant and Branch Governance | Defines operational unit and local calendar/policy scope | Branch belongs to exactly one Tenant |
-| Customer | Customer and CRM | Owns the customer relationship identity | Customer belongs to one Tenant and may interact across one or more Branches according to policy |
-| Service Order | Service Order Management | Owns the commercial commitment and customer-facing lifecycle | Service Order belongs to exactly one Customer and exactly one Tenant; owns the official commercial commitment |
-| Service Order Item | Service Order Management | Owns item-level commercial and operational scope inside the Service Order | Item cannot exist outside a Service Order |
-| Production Bag | Production Execution | Owns governed production grouping for one Service Order | Exactly one Service Order, exactly one Customer, exactly one current Primary Operational Resource |
-| Production Order | Production Execution | Owns operational execution for work released from the Service Order | Must belong to exactly one Service Order and exactly one Production Bag; must not cross Service Order boundaries |
-| Operational Resource | Operational Resource Management | Owns execution-capacity identity | Resource lifecycle and capability history are owned centrally |
-| Quality Record | Quality and Corrective Flows | Owns inspection outcome and release gate result | Must reference the production or item scope it validates |
-| Rework Case | Quality and Corrective Flows | Owns corrective execution caused by an internal defect | Must preserve original responsibility and corrective responsibility |
-| Warranty Case | Quality and Corrective Flows | Owns post-delivery responsibility under warranty | Must remain linked to original Service Order and affected item scope |
-| Pickup Authorization | Delivery and Pickup | Owns third-party collection authorization | Authorization belongs to the Customer context for a Service Order delivery event |
-| Physical Location Assignment | Delivery and Pickup | Owns current retrieval/storage reference | Must preserve visible current location and location history |
-| Financial Exception | Finance and Settlement | Owns non-standard financial correction flows | Must preserve reason, approver, impact, and Service Order context |
-| Workflow Definition | Workflow and SLA Policy | Owns status and transition policy | Rules are tenant-aware, auditable, and separate from transactional data |
-| Audit Event | Audit and Traceability | Owns immutable traceability record | Must preserve actor, time, object, action, and context |
-| Chain-of-Custody Event | Audit and Traceability | Owns custody-stage evidence trail | Must preserve object context, stage, actor, time, and evidence linkage |
+| Tenant | Tenant and Branch Governance | Top-level business isolation boundary | One tenant governs its own branches, users, and policy scope |
+| Branch | Tenant and Branch Governance | Operational unit and local business-calendar boundary | Branch belongs to exactly one Tenant |
+| Customer | Customer and CRM | Customer relationship identity | Customer belongs to one Tenant and may have many Service Orders |
+| Service Order | Service Order Management | Commercial and financial source of truth | Belongs to exactly one Customer and exactly one Tenant |
+| Service Order Item | Service Order Management | Item-level scope inside the Service Order | Cannot exist outside its parent Service Order |
+| Primary Production Order | Production Execution | Operational execution source of truth for a Service Order | Every Service Order generates exactly one Primary Production Order |
+| Production Order Version | Production Execution | Corrective lineage state for the original Production Order | Exists only for rework, warranty execution, or corrective production and remains tied to the original Production Order |
+| Operational Resource | Operational Resource Management | Execution-capacity identity | Resource capability and availability are owned centrally |
+| Quality Record | Quality and Corrective Flows | Inspection result and quality decision | Must reference the relevant Production Order or item scope |
+| Rework Case | Quality and Corrective Flows | Corrective flow for internal defects | Must preserve original and corrective operational responsibility |
+| Warranty Case | Quality and Corrective Flows | Post-delivery responsibility under warranty | Must remain linked to original Service Order and operational lineage |
+| Pickup Authorization | Delivery and Pickup | Third-party collection authorization | Authorization exists in Service Order delivery context |
+| Physical Location Assignment | Delivery and Pickup | Current and historical retrieval/storage context | Must preserve current visibility and history |
+| Physical Bag Context | Delivery and Pickup | Optional physical storage/transport context | Has no independent business identity, QR, or workflow |
+| Financial Exception | Finance and Settlement | Exceptional financial correction flow | Must preserve Service Order context, reason, approver, and impact |
+| Workflow Definition | Workflow and SLA Policy | Lifecycle and timing policy | Rules are tenant-aware, auditable, and separate from transactional ownership |
+| Audit Event | Audit and Traceability | Immutable traceability record | Must preserve actor, time, object, action, and context |
+| Chain-of-Custody Event | Audit and Traceability | Physical and handoff traceability record | Must preserve object context, stage, actor, time, and evidence linkage |
 
 ---
 
@@ -148,46 +127,43 @@ When `docs/SRS_MASTER_V1.3.md` contains operational wording that differs from th
 | Tenant -> Branch | 1 -> many | A Tenant may operate many Branches |
 | Tenant -> Customer | 1 -> many | A Tenant may own many Customers |
 | Customer -> Service Order | 1 -> many | A Customer may have many Service Orders |
-| Service Order -> Service Order Item | 1 -> many | A Service Order contains one or more items when itemization is applicable |
-| Service Order -> Delivery Commitment | 1 -> one active commitment at a time | Commitment history may exist, but one active commitment governs execution |
+| Service Order -> Service Order Item | 1 -> many | A Service Order contains multiple Service Order Items |
+| Service Order -> Primary Production Order | 1 -> 1 | Every Service Order generates exactly one Primary Production Order |
 
-### 4.2 Approved production model relationships
-
-| Relationship | Cardinality | Guideline |
-|---|---|---|
-| Service Order -> Production Bag | 1 -> 1 | Every Service Order has exactly one governed Production Bag |
-| Production Bag -> Customer | many -> 1 | Every Production Bag belongs to exactly one Customer; a Customer may have many Bags through many Service Orders |
-| Production Bag -> Current Primary Operational Resource | many -> 1 | Every Production Bag has exactly one current Primary Operational Resource |
-| Production Bag -> Responsibility Transfer History | 1 -> many | Every transfer event must be retained for auditability |
-| Production Bag -> Service Order Item | 1 -> many | A Bag may contain many Service Order Items, but all must belong to the same Service Order |
-| Production Bag -> Production Order | 1 -> many | A Bag may contain many Production Orders, but all must belong to the same Service Order |
-| Service Order -> Production Order | 1 -> many | A Service Order may generate many Production Orders within its single Bag |
-| Production Order -> Production Bag | many -> 1 | Every Production Order belongs to exactly one Production Bag |
-| Production Order -> Service Order | many -> 1 | Every Production Order belongs to exactly one Service Order |
-
-### 4.3 Operational and corrective relationships
+### 4.2 Production execution relationships
 
 | Relationship | Cardinality | Guideline |
 |---|---|---|
-| Production Order -> Operational Resource Assignment | many -> many over time | Multiple assignments may occur historically, but each assignment event is explicit and auditable |
-| Production Order -> QR Code | 1 -> 1 active operational code | The operational execution QR belongs to the Production Order |
-| Quality Record -> Production Order | many -> 1 | Many inspections may exist for one Production Order |
-| Quality Record -> Service Order Item | many -> 1 when item-scoped | Item-level quality remains anchored to the parent item |
-| Rework Case -> Original Service Order | many -> 1 | Rework must remain traceable to the original Service Order |
+| Primary Production Order -> Service Order | many -> 1 | Each Primary Production Order belongs to exactly one Service Order |
+| Primary Production Order -> Service Order Item | 1 -> many | The Primary Production Order may include all items belonging to the Service Order |
+| Primary Production Order -> Production Order Version | 1 -> many over time | Versions exist only when corrective lineage is required |
+| Production Order Version -> Original Production Order | many -> 1 | Every corrective version must trace back to the original Production Order |
+| Production Order -> Operational Resource Assignment | many -> many over time | Responsibility is event-based and auditable |
+| Production Order -> QR Code | 1 -> 1 active operational code | QR ownership belongs exclusively to the Production Order |
+| Physical Bag Context -> Service Order | many -> 1 when used | A physical bag follows the Service Order context |
+| Physical Bag Context -> Production Order | many -> 1 when used | A physical bag follows the Production Order context |
+
+### 4.3 Quality and corrective relationships
+
+| Relationship | Cardinality | Guideline |
+|---|---|---|
+| Quality Record -> Production Order | many -> 1 | Many inspections may exist for one Production Order lineage |
+| Quality Record -> Service Order Item | many -> 1 when item-scoped | Item-level quality stays anchored to item scope |
+| Rework Case -> Original Production Order | many -> 1 | Rework must preserve original operational lineage |
 | Rework Case -> Original Operational Resource | many -> 1 | Original responsibility must be preserved |
-| Rework Case -> Corrective Operational Resource | many -> 1 | Corrective execution responsibility must be preserved |
-| Warranty Case -> Original Service Order | many -> 1 | Warranty must remain linked to original commercial commitment |
-| Warranty Case -> Affected Item Scope | many -> 1 | Warranty responsibility must remain tied to the affected item or operational scope |
+| Rework Case -> Corrective Operational Resource | many -> 1 | Corrective responsibility must be preserved |
+| Warranty Case -> Original Service Order | many -> 1 | Warranty remains tied to the commercial source of truth |
+| Warranty Case -> Production Order Lineage | many -> 1 | Warranty execution must remain tied to operational lineage |
 
 ### 4.4 Delivery, finance, and audit relationships
 
 | Relationship | Cardinality | Guideline |
 |---|---|---|
-| Service Order -> Payment Allocation | 1 -> many | Multiple payments and allocations may apply to one Service Order |
-| Service Order Item -> Payment Allocation | 1 -> many | Item-level payment allocation is allowed |
-| Service Order -> Pickup Authorization | 1 -> many over time | Many authorizations may exist historically, but release uses one valid authorization path |
+| Service Order -> Payment Allocation | 1 -> many | Multiple financial allocations may apply to one Service Order |
+| Service Order Item -> Payment Allocation | 1 -> many | Item-level financial allocation is supported |
+| Service Order -> Pickup Authorization | 1 -> many over time | Historical authorization paths may exist |
 | Service Order -> Physical Location Assignment | 1 -> many over time | Current location and history must both be preserved |
-| Aggregate -> Audit Event | 1 -> many | Any governed aggregate may generate many audit events |
+| Aggregate -> Audit Event | 1 -> many | Any governed aggregate may emit many audit events |
 | Aggregate -> Chain-of-Custody Event | 1 -> many where custody applies | Custody history is event-based and auditable |
 | Workflow Definition -> Transactional Aggregate | 1 -> many | One workflow policy may govern many aggregates of the same type |
 
@@ -195,41 +171,46 @@ When `docs/SRS_MASTER_V1.3.md` contains operational wording that differs from th
 
 ## 5. Relationship Rules
 
-### 5.1 Service Order to Production boundary
+### 5.1 Service Order boundary rule
 
 The Service Order is the parent commercial aggregate.
 
-The Production Bag and all Production Orders under that bag must remain inside the Service Order boundary and must not mix data from another Service Order.
+All Service Order Items and the Primary Production Order lineage must remain inside the Service Order boundary.
 
-### 5.2 Customer consistency rule
+### 5.2 Production Order operational rule
 
-Because `1 Service Order -> exactly 1 Production Bag` and `1 Production Bag -> exactly 1 Customer`, every item and Production Order associated with that bag must inherit the same Customer through the owning Service Order.
+The Production Order is the operational source of truth.
 
-### 5.3 Primary operational accountability rule
+Operational status, responsibility, workflow events, QR execution, and diary updates must be anchored to the Production Order.
 
-At any moment, a Production Bag has exactly one current Primary Operational Resource.
+### 5.3 Physical bag rule
 
-Historical transfers do not create simultaneous primary ownership.
+The physical bag is only a physical container.
 
-### 5.4 Responsibility transfer rule
+It may be associated with Service Order and Production Order context, but it must not become:
+- a source of truth
+- an independent workflow owner
+- an independent QR owner
+- an independent business identity
 
-Responsibility transfer is a business event inside the Production Execution domain.
+### 5.4 Versioning rule
 
-A transfer must preserve:
-- previous primary resource
-- new primary resource
-- transfer reason
-- transfer timestamp
-- actor who performed the transfer
-- related bag and service-order context
+Production Order versioning is permitted only for:
+- rework
+- warranty execution
+- corrective production
 
-### 5.5 Production Order containment rule
+### 5.5 Version preservation rule
 
-A Production Order may not span multiple Service Orders or multiple Production Bags.
+Every corrective version must preserve:
+- Original Production Order
+- Original Operational Resource
+- Corrective Operational Resource
+- Audit history
 
 ### 5.6 Financial isolation rule
 
-Production Order and Production Bag relationships may reference Service Order context, but neither becomes the source of truth for commercial values or settlement state.
+Production Order data may reference Service Order context, but it must not become the source of truth for prices, discounts, payment status, commissions, margins, or profit.
 
 ---
 
@@ -237,62 +218,54 @@ Production Order and Production Bag relationships may reference Service Order co
 
 ### 6.1 Customer
 - owns customer identity and relationship continuity
-- owns customer-facing profile and contact context
-- does not own order lifecycle or production execution
+- may be linked to multiple Service Orders
+- does not own production execution
 
 ### 6.2 Service Order
 - owns the commercial commitment
-- owns delivery commitment baseline
-- owns customer approvals and communication context
-- owns financial source-of-truth references for business amounts
-- owns Commercial Responsible and Technical Measurement Responsible assignments
+- owns the financial source of truth
+- owns customer-facing lifecycle meaning
+- owns item scope
+- owns promised delivery commitment
 
 ### 6.3 Service Order Item
-- owns item-level scope, quantity, valuation, and delivery applicability
-- owns item-level production need inside the Service Order
-- owns item-level links to production, quality, payment allocation, warranty, and rejection history
+- owns item-level commercial scope
+- owns item-level execution applicability inside the parent Service Order
+- participates in production, quality, delivery, payment, warranty, and rejection flows
 
-### 6.4 Production Bag
-- owns governed grouping of one Service Order's production scope
-- owns current Primary Operational Resource
-- owns responsibility transfer history
-- owns the invariant that all contained items and Production Orders belong to the same Service Order and Customer
-
-### 6.5 Production Order
+### 6.4 Primary Production Order
 - owns operational execution state
-- owns execution QR identity
-- owns planned and produced quantities
-- owns operational assignment, status progression, and execution history
-- must remain free of financial source-of-truth ownership
+- owns operational QR identity
+- owns assignment history and status progression
+- owns workflow event registration and Operational Diary update context
+- may contain all Service Order Items belonging to the same Service Order
+
+### 6.5 Production Order Version
+- owns corrective lineage state for rework, warranty execution, and corrective production
+- must remain linked to the original Production Order
+- must preserve original and corrective operational accountability
 
 ### 6.6 Operational Resource
 - owns execution-capacity identity and capability profile
-- owns assignment history, skill profile, and availability context
-- participates in production, quality, rework, and warranty flows without owning those aggregates
+- participates in assignment, execution, quality, rework, and warranty flows
+- does not own the commercial source of truth
 
-### 6.7 Quality Record
-- owns inspection result and release-gate decision
-- owns defects, findings, and corrective-action requirement records
+### 6.7 Physical Bag Context
+- represents only physical support usage
+- holds pieces and printed Production Order copy (A5)
+- has no independent business, QR, or workflow authority
 
-### 6.8 Rework Case
-- owns corrective flow for internally originated defects
-- owns original-responsibility and corrective-responsibility attribution
+### 6.8 Quality and Corrective Entities
+- own inspection outcomes, defects, rework, warranty execution, and corrective attribution
+- preserve operational lineage back to the Production Order
 
-### 6.9 Warranty Case
-- owns post-delivery customer responsibility under warranty
-- owns the distinction between Warranty Adjustment and Warranty Execution
+### 6.9 Financial Exception
+- owns exceptional financial correction flows
+- remains anchored to Service Order commercial truth
 
-### 6.10 Pickup Authorization and Evidence
-- own third-party collection authorization and proof-of-release context
-- own linkage to the Service Order release event
-
-### 6.11 Workflow Definition and SLA Policy
-- own configurable status models, transition rules, time controls, and policy behavior
-- do not own transactional business facts generated by execution
-
-### 6.12 Audit and Custody Events
+### 6.10 Audit and Custody Events
 - own immutable traceability
-- do not replace the transactional aggregates they describe
+- do not replace transactional source-of-truth ownership
 
 ---
 
@@ -300,45 +273,44 @@ Production Order and Production Bag relationships may reference Service Order co
 
 ### 7.1 Commercial ownership
 
-Commercial data belongs to the Service Order domain.
+Commercial and financial truth belongs to the Service Order domain.
 
 This includes:
 - customer commitment
-- item pricing and adjustments
+- pricing and adjustments
 - payment applicability
-- delivery type at the commercial level
-- promised delivery commitment
+- delivery commitment
+- financial exception business context
 
 ### 7.2 Operational ownership
 
-Operational execution data belongs to the Production Execution domain.
+Operational execution truth belongs to the Production Order domain.
 
 This includes:
-- Production Bag composition
-- current Primary Operational Resource for the bag
-- Production Order lifecycle and execution
-- operational QR usage
-- execution timestamps and production progress
+- execution responsibility
+- execution QR ownership
+- production status
+- workflow events
+- Operational Diary update context
+- version lineage
 
-### 7.3 Quality ownership
+### 7.3 Physical context ownership
 
-Inspection outcomes, defects, rework initiation, warranty execution evidence, and release gates belong to the Quality and Corrective Flows domain.
+Physical bag and location usage belong to delivery/pickup or physical-traceability context, not to core operational truth ownership.
 
-### 7.4 Financial ownership
+### 7.4 Quality ownership
 
-Payment allocations, settlement state, reconciliation outputs, and financial exceptions belong to the Finance and Settlement domain.
-
-The Service Order remains the business source of truth for requested commercial amounts.
+Inspection outcomes, rework, warranty execution, and corrective attribution belong to the Quality and Corrective Flows domain.
 
 ### 7.5 Workflow ownership
 
-Status definitions, transition permissions, SLA triggers, and delivery-date calculation policies belong to the Workflow and SLA Policy domain.
+Workflow and SLA policy own rules, not transactional execution truth.
 
 ### 7.6 Audit ownership
 
-The immutable record of what happened belongs to the Audit and Traceability domain.
+Audit owns immutable records of what happened.
 
-The meaning of why it happened remains owned by the originating business domain.
+The originating business domain owns the meaning of what happened.
 
 ---
 
@@ -346,27 +318,28 @@ The meaning of why it happened remains owned by the originating business domain.
 
 ### 8.1 General rule
 
-A consuming domain may reference another domain's aggregate identity, but may not take over ownership of that aggregate's core meaning.
+A consuming domain may reference another domain's aggregate identity, but may not assume ownership of that aggregate's source-of-truth fields.
 
 ### 8.2 Required reference rules
 
 - Customer may be referenced by Service Orders, warranty cases, pickup authorization, and CRM interactions.
-- Service Order may be referenced by Production Bag, Production Orders, quality records, rework, warranty, delivery, pickup, and finance.
-- Service Order Item may be referenced by Production Orders, quality records, payments, rework, and warranty.
-- Production Bag may be referenced by Production Orders, custody events, location events, and dashboards.
-- Production Order may be referenced by quality, rework, warranty execution, QR scans, and operational diary records.
-- Operational Resource may be referenced by Production Bag, Production Order assignment, quality inspection, rework, warranty execution, and ranking views.
-- Workflow definitions may be referenced by all transactional aggregates that require lifecycle control.
-- Audit events may reference any aggregate, but do not own transactional state.
+- Service Order may be referenced by Production Orders, quality records, warranty, delivery, pickup, and finance.
+- Service Order Item may be referenced by Production Order execution scope, quality, delivery, payment allocation, rework, and warranty.
+- Production Order may be referenced by quality, rework, warranty execution, QR scans, chain-of-custody events, and operational diary records.
+- Production Order Version may be referenced by corrective flows and audit records.
+- Physical Bag Context may be referenced by custody, movement, pickup, and location visibility when physically used.
+- Operational Resource may be referenced by assignment, quality inspection, rework, warranty execution, and ranking views.
+- Workflow definitions may be referenced by all aggregates that require lifecycle governance.
+- Audit events may reference any aggregate without taking transactional ownership.
 
-### 8.3 Forbidden cross-domain ownership patterns
+### 8.3 Forbidden ownership patterns
 
 The model must avoid:
-- Finance becoming the owner of production execution state
-- Production becoming the owner of commercial price truth
-- Audit becoming the owner of workflow state
-- Reporting becoming the owner of transactional truth
-- Quality becoming the owner of customer master data
+- Finance owning production execution state
+- Production owning commercial price truth
+- Physical Bag Context owning operational truth
+- Audit owning workflow state
+- Reporting owning transactional truth
 
 ---
 
@@ -374,21 +347,22 @@ The model must avoid:
 
 ### 9.1 Audit boundary
 
-Audit is a dedicated cross-cutting domain, but not the owner of business meaning.
+Audit is a dedicated cross-cutting domain and does not replace business-domain ownership.
 
 ### 9.2 Audit-owned records
 
-Audit must own immutable records for:
+Audit must preserve immutable records for:
 - create, update, delete, and cancel actions
 - status changes
-- responsibility transfers
 - Production Order QR execution events
+- operational responsibility assumption events
+- workflow event registration
+- Operational Diary updates
 - quality decisions
-- rework reassignment
-- warranty actions
+- rework and warranty corrective lineage
 - payment and exception actions
 - pickup authorization and release events
-- location changes
+- physical location or bag movement context when applicable
 
 ### 9.3 Audit reference rule
 
@@ -412,12 +386,12 @@ A business event is owned by the domain where the business fact originates.
 ### 10.2 Event ownership examples
 
 - `ServiceOrderCreated`, `ServiceOrderApproved`, and `DeliveryCommitmentChanged` belong to Service Order Management.
-- `ProductionBagAssigned`, `ProductionBagTransferred`, and `ProductionOrderStarted` belong to Production Execution.
-- `OperationalResourceAssigned` belongs to Production Execution, with Operational Resource referenced as participant.
+- `PrimaryProductionOrderGenerated`, `ProductionOrderStarted`, `OperationalResponsibilityAssumed`, `ProductionStatusUpdated`, and `WorkflowEventRegistered` belong to Production Execution.
+- `ProductionOrderVersionCreated` belongs to Production Execution and exists only for rework, warranty execution, or corrective production.
 - `QualityPassed`, `QualityRejected`, `ReworkOpened`, and `WarrantyExecutionOpened` belong to Quality and Corrective Flows.
 - `PaymentAllocated`, `SettlementConfirmed`, and `FinancialExceptionOpened` belong to Finance and Settlement.
 - `PickupAuthorized` and `PickupCompleted` belong to Delivery and Pickup.
-- `WorkflowStatusChanged` and `SLAViolated` belong to the domain that owns the affected aggregate, while Workflow and SLA Policy own the governing rules behind the change.
+- `PhysicalBagAssociated` and `PhysicalBagMoved` are physical-traceability events only and do not create independent bag business authority.
 - `AuditEventRecorded` and `CustodyEventRecorded` belong to Audit and Traceability.
 
 ### 10.3 Event propagation rule
@@ -430,63 +404,60 @@ Downstream consumers may react to events, but the originating domain remains the
 
 ### 11.1 Workflow policy ownership
 
-Workflow and SLA Policy owns:
+Workflow and SLA Policy own:
 - status definitions
 - allowed transitions
 - approval requirements
 - SLA trigger logic
-- delivery-date suggestion policy
+- delivery-date policy
 - escalation rules
-- visibility rules driven by status configuration
+- visibility rules driven by configuration
 
-### 11.2 Business lifecycle ownership
+### 11.2 Transactional workflow ownership
 
-The business aggregate still owns its own current lifecycle state.
+The current lifecycle state remains owned by the relevant transactional aggregate.
 
 Examples:
 - Service Order owns current commercial status.
 - Production Order owns current execution status.
-- Production Bag owns current bag status and current Primary Operational Resource.
 - Rework owns current corrective status.
 - Warranty owns current warranty-resolution status.
+- Physical Bag Context owns no independent workflow state.
 
-### 11.3 Workflow-to-aggregate rule
+### 11.3 Workflow execution anchor
 
-Workflow definitions govern many transactional aggregates of the same type, but they do not replace aggregate ownership.
+Workflow events triggered by operational work must be registered against the Production Order.
 
 ---
 
-## 12. Approved Production Model for Conceptual Data Design
+## 12. Approved Final Operational Model for Conceptual Data Design
 
-The following model is mandatory for conceptual data design in this version of the guideline and takes precedence for conceptual ownership and cardinality decisions in this document:
+The following model is mandatory for conceptual data design in this guideline:
 
-- 1 Customer -> many Service Orders
-- 1 Service Order -> exactly 1 Production Bag
-- 1 Production Bag -> exactly 1 Customer
-- 1 Production Bag -> exactly 1 current Primary Operational Resource
-- 1 Production Bag may contain multiple Service Order Items belonging to the same Service Order
-- 1 Production Bag may contain multiple Production Orders belonging to the same Service Order
-- responsibility transfers must be auditable
-
-Conceptual implications:
-- Production Bag is a governed aggregate, not just a convenience reference
-- the bag is the controlled grouping boundary for the Service Order's production scope
-- bag composition may vary over time, but bag ownership and customer consistency must not be violated
-- parallel operational work may exist through multiple Production Orders inside the same Bag, but current bag primacy remains singular at any point in time
-- transfer history must preserve both original and current responsibility lineage
+- The physical production bag is not a primary business entity.
+- The primary operational execution entity is the Production Order.
+- The physical production bag is only a physical storage and transport container used to hold Service Order pieces and the printed Production Order (A5).
+- The physical production bag does not require business numbering, independent QR Code, independent business identity, or independent workflow.
+- QR Codes belong exclusively to the Production Order.
+- Operational Resources scan the Production Order QR Code to start execution, assume operational responsibility, update production status, register workflow events, and update the Operational Diary.
+- 1 Customer may have multiple Service Orders.
+- 1 Service Order contains multiple Service Order Items.
+- 1 Service Order generates exactly 1 Primary Production Order.
+- The Primary Production Order may contain all Service Order Items belonging to that Service Order.
+- Production Order versioning is used only for rework, warranty execution, and corrective production.
 
 ---
 
 ## 13. Final Modeling Guidance
 
-The conceptual model should be treated as a business-ownership map before any schema design begins.
+The conceptual model should be used as a business-ownership map before any logical or physical persistence design begins.
 
-The recommended order for downstream detailed modeling is:
+Recommended downstream order:
 1. confirm bounded contexts
-2. confirm aggregate roots and invariants
-3. confirm approved cardinalities
-4. confirm ownership of commercial, operational, financial, and audit facts
-5. confirm event boundaries and workflow boundaries
-6. only then derive logical and physical persistence models
+2. confirm source-of-truth ownership
+3. confirm Primary Production Order cardinality per Service Order
+4. confirm version-lineage rules
+5. confirm audit and workflow event ownership
+6. only then derive logical and physical persistence structures
 
-No physical schema decision should violate the ownership boundaries defined in this document.
+No downstream design should promote the physical bag to an independent business authority.
