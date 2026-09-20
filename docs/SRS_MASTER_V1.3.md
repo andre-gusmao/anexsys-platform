@@ -638,6 +638,7 @@ The platform must include a Delivery Date Engine that calculates the initial sug
 1. Automatic delivery date suggestion
 - The platform shall automatically suggest delivery dates during Service Order creation.
 - Default day-of-week rollover behavior (baseline/default rule, tenant-configurable):
+  - Interpretation rule: "next <weekday>" means the same weekday in the subsequent calendar week (minimum +7 calendar days before calendar-validity adjustment).
   - Monday intake -> next Monday delivery
   - Tuesday intake -> next Tuesday delivery
   - Wednesday intake -> next Wednesday delivery
