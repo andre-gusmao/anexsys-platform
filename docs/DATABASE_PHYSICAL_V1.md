@@ -891,7 +891,7 @@ Key columns:
 
 Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
-- one active current assignment per service order
+- UQ: filtered uniqueness on `(service_order_id)` when `is_current = true`
 
 #### `physical_bag_support_contexts`
 Purpose:
@@ -946,7 +946,7 @@ Key columns:
 
 Constraints:
 - UQ: `(workflow_definition_id, status_code)`
-- UQ: one start status per workflow
+- UQ: filtered uniqueness on `(workflow_definition_id)` when `is_start = true`
 
 #### `sla_rules`
 Key columns:
@@ -980,8 +980,9 @@ Key columns:
 - standard audit columns
 
 Constraints:
-- UQ: filtered uniqueness on `(production_order_id)` when `is_active = true`
+- UQ: `(production_order_id)` to preserve one QR identity row per Production Order
 - UQ: `(tenant_id, code_value)`
+- lifecycle rule: QR reissue or revocation updates the same QR identity row under audit rather than creating a second QR identity row for the same Production Order
 
 #### `qr_events`
 Key columns:
@@ -1101,6 +1102,7 @@ Key columns:
 Constraints:
 - CHECK: `pickup_authorization_id` is mutually exclusive with `production_order_version_id`
 - CHECK: `service_order_id` is mandatory for Service Order approvals and for Production Order Version approvals
+- CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`, or `production_order_version_id` together with its parent `service_order_id`, or standalone `pickup_authorization_id`
 - lineage rule: when `production_order_version_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order lineage
 - immutable decision trace after final decision
 
