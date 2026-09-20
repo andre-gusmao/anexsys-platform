@@ -667,12 +667,12 @@ Delivery Type must affect:
 The platform shall automatically suggest delivery dates.
 
 Default rule:
-- Monday -> next Monday
-- Tuesday -> next Tuesday
-- Wednesday -> next Wednesday
-- Thursday -> next Thursday
-- Friday -> next Friday
-- Saturday -> next Saturday
+- Monday -> the immediately following Monday
+- Tuesday -> the immediately following Tuesday
+- Wednesday -> the immediately following Wednesday
+- Thursday -> the immediately following Thursday
+- Friday -> the immediately following Friday
+- Saturday -> the immediately following Saturday
 - Sunday -> next valid business day according to the applicable calendar rules
 
 The platform must automatically consider:
@@ -2645,6 +2645,7 @@ The following areas were modified or added in V1.2:
 ### 48.6 Production Order printed document updates
 - Production Orders must display a large delivery day number and a smaller month.
 - Highly visible indicators such as `[ EXPRESS ]`, `[ WARRANTY ]`, `[ REWORK ]`, and `[ PRIORITY ]` are required when applicable.
+- The printed Production Order must support an A5 operational format when printed.
 - Production Orders remain financially clean and must not display financial data.
 
 ### 48.7 Physical Storage Location updates
