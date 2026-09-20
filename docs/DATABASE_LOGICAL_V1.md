@@ -45,14 +45,15 @@ ANEXSYS logical data design must preserve the approved business split between co
 The logical model must preserve these approved operating rules:
 - 1 Customer -> many Service Orders
 - 1 Service Order -> many Service Order Items
-- 1 Service Order -> exactly 1 Production Order as the primary/base operational record
-- 1 Production Order -> many Production Order Versions over time when corrective lineage is required
+- 1 Service Order -> exactly 1 Primary Production Order
+- 1 Primary Production Order -> many Production Order Versions over time when corrective lineage is required
 - QR Code belongs only to Production Order
 - Operational Resources execute work through Production Order events
 - Rework, Warranty Execution, and Corrective Production use Production Order version lineage
 - the Production Bag is never modeled as a primary business entity and never receives independent numbering, independent QR ownership, or independent workflow ownership
 
 Logical design intent:
+- Tenant and Branch logical entities preserve governance, branch-local policy, and branch-scoped business boundaries
 - Customer and CRM logical entities preserve relationship identity and customer interaction history
 - Service Order logical entities preserve commercial scope, delivery commitment, and financial truth
 - Production logical entities preserve operational execution, responsibility, QR identity, and corrective version lineage
@@ -67,6 +68,7 @@ Logical design intent:
 
 Owns logical entities:
 - Tenant
+- Branch
 
 ### 2.2 Customer and CRM domain
 
@@ -85,7 +87,7 @@ Owns logical entities:
 ### 2.4 Production Execution domain
 
 Owns logical entities:
-- Production Order
+- Primary Production Order
 - Production Order Version
 
 ### 2.5 Operational Resource domain
@@ -118,6 +120,7 @@ Owns logical entities:
 - Pickup QR Code
 - Temporary Pickup Code
 - Storage Location
+- Storage Location Assignment
 
 Support-context note:
 - Physical Production Bag Support Context belongs to Delivery and Pickup traceability as optional physical context only and is intentionally excluded from the logical entity catalog
@@ -155,9 +158,10 @@ Owns logical entities:
 
 Logical aggregate roots:
 - Tenant
+- Branch
 - Customer
 - Service Order
-- Production Order
+- Primary Production Order
 - Operational Resource
 - Quality Record
 - Customer Rejection
@@ -166,6 +170,7 @@ Logical aggregate roots:
 - Warranty Execution
 - Financial Exception
 - Pickup Authorization
+- Storage Location
 - QR Code
 - Custody Event
 - Audit Event
@@ -174,9 +179,11 @@ Logical aggregate roots:
 - Digital Approval
 
 Logical aggregate-root guidance:
+- Tenant is the logical root for top-level isolation and policy scope
+- Branch is the logical root for branch-local governance, calendars, and business scope
 - Customer is the logical root for contact, interaction, and measurement history
 - Service Order is the logical root for commercial scope and financial truth
-- Production Order is the logical root for operational execution and corrective version lineage
+- Primary Production Order is the logical root for operational execution and corrective version lineage
 - Pickup Authorization is the logical root for pickup credentials and release authorization artifacts
 - Warranty Adjustment and Warranty Execution remain distinct logical roots because the approved model preserves them as separate business responsibilities
 - Workflow Definition is the logical root for configurable lifecycle policy
@@ -191,14 +198,15 @@ Logical aggregate-root guidance:
 | Logical Entity | Logical Responsibility | Owning Domain | Governing Aggregate Root |
 |---|---|---|---|
 | Tenant | tenant isolation and policy boundary | Tenant Governance | Tenant |
+| Branch | branch-local business unit and policy boundary | Tenant Governance | Branch |
 | Customer | customer relationship identity | Customer and CRM | Customer |
 | Customer Contact | customer reachability and communication preferences | Customer and CRM | Customer |
 | Customer Interaction | communication, complaint, and follow-up history | Customer and CRM | Customer |
 | Measurement Record | versioned measurement facts and attribution | Customer and CRM | Customer |
 | Service Order | commercial commitment and financial truth | Service Order | Service Order |
 | Service Order Item | itemized commercial and execution scope | Service Order | Service Order |
-| Production Order | primary operational execution identity and state | Production Execution | Production Order |
-| Production Order Version | corrective version lineage subordinate to the primary Production Order state | Production Execution | Production Order |
+| Primary Production Order | base operational execution identity and state for the Production Order lineage | Production Execution | Primary Production Order |
+| Production Order Version | corrective version lineage subordinate to the Primary Production Order state | Production Execution | Primary Production Order |
 | Operational Resource | execution-capacity identity and capability ownership | Operational Resource | Operational Resource |
 | Quality Record | inspection result and release decision | Quality and Corrective | Quality Record |
 | Customer Rejection | customer-facing rejection outcome | Quality and Corrective | Customer Rejection |
@@ -213,7 +221,8 @@ Logical aggregate-root guidance:
 | Pickup Token | tokenized pickup credential | Delivery and Pickup | Pickup Authorization |
 | Pickup QR Code | scannable pickup credential | Delivery and Pickup | Pickup Authorization |
 | Temporary Pickup Code | short-lived pickup credential | Delivery and Pickup | Pickup Authorization |
-| Storage Location | visible retrieval and physical placement catalog context | Delivery and Pickup | Service Order |
+| Storage Location | visible retrieval and physical placement catalog context | Delivery and Pickup | Storage Location |
+| Storage Location Assignment | current and historical location-assignment history for Service Order retrieval visibility | Delivery and Pickup | Service Order |
 | QR Code | operational scan identity for Production Order | QR and Operational Tracking | QR Code |
 | QR Event | individual execution scan trace | QR and Operational Tracking | QR Code |
 | Custody Event | physical handoff and chain-of-custody trace | Audit and Traceability | Custody Event |
@@ -230,46 +239,52 @@ Logical support rule:
 - Physical Production Bag Support Context is intentionally excluded from the logical entity catalog and aggregate-root list.
 - It may exist only as optional support context associated to Service Order and Production Order retrieval or transport flows; it is not a logical aggregate root and not a primary business entity.
 - The Governing Aggregate Root column identifies which listed aggregate root governs a logical entity's lifecycle and boundary; it does not imply that every listed logical entity is itself an aggregate root.
+- In this logical model, `Primary Production Order` is the base logical entity that fulfills the approved Production Order role, while `Production Order` may still be used in narrative lineage language for the base record plus its corrective versions.
 
 ---
 
 ## 5. Entity Responsibilities
 
-### 5.1 Customer and CRM responsibilities
+### 5.1 Tenant Governance responsibilities
+- Tenant owns top-level isolation, tenant-wide policy, and tenant boundary identity.
+- Branch owns branch-local business scope, branch calendars, and branch-scoped operating context.
+
+### 5.2 Customer and CRM responsibilities
 - Customer owns customer identity continuity across Service Orders.
 - Customer Contact owns channel-specific contact and communication preference facts.
 - Customer Interaction owns traceable communication and service-history events.
 - Measurement Record owns versioned measurement facts, attribution, and auditable measurement history.
 
-### 5.2 Service Order responsibilities
+### 5.3 Service Order responsibilities
 - Service Order owns the commercial commitment, customer-facing lifecycle, delivery commitment, and financial source of truth.
 - Service Order Item owns item-level scope inside the parent Service Order and participates in production, payment, quality, warranty, rejection, and delivery relationships.
 
-### 5.3 Production responsibilities
-- Production Order owns operational execution state, operational QR identity, execution status progression, assignment context, workflow-event registration, and Operational Diary linkage.
+### 5.4 Production responsibilities
+- Primary Production Order owns operational execution state, operational QR identity, execution status progression, assignment context, workflow-event registration, and Operational Diary linkage.
 - Production Order Version owns corrective lineage state for rework, warranty execution, and corrective production while remaining subordinate to the original Production Order lineage.
 
-### 5.4 Operational Resource responsibilities
+### 5.5 Operational Resource responsibilities
 - Operational Resource owns capability profile, qualification context, and operational assignment identity.
 - Operational responsibility is realized through Production Order execution events rather than through Service Order financial ownership.
 
-### 5.5 Quality responsibilities
+### 5.6 Quality responsibilities
 - Quality Record owns inspection results and release decisions.
 - Customer Rejection owns post-delivery rejection facts.
 - Rework Case owns internal corrective execution lifecycle.
 - Warranty Adjustment owns adjustment-only warranty obligations.
 - Warranty Execution owns execution-related warranty obligations and corrective operational lineage.
 
-### 5.6 Financial responsibilities
+### 5.7 Financial responsibilities
 - Payment Record owns the trace of payment transaction, receipt, authorization, reconciliation, and settlement outcome.
 - Partial Payment owns the logical fact that only part of a Service Order or Service Order Item financial obligation has been settled.
 - Financial Exception owns overpayment, underpayment, correction, and exceptional settlement handling.
 - Fiscal Document owns legal and fiscal issuance lifecycle while remaining anchored to Service Order commercial truth.
 
-### 5.7 Pickup and traceability responsibilities
+### 5.8 Pickup and traceability responsibilities
 - Pickup Authorization owns who may collect, under what authorization path, and within what validity window.
 - Pickup Token, Pickup QR Code, and Temporary Pickup Code own supporting authorization artifacts under Pickup Authorization.
 - Storage Location owns visible retrieval and placement definition.
+- Storage Location Assignment owns current-versus-historical retrieval placement history within the Service Order lifecycle.
 - QR Code owns operational scan identity only for Production Order.
 - QR Event owns each execution-scan occurrence.
 - Custody Event owns chain-of-custody progression where physical handoff or release trace is required.
@@ -277,7 +292,7 @@ Logical support rule:
 - CCTV Reference owns optional surveillance evidence linkage used in custody or pickup trace.
 - Camera Snapshot owns optional captured-image evidence used in custody or pickup trace.
 
-### 5.8 Workflow and approval responsibilities
+### 5.9 Workflow and approval responsibilities
 - Workflow Definition owns lifecycle policy.
 - Status Definition owns the meaning of individual statuses within a workflow.
 - SLA Rule owns timing, pause, resume, completion, and violation logic.
@@ -291,6 +306,9 @@ Logical support rule:
 ### 6.1 Tenant root lineage
 - Tenant -> Customer
 - Tenant -> Service Order
+- Tenant -> Branch
+- Branch -> Customer
+- Branch -> Service Order
 
 ### 6.2 Customer root lineage
 - Customer -> Customer Contact
@@ -306,17 +324,17 @@ Logical support rule:
 - Service Order -> Pickup Authorization
 - Service Order -> Digital Approval reference
 - Service Order -> Communication Event reference
-- Service Order -> Storage Location history
-- Service Order -> exactly 1 Production Order as the primary/base operational record
+- Service Order -> Storage Location Assignment history
+- Service Order -> exactly 1 Primary Production Order
 
 ### 6.4 Production root lineage
-- Production Order -> Production Order Version
-- Production Order -> QR Code
-- Production Order -> QR Event
-- Production Order -> Quality Record reference lineage
-- Production Order -> Rework Case reference lineage
-- Production Order -> Warranty Execution reference lineage
-- Production Order -> Operational Resource assignment and execution-event lineage
+- Primary Production Order -> Production Order Version
+- Primary Production Order -> QR Code
+- Primary Production Order -> QR Event
+- Primary Production Order -> Quality Record reference lineage
+- Primary Production Order -> Rework Case reference lineage
+- Primary Production Order -> Warranty Execution reference lineage
+- Primary Production Order -> Operational Resource assignment and execution-event lineage
 
 ### 6.5 Quality and corrective lineage
 - Service Order Item -> Customer Rejection
@@ -332,6 +350,7 @@ Logical support rule:
 - Pickup Authorization -> Pickup Token
 - Pickup Authorization -> Pickup QR Code
 - Pickup Authorization -> Temporary Pickup Code
+- Storage Location -> Storage Location Assignment reference usage
 - Custody Event -> CCTV Reference
 - Custody Event -> Camera Snapshot
 - Workflow Definition -> Status Definition
@@ -344,13 +363,14 @@ Logical support rule:
 | Logical Entity | Logical Owner | Owned Meaning |
 |---|---|---|
 | Tenant | Tenant Governance | tenant isolation and policy boundary |
+| Branch | Tenant Governance | branch-local business unit and policy boundary |
 | Customer | Customer and CRM | customer identity and relationship continuity |
 | Customer Contact | Customer and CRM | contact channels and preferences |
 | Customer Interaction | Customer and CRM | interaction history |
 | Measurement Record | Customer and CRM | measurement version facts |
 | Service Order | Service Order | commercial and financial truth |
 | Service Order Item | Service Order | item-level business scope |
-| Production Order | Production Execution | operational execution truth |
+| Primary Production Order | Production Execution | operational execution truth |
 | Production Order Version | Production Execution | corrective operational lineage |
 | Operational Resource | Operational Resource | capacity identity and capability ownership |
 | Quality Record | Quality and Corrective | inspection outcome |
@@ -366,7 +386,8 @@ Logical support rule:
 | Pickup Token | Delivery and Pickup | tokenized pickup credential |
 | Pickup QR Code | Delivery and Pickup | scannable pickup credential |
 | Temporary Pickup Code | Delivery and Pickup | temporary pickup credential |
-| Storage Location | Delivery and Pickup | retrieval and placement visibility |
+| Storage Location | Delivery and Pickup | retrieval and placement catalog visibility |
+| Storage Location Assignment | Delivery and Pickup under Service Order lifecycle | current and historical retrieval placement linkage |
 | QR Code | QR and Operational Tracking | Production Order scan identity |
 | QR Event | QR and Operational Tracking | scan-event trace |
 | Custody Event | Audit and Traceability | chain-of-custody trace |
@@ -387,18 +408,21 @@ Logical support rule:
 |---|---|---|---|
 | Tenant | governs | Customer | customer identity exists inside one tenant boundary |
 | Tenant | governs | Service Order | commercial truth exists inside one tenant boundary |
+| Tenant | governs | Branch | tenant owns branch-local operating scope |
+| Branch | serves | Customer | customer relationship is branch-scoped for operational context |
+| Branch | governs | Service Order | commercial commitments are created within a branch context |
 | Customer | owns | Customer Contact | contact channels belong to customer identity |
 | Customer | owns | Customer Interaction | interactions remain customer-traceable |
 | Customer | owns | Measurement Record | measurements remain customer-traceable and versioned |
 | Customer | places | Service Order | customer initiates a commercial commitment |
 | Service Order | contains | Service Order Item | itemized business scope lives under Service Order |
-| Service Order | generates | Production Order | one Service Order creates exactly one Production Order as the single base operational root |
-| Production Order | covers execution scope for | Service Order Item | the primary Production Order state covers all items in the same Service Order scope |
-| Production Order | is versioned by | Production Order Version | corrective lineage extends the same operational root |
-| Production Order | is executed by | Operational Resource | operational work is performed through Production Order execution |
-| Production Order | is identified by | QR Code | QR ownership belongs only to Production Order |
+| Service Order | generates | Primary Production Order | one Service Order creates exactly one Primary Production Order as the single base operational root |
+| Primary Production Order | covers execution scope for | Service Order Item | the Primary Production Order covers all items in the same Service Order scope |
+| Primary Production Order | is versioned by | Production Order Version | corrective lineage extends the same operational root |
+| Primary Production Order | is executed by | Operational Resource | operational work is performed through Production Order execution |
+| Primary Production Order | is identified by | QR Code | QR ownership belongs only to Production Order |
 | QR Code | generates | QR Event | scan history is event-based |
-| Production Order | is evaluated by | Quality Record | inspection and release remain operationally anchored |
+| Primary Production Order | is evaluated by | Quality Record | inspection and release remain operationally anchored |
 | Service Order Item | may lead to | Customer Rejection | rejection is item-scoped |
 | Production Order lineage | may open | Rework Case | internal correction preserves original operational lineage |
 | Service Order Item | may require | Warranty Adjustment | non-execution warranty obligation is item-scoped |
@@ -414,11 +438,12 @@ Logical support rule:
 | Pickup Authorization | may issue | Pickup Token | tokenized pickup authorization artifact |
 | Pickup Authorization | may issue | Pickup QR Code | scannable pickup authorization artifact |
 | Pickup Authorization | may issue | Temporary Pickup Code | short-lived pickup authorization artifact |
+| Service Order | uses | Storage Location Assignment | retrieval visibility history remains under the Service Order lifecycle |
+| Storage Location Assignment | references | Storage Location | assignment history points to the shared location catalog |
 | Custody Event | may include | CCTV Reference | custody trace may include surveillance evidence linkage |
 | Custody Event | may include | Camera Snapshot | custody trace may include captured image evidence |
-| Service Order | is located through | Storage Location | retrieval visibility is preserved historically |
 | Service Order | is traced by | Custody Event | custody progression is auditable across commercial, delivery, and pickup stages |
-| Production Order | is traced by | Custody Event | custody progression is auditable across operational, quality, rework, and warranty stages |
+| Primary Production Order | is traced by | Custody Event | custody progression is auditable across operational, quality, rework, and warranty stages |
 | Any governed entity | is recorded by | Audit Event | immutable audit trace remains cross-domain |
 | Workflow Definition | governs | Status Definition | workflow policy gives meaning to statuses |
 | Workflow Definition | governs | SLA Rule | workflow policy governs timing behavior |
@@ -434,21 +459,24 @@ Logical support rule:
 
 | Parent | Child | Cardinality | Logical Constraint |
 |---|---|---|---|
+| Tenant | Branch | 1 -> many | each Branch belongs to one Tenant |
 | Tenant | Customer | 1 -> many | each Customer belongs to one Tenant |
 | Tenant | Service Order | 1 -> many | each Service Order belongs to one Tenant |
+| Branch | Customer | 1 -> many | each Customer belongs to one primary branch relationship for operating context |
+| Branch | Service Order | 1 -> many | each Service Order belongs to one Branch |
 | Customer | Customer Contact | 1 -> many | contact channels belong to one Customer |
 | Customer | Customer Interaction | 1 -> many | interactions remain customer-owned |
 | Customer | Measurement Record | 1 -> many | measurement history is versioned over time |
 | Customer | Service Order | 1 -> many | one customer may originate many Service Orders |
 | Service Order | Service Order Item | 1 -> many | items cannot exist outside the parent Service Order |
-| Service Order | Production Order | 1 -> 1 | exactly one Production Order exists as the primary operational root per Service Order |
-| Production Order | Production Order Version | 1 -> many over time | versions exist only for rework, warranty execution, or corrective production under the same primary lineage |
-| Production Order | QR Code | 1 -> 1 active | operational QR identity belongs only to Production Order |
-| Production Order | QR Event | 1 -> many | scan history is event-based |
-| Production Order | Quality Record | 1 -> many | multiple inspections may exist over time |
-| Production Order | Rework Case | 1 -> many | many corrective cases may reference the same lineage over time |
-| Production Order | Warranty Execution | 1 -> many | many execution-related warranty events may reference the same lineage over time |
-| Production Order | Operational Resource assignment | 1 -> many over time | responsibility is longitudinal and auditable |
+| Service Order | Primary Production Order | 1 -> 1 | exactly one Primary Production Order exists per Service Order |
+| Primary Production Order | Production Order Version | 1 -> many over time | versions exist only for rework, warranty execution, or corrective production under the same primary lineage |
+| Primary Production Order | QR Code | 1 -> 1 active | operational QR identity belongs only to Production Order |
+| Primary Production Order | QR Event | 1 -> many | scan history is event-based |
+| Primary Production Order | Quality Record | 1 -> many | multiple inspections may exist over time |
+| Primary Production Order | Rework Case | 1 -> many | many corrective cases may reference the same lineage over time |
+| Primary Production Order | Warranty Execution | 1 -> many | many execution-related warranty events may reference the same lineage over time |
+| Primary Production Order | Operational Resource assignment | 1 -> many over time | responsibility is longitudinal and auditable |
 | Service Order | Payment Record | 1 -> many | multiple payment records may be linked to a single Service Order |
 | Payment Record | Partial Payment | 1 -> many when allocated in portions | one recorded payment may be split into partial obligations |
 | Service Order | Financial Exception | 1 -> many | many financial corrections may occur over time |
@@ -460,11 +488,12 @@ Logical support rule:
 | Pickup Authorization | Temporary Pickup Code | 1 -> many | short-lived release artifacts are policy-driven |
 | Custody Event | CCTV Reference | 1 -> many when evidence is captured | custody evidence may include one or more surveillance references |
 | Custody Event | Camera Snapshot | 1 -> many when evidence is captured | custody evidence may include one or more captured images |
-| Service Order | Storage Location | 1 -> many over time by reference history | current and historical retrieval location must be visible through referenced location assignments |
+| Service Order | Storage Location Assignment | 1 -> many over time | current and historical retrieval location must be preserved through assignment history |
+| Storage Location | Storage Location Assignment | 1 -> many by reference use | many assignment-history records may reference the same location catalog entry |
 | Service Order | Digital Approval | 1 -> many | multiple approval cycles may exist over time |
 | Service Order | Communication Event | 1 -> many | communication history is longitudinal |
 | Service Order | Custody Event | 1 -> many where custody applies | intake, storage, delivery, and pickup trace remain auditable |
-| Production Order | Custody Event | 1 -> many where custody applies | operational, quality, rework, and warranty trace remain auditable |
+| Primary Production Order | Custody Event | 1 -> many where custody applies | operational, quality, rework, and warranty trace remain auditable |
 | Any governed entity | Audit Event | 1 -> many | audit history is immutable and longitudinal |
 | Workflow Definition | Status Definition | 1 -> many | one workflow governs many statuses |
 | Workflow Definition | SLA Rule | 1 -> many | one workflow governs many timing rules |
