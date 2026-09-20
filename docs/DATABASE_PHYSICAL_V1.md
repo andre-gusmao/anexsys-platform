@@ -395,7 +395,7 @@ Constraints:
 - PK: `id`
 - FK: `tenant_id -> tenants.id`
 - FK: `branch_id -> branches.id`
-- UQ: `(tenant_id, cpf_cnpj)` when `cpf_cnpj` is present and active
+- UQ: filtered uniqueness on `(tenant_id, cpf_cnpj)` when `cpf_cnpj` is present and `is_deleted = false`
 - CHECK: `customer_type` in approved customer-type values
 
 #### `customer_contacts`
@@ -514,7 +514,6 @@ Key columns:
 - `current_status_definition_id uuid null FK -> status_definitions.id`
 - `production_no varchar(50)`
 - `production_type varchar(50)`
-- `version_no integer`
 - `delivery_type varchar(20)`
 - `operational_priority varchar(30)`
 - `customer_delivery_target_date date`
@@ -536,9 +535,8 @@ Constraints:
 - FK: `workflow_definition_id -> workflow_definitions.id`
 - FK: `current_status_definition_id -> status_definitions.id`
 - UQ: `(tenant_id, branch_id, production_no)`
-- UQ: `(service_order_id)` for the base production-order rule
+- UQ: `(service_order_id)` to preserve exactly one base production-order row per service order while corrective lineage remains exclusively in `production_order_versions`
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
-- CHECK: `version_no >= 1`
 
 #### `production_order_item_links`
 Purpose:
@@ -754,7 +752,7 @@ Key columns:
 - `tenant_id uuid FK -> tenants.id`
 - `branch_id uuid FK -> branches.id`
 - `payment_record_id uuid FK -> payment_records.id`
-- `service_order_id uuid null FK -> service_orders.id`
+- `service_order_id uuid FK -> service_orders.id`
 - `service_order_item_id uuid null FK -> service_order_items.id`
 - `allocated_amount numeric(18,2)`
 - `allocated_at timestamptz`
@@ -762,7 +760,8 @@ Key columns:
 
 Constraints:
 - CHECK: `allocated_amount > 0`
-- CHECK: exactly one of `service_order_id` or `service_order_item_id` is populated
+- CHECK: `service_order_id` is always populated
+- CHECK: `service_order_item_id` is optional and, when present, must belong to the same `service_order_id`
 
 #### `financial_exceptions`
 Key columns:
@@ -980,7 +979,7 @@ Key columns:
 - standard audit columns
 
 Constraints:
-- UQ: `(production_order_id)`
+- UQ: filtered uniqueness on `(production_order_id)` when `is_active = true`
 - UQ: `(tenant_id, code_value)`
 
 #### `qr_events`
