@@ -15,4 +15,5 @@ export interface CreateProductionOrderVersionDto {
   pieceDescription?: string | null;
   observations?: string | null;
   resourceChangeNotes?: string | null;
+  affectedServiceOrderItemIds?: string[] | null;
 }

@@ -632,6 +632,22 @@ export class ProductionOrderService {
     dto: CreateProductionOrderVersionDto,
   ): Promise<ProductionOrderVersionEntity> {
     const order = await this.getById(productionOrderId, tenantId);
+    const links = await this.itemLinkRepository.findByProductionOrder(productionOrderId);
+    const linkedItemIds = new Set(links.map((link) => link.serviceOrderItemId));
+    const affectedServiceOrderItemIds = dto.affectedServiceOrderItemIds?.length
+      ? [...new Set(dto.affectedServiceOrderItemIds)]
+      : null;
+    if (
+      [ProductionOrderVersionReason.REWORK, ProductionOrderVersionReason.WARRANTY_EXECUTION, ProductionOrderVersionReason.CORRECTIVE_PRODUCTION].includes(dto.versionReason)
+      && (!affectedServiceOrderItemIds || affectedServiceOrderItemIds.length === 0)
+    ) {
+      throw new DomainValidationError('Corrective Production Order versions require the affected Service Order items.');
+    }
+    for (const serviceOrderItemId of affectedServiceOrderItemIds ?? []) {
+      if (!linkedItemIds.has(serviceOrderItemId)) {
+        throw new DomainValidationError('Corrective versions can only include Service Order items linked to the Production Order.');
+      }
+    }
     const nextVersionNo = Math.max(2, (await this.versionRepository.findLatestVersionNumber(productionOrderId)) + 1);
     const isDraft = dto.isDraft ?? false;
     const isActive = isDraft ? false : dto.activate ?? true;
@@ -663,6 +679,7 @@ export class ProductionOrderService {
       measurementsSnapshot: order.measurementsSnapshot,
       observations: dto.observations?.trim() || order.observations,
       resourceChangeNotes: dto.resourceChangeNotes?.trim() || null,
+      affectedServiceOrderItemIds,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -680,6 +697,7 @@ export class ProductionOrderService {
         versionNo: saved.versionNo,
         versionReason: saved.versionReason,
         isActive: saved.isActive,
+        affectedServiceOrderItemIds: saved.affectedServiceOrderItemIds,
       },
     });
     return saved;

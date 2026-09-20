@@ -60,4 +60,7 @@ export class ProductionOrderVersionEntity extends MutableBusinessEntity {
 
   @Column({ name: 'resource_change_notes', type: 'text', nullable: true })
   resourceChangeNotes!: string | null;
+
+  @Column({ name: 'affected_service_order_item_ids', type: 'jsonb', nullable: true })
+  affectedServiceOrderItemIds!: string[] | null;
 }

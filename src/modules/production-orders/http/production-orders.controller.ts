@@ -177,6 +177,11 @@ class CreateProductionOrderVersionBody {
   @IsOptional()
   @IsString()
   resourceChangeNotes?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  affectedServiceOrderItemIds?: string[];
 }
 
 @Controller('production-orders')

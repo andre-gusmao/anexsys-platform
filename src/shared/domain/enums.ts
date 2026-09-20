@@ -139,3 +139,68 @@ export enum ProductionExecutionEventType {
   STATUS_UPDATED = 'status_updated',
   DIARY_UPDATED = 'diary_updated',
 }
+
+export enum QualityInspectionType {
+  INPUT_VALIDATION = 'input_validation',
+  IN_PROCESS = 'in_process',
+  FINAL = 'final',
+  POST_REWORK = 'post_rework',
+  POST_WARRANTY = 'post_warranty',
+  CUSTOMER_REJECTION = 'customer_rejection',
+}
+
+export enum QualityInspectionResult {
+  PENDING = 'pending',
+  PASSED = 'passed',
+  FAILED = 'failed',
+}
+
+export enum QualityReleaseDecision {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  REWORK_REQUESTED = 'rework_requested',
+  WARRANTY_EXECUTION_REQUESTED = 'warranty_execution_requested',
+}
+
+export enum DefectSeverity {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical',
+}
+
+export enum CustomerRejectionStatus {
+  OPEN = 'open',
+  UNDER_REVIEW = 'under_review',
+  RESOLVED = 'resolved',
+}
+
+export enum CustomerRejectionResolutionType {
+  REWORK = 'rework',
+  WARRANTY_ADJUSTMENT = 'warranty_adjustment',
+  WARRANTY_EXECUTION = 'warranty_execution',
+  REFUND = 'refund',
+  REPLACEMENT = 'replacement',
+}
+
+export enum ReworkCaseStatus {
+  OPEN = 'open',
+  ASSIGNED = 'assigned',
+  IN_PROGRESS = 'in_progress',
+  CLOSED = 'closed',
+}
+
+export enum WarrantyAdjustmentStatus {
+  OPEN = 'open',
+  APPROVED = 'approved',
+  IN_PROGRESS = 'in_progress',
+  RESOLVED = 'resolved',
+}
+
+export enum WarrantyExecutionStatus {
+  OPEN = 'open',
+  ASSIGNED = 'assigned',
+  IN_PROGRESS = 'in_progress',
+  RESOLVED = 'resolved',
+}

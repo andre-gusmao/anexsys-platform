@@ -12,6 +12,11 @@ import { MeasurementRecordEntity } from 'src/modules/crm/infrastructure/persiste
 import { OperationalResourceBranchScopeEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource-branch-scope.entity';
 import { OperationalResourceEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource.entity';
 import { ProductionExecutionEventEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-execution-event.entity';
+import { QualityRecordEntity } from 'src/modules/quality/infrastructure/persistence/entities/quality-record.entity';
+import { CustomerRejectionEntity } from 'src/modules/quality/infrastructure/persistence/entities/customer-rejection.entity';
+import { ReworkCaseEntity } from 'src/modules/rework/infrastructure/persistence/entities/rework-case.entity';
+import { WarrantyAdjustmentEntity } from 'src/modules/warranty/infrastructure/persistence/entities/warranty-adjustment.entity';
+import { WarrantyExecutionEntity } from 'src/modules/warranty/infrastructure/persistence/entities/warranty-execution.entity';
 import { ProductionOrderOperationalAssignmentEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-operational-assignment.entity';
 import { ProductionOrderItemLinkEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-item-link.entity';
 import { ProductionOrderVersionEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-version.entity';
@@ -42,6 +47,11 @@ export const typeOrmEntities = [
   QrCodeEntity,
   QrEventEntity,
   ProductionExecutionEventEntity,
+  QualityRecordEntity,
+  CustomerRejectionEntity,
+  ReworkCaseEntity,
+  WarrantyAdjustmentEntity,
+  WarrantyExecutionEntity,
   BusinessCalendarDayEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,

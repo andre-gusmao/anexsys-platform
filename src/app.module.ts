@@ -11,6 +11,9 @@ import { OperationalResourcesModule } from './modules/operational-resources/oper
 import { ProductionOrdersModule } from './modules/production-orders/production-orders.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { ServiceOrdersModule } from './modules/service-orders/service-orders.module';
+import { QualityModule } from './modules/quality/quality.module';
+import { ReworkModule } from './modules/rework/rework.module';
+import { WarrantyModule } from './modules/warranty/warranty.module';
 import { JwtAuthGuard } from './platform/auth/jwt-auth.guard';
 import { PermissionsGuard } from './platform/auth/permissions.guard';
 import { RequestContextMiddleware } from './platform/http/request-context.middleware';
@@ -29,6 +32,9 @@ import { buildTypeOrmOptions } from './platform/database/typeorm/typeorm.config'
     ServiceOrdersModule,
     OperationalResourcesModule,
     ProductionOrdersModule,
+    QualityModule,
+    ReworkModule,
+    WarrantyModule,
     IdentityModule,
     AuthorizationModule,
   ],
