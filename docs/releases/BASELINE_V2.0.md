@@ -117,9 +117,9 @@ Status interpretation:
 
 ## Next phase
 
-The historical next approved phase at baseline approval was:
+The historical next approved phase at baseline approval was the backend architecture phase:
 
-- `BACKEND_ARCHITECTURE_V1`
+- `/docs/BACKEND_ARCHITECTURE_V1.md`
 
 Subsequent repository design phases now include:
 

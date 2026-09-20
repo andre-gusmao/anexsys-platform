@@ -539,7 +539,7 @@ Constraints:
 - UQ: `(tenant_id, production_no)`
 - UQ: `(service_order_id)` to preserve exactly one lifetime base production-order row per service order
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
-- lifecycle-anchor rule: the base `production_orders` row remains the lifetime anchor for its Service Order, and corrective or replacement semantics must be represented through status history and execution-capable `production_order_versions` rather than through additional base Production Order rows
+- lifecycle-anchor rule: the base `production_orders` row remains the lifetime anchor for its Service Order; soft deletion of a Service Order does not authorize creation of a replacement base Production Order; and corrective or replacement semantics must be represented through status history and execution-capable `production_order_versions` rather than through additional base Production Order rows
 
 #### `production_order_item_links`
 Purpose:
@@ -1024,7 +1024,7 @@ Constraints:
 - UQ: `(tenant_id, code_value)`
 - CHECK: `reissue_no >= 1`
 - CHECK: `is_active = true` requires `revoked_at is null`, and `revoked_at is not null` requires `is_active = false`
-- required lifecycle rule: every base Production Order must obtain one active QR row no later than its operational activation, and any transition into active execution-capable lifecycle states must be blocked until that active QR row exists by means of a deferred constraint trigger or equivalent database-enforced activation guard
+- required lifecycle rule: every base Production Order must obtain one active QR row no later than its operational activation, and any transition into an execution-capable state identified by `current_status_definition_id` semantics as started/in_progress/paused/quality-pending or any equivalent workflow-defined active-execution status must be blocked until that active QR row exists by means of a deferred constraint trigger or equivalent database-enforced activation guard
 
 #### `qr_events`
 Key columns:
