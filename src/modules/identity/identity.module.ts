@@ -8,6 +8,8 @@ import { BranchModule } from 'src/modules/branch/branch.module';
 import { TenantModule } from 'src/modules/tenant/tenant.module';
 import { PasswordHasherService } from 'src/platform/auth/password-hasher.service';
 import { TokenFactoryService } from 'src/platform/auth/token-factory.service';
+import { AuthController } from './http/auth.controller';
+import { UsersController } from './http/users.controller';
 import { AuthService } from './application/auth/auth.service';
 import { IdentityService } from './application/identity/identity.service';
 import { UserCredentialEntity } from './infrastructure/persistence/entities/user-credential.entity';
@@ -32,6 +34,7 @@ import { UserSessionRepository } from './infrastructure/persistence/repositories
       }),
     }),
   ],
+  controllers: [AuthController, UsersController],
   providers: [
     IdentityService,
     AuthService,

@@ -14,6 +14,10 @@ export interface RefreshTokenPayload extends AuthTokenPayload {
   tokenType: 'refresh';
 }
 
+export interface AccessTokenPayload extends AuthTokenPayload {
+  tokenType: 'access';
+}
+
 export interface IssuedAuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -26,11 +30,14 @@ export class TokenFactoryService {
   constructor(private readonly jwtService: JwtService) {}
 
   async issueTokens(payload: AuthTokenPayload, refreshTokenId: string = randomUUID()): Promise<IssuedAuthTokens> {
-    const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '15m',
-    });
+    const accessToken = await this.jwtService.signAsync(
+      { ...payload, tokenType: 'access' satisfies AccessTokenPayload['tokenType'] },
+      {
+        expiresIn: '15m',
+      },
+    );
     const refreshToken = await this.jwtService.signAsync(
-      { ...payload, jti: refreshTokenId, tokenType: 'refresh' },
+      { ...payload, jti: refreshTokenId, tokenType: 'refresh' satisfies RefreshTokenPayload['tokenType'] },
       {
         expiresIn: '7d',
       },
@@ -42,6 +49,10 @@ export class TokenFactoryService {
       refreshTokenHash: this.hashToken(refreshToken),
       refreshTokenId,
     };
+  }
+
+  async verifyAccessToken(token: string): Promise<AccessTokenPayload> {
+    return this.jwtService.verifyAsync<AccessTokenPayload>(token);
   }
 
   async verifyRefreshToken(token: string): Promise<RefreshTokenPayload> {

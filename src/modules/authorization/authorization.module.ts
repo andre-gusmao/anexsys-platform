@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from 'src/modules/audit/audit.module';
 import { BranchModule } from 'src/modules/branch/branch.module';
 import { IdentityModule } from 'src/modules/identity/identity.module';
+import { PermissionsController } from './http/permissions.controller';
+import { RolesController } from './http/roles.controller';
 import { AuthorizationService } from './application/authorization/authorization.service';
 import { PermissionEntity } from './infrastructure/persistence/entities/permission.entity';
 import { RolePermissionEntity } from './infrastructure/persistence/entities/role-permission.entity';
@@ -28,6 +30,7 @@ import { UserRoleAssignmentRepository } from './infrastructure/persistence/repos
     BranchModule,
     forwardRef(() => IdentityModule),
   ],
+  controllers: [RolesController, PermissionsController],
   providers: [
     AuthorizationService,
     RoleRepository,

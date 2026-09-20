@@ -30,4 +30,8 @@ export class UserIdentityRepository {
       },
     });
   }
+
+  async findByTenant(tenantId: string): Promise<UserIdentityEntity[]> {
+    return this.repository.find({ where: { tenantId }, order: { displayName: 'ASC' } });
+  }
 }

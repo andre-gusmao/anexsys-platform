@@ -98,4 +98,10 @@ export class IdentityService {
   async getByTenantAndEmail(tenantId: string, email: string): Promise<UserIdentityEntity | null> {
     return this.userIdentityRepository.findByTenantAndEmail(tenantId, email);
   }
+
+  async listByTenant(tenantId: string): Promise<UserIdentityEntity[]> {
+    await this.tenantService.getById(tenantId);
+    return this.userIdentityRepository.findByTenant(tenantId);
+  }
 }
+
