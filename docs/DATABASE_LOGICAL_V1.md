@@ -40,7 +40,7 @@ This document does not define:
 ANEXSYS logical data design must preserve the approved business split between commercial truth and operational truth:
 - Service Order = commercial and financial source of truth
 - Production Order = operational execution source of truth
-- Production Bag = physical support only
+- physical bag/container support context = physical support only
 
 The logical model must preserve these approved operating rules:
 - 1 Customer -> many Service Orders
@@ -51,7 +51,7 @@ The logical model must preserve these approved operating rules:
 - QR Code belongs only to the Production Order
 - Operational Resources execute work through Production Order events
 - Rework, Warranty Execution, and Corrective Production use Production Order lineage versioning
-- the Production Bag is never modeled as a primary business entity and never receives independent numbering, independent QR ownership, or independent workflow ownership
+- the physical bag/container support context is never modeled as a primary business entity and never receives independent numbering, independent QR ownership, or independent workflow ownership
 
 Logical design intent:
 - Tenant and Branch logical entities preserve governance, branch-local policy, and branch-scoped business boundaries

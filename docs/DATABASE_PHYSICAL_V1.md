@@ -43,7 +43,7 @@ This document does not define:
 The ANEXSYS physical model must preserve the approved business split between commercial truth and operational truth:
 - Service Order = commercial and financial source of truth
 - Production Order = operational execution source of truth
-- Physical Production Bag = support-only physical context
+- physical bag/container support context = support-only physical context
 
 The PostgreSQL physical model must preserve these approved operating rules:
 - 1 Customer -> many Service Orders

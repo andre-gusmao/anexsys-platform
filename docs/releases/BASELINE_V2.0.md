@@ -24,6 +24,8 @@ Canonical frozen source documents for this baseline:
 
 ## Repository design document locations
 
+All document paths in this section are repository-root paths and intentionally use a leading `/`.
+
 Current repository design document locations referenced by this baseline:
 
 - `/docs/DATABASE_CONCEPTUAL_V1.md`
