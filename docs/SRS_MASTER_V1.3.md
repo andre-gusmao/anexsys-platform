@@ -645,7 +645,7 @@ The platform must include a Delivery Date Engine that calculates the initial sug
   - Thursday intake -> next Thursday delivery
   - Friday intake -> next Friday delivery
   - Saturday intake -> next Saturday delivery
-  - Sunday intake -> next valid business day (typically Monday, per applicable calendar)
+  - Sunday intake -> next Sunday delivery (before calendar-validity adjustment)
 - The default delivery rule must be configurable per tenant (tenants may define a different rollover rule or fixed lead time).
 
 2. Calendar-aware calculation
@@ -653,8 +653,9 @@ The platform must include a Delivery Date Engine that calculates the initial sug
 - If a calculated delivery date falls on a non-working day (holiday or non-business day per the applicable calendar), the platform must automatically move the delivery date to the next valid business day.
 - Calendar-aware delivery-date logic must remain aligned with section 8.7 (Production Buffer / Safety Window) and section 39 (SLA Model calendar/time controls), without duplicating those calculation frameworks.
 
-3. Delivery types alignment with section 7.12 baseline
-- Standard: uses the default delivery rule described above and is equivalent to the section 7.12 baseline Normal delivery type.
+3. Delivery types alignment with section 7.12 baseline (no duplicate taxonomy)
+- Normal: uses the default delivery rule described above and remains the baseline delivery type from section 7.12.
+- "Standard" may be used as a business-facing synonym for Normal, but it does not define a separate delivery-type taxonomy.
 - Priority: uses custom delivery dates and elevated operational priority, aligned with section 7.12 Priority semantics.
 - Express: allows delivery in hours or same-day service, aligned with section 7.12 Express semantics and section 8.7 baseline buffer default of Express = 0 days.
 
