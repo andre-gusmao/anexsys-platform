@@ -7,13 +7,10 @@ import {
   Patch,
   Post,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { IsOptional, IsString, IsUUID, Length } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
-import { JwtAuthGuard } from 'src/platform/auth/jwt-auth.guard';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
-import { PermissionsGuard } from 'src/platform/auth/permissions.guard';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { BranchService } from '../application/branch/branch.service';
 
@@ -61,7 +58,6 @@ class UpdateBranchBody {
 }
 
 @Controller('branches')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class BranchesController {
   constructor(private readonly branchService: BranchService) {}
 

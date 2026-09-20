@@ -5,13 +5,10 @@ import {
   Get,
   Post,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
-import { JwtAuthGuard } from 'src/platform/auth/jwt-auth.guard';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
-import { PermissionsGuard } from 'src/platform/auth/permissions.guard';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { AuthorizationService } from '../application/authorization/authorization.service';
 
@@ -28,7 +25,6 @@ class CreatePermissionBody {
 }
 
 @Controller('permissions')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PermissionsController {
   constructor(private readonly authorizationService: AuthorizationService) {}
 

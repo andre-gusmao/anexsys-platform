@@ -11,6 +11,7 @@ export interface AuthTokenPayload {
 
 export interface RefreshTokenPayload extends AuthTokenPayload {
   jti: string;
+  nonce: string;
   tokenType: 'refresh';
 }
 
@@ -37,7 +38,12 @@ export class TokenFactoryService {
       },
     );
     const refreshToken = await this.jwtService.signAsync(
-      { ...payload, jti: refreshTokenId, tokenType: 'refresh' satisfies RefreshTokenPayload['tokenType'] },
+      {
+        ...payload,
+        jti: refreshTokenId,
+        nonce: randomUUID(),
+        tokenType: 'refresh' satisfies RefreshTokenPayload['tokenType'],
+      },
       {
         expiresIn: '7d',
       },

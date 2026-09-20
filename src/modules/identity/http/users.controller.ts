@@ -7,15 +7,12 @@ import {
   Param,
   Post,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
 import { BranchScopeType } from 'src/shared/domain/enums';
 import { CurrentRequest, CurrentTenantId, CurrentUserId } from 'src/platform/http/request-context.decorators';
-import { JwtAuthGuard } from 'src/platform/auth/jwt-auth.guard';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
-import { PermissionsGuard } from 'src/platform/auth/permissions.guard';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { IdentityService } from '../application/identity/identity.service';
 
@@ -53,7 +50,6 @@ class AssignBranchScopeBody {
 }
 
 @Controller('users')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UsersController {
   constructor(
     private readonly identityService: IdentityService,

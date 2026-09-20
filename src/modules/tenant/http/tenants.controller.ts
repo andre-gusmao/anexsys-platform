@@ -7,13 +7,10 @@ import {
   Patch,
   Post,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { IsOptional, IsString, Length } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
-import { JwtAuthGuard } from 'src/platform/auth/jwt-auth.guard';
-import { PermissionsGuard } from 'src/platform/auth/permissions.guard';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { TenantService } from '../application/tenant/tenant.service';
 
@@ -45,7 +42,6 @@ class UpdateTenantBody {
 }
 
 @Controller('tenants')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class TenantsController {
   constructor(private readonly tenantService: TenantService) {}
 

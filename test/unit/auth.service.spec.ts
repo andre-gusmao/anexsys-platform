@@ -115,6 +115,7 @@ describe('AuthService', () => {
     const refreshed = await service.refreshTokens({ refreshToken: firstTokens.refreshToken });
 
     assert.equal(refreshed.sessionId, firstTokens.refreshTokenId);
+    assert.notEqual(refreshed.refreshToken, firstTokens.refreshToken);
     assert.equal(session.refreshTokenHash.length > 0, true);
     assert.ok(session.expiresAt.getTime() > Date.now() + 6 * 24 * 60 * 60 * 1000);
   });

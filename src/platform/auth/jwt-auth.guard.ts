@@ -32,7 +32,7 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<PlatformRequest>();
     const rawToken = request.requestContext?.authToken;
     if (!rawToken) {
-      throw new UnauthorizedException('****** is required.');
+      throw new UnauthorizedException('Authorization bearer token is required.');
     }
 
     let payload;

@@ -9,12 +9,14 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "test": "tsx --test test/**/*.spec.ts",
-    "test:watch": "tsx watch --test test/**/*.spec.ts",
-    "test:cov": "tsx --test test/**/*.spec.ts",
+    "test": "tsx --test test/unit/**/*.spec.ts",
+    "test:watch": "tsx watch --test test/unit/**/*.spec.ts",
+    "test:cov": "tsx --test test/unit/**/*.spec.ts",
     "migration:run": "typeorm-ts-node-commonjs -d src/platform/database/typeorm/data-source.ts migration:run",
     "migration:revert": "typeorm-ts-node-commonjs -d src/platform/database/typeorm/data-source.ts migration:revert",
-    "migration:show": "typeorm-ts-node-commonjs -d src/platform/database/typeorm/data-source.ts migration:show"
+    "migration:show": "typeorm-ts-node-commonjs -d src/platform/database/typeorm/data-source.ts migration:show",
+    "test:unit": "tsx --test test/unit/**/*.spec.ts",
+    "test:integration": "npm run build && node --test test/integration/**/*.spec.mjs"
   },
   "dependencies": {
     "@nestjs/common": "12.0.3",

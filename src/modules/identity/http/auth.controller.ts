@@ -4,13 +4,11 @@ import {
   Get,
   Post,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { IsString, IsUUID, MinLength } from 'class-validator';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
 import { CurrentRequest } from 'src/platform/http/request-context.decorators';
 import { Public } from 'src/platform/auth/public.decorator';
-import { JwtAuthGuard } from 'src/platform/auth/jwt-auth.guard';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { IdentityService } from '../application/identity/identity.service';
 import { AuthService } from '../application/auth/auth.service';
@@ -57,8 +55,7 @@ export class AuthController {
     return this.authService.refreshTokens(body);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Post('logout')
+    @Post('logout')
   async logout(@Body() body: LogoutBody, @CurrentRequest() request: PlatformRequest) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
     if (!actorUserId) {
@@ -69,8 +66,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('me')
+    @Get('me')
   async getMe(@CurrentRequest() request: PlatformRequest) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
     const tenantId = request.requestContext.authenticatedPrincipal?.tenantId;
