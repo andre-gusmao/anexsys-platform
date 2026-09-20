@@ -8,6 +8,8 @@ This document defines the complete conceptual data model for ANEXSYS using only 
 - `/docs/frozen/ARQUITETURA_V1.md`
 - `/docs/frozen/DATABASE_GUIDELINES_V1.md`
 
+This repository-carried conceptual model remains part of the approved repository design baseline used by downstream backend and API planning documents.
+
 This document defines:
 - business entities
 - aggregates

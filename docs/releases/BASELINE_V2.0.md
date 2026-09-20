@@ -32,15 +32,9 @@ Current repository design document locations referenced by this baseline:
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
 
-Current downstream repository planning documents produced from this baseline:
+Current downstream repository planning document added in this delivery stage:
 
-- `/docs/BACKEND_ARCHITECTURE_V1.md`
-- `/docs/API_DESIGN_V1.md`
 - `/docs/BACKEND_IMPLEMENTATION_V1.md`
-
-Non-baseline supporting working reference:
-
-- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md` (working-path support material for planning reference only; not a frozen baseline artifact)
 
 ## Approved business decisions
 

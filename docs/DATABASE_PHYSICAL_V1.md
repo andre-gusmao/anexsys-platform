@@ -536,9 +536,9 @@ Constraints:
 - FK: `workflow_definition_id -> workflow_definitions.id`
 - FK: `current_status_definition_id -> status_definitions.id`
 - UQ: `(tenant_id, production_no)`
-- UQ: filtered uniqueness on `(service_order_id)` for active rows where `is_deleted = false` to preserve exactly one active base production-order row per service order while still allowing historical soft-deleted lineage records if a governed replacement is ever required
+- UQ: filtered uniqueness on `(service_order_id)` for rows where `is_deleted = false` to preserve exactly one lifetime base production-order row per service order
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
-- reconciliation rule: where older source wording suggests rework may open a new Production Order, this approved physical model resolves that path through execution-capable `production_order_versions` under the single base `production_orders` row rather than through additional base Production Order rows
+- lifecycle-anchor rule: the base `production_orders` row remains the lifetime anchor for its Service Order, and corrective or replacement semantics must be represented through status history and execution-capable `production_order_versions` rather than through additional base Production Order rows
 
 #### `production_order_item_links`
 Purpose:
@@ -603,7 +603,7 @@ Key columns:
 Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
 - UQ: filtered uniqueness on `(production_order_id)` when `is_current = true and is_primary_responsible = true`
-- assignment-lifecycle rule: historical assignment rows may coexist for the same Production Order; at most one current row may be marked as the current primary-responsible assignment; additional current non-primary participant rows may coexist when the workflow supports collaborative execution; and any Production Order that has entered active execution-capable lifecycle states must have exactly one current primary-responsible assignment enforced by its workflow/application activation path
+- assignment-lifecycle rule: historical assignment rows may coexist for the same Production Order; at most one current row may be marked as the current primary-responsible assignment; additional current non-primary participant rows may coexist when the workflow supports collaborative execution; and any Production Order that has entered active execution-capable lifecycle states must have exactly one current primary-responsible assignment enforced by a deferred constraint trigger or equivalent database-enforced activation guard tied to the current workflow state
 
 #### `production_execution_events`
 Key columns:
@@ -1017,7 +1017,7 @@ Constraints:
 - UQ: `(tenant_id, code_value)`
 - CHECK: `reissue_no >= 1`
 - CHECK: `is_active = true` requires `revoked_at is null`, and `revoked_at is not null` requires `is_active = false`
-- required lifecycle rule: every base Production Order must obtain one active QR row no later than its operational activation, and any transition into active execution-capable lifecycle states must be blocked until that active QR row exists
+- required lifecycle rule: every base Production Order must obtain one active QR row no later than its operational activation, and any transition into active execution-capable lifecycle states must be blocked until that active QR row exists by means of a deferred constraint trigger or equivalent database-enforced activation guard
 
 #### `qr_events`
 Key columns:
