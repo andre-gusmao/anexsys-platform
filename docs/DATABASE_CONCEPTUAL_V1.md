@@ -54,6 +54,11 @@ The conceptual model must preserve the approved operational structure:
 - QR Codes belong only to Production Orders
 - Production Order Versions exist only within Primary Production Order lineage for Rework, Warranty Execution, and Corrective Production
 
+Terminology rule:
+- Production Order = the approved operational execution entity
+- Primary Production Order = the single base Production Order generated directly from a Service Order, not a separate entity type
+- Production Order Version = a subordinate corrective lineage record under the Primary Production Order
+
 For this conceptual model, the approved Primary Production Order rule governs reconciliation across the frozen baseline set:
 - the Service Order remains the commercial parent
 - the Primary Production Order remains the single operational root generated from that Service Order
@@ -113,6 +118,7 @@ Owns:
 Purpose:
 - represent the operational execution source of truth
 - preserve operational lineage from the primary order through corrective versions
+- preserve the distinction between the single Primary Production Order and its subordinate Production Order Versions
 
 ### 2.4 Operational Resource Domain
 
@@ -144,6 +150,7 @@ Purpose:
 Owns:
 - Payment Record
 - Partial Payment
+- Financial Exception
 - Fiscal Document
 
 Purpose:
@@ -158,6 +165,8 @@ Purpose:
 Owns:
 - Pickup Authorization
 - Pickup Token
+- Pickup QR Code
+- Temporary Pickup Code
 - Storage Location
 - physical Production Bag support context
 
@@ -181,6 +190,8 @@ Purpose:
 Owns:
 - Custody Event
 - Audit Event
+- CCTV Reference
+- Camera Snapshot
 
 Purpose:
 - preserve immutable traceability across business actions, physical custody, and operational execution
@@ -217,6 +228,7 @@ Primary conceptual aggregates:
 - Customer Rejection
 - Rework Case
 - Warranty Execution
+- Financial Exception
 - Pickup Authorization
 - Storage Location
 - QR Code
@@ -235,8 +247,12 @@ Supporting conceptual aggregates or subordinate conceptual entities:
 - Partial Payment
 - Fiscal Document
 - Pickup Token
+- Pickup QR Code
+- Temporary Pickup Code
 - QR Event
 - Custody Event
+- CCTV Reference
+- Camera Snapshot
 - Status Definition
 - SLA Rule
 - Communication Event
@@ -271,15 +287,20 @@ Aggregate guidance:
 | Quality and Corrective | Warranty Execution | post-delivery operational defect responsibility |
 | Finance and Fiscal | Payment Record | payment transaction, receipt, authorization, reconciliation, and settlement trace |
 | Finance and Fiscal | Partial Payment | business fact of partial financial settlement or allocation against order or item scope |
+| Finance and Fiscal | Financial Exception | exceptional financial correction or mismatch requiring governed resolution |
 | Finance and Fiscal | Fiscal Document | legal/fiscal issuance record |
 | Delivery and Pickup | Pickup Authorization | release authorization for pickup |
 | Delivery and Pickup | Pickup Token | shareable pickup credential or tokenized authorization artifact |
+| Delivery and Pickup | Pickup QR Code | pickup authorization artifact expressed as scannable release credential |
+| Delivery and Pickup | Temporary Pickup Code | short-lived pickup authorization credential |
 | Delivery and Pickup | Storage Location | visible physical retrieval/storage context |
 | Delivery and Pickup | Physical Production Bag Support Context | optional physical support context only |
 | QR and Operational Tracking | QR Code | production execution scan authority |
 | QR and Operational Tracking | QR Event | individual execution scan trace |
 | Audit and Custody | Custody Event | physical custody lifecycle event |
 | Audit and Custody | Audit Event | immutable audit record |
+| Audit and Custody | CCTV Reference | custody evidence pointer for surveillance capture context |
+| Audit and Custody | Camera Snapshot | custody evidence artifact for pickup or release confirmation |
 | Workflow and SLA Policy | Workflow Definition | lifecycle rule set |
 | Workflow and SLA Policy | Status Definition | configurable status semantics |
 | Workflow and SLA Policy | SLA Rule | timing and breach rule definition |
@@ -340,6 +361,7 @@ Owned by Quality and Corrective domain:
 Owned by Finance and Fiscal domain, anchored to Service Order truth:
 - Payment Record
 - Partial Payment
+- Financial Exception
 - payment allocation
 - settlement status
 - Fiscal Document lifecycle
@@ -396,14 +418,19 @@ Owned by Audit and Custody domain:
 | Warranty Execution | Quality and Corrective | post-delivery execution failure responsibility |
 | Payment Record | Finance and Fiscal | payment transaction trace |
 | Partial Payment | Finance and Fiscal | partial settlement allocation |
+| Financial Exception | Finance and Fiscal | exceptional financial correction trace |
 | Fiscal Document | Finance and Fiscal | fiscal issuance and legal status |
 | Pickup Authorization | Delivery and Pickup | release authorization authority |
 | Pickup Token | Delivery and Pickup | pickup authorization credential |
+| Pickup QR Code | Delivery and Pickup | scannable pickup release credential |
+| Temporary Pickup Code | Delivery and Pickup | short-lived pickup release credential |
 | Storage Location | Delivery and Pickup | physical retrieval and location visibility |
 | QR Code | QR and Operational Tracking | operational scan identity for Production Order |
 | QR Event | QR and Operational Tracking | scan event trace |
 | Custody Event | Audit and Custody | physical custody event |
 | Audit Event | Audit and Custody | immutable audit trace |
+| CCTV Reference | Audit and Custody | surveillance evidence reference |
+| Camera Snapshot | Audit and Custody | captured pickup evidence artifact |
 | Workflow Definition | Workflow and SLA Policy | lifecycle rule set |
 | Status Definition | Workflow and SLA Policy | status semantics |
 | SLA Rule | Workflow and SLA Policy | timing and breach policy |
@@ -425,6 +452,7 @@ Owned by Audit and Custody domain:
 - 1 Service Order -> many Service Order Items
 - 1 Service Order -> exactly 1 Primary Production Order
 - 1 Service Order -> many Payment Records over time
+- 1 Service Order -> many Financial Exceptions over time
 - 1 Service Order -> many Digital Approvals over time
 - 1 Service Order -> many Communication Events over time
 - 1 Service Order -> many Pickup Authorizations over time
@@ -459,6 +487,7 @@ Owned by Audit and Custody domain:
 ### 7.5 Pickup, QR, custody, and audit cardinalities
 
 - 1 Pickup Authorization -> one or many Pickup Tokens over time according to policy
+- 1 Pickup Authorization -> one or many Pickup QR Codes or Temporary Pickup Codes over time according to policy
 - 1 Storage Location -> many Service Orders or item storage contexts over time
 - 1 QR Code -> exactly 1 Production Order active ownership context
 - 1 Production Order -> many Custody Events where operational custody applies
@@ -479,10 +508,13 @@ Owned by Audit and Custody domain:
 | Service Order | Production Order | 1 -> 1 primary | exactly one Primary Production Order per Service Order |
 | Primary Production Order | Production Order Version | 1 -> many over time | versions only for rework, warranty execution, corrective production |
 | Service Order | Payment Record | 1 -> many | payment records remain commercially anchored |
+| Service Order | Financial Exception | 1 -> many | financial exceptions preserve commercial source-of-truth context |
 | Service Order Item | Partial Payment | 1 -> many | partial settlement allowed |
 | Service Order / Item | Fiscal Document | 1 -> many | fiscal issuance may be per order or per item |
 | Service Order | Pickup Authorization | 1 -> many | many authorization attempts/history allowed |
 | Pickup Authorization | Pickup Token | 1 -> many | token lifecycle is policy-driven |
+| Pickup Authorization | Pickup QR Code | 1 -> many | scannable authorization artifacts are policy-driven |
+| Pickup Authorization | Temporary Pickup Code | 1 -> many | temporary authorization artifacts are policy-driven |
 | Service Order | Storage Location context | 1 -> many over time | current and historical location must be preserved |
 | Production Order | QR Code | 1 -> 1 active operational ownership | QR belongs only to Production Order |
 | Production Order | QR Event | 1 -> many | scan history is event-based |
@@ -510,7 +542,7 @@ Owned by Audit and Custody domain:
 ### 9.2 Service Order hierarchy
 
 - Service Order is parent of Service Order Item
-- Service Order is parent commercial anchor of Payment Record, Partial Payment allocation meaning, Fiscal Document scope, Pickup Authorization, Digital Approval reference, and Communication Event reference
+- Service Order is parent commercial anchor of Payment Record, Partial Payment allocation meaning, Financial Exception, Fiscal Document scope, Pickup Authorization, Digital Approval reference, and Communication Event reference
 
 ### 9.3 Production hierarchy
 
@@ -548,6 +580,7 @@ Owned by Audit and Custody domain:
 | Service Order | references | Digital Approval | customer-facing consent or approval |
 | Service Order | references | Communication Event | customer-facing communication history |
 | Service Order | is settled by | Payment Record | commercial settlement trace |
+| Service Order | may open | Financial Exception | exceptional settlement or allocation correction flow |
 | Service Order / Item | is documented by | Fiscal Document | fiscal/legal record |
 | Production Order | represents execution of | Service Order Item | operational execution scope |
 | Production Order | is versioned by | Production Order Version | corrective lineage |
@@ -581,6 +614,7 @@ Owned by Audit and Custody domain:
 
 - Production Order references its originating Service Order
 - Payment Record references Service Order and item allocation scope
+- Financial Exception references Service Order, related payment context, reason, approver, and impact
 - Fiscal Document references Service Order or item scope
 - Pickup Authorization references Service Order release context
 - Digital Approval references Service Order, item, production, or workflow objects
@@ -683,8 +717,9 @@ Conceptual events include:
 - PaymentInitiatedFromServiceOrder
 - PaymentRecorded
 - PartialPaymentAllocated
-- FiscalDocumentIssued
 - FinancialExceptionOpened
+- FinancialExceptionResolved
+- FiscalDocumentIssued
 
 ### 12.10 Audit Events
 
@@ -709,6 +744,7 @@ Audit Event must conceptually relate to:
 - Operational Resource when assignment or responsibility relevance changes
 - Quality Record, Rework Case, Customer Rejection, Warranty Adjustment, and Warranty Execution when corrective/validation decisions occur
 - Payment Record and Fiscal Document when settlement or fiscal status changes occur
+- Financial Exception when exceptional financial corrections or mismatches are governed
 - Pickup Authorization, Pickup Token, Storage Location, and Custody Event when release or physical traceability changes occur
 - Workflow Definition, Status Definition, and SLA Rule when policy changes occur
 - Digital Approval and Communication Event when customer-facing evidence or communication occurs
@@ -769,6 +805,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 
 - Service Order is the business source of truth for amounts, terms, discounts, and payment applicability
 - Payment Record and Partial Payment trace settlement against Service Order and item scope
+- Financial Exception governs overpayments, underpayments, allocation corrections, or other exceptional financial corrections without moving financial ownership away from the Service Order
 - Fiscal Document remains part of Service Order business context
 - Production Order must never become the financial source of truth
 
@@ -776,6 +813,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 
 - Payment Record relates to Service Order as the commercial payment anchor
 - Partial Payment relates to Service Order Item or order-level scope where allocation applies
+- Financial Exception relates to the Service Order and associated payment context whenever the standard settlement flow requires governed correction, approval, or explanation
 - multiple partial payments may exist over time
 - payment status may be visible at order and item levels
 
@@ -846,6 +884,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 
 - Pickup Authorization belongs to Service Order release context
 - Pickup Token is subordinate credential or tokenized authorization artifact under Pickup Authorization
+- Pickup QR Code and Temporary Pickup Code are supporting authorization artifacts under Pickup Authorization
 - Remote Approval is a Digital Approval relationship pattern used in pickup context
 - Pickup Authorization, Pickup Token, collector identity, release actor, and timestamp must remain auditable
 - Pickup Authorization may be exercised through Pickup Token, Pickup QR Code, Temporary Pickup Code, or Remote Approval according to policy
@@ -871,7 +910,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 - Custody Event may relate to Service Order, Production Order, delivery, storage, pickup, rework, and warranty lifecycle points
 - Storage Location changes generate custody-relevant history
 - Pickup completion generates mandatory custody evidence
-- Digital Approval, Pickup Token, Pickup QR Code, Temporary Code, CCTV Reference, Camera Snapshot, and Audit Logs are valid custody evidence relationships where captured
+- Digital Approval, Pickup Token, Pickup QR Code, Temporary Pickup Code, CCTV Reference, Camera Snapshot, and Audit Logs are valid custody evidence relationships where captured
 - Chain of custody must remain end-to-end across intake, production, quality, rework, warranty, storage, delivery, and pickup
 
 ---
