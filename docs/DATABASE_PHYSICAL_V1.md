@@ -604,7 +604,8 @@ Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
 - UQ: filtered uniqueness on `(production_order_id)` when `is_current = true`
 - UQ: filtered uniqueness on `(production_order_id)` when `is_current = true and is_primary_responsible = true`
-- assignment-lifecycle rule: historical assignment rows may coexist for the same Production Order, but only one row may remain current at a time and the current primary-responsible flag may exist only on that current row
+- CHECK: `is_current = false or is_primary_responsible = true`
+- assignment-lifecycle rule: historical assignment rows may coexist for the same Production Order, but only one row may remain current at a time, any current row must be the current primary-responsible row, and any Production Order that has entered active execution-capable lifecycle states must have exactly one current primary-responsible assignment enforced by its workflow/application activation path
 
 #### `production_execution_events`
 Key columns:
@@ -774,7 +775,7 @@ Key columns:
 Constraints:
 - CHECK: `allocated_amount > 0`
 - CHECK: `service_order_id` is always populated
-- CHECK: `service_order_item_id` is optional and, when present, must belong to the same `service_order_id`
+- implementation invariant: `service_order_item_id` is optional and, when present, must belong to the same `service_order_id`; this should be enforced physically through a composite foreign-key strategy or trigger/application validation rather than a plain single-row CHECK
 
 #### `financial_exceptions`
 Key columns:
@@ -931,7 +932,8 @@ Key columns:
 
 Constraints:
 - CHECK: `service_order_id` is always populated
-- lineage rule: when `production_order_id` is populated, the referenced Production Order must belong to the same `service_order_id`
+- current-context rule: at most one active/current bag support-context row should exist per `service_order_id`, enforced through filtered uniqueness or equivalent lifecycle control
+- implementation invariant: when `production_order_id` is populated, the referenced Production Order must belong to the same `service_order_id`; this should be enforced through a composite foreign-key strategy or trigger/application validation rather than a plain single-row CHECK
 - no independent business numbering, QR code, or workflow columns are allowed in this table
 - the surrogate `id` is a technical row identifier only and does not constitute independent business identity
 
@@ -1139,8 +1141,8 @@ Key columns:
 
 Constraints:
 - CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`; or `production_order_id` together with its parent `service_order_id`; or `production_order_version_id` together with its parent `service_order_id`; or standalone `pickup_authorization_id`
-- lineage rule: when `production_order_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order
-- lineage rule: when `production_order_version_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order lineage
+- implementation invariant: when `production_order_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order; this should be enforced through composite foreign keys, trigger validation, or application-governed write paths rather than a plain single-row CHECK
+- implementation invariant: when `production_order_version_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order lineage; this should be enforced through composite foreign keys, trigger validation, or application-governed write paths rather than a plain single-row CHECK
 - immutable decision trace after final decision
 
 ---

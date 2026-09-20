@@ -1240,7 +1240,7 @@ Examples of status domains:
 - payment status
 - delivery status
 - customer rejection status
-- physical bag/container status where used
+- physical bag/container observational context where used, without independent workflow ownership
 - approval status
 - attendance status
 
