@@ -9,6 +9,12 @@ import { CustomerEntity } from 'src/modules/crm/infrastructure/persistence/entit
 import { CustomerContactEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-contact.entity';
 import { CustomerInteractionEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-interaction.entity';
 import { MeasurementRecordEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-record.entity';
+import { OperationalResourceBranchScopeEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource-branch-scope.entity';
+import { OperationalResourceEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource.entity';
+import { ProductionOrderOperationalAssignmentEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-operational-assignment.entity';
+import { ProductionOrderItemLinkEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-item-link.entity';
+import { ProductionOrderVersionEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-version.entity';
+import { ProductionOrderEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order.entity';
 import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
@@ -24,6 +30,12 @@ export const typeOrmEntities = [
   CustomerContactEntity,
   CustomerInteractionEntity,
   MeasurementRecordEntity,
+  OperationalResourceEntity,
+  OperationalResourceBranchScopeEntity,
+  ProductionOrderEntity,
+  ProductionOrderItemLinkEntity,
+  ProductionOrderVersionEntity,
+  ProductionOrderOperationalAssignmentEntity,
   BusinessCalendarDayEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,

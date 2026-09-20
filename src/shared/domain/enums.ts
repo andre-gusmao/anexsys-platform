@@ -83,3 +83,40 @@ export enum CalendarDayScope {
   BRANCH = 'branch',
   HOLIDAY = 'holiday',
 }
+
+
+export enum ProductionOrderStatus {
+  OPEN = 'open',
+  SCHEDULED = 'scheduled',
+  IN_PROGRESS = 'in_progress',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+export enum ProductionOrderVersionReason {
+  REWORK = 'rework',
+  WARRANTY_EXECUTION = 'warranty_execution',
+  CORRECTIVE_PRODUCTION = 'corrective_production',
+}
+
+export enum OperationalResourceType {
+  EMPLOYEE = 'employee',
+  DAILY_WORKER = 'daily_worker',
+  CONTRACTOR = 'contractor',
+}
+
+export enum OperationalResourceStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
+export enum OperationalAvailabilityStatus {
+  AVAILABLE = 'available',
+  UNAVAILABLE = 'unavailable',
+}
+
+export enum OperationalAssignmentRole {
+  PRIMARY = 'primary',
+  PARTICIPANT = 'participant',
+}
