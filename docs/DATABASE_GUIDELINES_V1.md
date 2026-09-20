@@ -28,12 +28,15 @@ This document does not define:
 Authoring note:
 - `docs/ARQUITETURA_V1.md` was not present in the current repository clone at authoring time
 - therefore, this guideline is grounded in `docs/SRS_MASTER_V1.3.md` plus the explicitly approved production model for this task
+- where current SRS wording and the explicitly approved production model differ, this document adopts the approved production model as the governing rule for conceptual database modeling
 
 ---
 
 ## Executive Summary
 
 ANEXSYS should be modeled as a set of bounded business domains with clear ownership boundaries.
+
+For conceptual database design, the approved production model in this document is authoritative for Production Bag, Production Order, and operational-responsibility cardinalities.
 
 The core business flow is:
 - Customer owns the commercial relationship
@@ -84,6 +87,12 @@ Responsibility changes, workflow transitions, QR-triggered execution events, qua
 ### 1.5 Separation of commercial and operational data
 
 Production execution data must not become the source of truth for prices, discounts, payment status, commissions, margins, or profit.
+
+### 1.6 Conceptual-model precedence
+
+This document is the governing conceptual data-modeling interpretation for downstream database analysis.
+
+When `docs/SRS_MASTER_V1.3.md` contains operational wording that differs from the explicitly approved production model for this task, the approved production model in this guideline takes precedence for aggregates, ownership, and cardinalities.
 
 ---
 
@@ -449,7 +458,7 @@ Workflow definitions govern many transactional aggregates of the same type, but 
 
 ## 12. Approved Production Model for Conceptual Data Design
 
-The following model is mandatory for conceptual data design in this version of the guideline:
+The following model is mandatory for conceptual data design in this version of the guideline and takes precedence for conceptual ownership and cardinality decisions in this document:
 
 - 1 Customer -> many Service Orders
 - 1 Service Order -> exactly 1 Production Bag
