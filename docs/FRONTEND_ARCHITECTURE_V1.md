@@ -151,7 +151,7 @@ Purpose:
 
 ### 4.4 Smart Concierge Interface
 Purpose:
-- reception and arrival-management interface for queue, lookup, retrieval, and controlled pickup support
+- mandatory reception and arrival-management interface for queue, lookup, retrieval, and controlled pickup support, with optional Smart Concierge extensions reserved for future prioritized automation scope
 
 ---
 
