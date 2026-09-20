@@ -2637,7 +2637,7 @@ The following areas were modified or added in V1.2:
 - Quality Responsible is defined through the Quality workflow.
 
 ### 48.4 Delivery Date Engine additions
-- The platform shall automatically suggest delivery dates by using the same weekday in the immediately following calendar week, which is exactly 7 calendar days later.
+- The platform shall automatically suggest delivery dates by using a default calculation that is exactly 7 calendar days after the source date.
 - Holidays, Branch Calendars, and Tenant Calendars must be considered automatically.
 - Dates that fall on non-working days must move to the next valid business day.
 
