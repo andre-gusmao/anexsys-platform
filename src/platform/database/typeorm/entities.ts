@@ -6,6 +6,8 @@ import { UserBranchScopeEntity } from 'src/modules/authorization/infrastructure/
 import { UserRoleAssignmentEntity } from 'src/modules/authorization/infrastructure/persistence/entities/user-role-assignment.entity';
 import { BranchEntity } from 'src/modules/branch/infrastructure/persistence/entities/branch.entity';
 import { CustomerEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer.entity';
+import { CustomerPortalProfileEntity } from 'src/modules/customer-portal/infrastructure/persistence/entities/customer-portal-profile.entity';
+import { StatusVisibilityMappingEntity } from 'src/modules/customer-portal/infrastructure/persistence/entities/status-visibility-mapping.entity';
 import { CustomerContactEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-contact.entity';
 import { CustomerInteractionEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-interaction.entity';
 import { MeasurementRecordEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-record.entity';
@@ -45,12 +47,14 @@ import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructur
 import { UserCredentialEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-credential.entity';
 import { UserIdentityEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-identity.entity';
 import { UserSessionEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-session.entity';
+import { SmartConciergeCheckInEntity } from 'src/modules/smart-concierge/infrastructure/persistence/entities/smart-concierge-check-in.entity';
 import { TenantEntity } from 'src/modules/tenant/infrastructure/persistence/entities/tenant.entity';
 
 export const typeOrmEntities = [
   TenantEntity,
   BranchEntity,
   CustomerEntity,
+  CustomerPortalProfileEntity,
   CustomerContactEntity,
   CustomerInteractionEntity,
   MeasurementRecordEntity,
@@ -77,6 +81,8 @@ export const typeOrmEntities = [
   PickupQrCodeEntity,
   TemporaryPickupCodeEntity,
   CommunicationEventEntity,
+  SmartConciergeCheckInEntity,
+  StatusVisibilityMappingEntity,
   DigitalApprovalEntity,
   StorageLocationEntity,
   StorageLocationAssignmentEntity,

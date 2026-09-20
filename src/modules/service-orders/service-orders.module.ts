@@ -32,6 +32,6 @@ import { ServiceOrderRepository } from './infrastructure/persistence/repositorie
     ServiceOrderRepository,
     ServiceOrderItemRepository,
   ],
-  exports: [DeliveryDateService, ServiceOrderService, BusinessCalendarDayRepository],
+  exports: [DeliveryDateService, ServiceOrderService, ServiceOrderRepository, BusinessCalendarDayRepository],
 })
 export class ServiceOrdersModule {}

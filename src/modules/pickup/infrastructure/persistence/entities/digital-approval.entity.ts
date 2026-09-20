@@ -1,5 +1,5 @@
 import { Column, Entity } from 'typeorm';
-import { DigitalApprovalDecision, DigitalApprovalType } from 'src/shared/domain/enums';
+import { DigitalApprovalDecision, DigitalApprovalType, InteractionChannel } from 'src/shared/domain/enums';
 import { MutableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'digital_approvals' })
@@ -24,6 +24,15 @@ export class DigitalApprovalEntity extends MutableBusinessEntity {
 
   @Column({ name: 'approval_type', type: 'varchar', length: 40 })
   approvalType!: DigitalApprovalType;
+
+  @Column({ name: 'request_channel', type: 'varchar', length: 30, nullable: true })
+  requestChannel!: InteractionChannel | null;
+
+  @Column({ name: 'approval_link_token', type: 'varchar', length: 120, nullable: true })
+  approvalLinkToken!: string | null;
+
+  @Column({ name: 'requested_at', type: 'timestamptz', nullable: true })
+  requestedAt!: Date | null;
 
   @Column({ name: 'decision', type: 'varchar', length: 20 })
   decision!: DigitalApprovalDecision;

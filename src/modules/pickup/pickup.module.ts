@@ -24,6 +24,6 @@ import { TemporaryPickupCodeRepository } from './infrastructure/persistence/repo
   imports: [TypeOrmModule.forFeature([PickupAuthorizationEntity, PickupTokenEntity, PickupQrCodeEntity, TemporaryPickupCodeEntity, CommunicationEventEntity, DigitalApprovalEntity]), AuditModule, TenantModule, BranchModule, ServiceOrdersModule, CustodyModule],
   controllers: [PickupAuthorizationsController],
   providers: [PickupService, PickupAuthorizationRepository, PickupTokenRepository, PickupQrCodeRepository, TemporaryPickupCodeRepository, CommunicationEventRepository, DigitalApprovalRepository],
-  exports: [PickupService],
+  exports: [PickupService, PickupAuthorizationRepository],
 })
 export class PickupModule {}

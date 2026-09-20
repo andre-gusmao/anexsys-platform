@@ -54,6 +54,7 @@ export enum InteractionChannel {
   PHONE = 'phone',
   WHATSAPP = 'whatsapp',
   EMAIL = 'email',
+  PORTAL = 'portal',
 }
 
 export enum DeliveryType {
@@ -279,6 +280,7 @@ export enum PickupAuthorizationStatus {
   REJECTED = 'rejected',
   COMPLETED = 'completed',
   EXPIRED = 'expired',
+  CANCELLED = 'cancelled',
 }
 
 export enum PickupAuthorizationPath {
@@ -336,6 +338,25 @@ export enum CommunicationDeliveryStatus {
 
 export enum DigitalApprovalType {
   PICKUP_AUTHORIZATION = 'pickup_authorization',
+  SERVICE_ORDER_APPROVAL = 'service_order_approval',
+}
+
+export enum SmartConciergeQueueStatus {
+  WAITING = 'waiting',
+  CALLED = 'called',
+  IN_SERVICE = 'in_service',
+  NO_SHOW = 'no_show',
+  COMPLETED = 'completed',
+}
+
+export enum CustomerIdentificationMethod {
+  NAME = 'name',
+  PHONE = 'phone',
+  WHATSAPP = 'whatsapp',
+  CPF = 'cpf',
+  CUSTOMER_CODE = 'customer_code',
+  QR_CODE = 'qr_code',
+  FACIAL_RECOGNITION = 'facial_recognition',
 }
 
 export enum DigitalApprovalDecision {

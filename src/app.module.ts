@@ -22,6 +22,8 @@ import { PermissionsGuard } from './platform/auth/permissions.guard';
 import { RequestContextMiddleware } from './platform/http/request-context.middleware';
 import { buildTypeOrmOptions } from './platform/database/typeorm/typeorm.config';
 import { PickupModule } from './modules/pickup/pickup.module';
+import { CustomerPortalModule } from './modules/customer-portal/customer-portal.module';
+import { SmartConciergeModule } from './modules/smart-concierge/smart-concierge.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { PickupModule } from './modules/pickup/pickup.module';
     FiscalModule,
     CustodyModule,
     PickupModule,
+    CustomerPortalModule,
+    SmartConciergeModule,
     IdentityModule,
     AuthorizationModule,
   ],

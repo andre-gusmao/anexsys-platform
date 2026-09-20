@@ -150,7 +150,7 @@ export class PickupService {
       id: randomUUID(), tenantId: dto.tenantId, branchId: authorization.branchId, customerId: null, serviceOrderId: authorization.serviceOrderId, channel: dto.channel, direction: CommunicationDirection.OUTBOUND, subject: 'Pickup authorization approval request', messageSummary: dto.messageSummary?.trim() || `Person ${authorization.authorizedPersonName} is requesting pickup of Service Order ${authorization.serviceOrderId}.`, sentAt: new Date(), deliveryStatus: CommunicationDeliveryStatus.SENT, payloadSnapshot: { pickupAuthorizationId: authorization.id, authorizedPersonName: authorization.authorizedPersonName }, createdBy: dto.actorUserId, updatedBy: dto.actorUserId,
     });
     const approval = this.digitalApprovalRepository.create({
-      id: randomUUID(), tenantId: dto.tenantId, branchId: authorization.branchId, serviceOrderId: null, productionOrderId: null, productionOrderVersionId: null, pickupAuthorizationId: authorization.id, approvalType: DigitalApprovalType.PICKUP_AUTHORIZATION, decision: DigitalApprovalDecision.PENDING, decidedAt: null, decidedBy: null, decisionNotes: null, evidencePayload: { channel: dto.channel }, createdBy: dto.actorUserId, updatedBy: dto.actorUserId,
+      id: randomUUID(), tenantId: dto.tenantId, branchId: authorization.branchId, serviceOrderId: null, productionOrderId: null, productionOrderVersionId: null, pickupAuthorizationId: authorization.id, approvalType: DigitalApprovalType.PICKUP_AUTHORIZATION, requestChannel: dto.channel, approvalLinkToken: randomUUID(), requestedAt: new Date(), decision: DigitalApprovalDecision.PENDING, decidedAt: null, decidedBy: null, decisionNotes: null, evidencePayload: { channel: dto.channel }, createdBy: dto.actorUserId, updatedBy: dto.actorUserId,
     });
     const savedCommunication = await this.communicationEventRepository.save(communication as CommunicationEventEntity);
     const savedApproval = await this.digitalApprovalRepository.save(approval as DigitalApprovalEntity);
@@ -218,8 +218,42 @@ export class PickupService {
     return authorization;
   }
 
+  async cancelPickupAuthorization(tenantId: string, pickupAuthorizationId: string, actorUserId: string) {
+    const authorization = await this.getPickupAuthorizationById(tenantId, pickupAuthorizationId);
+    if ([PickupAuthorizationStatus.COMPLETED, PickupAuthorizationStatus.EXPIRED].includes(authorization.status)) {
+      throw new DomainValidationError('Pickup Authorization can no longer be cancelled.');
+    }
+    authorization.status = PickupAuthorizationStatus.CANCELLED;
+    authorization.updatedBy = actorUserId;
+    const savedAuthorization = await this.pickupAuthorizationRepository.save(authorization);
+
+    const [tokens, qrCodes, temporaryCodes] = await Promise.all([
+      this.pickupTokenRepository.findByAuthorization(authorization.id),
+      this.pickupQrCodeRepository.findByAuthorization(authorization.id),
+      this.temporaryPickupCodeRepository.findByAuthorization(authorization.id),
+    ]);
+
+    await Promise.all([
+      ...tokens.filter((item) => item.status === PickupCredentialStatus.ACTIVE).map(async (item) => { item.status = PickupCredentialStatus.REVOKED; item.updatedBy = actorUserId; return this.pickupTokenRepository.save(item); }),
+      ...qrCodes.filter((item) => item.status === PickupCredentialStatus.ACTIVE).map(async (item) => { item.status = PickupCredentialStatus.REVOKED; item.updatedBy = actorUserId; return this.pickupQrCodeRepository.save(item); }),
+      ...temporaryCodes.filter((item) => item.status === PickupCredentialStatus.ACTIVE).map(async (item) => { item.status = PickupCredentialStatus.REVOKED; item.updatedBy = actorUserId; return this.temporaryPickupCodeRepository.save(item); }),
+    ]);
+
+    await this.auditService.record({
+      tenantId,
+      branchId: authorization.branchId,
+      actorUserId,
+      entityType: 'pickup_authorization',
+      entityId: authorization.id,
+      action: 'pickup_authorization.cancelled',
+      eventType: 'pickup.write',
+    });
+
+    return savedAuthorization;
+  }
+
   private assertAuthorizationIsActive(authorization: PickupAuthorizationEntity) {
-    if ([PickupAuthorizationStatus.REJECTED, PickupAuthorizationStatus.COMPLETED, PickupAuthorizationStatus.EXPIRED].includes(authorization.status)) {
+    if ([PickupAuthorizationStatus.REJECTED, PickupAuthorizationStatus.COMPLETED, PickupAuthorizationStatus.EXPIRED, PickupAuthorizationStatus.CANCELLED].includes(authorization.status)) {
       throw new DomainValidationError('Pickup Authorization is not active.');
     }
   }
