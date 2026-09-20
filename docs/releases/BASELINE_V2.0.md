@@ -34,7 +34,6 @@ Current repository design document locations referenced by this baseline:
 
 Current downstream repository planning documents added in later delivery stages:
 
-- `/docs/BACKEND_IMPLEMENTATION_V1.md`
 - `/docs/BACKEND_CODING_PLAN_V1.md`
 
 ## Approved business decisions
