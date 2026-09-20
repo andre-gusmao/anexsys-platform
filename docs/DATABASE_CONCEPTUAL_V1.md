@@ -167,6 +167,7 @@ Owns:
 - Pickup Token
 - Pickup QR Code
 - Temporary Pickup Code
+- Storage Location Assignment
 - Storage Location
 - physical Production Bag support context
 
@@ -230,6 +231,7 @@ Primary conceptual aggregates:
 - Warranty Execution
 - Financial Exception
 - Pickup Authorization
+- Storage Location Assignment
 - Storage Location
 - QR Code
 - Audit Event
@@ -247,6 +249,7 @@ Supporting conceptual aggregates or subordinate conceptual entities:
 - Partial Payment
 - Fiscal Document
 - Pickup Token
+- Storage Location Assignment
 - Pickup QR Code
 - Temporary Pickup Code
 - QR Event
@@ -291,6 +294,7 @@ Aggregate guidance:
 | Finance and Fiscal | Fiscal Document | legal/fiscal issuance record |
 | Delivery and Pickup | Pickup Authorization | release authorization for pickup |
 | Delivery and Pickup | Pickup Token | shareable pickup credential or tokenized authorization artifact |
+| Delivery and Pickup | Storage Location Assignment | current and historical retrieval/storage assignment context |
 | Delivery and Pickup | Pickup QR Code | pickup authorization artifact expressed as scannable release credential |
 | Delivery and Pickup | Temporary Pickup Code | short-lived pickup authorization credential |
 | Delivery and Pickup | Storage Location | visible physical retrieval/storage context |
@@ -373,6 +377,7 @@ Conceptual boundary:
 ### 5.6 Physical traceability ownership
 
 Owned by Delivery, Pickup, and Audit/Custody domains:
+- Storage Location assignment history
 - Storage Location usage
 - physical bag support usage
 - custody movement
@@ -422,6 +427,7 @@ Owned by Audit and Custody domain:
 | Fiscal Document | Finance and Fiscal | fiscal issuance and legal status |
 | Pickup Authorization | Delivery and Pickup | release authorization authority |
 | Pickup Token | Delivery and Pickup | pickup authorization credential |
+| Storage Location Assignment | Delivery and Pickup | current and historical location assignment trace |
 | Pickup QR Code | Delivery and Pickup | scannable pickup release credential |
 | Temporary Pickup Code | Delivery and Pickup | short-lived pickup release credential |
 | Storage Location | Delivery and Pickup | physical retrieval and location visibility |
@@ -491,7 +497,8 @@ Owned by Audit and Custody domain:
 
 - 1 Pickup Authorization -> one or many Pickup Tokens over time according to policy
 - 1 Pickup Authorization -> one or many Pickup QR Codes or Temporary Pickup Codes over time according to policy
-- 1 Storage Location -> many Service Orders over time
+- 1 Service Order -> many Storage Location Assignments over time
+- 1 Storage Location -> many Storage Location Assignments over time
 - 1 QR Code -> exactly 1 Production Order active ownership context
 - 1 Production Order -> many Custody Events where operational custody applies
 - 1 Service Order -> many Custody Events across intake, storage, delivery, and pickup
@@ -520,9 +527,10 @@ Owned by Audit and Custody domain:
 | Service Order Item | Fiscal Document | 1 -> many | fiscal issuance may occur at item scope |
 | Service Order | Pickup Authorization | 1 -> many | many authorization attempts/history allowed |
 | Pickup Authorization | Pickup Token | 1 -> many | token lifecycle is policy-driven |
+| Service Order | Storage Location Assignment | 1 -> many over time | current and historical retrieval location assignments must be preserved |
+| Storage Location | Storage Location Assignment | 1 -> many by reference use | many assignment-history records may reference the same location catalog entry |
 | Pickup Authorization | Pickup QR Code | 1 -> many | scannable authorization artifacts are policy-driven |
 | Pickup Authorization | Temporary Pickup Code | 1 -> many | temporary authorization artifacts are policy-driven |
-| Service Order | Storage Location context | 1 -> many over time | current and historical location must be preserved |
 | Production Order | QR Code | 1 -> 1 active operational ownership | QR belongs only to Production Order |
 | Production Order | QR Event | 1 -> many | scan history is event-based |
 | Production Order | Quality Record | 1 -> many | inspection history is longitudinal |
@@ -569,7 +577,8 @@ Owned by Audit and Custody domain:
 
 ### 9.5 Physical traceability hierarchy
 
-- Storage Location is parent of location assignment history
+- Service Order is parent of location assignment history through Storage Location Assignment
+- Storage Location is the referenced location catalog for Storage Location Assignment
 - Physical Production Bag Support Context is subordinate physical context under Service Order / Production Order usage, not a business parent
 - Custody Event is child of the tracked business object lifecycle
 
@@ -603,7 +612,8 @@ Owned by Audit and Custody domain:
 | Primary Production Order lineage | may open | Warranty Execution | post-delivery execution failure responsibility |
 | Service Order | authorizes release through | Pickup Authorization | pickup control |
 | Pickup Authorization | may issue | Pickup Token | authorization credential |
-| Service Order | is located in | Storage Location | physical retrieval visibility |
+| Service Order | uses | Storage Location Assignment | physical retrieval visibility history |
+| Storage Location Assignment | references | Storage Location | assignment history points to the physical location catalog |
 | Service Order / Production Order | is traced by | Custody Event | physical custody lifecycle |
 | Any governed entity | is recorded by | Audit Event | immutable traceability |
 | Workflow Definition | governs | Status Definition | lifecycle semantics |
@@ -759,7 +769,7 @@ Audit Event must conceptually relate to:
 - Quality Record, Rework Case, Customer Rejection, Warranty Adjustment, and Warranty Execution when corrective/validation decisions occur
 - Payment Record and Fiscal Document when settlement or fiscal status changes occur
 - Financial Exception when exceptional financial corrections or mismatches are governed
-- Pickup Authorization, Pickup Token, Storage Location, and Custody Event when release or physical traceability changes occur
+- Pickup Authorization, Pickup Token, Storage Location Assignment, Storage Location, and Custody Event when release or physical traceability changes occur
 - Workflow Definition, Status Definition, and SLA Rule when policy changes occur
 - Digital Approval and Communication Event when customer-facing evidence or communication occurs
 
@@ -951,7 +961,7 @@ Conceptual rules:
 - final repository-wide wording consistency still depends on all future business documents preserving Production Order as the sole operational execution authority
 - Payment Record versus Partial Payment conceptual distinction may require later logical refinement for allocation granularity across order-level and item-level settlement
 - Warranty Adjustment versus Warranty Execution operational boundary is conceptually clear but may require additional logical lifecycle rules during logical design
-- Storage Location applicability at order-level versus item-level physical granularity may require later logical clarification for industries with mixed storage practices
+- Storage Location Assignment applicability at order-level versus item-level physical granularity may require later logical clarification for industries with mixed storage practices
 - Communication Event channel taxonomy and retention policy may require later logical refinement depending on tenant communication capabilities
 - Digital Approval evidence breadth may require logical modeling refinement for evidence variants without changing conceptual ownership
 - Custody evidence optionality versus mandatory capture thresholds may require logical rule detail by workflow stage

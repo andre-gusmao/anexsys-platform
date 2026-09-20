@@ -39,7 +39,7 @@ This document does not define:
 
 ANEXSYS logical data design must preserve the approved business split between commercial truth and operational truth:
 - Service Order = commercial and financial source of truth
-- Production Order = operational execution source of truth
+- Primary Production Order = operational execution source of truth
 - Production Bag = physical support only
 
 The logical model must preserve these approved operating rules:
@@ -47,9 +47,9 @@ The logical model must preserve these approved operating rules:
 - 1 Service Order -> many Service Order Items
 - 1 Service Order -> exactly 1 Primary Production Order
 - 1 Primary Production Order -> many Production Order Versions over time when corrective lineage is required
-- QR Code belongs only to Production Order
-- Operational Resources execute work through Production Order events
-- Rework, Warranty Execution, and Corrective Production use Production Order version lineage
+- QR Code belongs only to the Primary Production Order
+- Operational Resources execute work through Primary Production Order events
+- Rework, Warranty Execution, and Corrective Production use Production Order lineage versioning
 - the Production Bag is never modeled as a primary business entity and never receives independent numbering, independent QR ownership, or independent workflow ownership
 
 Logical design intent:
@@ -123,7 +123,7 @@ Owns logical entities:
 - Storage Location Assignment
 
 Support-context note:
-- Physical Production Bag Support Context belongs to Delivery and Pickup traceability as optional physical context only and is intentionally excluded from the logical entity catalog
+- Physical Production Bag Support Context belongs to Delivery and Pickup traceability as optional physical context only and is modeled as non-aggregate support context
 
 ### 2.9 QR and Operational Tracking domain
 
@@ -223,7 +223,8 @@ Logical aggregate-root guidance:
 | Temporary Pickup Code | short-lived pickup credential | Delivery and Pickup | Pickup Authorization |
 | Storage Location | visible retrieval and physical placement catalog context | Delivery and Pickup | Storage Location |
 | Storage Location Assignment | current and historical location-assignment history for Service Order retrieval visibility | Delivery and Pickup | Service Order |
-| QR Code | operational scan identity for Production Order | QR and Operational Tracking | QR Code |
+| Physical Production Bag Support Context | optional physical container support context for retrieval or transport flows only | Delivery and Pickup | Not applicable - support context only |
+| QR Code | operational scan identity for the Primary Production Order | QR and Operational Tracking | QR Code |
 | QR Event | individual execution scan trace | QR and Operational Tracking | QR Code |
 | Custody Event | physical handoff and chain-of-custody trace | Audit and Traceability | Custody Event |
 | Audit Event | immutable cross-domain audit record | Audit and Traceability | Audit Event |
@@ -236,10 +237,10 @@ Logical aggregate-root guidance:
 | Digital Approval | auditable approval or consent decision | Communication and Approval | Digital Approval |
 
 Logical support rule:
-- Physical Production Bag Support Context is intentionally excluded from the logical entity catalog and aggregate-root list.
-- It may exist only as optional support context associated to Service Order and Production Order retrieval or transport flows; it is not a logical aggregate root and not a primary business entity.
+- Physical Production Bag Support Context is a non-aggregate logical support context, not a primary business entity and not an aggregate root.
+- It may exist only as optional support context associated to Service Order and Primary Production Order retrieval or transport flows.
 - The Governing Aggregate Root column identifies which listed aggregate root governs a logical entity's lifecycle and boundary; it does not imply that every listed logical entity is itself an aggregate root.
-- In this logical model, `Primary Production Order` is the base logical entity that fulfills the approved Production Order role, while `Production Order` may still be used in narrative lineage language for the base record plus its corrective versions.
+- In this logical model, `Primary Production Order` is the canonical base logical entity, and `Production Order lineage` is the umbrella term for the base record plus its corrective versions.
 
 ---
 
@@ -261,11 +262,11 @@ Logical support rule:
 
 ### 5.4 Production responsibilities
 - Primary Production Order owns operational execution state, operational QR identity, execution status progression, assignment context, workflow-event registration, and Operational Diary linkage.
-- Production Order Version owns corrective lineage state for rework, warranty execution, and corrective production while remaining subordinate to the original Production Order lineage.
+- Production Order Version owns corrective lineage state for rework, warranty execution, and corrective production while remaining subordinate to the original Primary Production Order lineage.
 
 ### 5.5 Operational Resource responsibilities
 - Operational Resource owns capability profile, qualification context, and operational assignment identity.
-- Operational responsibility is realized through Production Order execution events rather than through Service Order financial ownership.
+- Operational responsibility is realized through Primary Production Order execution events rather than through Service Order financial ownership.
 
 ### 5.6 Quality responsibilities
 - Quality Record owns inspection results and release decisions.
@@ -285,7 +286,8 @@ Logical support rule:
 - Pickup Token, Pickup QR Code, and Temporary Pickup Code own supporting authorization artifacts under Pickup Authorization.
 - Storage Location owns visible retrieval and placement definition.
 - Storage Location Assignment owns current-versus-historical retrieval placement history within the Service Order lifecycle.
-- QR Code owns operational scan identity only for Production Order.
+- Physical Production Bag Support Context owns no business authority and only preserves optional physical support context when used.
+- QR Code owns operational scan identity only for the Primary Production Order.
 - QR Event owns each execution-scan occurrence.
 - Custody Event owns chain-of-custody progression where physical handoff or release trace is required.
 - Audit Event owns immutable cross-domain audit history.
@@ -388,7 +390,8 @@ Logical support rule:
 | Temporary Pickup Code | Delivery and Pickup | temporary pickup credential |
 | Storage Location | Delivery and Pickup | retrieval and placement catalog visibility |
 | Storage Location Assignment | Delivery and Pickup under Service Order lifecycle | current and historical retrieval placement linkage |
-| QR Code | QR and Operational Tracking | Production Order scan identity |
+| Physical Production Bag Support Context | Delivery and Pickup support context | optional physical container context only |
+| QR Code | QR and Operational Tracking | Primary Production Order scan identity |
 | QR Event | QR and Operational Tracking | scan-event trace |
 | Custody Event | Audit and Traceability | chain-of-custody trace |
 | Audit Event | Audit and Traceability | immutable audit record |
@@ -419,8 +422,8 @@ Logical support rule:
 | Service Order | generates | Primary Production Order | one Service Order creates exactly one Primary Production Order as the single base operational root |
 | Primary Production Order | covers execution scope for | Service Order Item | the Primary Production Order covers all items in the same Service Order scope |
 | Primary Production Order | is versioned by | Production Order Version | corrective lineage extends the same operational root |
-| Primary Production Order | is executed by | Operational Resource | operational work is performed through Production Order execution |
-| Primary Production Order | is identified by | QR Code | QR ownership belongs only to Production Order |
+| Primary Production Order | is executed by | Operational Resource | operational work is performed through Primary Production Order execution |
+| Primary Production Order | is identified by | QR Code | QR ownership belongs only to the Primary Production Order |
 | QR Code | generates | QR Event | scan history is event-based |
 | Primary Production Order | is evaluated by | Quality Record | inspection and release remain operationally anchored |
 | Service Order Item | may lead to | Customer Rejection | rejection is item-scoped |
@@ -440,6 +443,8 @@ Logical support rule:
 | Pickup Authorization | may issue | Temporary Pickup Code | short-lived pickup authorization artifact |
 | Service Order | uses | Storage Location Assignment | retrieval visibility history remains under the Service Order lifecycle |
 | Storage Location Assignment | references | Storage Location | assignment history points to the shared location catalog |
+| Service Order | may use | Physical Production Bag Support Context | bag support context may optionally store Service Order pieces |
+| Primary Production Order | may use | Physical Production Bag Support Context | bag support context may optionally carry the printed operational document |
 | Custody Event | may include | CCTV Reference | custody trace may include surveillance evidence linkage |
 | Custody Event | may include | Camera Snapshot | custody trace may include captured image evidence |
 | Service Order | is traced by | Custody Event | custody progression is auditable across commercial, delivery, and pickup stages |
@@ -471,7 +476,7 @@ Logical support rule:
 | Service Order | Service Order Item | 1 -> many | items cannot exist outside the parent Service Order |
 | Service Order | Primary Production Order | 1 -> 1 | exactly one Primary Production Order exists per Service Order |
 | Primary Production Order | Production Order Version | 1 -> many over time | versions exist only for rework, warranty execution, or corrective production under the same primary lineage |
-| Primary Production Order | QR Code | 1 -> 1 active | operational QR identity belongs only to Production Order |
+| Primary Production Order | QR Code | 1 -> 1 active | operational QR identity belongs only to the Primary Production Order |
 | Primary Production Order | QR Event | 1 -> many | scan history is event-based |
 | Primary Production Order | Quality Record | 1 -> many | multiple inspections may exist over time |
 | Primary Production Order | Rework Case | 1 -> many | many corrective cases may reference the same lineage over time |
@@ -490,6 +495,8 @@ Logical support rule:
 | Custody Event | Camera Snapshot | 1 -> many when evidence is captured | custody evidence may include one or more captured images |
 | Service Order | Storage Location Assignment | 1 -> many over time | current and historical retrieval location must be preserved through assignment history |
 | Storage Location | Storage Location Assignment | 1 -> many by reference use | many assignment-history records may reference the same location catalog entry |
+| Service Order | Physical Production Bag Support Context | 1 -> many when physically used | physical bag usage is optional support context only |
+| Primary Production Order | Physical Production Bag Support Context | 1 -> many when physically used | printed operational-document support may be associated without creating bag authority |
 | Service Order | Digital Approval | 1 -> many | multiple approval cycles may exist over time |
 | Service Order | Communication Event | 1 -> many | communication history is longitudinal |
 | Service Order | Custody Event | 1 -> many where custody applies | intake, storage, delivery, and pickup trace remain auditable |
@@ -531,10 +538,10 @@ Audit ownership rules:
 
 Workflow ownership rules:
 - Workflow Definition owns lifecycle policy, transition governance, approval requirements, escalation logic, and visibility rules
-- Status Definition owns status semantics for Service Order, Service Order Item, Production Order, Quality, Rework, Warranty Execution, Payment, Delivery, and Approval contexts where configured
+- Status Definition owns status semantics for Service Order, Service Order Item, Primary Production Order, Quality, Rework, Warranty Execution, Payment, Delivery, and Approval contexts where configured
 - SLA Rule owns start, pause, resume, complete, and violation behavior under business-calendar governance
 - workflow entities govern transactional entities but do not replace the transactional domain as source of truth
-- operational workflow execution remains anchored to Production Order, not to Production Bag support context
+- operational workflow execution remains anchored to the Primary Production Order, not to Production Bag support context
 
 ---
 
@@ -546,7 +553,7 @@ Financial ownership rules:
 - Partial Payment is a logical allocation entity subordinate to Payment Record and anchored to either Service Order or Service Order Item scope
 - Financial Exception preserves exceptional correction flow without moving financial ownership away from the Service Order
 - Fiscal Document remains logically anchored to Service Order commercial truth even when issued at item scope
-- Production Order must never become the source of truth for payment, price, discount, commission, margin, or profit information
+- Primary Production Order must never become the source of truth for payment, price, discount, commission, margin, or profit information
 
 ---
 
@@ -558,7 +565,7 @@ Quality ownership rules:
 - Rework Case owns internal corrective execution lifecycle
 - Warranty Adjustment owns non-execution adjustment obligations
 - Warranty Execution owns execution-related warranty correction lifecycle
-- all corrective entities must preserve original Production Order lineage and original-versus-corrective operational accountability where applicable
+- all corrective entities must preserve original Primary Production Order lineage and original-versus-corrective operational accountability where applicable
 
 ---
 
@@ -567,7 +574,7 @@ Quality ownership rules:
 Operational Resource ownership rules:
 - Operational Resource owns capability profile, qualification, availability, and assignment identity
 - Commercial Responsible and Technical Measurement Responsible belong to Service Order responsibility scope
-- Operational Responsible is defined through Production Order execution events
+- Operational Responsible is defined through Primary Production Order execution events
 - Quality Responsible is defined through Quality workflow
 - rework and warranty execution must preserve original and corrective Operational Resource attribution when applicable
 
@@ -576,9 +583,9 @@ Operational Resource ownership rules:
 ## 16. Traceability Ownership
 
 Traceability ownership rules:
-- QR Code and QR Event logically own Production Order scan traceability
+- QR Code and QR Event logically own Primary Production Order scan traceability
 - Storage Location logically owns location-definition meaning
-- Service Order logically owns its retrieval-visibility history through longitudinal references to Storage Location
+- Storage Location Assignment logically owns current-versus-historical retrieval visibility history while referencing Storage Location
 - Pickup Authorization and its artifacts logically own release traceability
 - Custody Event logically owns handoff-stage traceability across intake, storage, delivery, pickup, rework, and warranty where applicable
 - Audit Event logically owns immutable cross-domain traceability
