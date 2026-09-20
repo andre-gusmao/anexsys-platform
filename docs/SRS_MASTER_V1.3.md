@@ -507,10 +507,12 @@ Responsibility requirements for each Service Order:
   - purpose: customer service and commercial responsibility
   - default: logged user
   - editable: yes
+  - mandatory at Service Order creation
 - Technical Measurement Responsible
   - purpose: measurements, markings, and technical evaluation
   - may differ from Commercial Responsible
   - editable: yes
+  - mandatory before production release when technical measurement or marking is required
 - Operational Responsible
   - defined through Production Order execution
 - Quality Responsible
@@ -666,6 +668,8 @@ Delivery Type must affect:
 
 The platform shall automatically suggest delivery dates.
 
+The default suggestion must be calculated from the Service Order creation date/time in the applicable branch time zone.
+
 Default rule:
 - Monday -> the immediately following Monday
 - Tuesday -> the immediately following Tuesday
@@ -679,6 +683,10 @@ The platform must automatically consider:
 - Holidays
 - Branch Calendars
 - Tenant Calendars
+
+Calendar conflict rule:
+- a date is valid only when it is a working day in the applicable Branch Calendar and Tenant Calendar and is not blocked by an applicable Holiday
+- when any applicable calendar marks the date as non-working, that date must be treated as non-working
 
 If the calculated date falls on a non-working day, the system must automatically move the date to the next valid business day.
 
@@ -809,7 +817,7 @@ Visual-delivery-date requirements:
 
 Illustrative format example: large day number `26` with smaller month `SEP` beneath or beside it.
 
-The physical printed Production Order used with the bag/container must support an A5 operational format when printed.
+When a Production Order is printed for operational floor use and placed in a physical bag/container, that printed operational copy must support an A5 format.
 
 ### 8.7 Production buffer / safety window
 
@@ -1017,7 +1025,7 @@ The system must support complete operational traceability from Service Order to 
 
 ### 11.1 Objective
 
-The Production Bag is a physical container used to store the pieces belonging to a Service Order and the printed Production Order (A5).
+The Production Bag is a physical container used to store the pieces belonging to a Service Order and the printed operational Production Order copy (A5).
 
 The Production Bag is not a primary business entity. The primary operational execution entity is the Production Order.
 
@@ -1041,7 +1049,7 @@ The bag/container itself does not require:
 The following rules are mandatory:
 - the Production Bag may be used as a physical container when operationally useful
 - the bag/container stores the pieces belonging to a Service Order
-- the bag/container stores the printed Production Order (A5)
+- the bag/container stores the printed operational Production Order copy (A5)
 - the bag/container must not become the primary governed execution object
 
 The following conditions are prohibited:
@@ -2645,7 +2653,7 @@ The following areas were modified or added in V1.2:
 ### 48.6 Production Order printed document updates
 - Production Orders must display a large delivery day number and a smaller month.
 - Highly visible indicators such as `[ EXPRESS ]`, `[ WARRANTY ]`, `[ REWORK ]`, and `[ PRIORITY ]` are required when applicable.
-- The printed Production Order must support an A5 operational format when printed.
+- The printed operational Production Order copy used with the bag/container must support an A5 format.
 - Production Orders remain financially clean and must not display financial data.
 
 ### 48.7 Physical Storage Location updates
