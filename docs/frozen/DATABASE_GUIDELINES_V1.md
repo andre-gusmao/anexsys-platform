@@ -1,3 +1,12 @@
+STATUS: BASELINE APPROVED
+
+DATE: 2026-09-20
+
+PURPOSE:
+Frozen reference version approved before conceptual database modeling.
+
+---
+
 # ANEXSYS Platform
 # DATABASE_GUIDELINES_V1
 
