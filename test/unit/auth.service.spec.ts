@@ -22,6 +22,14 @@ function buildAuthService(overrides?: {
         status: 'active',
       };
     },
+    async getById() {
+      return {
+        id: 'user-1',
+        tenantId: 'tenant-1',
+        defaultBranchId: 'branch-1',
+        status: 'active',
+      };
+    },
   };
   const userCredentialRepository = {
     async findByUserId() {
