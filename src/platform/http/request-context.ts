@@ -42,10 +42,5 @@ export function resolveTenantId(request: PlatformRequest): string | null {
 }
 
 export function resolveBranchId(request: PlatformRequest): string | null {
-  return (
-    normalize(request.params?.branchId) ??
-    normalize(request.requestContext.requestedBranchId) ??
-    normalize(request.requestContext.authenticatedPrincipal?.effectiveBranchIds?.[0]) ??
-    null
-  );
+  return normalize(request.params?.branchId) ?? normalize(request.requestContext.requestedBranchId) ?? null;
 }

@@ -26,6 +26,10 @@ export class PermissionRepository {
     return this.repository.find({ where: { tenantId }, order: { code: 'ASC' } });
   }
 
+  async findByTenantAndCode(tenantId: string, code: string): Promise<PermissionEntity | null> {
+    return this.repository.findOne({ where: { tenantId, code } });
+  }
+
   async findByIds(tenantId: string, ids: string[]): Promise<PermissionEntity[]> {
     if (ids.length === 0) {
       return [];
@@ -34,4 +38,3 @@ export class PermissionRepository {
     return this.repository.find({ where: { tenantId, id: In(ids) }, order: { code: 'ASC' } });
   }
 }
-

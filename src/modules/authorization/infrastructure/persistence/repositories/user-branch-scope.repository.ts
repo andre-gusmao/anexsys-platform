@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { BranchScopeType } from 'src/shared/domain/enums';
 import { UserBranchScopeEntity } from '../entities/user-branch-scope.entity';
 
 @Injectable()
@@ -20,5 +21,14 @@ export class UserBranchScopeRepository {
 
   async findByUserId(tenantId: string, userId: string): Promise<UserBranchScopeEntity[]> {
     return this.repository.find({ where: { tenantId, userId } });
+  }
+
+  async findByUserBranchAndScope(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    scopeType: BranchScopeType,
+  ): Promise<UserBranchScopeEntity | null> {
+    return this.repository.findOne({ where: { tenantId, userId, branchId, scopeType } });
   }
 }

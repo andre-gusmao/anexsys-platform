@@ -27,4 +27,21 @@ export class UserRoleAssignmentRepository {
       },
     });
   }
+
+  async findActiveAssignment(
+    tenantId: string,
+    userId: string,
+    roleId: string,
+    assignedBranchId: string | null,
+  ): Promise<UserRoleAssignmentEntity | null> {
+    return this.repository.findOne({
+      where: {
+        tenantId,
+        userId,
+        roleId,
+        assignedBranchId: assignedBranchId ?? IsNull(),
+        revokedAt: IsNull(),
+      },
+    });
+  }
 }

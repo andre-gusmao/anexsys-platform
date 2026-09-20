@@ -33,10 +33,16 @@ export class AuthorizationService {
   ) {}
 
   async createRole(dto: CreateRoleDto): Promise<RoleEntity> {
+    const normalizedCode = dto.code.trim().toUpperCase();
+    const existingRole = await this.roleRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+    if (existingRole) {
+      throw new DomainValidationError(`Role code '${normalizedCode}' already exists for this tenant.`);
+    }
+
     const role = this.roleRepository.create({
       id: randomUUID(),
       tenantId: dto.tenantId,
-      code: dto.code.trim().toUpperCase(),
+      code: normalizedCode,
       displayName: dto.displayName.trim(),
       description: dto.description?.trim() ?? null,
       status: RoleStatus.ACTIVE,
@@ -60,10 +66,16 @@ export class AuthorizationService {
   }
 
   async createPermission(dto: CreatePermissionDto): Promise<PermissionEntity> {
+    const normalizedCode = dto.code.trim();
+    const existingPermission = await this.permissionRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+    if (existingPermission) {
+      throw new DomainValidationError(`Permission code '${normalizedCode}' already exists for this tenant.`);
+    }
+
     const permission = this.permissionRepository.create({
       id: randomUUID(),
       tenantId: dto.tenantId,
-      code: dto.code.trim(),
+      code: normalizedCode,
       displayName: dto.displayName.trim(),
       description: dto.description?.trim() ?? null,
       createdBy: dto.actorUserId,
@@ -89,6 +101,15 @@ export class AuthorizationService {
     const permission = await this.getPermission(dto.permissionId);
     if (role.tenantId !== dto.tenantId || permission.tenantId !== dto.tenantId) {
       throw new DomainValidationError('Role and permission must belong to the assignment tenant.');
+    }
+
+    const existingAssignment = await this.rolePermissionRepository.findByRoleAndPermission(
+      dto.tenantId,
+      dto.roleId,
+      dto.permissionId,
+    );
+    if (existingAssignment) {
+      throw new DomainValidationError('Role permission assignment already exists.');
     }
 
     const link = this.rolePermissionRepository.create({
@@ -122,8 +143,18 @@ export class AuthorizationService {
     if (dto.assignedBranchId) {
       const branch = await this.branchService.getById(dto.assignedBranchId);
       if (branch.tenantId !== dto.tenantId) {
-        throw new DomainValidationError('Assigned branch must belong to the same tenant.');
+        throw new DomainValidationError('Assigned branch must belong to the assignment tenant.');
       }
+    }
+
+    const existingAssignment = await this.userRoleAssignmentRepository.findActiveAssignment(
+      dto.tenantId,
+      dto.userId,
+      dto.roleId,
+      dto.assignedBranchId ?? null,
+    );
+    if (existingAssignment) {
+      throw new DomainValidationError('Active user role assignment already exists.');
     }
 
     const assignment = this.userRoleAssignmentRepository.create({
@@ -141,7 +172,7 @@ export class AuthorizationService {
     await this.userRoleAssignmentRepository.save(assignment);
     await this.auditService.record({
       tenantId: dto.tenantId,
-      branchId: dto.assignedBranchId ?? null,
+      branchId: dto.assignedBranchId,
       actorUserId: dto.actorUserId,
       entityType: 'user_role_assignment',
       entityId: assignment.id,
@@ -156,6 +187,16 @@ export class AuthorizationService {
     const branch = await this.branchService.getById(dto.branchId);
     if (user.tenantId !== dto.tenantId || branch.tenantId !== dto.tenantId) {
       throw new DomainValidationError('User and branch must belong to the assignment tenant.');
+    }
+
+    const existingScope = await this.userBranchScopeRepository.findByUserBranchAndScope(
+      dto.tenantId,
+      dto.userId,
+      dto.branchId,
+      dto.scopeType,
+    );
+    if (existingScope) {
+      throw new DomainValidationError('User branch scope assignment already exists.');
     }
 
     const scope = this.userBranchScopeRepository.create({

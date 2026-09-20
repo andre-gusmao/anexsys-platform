@@ -29,4 +29,8 @@ export class RolePermissionRepository {
       .andWhere('rolePermission.role_id IN (:...roleIds)', { roleIds })
       .getMany();
   }
+
+  async findByRoleAndPermission(tenantId: string, roleId: string, permissionId: string): Promise<RolePermissionEntity | null> {
+    return this.repository.findOne({ where: { tenantId, roleId, permissionId } });
+  }
 }

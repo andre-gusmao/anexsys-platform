@@ -25,4 +25,8 @@ export class RoleRepository {
   async findByTenant(tenantId: string): Promise<RoleEntity[]> {
     return this.repository.find({ where: { tenantId }, order: { displayName: 'ASC' } });
   }
+
+  async findByTenantAndCode(tenantId: string, code: string): Promise<RoleEntity | null> {
+    return this.repository.findOne({ where: { tenantId, code } });
+  }
 }

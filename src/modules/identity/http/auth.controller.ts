@@ -55,7 +55,7 @@ export class AuthController {
     return this.authService.refreshTokens(body);
   }
 
-    @Post('logout')
+  @Post('logout')
   async logout(@Body() body: LogoutBody, @CurrentRequest() request: PlatformRequest) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
     if (!actorUserId) {
@@ -66,7 +66,7 @@ export class AuthController {
     return { success: true };
   }
 
-    @Get('me')
+  @Get('me')
   async getMe(@CurrentRequest() request: PlatformRequest) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
     const tenantId = request.requestContext.authenticatedPrincipal?.tenantId;
