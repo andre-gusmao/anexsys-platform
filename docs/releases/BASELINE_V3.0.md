@@ -34,10 +34,6 @@ Approved immutable release snapshot carried by this baseline:
 
 - `/docs/releases/MIGRATION_AND_ONBOARDING_V1_APPROVED.md`
 
-Working source location retained for repository drafting continuity and explicitly excluded from the frozen baseline artifact set:
-
-- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md` (source working path for the approved release snapshot above; not itself part of the immutable frozen baseline artifact set)
-
 ## Approved decisions
 
 ### Multi-Tenant SaaS

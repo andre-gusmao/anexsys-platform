@@ -510,7 +510,7 @@ The sprint plan below assumes:
 - extend audit/evidence support for reception and handoff flows
 
 **API Tasks**
-- implement Smart Concierge APIs
+- implement Reception Workflow APIs
 - implement Dashboard read endpoints needed by concierge/portal flows
 - implement customer-facing read/action endpoints under existing domain ownership
 
