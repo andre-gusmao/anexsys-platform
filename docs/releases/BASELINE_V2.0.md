@@ -28,11 +28,14 @@ Approved downstream design documents in the current baseline set:
 
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
-- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md`
 
 Carried-forward repository design reference:
 
 - `/docs/DATABASE_CONCEPTUAL_V1.md`
+
+Approved working reference:
+
+- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md`
 
 ## Approved business decisions
 
