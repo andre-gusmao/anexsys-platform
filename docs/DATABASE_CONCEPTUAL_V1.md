@@ -491,7 +491,7 @@ Owned by Audit and Custody domain:
 
 - 1 Pickup Authorization -> one or many Pickup Tokens over time according to policy
 - 1 Pickup Authorization -> one or many Pickup QR Codes or Temporary Pickup Codes over time according to policy
-- 1 Storage Location -> many Service Orders or item storage contexts over time
+- 1 Storage Location -> many Service Orders over time
 - 1 QR Code -> exactly 1 Production Order active ownership context
 - 1 Production Order -> many Custody Events where operational custody applies
 - 1 Service Order -> many Custody Events across intake, storage, delivery, and pickup
@@ -516,7 +516,8 @@ Owned by Audit and Custody domain:
 | Service Order | Partial Payment | 1 -> many when order-level settlement applies | order-level partial settlement remains commercially anchored |
 | Payment Record | Partial Payment | 1 -> many when partially allocated | partial settlement allocations belong to a recorded payment |
 | Service Order Item | Partial Payment | 1 -> many | item scope may receive many partial allocations over time |
-| Service Order / Item | Fiscal Document | 1 -> many | fiscal issuance may be per order or per item |
+| Service Order | Fiscal Document | 1 -> many | fiscal issuance may occur at order scope |
+| Service Order Item | Fiscal Document | 1 -> many | fiscal issuance may occur at item scope |
 | Service Order | Pickup Authorization | 1 -> many | many authorization attempts/history allowed |
 | Pickup Authorization | Pickup Token | 1 -> many | token lifecycle is policy-driven |
 | Pickup Authorization | Pickup QR Code | 1 -> many | scannable authorization artifacts are policy-driven |
@@ -588,7 +589,8 @@ Owned by Audit and Custody domain:
 | Service Order | references | Communication Event | customer-facing communication history |
 | Service Order | is settled by | Payment Record | commercial settlement trace |
 | Service Order | may open | Financial Exception | exceptional settlement or allocation correction flow |
-| Service Order / Item | is documented by | Fiscal Document | fiscal/legal record |
+| Service Order | is documented by | Fiscal Document | fiscal/legal record at order scope |
+| Service Order Item | is documented by | Fiscal Document | fiscal/legal record at item scope |
 | Production Order | represents execution of | Service Order Item | operational execution scope |
 | Primary Production Order | is versioned by | Production Order Version | corrective lineage |
 | Production Order | is performed by | Operational Resource | execution accountability participant |
@@ -601,11 +603,15 @@ Owned by Audit and Custody domain:
 | Primary Production Order lineage | may open | Warranty Execution | post-delivery execution failure responsibility |
 | Service Order | authorizes release through | Pickup Authorization | pickup control |
 | Pickup Authorization | may issue | Pickup Token | authorization credential |
-| Service Order / item context | is located in | Storage Location | physical retrieval visibility |
+| Service Order | is located in | Storage Location | physical retrieval visibility |
 | Service Order / Production Order | is traced by | Custody Event | physical custody lifecycle |
 | Any governed entity | is recorded by | Audit Event | immutable traceability |
 | Workflow Definition | governs | Status Definition | lifecycle semantics |
-| SLA Rule | constrains | Service Order / Production Order / Rework / Warranty / Delivery | timing and breach governance |
+| SLA Rule | constrains | Service Order | timing and breach governance |
+| SLA Rule | constrains | Production Order | timing and breach governance |
+| SLA Rule | constrains | Rework Case | timing and breach governance |
+| SLA Rule | constrains | Warranty Execution | timing and breach governance |
+| SLA Rule | constrains | Delivery lifecycle | timing and breach governance |
 
 ---
 
@@ -622,7 +628,8 @@ Owned by Audit and Custody domain:
 - Production Order references its originating Service Order
 - Payment Record references Service Order and item allocation scope
 - Financial Exception references Service Order, related payment context, reason, approver, and impact
-- Fiscal Document references Service Order or item scope
+- Fiscal Document references Service Order when issuance occurs at order scope
+- Fiscal Document references Service Order Item when issuance occurs at item scope
 - Pickup Authorization references Service Order release context
 - Digital Approval references Service Order, item, production, or workflow objects
 - Communication Event references Customer and order context
