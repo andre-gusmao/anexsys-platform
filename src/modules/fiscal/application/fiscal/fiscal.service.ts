@@ -170,11 +170,15 @@ export class FiscalService {
 
   async syncFiscalStatus(id: string, tenantId: string, dto: SyncFiscalDocumentStatusDto): Promise<FiscalDocumentEntity> {
     const fiscalDocument = await this.getFiscalDocumentById(id, tenantId);
-    if (dto.status === FiscalDocumentStatus.ISSUED && !fiscalDocument.issuedAt) {
-      fiscalDocument.issuedAt = dto.issuedAt ? new Date(dto.issuedAt) : new Date();
-    }
-    if (dto.issuedAt) {
-      fiscalDocument.issuedAt = new Date(dto.issuedAt);
+    if (dto.status === FiscalDocumentStatus.ISSUED) {
+      if (!fiscalDocument.issuedAt) {
+        fiscalDocument.issuedAt = dto.issuedAt ? new Date(dto.issuedAt) : new Date();
+      }
+      if (dto.issuedAt) {
+        fiscalDocument.issuedAt = new Date(dto.issuedAt);
+      }
+    } else {
+      fiscalDocument.issuedAt = null;
     }
     if (dto.grossAmount !== undefined) {
       fiscalDocument.grossAmount = dto.grossAmount === null ? null : this.formatMoney(dto.grossAmount);

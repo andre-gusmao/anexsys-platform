@@ -280,6 +280,35 @@ describe('FinanceService', () => {
     assert.equal(audits.some((audit) => audit.action === 'financial_exception.resolved'), true);
   });
 
+  it('rejects financial exceptions linked to payments from another service order', async () => {
+    const { service, payments } = createFinanceFixture();
+    payments.push({
+      id: 'payment-other-order',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      serviceOrderId: 'service-order-2',
+      paymentMethod: PaymentMethod.PIX,
+      paymentDirection: PaymentDirection.INBOUND,
+      paymentAmount: '10.00',
+      receivedAt: new Date('2026-09-20T10:00:00.000Z'),
+      reconciledAt: null,
+      status: PaymentRecordStatus.RECEIVED,
+    });
+
+    await assert.rejects(
+      () =>
+        service.createFinancialException({
+          tenantId: 'tenant-1',
+          actorUserId: 'user-1',
+          serviceOrderId: 'service-order-1',
+          paymentRecordId: 'payment-other-order',
+          exceptionType: FinancialExceptionType.DUPLICATE_PAYMENT,
+          reason: 'Payment mismatch',
+        }),
+      /must belong to the same Service Order/,
+    );
+  });
+
   it('returns actual cashflow using only inbound received or settled payments', async () => {
     const { service, payments } = createFinanceFixture();
     payments.push(

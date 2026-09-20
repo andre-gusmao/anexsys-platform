@@ -156,9 +156,10 @@ export class FinanceService {
       this.paymentRecordRepository.findByServiceOrder(serviceOrderId),
       this.partialPaymentRepository.findByServiceOrder(serviceOrderId),
     ]);
+    const paymentsById = new Map(payments.map((payment) => [payment.id, payment] as const));
     return allocations.map((allocation) => ({
       ...allocation,
-      payment: payments.find((payment) => payment.id === allocation.paymentRecordId) ?? null,
+      payment: paymentsById.get(allocation.paymentRecordId) ?? null,
     }));
   }
 

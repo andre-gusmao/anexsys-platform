@@ -166,4 +166,41 @@ describe('FiscalService', () => {
     assert.equal(details.fiscalEvents[1]?.metadata?.providerStatus, 'rejected');
     assert.equal(details.timeline[0]?.action, 'fiscal_document.status_synced');
   });
+
+  it('sets issuedAt during sync to issued and allows a later sync to replace the timestamp', async () => {
+    const { service } = createFiscalFixture();
+
+    const created = await service.createFiscalDocument({
+      tenantId: 'tenant-1',
+      actorUserId: 'user-1',
+      serviceOrderId: 'service-order-1',
+      documentType: FiscalDocumentType.NFE,
+      documentNo: 'NFE-1005',
+    });
+    const firstSync = await service.syncFiscalStatus(created.id, 'tenant-1', {
+      actorUserId: 'user-2',
+      status: FiscalDocumentStatus.ISSUED,
+      providerStatus: 'issued',
+    });
+    const firstIssuedAt = firstSync.issuedAt?.toISOString();
+    assert.equal(firstSync.status, FiscalDocumentStatus.ISSUED);
+    assert.equal(Boolean(firstIssuedAt), true);
+
+    const secondSync = await service.syncFiscalStatus(created.id, 'tenant-1', {
+      actorUserId: 'user-3',
+      status: FiscalDocumentStatus.ISSUED,
+      issuedAt: '2026-09-22T08:30:00.000Z',
+      providerStatus: 'issued',
+    });
+
+    assert.equal(secondSync.issuedAt?.toISOString(), '2026-09-22T08:30:00.000Z');
+
+    const errorSync = await service.syncFiscalStatus(created.id, 'tenant-1', {
+      actorUserId: 'user-4',
+      status: FiscalDocumentStatus.ERROR,
+      providerStatus: 'rejected',
+    });
+
+    assert.equal(errorSync.issuedAt, null);
+  });
 });
