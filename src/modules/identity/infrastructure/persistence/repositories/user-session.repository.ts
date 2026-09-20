@@ -22,4 +22,29 @@ export class UserSessionRepository {
   async findActiveById(sessionId: string): Promise<UserSessionEntity | null> {
     return this.repository.findOne({ where: { id: sessionId, status: SessionStatus.ACTIVE } });
   }
+
+  async rotateRefreshToken(params: {
+    sessionId: string;
+    expectedRefreshTokenHash: string;
+    refreshTokenHash: string;
+    expiresAt: Date;
+    updatedBy: string;
+  }): Promise<boolean> {
+    const result = await this.repository.update(
+      {
+        id: params.sessionId,
+        status: SessionStatus.ACTIVE,
+        refreshTokenHash: params.expectedRefreshTokenHash,
+      },
+      {
+        refreshTokenHash: params.refreshTokenHash,
+        lastUsedAt: new Date(),
+        expiresAt: params.expiresAt,
+        updatedAt: new Date(),
+        updatedBy: params.updatedBy,
+      },
+    );
+
+    return (result.affected ?? 0) === 1;
+  }
 }

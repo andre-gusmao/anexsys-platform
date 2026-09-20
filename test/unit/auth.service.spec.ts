@@ -48,6 +48,17 @@ function buildAuthService(overrides?: {
     async findActiveById() {
       return session;
     },
+    async rotateRefreshToken({ refreshTokenHash, expiresAt, updatedBy }: Record<string, any>) {
+      if (!session) {
+        return false;
+      }
+      session.refreshTokenHash = refreshTokenHash;
+      session.expiresAt = expiresAt;
+      session.updatedBy = updatedBy;
+      session.updatedAt = new Date();
+      session.lastUsedAt = new Date();
+      return true;
+    },
   };
   const authorizationService = {
     async getEffectiveAccessForUser(tenantId: string, userId: string) {

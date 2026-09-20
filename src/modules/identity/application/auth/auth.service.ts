@@ -142,12 +142,22 @@ export class AuthService {
       session.id,
     );
 
+    const rotated = await this.userSessionRepository.rotateRefreshToken({
+      sessionId: session.id,
+      expectedRefreshTokenHash: session.refreshTokenHash,
+      refreshTokenHash: issuedTokens.refreshTokenHash,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      updatedBy: payload.sub,
+    });
+    if (!rotated) {
+      throw new AuthenticationFailedError('Refresh token is not active.');
+    }
+
     session.refreshTokenHash = issuedTokens.refreshTokenHash;
     session.lastUsedAt = new Date();
     session.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     session.updatedAt = new Date();
     session.updatedBy = payload.sub;
-    await this.userSessionRepository.save(session);
 
     return {
       accessToken: issuedTokens.accessToken,

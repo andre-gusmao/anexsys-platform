@@ -22,6 +22,7 @@ import {
   IsString,
   IsUUID,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
@@ -40,6 +41,7 @@ import { MeasurementService } from '../application/measurement/measurement.servi
 
 class CreateCustomerBody {
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsUUID()
   branchId?: string | null;
 
@@ -80,6 +82,7 @@ class CreateCustomerBody {
 
 class UpdateCustomerBody {
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsUUID()
   branchId?: string | null;
 

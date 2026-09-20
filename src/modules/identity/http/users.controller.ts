@@ -73,7 +73,8 @@ export class UsersController {
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    const principal = request.requestContext.authenticatedPrincipal;
+    const actorUserId = principal?.userId;
     if (!tenantId) {
       throw new BadRequestException('Tenant context is required.');
     }
@@ -117,12 +118,17 @@ export class UsersController {
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    const principal = request.requestContext.authenticatedPrincipal;
+    const actorUserId = principal?.userId;
     if (!tenantId) {
       throw new BadRequestException('Tenant context is required.');
     }
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    if (body.assignedBranchId && !principal?.effectiveBranchIds.includes(body.assignedBranchId)) {
+      throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
     }
 
     await this.authorizationService.assignRole({
@@ -144,12 +150,17 @@ export class UsersController {
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    const principal = request.requestContext.authenticatedPrincipal;
+    const actorUserId = principal?.userId;
     if (!tenantId) {
       throw new BadRequestException('Tenant context is required.');
     }
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    if (!principal?.effectiveBranchIds.includes(body.branchId)) {
+      throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
     }
 
     await this.authorizationService.assignBranchScope({

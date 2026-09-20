@@ -9,7 +9,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsOptional, IsString, IsUUID, Length, ValidateIf } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -50,6 +50,7 @@ class UpdateBranchBody {
   displayName?: string;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsUUID()
   parentBranchId?: string | null;
 
