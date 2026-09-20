@@ -445,6 +445,7 @@ Owned by Audit and Custody domain:
 ### 7.1 Core business cardinalities
 
 - 1 Tenant -> many Customers
+- 1 Tenant -> many Service Orders
 - 1 Customer -> many Customer Contacts
 - 1 Customer -> many Customer Interactions
 - 1 Customer -> many Measurement Records
@@ -480,8 +481,9 @@ Owned by Audit and Custody domain:
 ### 7.4 Finance cardinalities
 
 - 1 Payment Record -> zero or many Partial Payments when the recorded receipt is allocated in portions
-- 1 Partial Payment -> exactly 1 Service Order or Service Order Item allocation scope
+- 1 Service Order -> many Partial Payments over time when order-level settlement applies
 - 1 Service Order Item -> many Partial Payments over time
+- each Partial Payment allocation record must target exactly one scope type: either the Service Order header or one Service Order Item
 - 1 Service Order -> one or many Fiscal Documents
 - 1 Fiscal Document -> one Service Order or one Service Order Item scope at issuance time
 
@@ -504,12 +506,14 @@ Owned by Audit and Custody domain:
 | Customer | Customer Contact | 1 -> many | contacts belong to one customer |
 | Customer | Customer Interaction | 1 -> many | interactions remain customer-traceable |
 | Customer | Measurement Record | 1 -> many | measurements are versioned over time |
+| Tenant | Service Order | 1 -> many | each Service Order belongs to exactly one Tenant |
 | Customer | Service Order | 1 -> many | service orders inherit customer identity |
 | Service Order | Service Order Item | 1 -> many | item cannot exist outside parent order |
 | Service Order | Primary Production Order | 1 -> 1 | exactly one Primary Production Order per Service Order |
 | Primary Production Order | Production Order Version | 1 -> many over time | versions only for rework, warranty execution, corrective production |
 | Service Order | Payment Record | 1 -> many | payment records remain commercially anchored |
 | Service Order | Financial Exception | 1 -> many | financial exceptions preserve commercial source-of-truth context |
+| Service Order | Partial Payment | 1 -> many when order-level settlement applies | order-level partial settlement remains commercially anchored |
 | Payment Record | Partial Payment | 1 -> many when partially allocated | partial settlement allocations belong to a recorded payment |
 | Service Order Item | Partial Payment | 1 -> many | item scope may receive many partial allocations over time |
 | Service Order / Item | Fiscal Document | 1 -> many | fiscal issuance may be per order or per item |
@@ -816,6 +820,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 
 - Payment Record relates to Service Order as the commercial payment anchor
 - Partial Payment belongs to a Payment Record and relates to the Service Order or Service Order Item scope that receives the partial allocation
+- each Partial Payment allocation record must reference exactly one target scope type at a time: order-level or item-level
 - Financial Exception relates to the Service Order and associated payment context whenever the standard settlement flow requires governed correction, approval, or explanation
 - multiple partial payments may exist over time
 - payment status may be visible at order and item levels
