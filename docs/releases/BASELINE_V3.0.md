@@ -10,7 +10,7 @@
 
 ## Purpose of the baseline
 
-This document marks the completion of the Product Definition, Architecture, Database Design, and Backend Planning phases of ANEXSYS.
+This document marks the completion of the Product Definition, Architecture, Database Design, Backend Planning, and Frontend Architecture phases of ANEXSYS.
 
 It records the approved functional, architectural, data-modeling, API, backend-architecture, backend-implementation, and backend-planning baseline for the next delivery stages.
 
@@ -111,7 +111,6 @@ Status interpretation:
 
 ## Next phase
 
-- Frontend Architecture
 - Frontend Implementation
 - Development Environment
 - Sprint Execution

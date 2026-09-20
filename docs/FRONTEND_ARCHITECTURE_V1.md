@@ -370,29 +370,31 @@ Purpose:
 - WhatsApp
 - CPF
 - customer code
-- order number
-- pickup code
 - QR Code
-- QR-based pickup credential
 - optional facial-recognition integration where enabled
 - fast manual lookup
 
-### 9.3 Queue management
+### 9.3 Retrieval and authorization methods
+- order number
+- pickup code
+- QR-based pickup credential
+
+### 9.4 Queue management
 - arrival registration
 - priority handling where configured
 - reassignment between attendants
 - retrieval-ready indicators
 
-### 9.4 Fast customer lookup
+### 9.5 Fast customer lookup
 - search by name, phone, order number, pickup authorization, or recent arrivals
 
-### 9.5 Pickup workflow
+### 9.6 Pickup workflow
 - locate authorization
 - validate credential
 - confirm release readiness
 - capture evidence and complete handoff
 
-### 9.6 Direct Service Order retrieval
+### 9.7 Direct Service Order retrieval
 - direct jump from queue or lookup to Service Order summary, pickup status, and storage location visibility
 
 ---
