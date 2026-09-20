@@ -648,11 +648,12 @@ The platform must include a Delivery Date Engine that calculates the initial sug
   - Sunday intake -> next Sunday delivery (before calendar-validity adjustment)
 - The default delivery rule must be configurable per tenant (tenants may define a different rollover rule or fixed lead time).
 - Delivery Date Engine context selection at Service Order creation must use the Service Order tenant and branch; when branch context is not yet explicit, the tenant default branch-calendar policy must be applied deterministically.
+- If branch context changes during Service Order creation, the suggested delivery date must be recalculated automatically; the latest recalculated value becomes authoritative unless an authorized user applies an auditable manual override.
 
 2. Calendar-aware calculation
 - The platform shall automatically consider Holidays, Business Calendars, and Branch Calendars when calculating the suggested delivery date.
 - If a calculated delivery date falls on a non-working day (holiday or non-business day per the applicable calendar), the platform must automatically move the delivery date to the next valid business day.
-- Calendar precedence must be deterministic: evaluate tenant Business Calendar as baseline, then apply Branch Calendar exceptions, and treat any date flagged as non-working by any applicable holiday/calendar rule as invalid for delivery commitment.
+- Calendar precedence must be deterministic: evaluate tenant Business Calendar and selected Branch Calendar as a combined constraint set (union of non-working dates), and treat any date flagged as non-working by any applicable holiday/calendar rule as invalid for delivery commitment.
 - Calendar-aware delivery-date logic must remain aligned with section 8.7 (Production Buffer / Safety Window) and section 39 (SLA Model calendar/time controls), without duplicating those calculation frameworks.
 
 3. Delivery types alignment with section 7.12 baseline (no duplicate taxonomy)
