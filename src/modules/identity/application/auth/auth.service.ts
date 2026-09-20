@@ -114,20 +114,27 @@ export class AuthService {
       throw new AuthenticationFailedError('Refresh token is invalid.');
     }
     const session = await this.userSessionRepository.findActiveById(payload.jti);
-    if (!session || session.expiresAt.getTime() <= Date.now()) {
+    if (!session) {
+      throw new AuthenticationFailedError('Refresh token is not active.');
+    }
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await this.revokeRefreshSession(session, payload.sub);
       throw new AuthenticationFailedError('Refresh token is not active.');
     }
 
     if (session.userId !== payload.sub || session.tenantId !== payload.tenantId) {
+      await this.revokeRefreshSession(session, payload.sub);
       throw new AuthenticationFailedError('Refresh token session mismatch.');
     }
 
     if (!this.tokenFactoryService.compareTokenHash(dto.refreshToken, session.refreshTokenHash)) {
+      await this.revokeRefreshSession(session, payload.sub);
       throw new AuthenticationFailedError('Refresh token is invalid.');
     }
 
     const user = await this.identityService.getById(payload.sub);
     if (user.tenantId !== payload.tenantId || user.status !== UserStatus.ACTIVE) {
+      await this.revokeRefreshSession(session, payload.sub);
       throw new AuthenticationFailedError('Refresh token is not active.');
     }
 
@@ -164,6 +171,20 @@ export class AuthService {
       refreshToken: issuedTokens.refreshToken,
       sessionId: session.id,
     };
+  }
+
+
+  private async revokeRefreshSession(session: {
+    status: SessionStatus;
+    revokedAt: Date | null;
+    updatedAt: Date;
+    updatedBy: string;
+  }, actorUserId: string): Promise<void> {
+    session.status = SessionStatus.REVOKED;
+    session.revokedAt = new Date();
+    session.updatedAt = new Date();
+    session.updatedBy = actorUserId;
+    await this.userSessionRepository.save(session as any);
   }
 
   async logout(dto: LogoutDto): Promise<void> {

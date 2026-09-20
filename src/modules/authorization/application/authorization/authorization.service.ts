@@ -8,7 +8,7 @@ import { CreateRoleDto } from 'src/modules/authorization/contracts/dto/create-ro
 import { AssignBranchScopeDto } from 'src/modules/authorization/contracts/dto/assign-branch-scope.dto';
 import { AssignPermissionToRoleDto } from 'src/modules/authorization/contracts/dto/assign-permission-to-role.dto';
 import { AssignRoleDto } from 'src/modules/authorization/contracts/dto/assign-role.dto';
-import { BranchScopeType, RoleStatus } from 'src/shared/domain/enums';
+import { BranchScopeType, BranchStatus, RoleStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { PermissionEntity } from '../../infrastructure/persistence/entities/permission.entity';
@@ -256,7 +256,7 @@ export class AuthorizationService {
 
     if (assignments.some((assignment) => assignment.assignedBranchId === null)) {
       const tenantBranches = await this.branchService.listByTenant(tenantId);
-      branchIds.push(...tenantBranches.map((branch) => branch.id));
+      branchIds.push(...tenantBranches.filter((branch) => branch.status !== BranchStatus.INACTIVE).map((branch) => branch.id));
     }
 
     return {

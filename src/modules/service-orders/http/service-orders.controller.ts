@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -25,11 +26,7 @@ import {
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { PlatformRequest } from 'src/platform/http/request-context';
-import {
-  DeliveryType,
-  ServiceOrderItemStatus,
-  SurchargeMethod,
-} from 'src/shared/domain/enums';
+import { DeliveryType, ServiceOrderItemStatus, SurchargeMethod } from 'src/shared/domain/enums';
 import { SearchServiceOrdersDto } from '../contracts/dto/search-service-orders.dto';
 import { ServiceOrderService } from '../application/service-order/service-order.service';
 
@@ -264,7 +261,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.read')
   @Get(':serviceOrderId')
   async getById(
-    @Param('serviceOrderId') serviceOrderId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -280,7 +277,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.write')
   @Patch(':serviceOrderId')
   async update(
-    @Param('serviceOrderId') serviceOrderId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
     @Body() body: UpdateServiceOrderBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
@@ -297,7 +294,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.write')
   @Post(':serviceOrderId/items')
   async createItem(
-    @Param('serviceOrderId') serviceOrderId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
     @Body() body: CreateServiceOrderItemBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
@@ -320,8 +317,8 @@ export class ServiceOrdersController {
   @Permissions('service_orders.write')
   @Patch(':serviceOrderId/items/:itemId')
   async updateItem(
-    @Param('serviceOrderId') serviceOrderId: string,
-    @Param('itemId') itemId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @Param('itemId', new ParseUUIDPipe()) itemId: string,
     @Body() body: UpdateServiceOrderItemBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
@@ -338,7 +335,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.write')
   @Post(':serviceOrderId/approve')
   async approve(
-    @Param('serviceOrderId') serviceOrderId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -354,7 +351,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.write')
   @Post(':serviceOrderId/cancel')
   async cancel(
-    @Param('serviceOrderId') serviceOrderId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -370,7 +367,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.write')
   @Post(':serviceOrderId/delivery-date/recalculate')
   async recalculateDeliveryDate(
-    @Param('serviceOrderId') serviceOrderId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -386,7 +383,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.read')
   @Get(':serviceOrderId/timeline')
   async timeline(
-    @Param('serviceOrderId') serviceOrderId: string,
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {

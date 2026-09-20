@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsOptional, IsString, IsUUID, Length, ValidateIf } from 'class-validator';
 import { CustomerStatus, CustomerType } from 'src/shared/domain/enums';
 
 export class UpdateCustomerDto {
@@ -29,7 +29,8 @@ export class UpdateCustomerDto {
   postalCode?: string | null;
 
   @IsOptional()
-  @IsString()
+  @ValidateIf((_, value) => value !== null)
+  @IsEmail()
   email?: string | null;
 
   @IsOptional()

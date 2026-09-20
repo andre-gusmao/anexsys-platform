@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { CustomerService } from 'src/modules/crm/application/customer/customer.service';
@@ -319,29 +319,50 @@ export class ServiceOrderService {
     }
 
     const item = this.normalizeItemInput(dto);
-    const nextItemNo = await this.serviceOrderItemRepository.findNextItemNo(dto.serviceOrderId);
-    const savedItem = await this.serviceOrderItemRepository.save(
-      this.serviceOrderItemRepository.create({
-        id: randomUUID(),
-        tenantId: dto.tenantId,
-        branchId: dto.branchId,
-        serviceOrderId: dto.serviceOrderId,
-        itemNo: nextItemNo,
-        itemType: item.itemType,
-        description: item.description,
-        quantity: this.formatQuantity(item.quantity),
-        unitPrice: item.unitPrice === null ? null : this.formatMoney(item.unitPrice),
-        discountValue: this.formatMoney(item.discountValue),
-        deliveryType: item.deliveryType,
-        operationalPriority: item.operationalPriority,
-        status: ServiceOrderItemStatus.OPEN,
-        isDeleted: false,
-        deletedAt: null,
-        deletedBy: null,
-        createdBy: dto.actorUserId,
-        updatedBy: dto.actorUserId,
-      }),
-    );
+    let savedItem: ServiceOrderItemEntity | null = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        savedItem = await this.dataSource.transaction(async (manager) => {
+          const result = await manager
+            .createQueryBuilder(ServiceOrderItemEntity, 'item')
+            .select('COALESCE(MAX(item.item_no), 0)', 'maxItemNo')
+            .where('item.service_order_id = :serviceOrderId', { serviceOrderId: dto.serviceOrderId })
+            .getRawOne<{ maxItemNo: string }>();
+          const nextItemNo = Number(result?.maxItemNo ?? 0) + 1;
+
+          const serviceOrderItem = manager.create(ServiceOrderItemEntity, {
+            id: randomUUID(),
+            tenantId: dto.tenantId,
+            branchId: dto.branchId,
+            serviceOrderId: dto.serviceOrderId,
+            itemNo: nextItemNo,
+            itemType: item.itemType,
+            description: item.description,
+            quantity: this.formatQuantity(item.quantity),
+            unitPrice: item.unitPrice === null ? null : this.formatMoney(item.unitPrice),
+            discountValue: this.formatMoney(item.discountValue),
+            deliveryType: item.deliveryType,
+            operationalPriority: item.operationalPriority,
+            status: ServiceOrderItemStatus.OPEN,
+            isDeleted: false,
+            deletedAt: null,
+            deletedBy: null,
+            createdBy: dto.actorUserId,
+            updatedBy: dto.actorUserId,
+          });
+          return manager.save(ServiceOrderItemEntity, serviceOrderItem);
+        });
+        break;
+      } catch (error: any) {
+        if (attempt < 2 && error instanceof QueryFailedError && error.driverError?.constraint === 'uq_service_order_items_order_item_no') {
+          continue;
+        }
+        throw error;
+      }
+    }
+    if (!savedItem) {
+      throw new DomainValidationError('Unable to allocate a unique Service Order item number.');
+    }
 
     await this.recalculateTotal(serviceOrder, dto.actorUserId);
     await this.auditService.record({
@@ -413,6 +434,9 @@ export class ServiceOrderService {
     if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
       throw new DomainValidationError('Cancelled service orders cannot be approved.');
     }
+    if (serviceOrder.status !== ServiceOrderStatus.OPEN) {
+      throw new DomainValidationError('Only open service orders can be approved.');
+    }
     serviceOrder.status = ServiceOrderStatus.APPROVED;
     serviceOrder.updatedBy = actorUserId;
     const saved = await this.serviceOrderRepository.save(serviceOrder);
@@ -431,6 +455,9 @@ export class ServiceOrderService {
 
   async cancel(serviceOrderId: string, tenantId: string, actorUserId: string): Promise<ServiceOrderEntity> {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
+      throw new DomainValidationError('Service order is already cancelled.');
+    }
     serviceOrder.status = ServiceOrderStatus.CANCELLED;
     serviceOrder.updatedBy = actorUserId;
     const saved = await this.serviceOrderRepository.save(serviceOrder);
