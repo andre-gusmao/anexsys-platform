@@ -18,7 +18,7 @@ It records the already-approved functional, architectural, data-modeling, API, b
 
 All document paths in this section are repository-root paths and intentionally use a leading `/`.
 
-Canonical approved baseline artifacts and approved referenced repository materials for this baseline are listed below.
+Canonical frozen baseline artifacts and approved referenced repository documents for this baseline are listed below.
 
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
@@ -30,9 +30,9 @@ Canonical approved baseline artifacts and approved referenced repository materia
 - `/docs/BACKEND_ARCHITECTURE_V1.md`
 - `/docs/BACKEND_IMPLEMENTATION_V1.md`
 
-Approved referenced planning input retained at working path:
+Approved referenced planning input retained at working path and explicitly excluded from the frozen baseline artifact set:
 
-- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md` (approved for planning use in this baseline, but retained outside the frozen artifact set)
+- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md` (approved for planning use in this baseline, but not part of the immutable frozen baseline artifact set)
 
 ## Approved decisions
 

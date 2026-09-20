@@ -3,12 +3,12 @@
 
 ## Document Purpose
 
-This document defines the complete frontend architecture of ANEXSYS using the following approved documents as source of truth:
+This document defines the complete frontend architecture of ANEXSYS using the following approved baseline artifacts and downstream design inputs:
 - `/docs/releases/BASELINE_V3.0.md`
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
-- `/docs/API_DESIGN_V1.md`
-- `/docs/DATABASE_PHYSICAL_V1.md`
+- `/docs/API_DESIGN_V1.md` (downstream approved design input)
+- `/docs/DATABASE_PHYSICAL_V1.md` (downstream approved design input)
 
 This document defines:
 - frontend design principles
