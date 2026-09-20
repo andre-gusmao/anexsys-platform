@@ -242,7 +242,7 @@ All foreign-key chains must preserve tenant consistency, especially for:
 - `operational_resource_branch_scopes` allows additional branch allocations over time
 
 ### 5.3 Branch-scoped transactional tables
-The following tables must carry `branch_id not null`:
+The following directly branch-owned transactional tables must carry `branch_id not null`, while support/link tables may derive branch scope through their parent foreign-key lineage:
 - `service_orders`
 - `service_order_items`
 - `production_orders`
@@ -262,7 +262,6 @@ The following tables must carry `branch_id not null`:
 - `storage_locations`
 - `storage_location_assignments`
 - `physical_bag_support_contexts`
-- `sla_rule_triggers`
 - `qr_codes`
 - `qr_events`
 - `custody_events`
@@ -914,6 +913,7 @@ Constraints:
 - CHECK: `service_order_id` is always populated
 - lineage rule: when `production_order_id` is populated, the referenced Production Order must belong to the same `service_order_id`
 - no independent business numbering, QR code, or workflow columns are allowed in this table
+- the surrogate `id` is a technical row identifier only and does not constitute independent business identity
 
 ### 7.9 Workflow and SLA tables
 
@@ -1188,7 +1188,7 @@ Constraints:
 ### 10.1 Uniqueness constraints
 - tenant codes must be unique
 - branch codes must be unique within tenant
-- customer identity documents must be unique per tenant when present
+- customer identity documents may repeat during migration staging and must be resolved through duplicate-detection and review workflows rather than through unconditional hard uniqueness
 - service order numbers must be unique within tenant and branch
 - production order numbers must be unique within tenant and branch
 - fiscal document numbers must be unique by tenant, branch, and document type
