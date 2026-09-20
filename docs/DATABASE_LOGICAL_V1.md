@@ -113,6 +113,7 @@ Owns logical entities:
 - Pickup QR Code
 - Temporary Pickup Code
 - Storage Location
+- Physical Production Bag Support Context as optional physical support context only, not as a primary logical entity
 
 ### 2.8 QR and Operational Tracking domain
 
@@ -125,6 +126,8 @@ Owns logical entities:
 Owns logical entities:
 - Custody Event
 - Audit Event
+- CCTV Reference
+- Camera Snapshot
 
 ### 2.10 Workflow and SLA Policy domain
 
@@ -151,11 +154,13 @@ Logical aggregate roots:
 - Quality Record
 - Customer Rejection
 - Rework Case
+- Warranty Adjustment
 - Warranty Execution
 - Financial Exception
 - Pickup Authorization
 - Storage Location
 - QR Code
+- Custody Event
 - Audit Event
 - Workflow Definition
 - Digital Approval
@@ -165,8 +170,10 @@ Logical aggregate-root guidance:
 - Service Order is the logical root for commercial scope and financial truth
 - Production Order is the logical root for operational execution and corrective version lineage
 - Pickup Authorization is the logical root for pickup credentials and release authorization artifacts
+- Warranty Adjustment and Warranty Execution remain distinct logical roots because the approved model preserves them as separate business responsibilities
 - Workflow Definition is the logical root for configurable lifecycle policy
-- Audit Event is the logical root for immutable audit trace, while Custody Event is a traceability event entity anchored to the relevant business object lifecycle
+- Custody Event is the logical root for chain-of-custody traceability
+- Audit Event is the logical root for immutable audit trace
 
 ---
 
@@ -186,7 +193,7 @@ Logical aggregate-root guidance:
 | Quality Record | inspection result and release decision | Quality and Corrective | Quality Record |
 | Customer Rejection | customer-facing rejection outcome | Quality and Corrective | Customer Rejection |
 | Rework Case | internal corrective execution flow | Quality and Corrective | Rework Case |
-| Warranty Adjustment | post-delivery adjustment responsibility | Quality and Corrective | Warranty Execution |
+| Warranty Adjustment | post-delivery adjustment responsibility | Quality and Corrective | Warranty Adjustment |
 | Warranty Execution | post-delivery execution defect responsibility | Quality and Corrective | Warranty Execution |
 | Payment Record | payment transaction and settlement trace | Finance and Fiscal | Service Order |
 | Partial Payment | allocated portion of a payment obligation | Finance and Fiscal | Service Order |
@@ -199,8 +206,10 @@ Logical aggregate-root guidance:
 | Storage Location | visible retrieval and physical placement context | Delivery and Pickup | Storage Location |
 | QR Code | operational scan identity for Production Order | QR and Operational Tracking | QR Code |
 | QR Event | individual execution scan trace | QR and Operational Tracking | QR Code |
-| Custody Event | physical handoff and chain-of-custody trace | Audit and Traceability | Audit Event |
+| Custody Event | physical handoff and chain-of-custody trace | Audit and Traceability | Custody Event |
 | Audit Event | immutable cross-domain audit record | Audit and Traceability | Audit Event |
+| CCTV Reference | surveillance evidence reference for custody or pickup trace | Audit and Traceability | Custody Event |
+| Camera Snapshot | captured image evidence for custody or pickup trace | Audit and Traceability | Custody Event |
 | Workflow Definition | lifecycle policy and transition governance | Workflow and SLA Policy | Workflow Definition |
 | Status Definition | configurable status meaning | Workflow and SLA Policy | Workflow Definition |
 | SLA Rule | timing, pause, resume, and breach policy | Workflow and SLA Policy | Workflow Definition |
@@ -248,11 +257,13 @@ Logical support rule:
 ### 5.7 Pickup and traceability responsibilities
 - Pickup Authorization owns who may collect, under what authorization path, and within what validity window.
 - Pickup Token, Pickup QR Code, and Temporary Pickup Code own supporting authorization artifacts under Pickup Authorization.
-- Storage Location owns visible retrieval and placement context.
+- Storage Location owns visible retrieval and placement definition.
 - QR Code owns operational scan identity only for Production Order.
 - QR Event owns each execution-scan occurrence.
 - Custody Event owns chain-of-custody progression where physical handoff or release trace is required.
 - Audit Event owns immutable cross-domain audit history.
+- CCTV Reference owns optional surveillance evidence linkage used in custody or pickup trace.
+- Camera Snapshot owns optional captured-image evidence used in custody or pickup trace.
 
 ### 5.8 Workflow and approval responsibilities
 - Workflow Definition owns lifecycle policy.
@@ -304,9 +315,10 @@ Logical support rule:
 - Pickup Authorization -> Pickup Token
 - Pickup Authorization -> Pickup QR Code
 - Pickup Authorization -> Temporary Pickup Code
+- Custody Event -> CCTV Reference
+- Custody Event -> Camera Snapshot
 - Workflow Definition -> Status Definition
 - Workflow Definition -> SLA Rule
-- Audit Event -> Custody Event traceability linkage where custody evidence is recorded
 
 ---
 
@@ -341,6 +353,8 @@ Logical support rule:
 | QR Event | QR and Operational Tracking | scan-event trace |
 | Custody Event | Audit and Traceability | chain-of-custody trace |
 | Audit Event | Audit and Traceability | immutable audit record |
+| CCTV Reference | Audit and Traceability | surveillance evidence reference |
+| Camera Snapshot | Audit and Traceability | captured image evidence |
 | Workflow Definition | Workflow and SLA Policy | lifecycle policy |
 | Status Definition | Workflow and SLA Policy | status semantics |
 | SLA Rule | Workflow and SLA Policy | timing and breach policy |
@@ -378,6 +392,8 @@ Logical support rule:
 | Pickup Authorization | may issue | Pickup Token | tokenized pickup authorization artifact |
 | Pickup Authorization | may issue | Pickup QR Code | scannable pickup authorization artifact |
 | Pickup Authorization | may issue | Temporary Pickup Code | short-lived pickup authorization artifact |
+| Custody Event | may include | CCTV Reference | custody trace may include surveillance evidence linkage |
+| Custody Event | may include | Camera Snapshot | custody trace may include captured image evidence |
 | Service Order | is located through | Storage Location | retrieval visibility is preserved historically |
 | Service Order | is traced by | Custody Event | custody progression is auditable across commercial, delivery, and pickup stages |
 | Production Order | is traced by | Custody Event | custody progression is auditable across operational, quality, rework, and warranty stages |
@@ -422,6 +438,8 @@ Logical support rule:
 | Pickup Authorization | Pickup Token | 1 -> many | token lifecycle is policy-driven |
 | Pickup Authorization | Pickup QR Code | 1 -> many | QR-based release artifacts are policy-driven |
 | Pickup Authorization | Temporary Pickup Code | 1 -> many | short-lived release artifacts are policy-driven |
+| Custody Event | CCTV Reference | 1 -> many when evidence is captured | custody evidence may include one or more surveillance references |
+| Custody Event | Camera Snapshot | 1 -> many when evidence is captured | custody evidence may include one or more captured images |
 | Service Order | Storage Location | 1 -> many over time | current and historical retrieval location must be visible |
 | Service Order | Digital Approval | 1 -> many | multiple approval cycles may exist over time |
 | Service Order | Communication Event | 1 -> many | communication history is longitudinal |
@@ -510,7 +528,8 @@ Operational Resource ownership rules:
 
 Traceability ownership rules:
 - QR Code and QR Event logically own Production Order scan traceability
-- Storage Location logically owns retrieval visibility history
+- Storage Location logically owns location-definition meaning
+- Service Order logically owns its retrieval-visibility history through longitudinal references to Storage Location
 - Pickup Authorization and its artifacts logically own release traceability
 - Custody Event logically owns handoff-stage traceability across intake, storage, delivery, pickup, rework, and warranty where applicable
 - Audit Event logically owns immutable cross-domain traceability
