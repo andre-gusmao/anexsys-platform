@@ -3,7 +3,7 @@
 
 ## Document Purpose
 
-This document transforms the approved conceptual data model of ANEXSYS into a complete logical data model using only the following approved sources of truth:
+This document transforms the approved conceptual data model of ANEXSYS into a complete logical data model using only the following approved baseline and approved conceptual-model sources of truth:
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
 - `/docs/frozen/DATABASE_GUIDELINES_V1.md`
@@ -221,7 +221,7 @@ Logical aggregate-root guidance:
 | Pickup QR Code | scannable pickup credential | Delivery and Pickup | Pickup Authorization |
 | Temporary Pickup Code | short-lived pickup credential | Delivery and Pickup | Pickup Authorization |
 | Storage Location | visible retrieval and physical placement catalog context | Delivery and Pickup | Not applicable - shared reference catalog |
-| Storage Location Assignment | current and historical location-assignment history for Service Order retrieval visibility | Delivery and Pickup | Storage Location Assignment |
+| Storage Location Assignment | current and historical location-assignment history for Service Order retrieval visibility | Delivery and Pickup | Service Order |
 | Physical Production Bag Support Context | optional physical container support context for retrieval or transport flows only | Delivery and Pickup | Not applicable - support context only |
 | QR Code | operational scan identity for the Production Order | QR and Operational Tracking | QR Code |
 | QR Event | individual execution scan trace | QR and Operational Tracking | QR Code |

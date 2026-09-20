@@ -2476,7 +2476,7 @@ Domain-to-classification matrix:
 - Direct Service Order retrieval workflow — Mandatory
 - Physical Item Location Management — Mandatory
 - Third-Party Pickup Authorization — Mandatory
-- Chain of Custody and Pickup Evidence — Mandatory
+- Chain of Custody and core Pickup Evidence — Mandatory
 - Pickup camera/CCTV evidence integration — Optional
 - Physical Access Control — Optional
 - User versus Operational Resource formal definitions — Mandatory
