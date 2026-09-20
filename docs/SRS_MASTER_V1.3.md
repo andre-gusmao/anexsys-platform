@@ -661,7 +661,7 @@ The platform must include a Delivery Date Engine that calculates the initial sug
 - Priority and Express deliveries may apply configurable surcharges.
 - Supported surcharge methods: Percentage, Fixed value.
 - Surcharge configuration must be tenant-configurable.
-- Surcharges are part of Service Order financial values (section 7 financial domain) and must not appear on Production Orders, consistent with the rule in section 7.14 that Production Orders never display prices, discounts, margins, profit, commissions, payment information, or other financial information.
+- Surcharges are part of Service Order financial values (section 7 financial domain) and must not appear on Production Orders, consistent with the Service Order versus Production Order rule that Production Orders never display prices, discounts, margins, profit, commissions, payment information, or other financial information.
 
 5. Cross-cutting impacts of Delivery Type
 - Delivery Type must impact production priority, dashboard indicators, workflow behavior, SLA calculations, operational alerts, and Production Order visual indicators.
