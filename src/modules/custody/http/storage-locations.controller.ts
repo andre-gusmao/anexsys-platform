@@ -6,10 +6,9 @@ import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { StorageLocationStatus } from 'src/shared/domain/enums';
-import { SearchStorageLocationsDto } from '../contracts/dto/search-storage-locations.dto';
 import { CustodyService } from '../application/custody/custody.service';
 
-class SearchStorageLocationsQuery implements SearchStorageLocationsDto {
+class SearchStorageLocationsQuery {
   @IsOptional() @IsUUID() branchId?: string;
   @IsOptional() @IsEnum(StorageLocationStatus) status?: StorageLocationStatus;
   @IsOptional() @IsString() area?: string;
@@ -18,7 +17,6 @@ class SearchStorageLocationsQuery implements SearchStorageLocationsDto {
   @IsOptional() @IsString() shelfCode?: string;
   @IsOptional() @IsString() cabinetCode?: string;
   @IsOptional() @IsString() drawerCode?: string;
-  accessibleBranchIds!: string[];
 }
 
 class StorageLocationBody {

@@ -6,14 +6,12 @@ import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { DigitalApprovalDecision, InteractionChannel, PickupAuthorizationPath, PickupAuthorizationStatus, PickupCredentialType } from 'src/shared/domain/enums';
-import { SearchPickupAuthorizationsDto } from '../contracts/dto/search-pickup-authorizations.dto';
 import { PickupService } from '../application/pickup/pickup.service';
 
-class SearchPickupAuthorizationsQuery implements SearchPickupAuthorizationsDto {
+class SearchPickupAuthorizationsQuery {
   @IsOptional() @IsUUID() branchId?: string;
   @IsOptional() @IsUUID() serviceOrderId?: string;
   @IsOptional() @IsEnum(PickupAuthorizationStatus) status?: PickupAuthorizationStatus;
-  accessibleBranchIds!: string[];
 }
 
 class CreatePickupAuthorizationBody {

@@ -4,16 +4,14 @@ import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { CustodyEventStage } from 'src/shared/domain/enums';
-import { SearchCustodyEventsDto } from '../contracts/dto/search-custody-events.dto';
 import { CustodyService } from '../application/custody/custody.service';
 
-class SearchCustodyEventsQuery implements SearchCustodyEventsDto {
+class SearchCustodyEventsQuery {
   @IsOptional() @IsUUID() branchId?: string;
   @IsOptional() @IsUUID() serviceOrderId?: string;
   @IsOptional() @IsUUID() productionOrderId?: string;
   @IsOptional() @IsUUID() pickupAuthorizationId?: string;
   @IsOptional() @IsEnum(CustodyEventStage) eventStage?: CustodyEventStage;
-  accessibleBranchIds!: string[];
 }
 
 @Controller('custody-events')
