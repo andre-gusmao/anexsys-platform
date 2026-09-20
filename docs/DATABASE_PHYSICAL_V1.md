@@ -240,6 +240,7 @@ All foreign-key chains must preserve tenant consistency, especially for:
 - `customers.branch_id` may be null to represent tenant-wide customers
 - `operational_resources` may carry `home_branch_id`
 - `operational_resource_branch_scopes` allows additional branch allocations over time
+- tenant-wide customers do not create branchless transactions; each Service Order and its downstream operational, quality, financial, and pickup lineage still carries the owning `branch_id`
 
 ### 5.3 Branch-scoped transactional tables
 The following tables carry `branch_id not null` either as direct branch ownership or as explicit branch-scoped integrity reinforcement, while some other support/link tables may derive branch scope only through parent foreign-key lineage:
@@ -480,7 +481,7 @@ Constraints:
 - FK: `customer_id -> customers.id`
 - FK: `workflow_definition_id -> workflow_definitions.id`
 - FK: `current_status_definition_id -> status_definitions.id`
-- UQ: `(tenant_id, branch_id, order_no)`
+- UQ: `(tenant_id, order_no)`
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
 
 #### `service_order_items`
@@ -534,7 +535,7 @@ Constraints:
 - FK: `service_order_id -> service_orders.id`
 - FK: `workflow_definition_id -> workflow_definitions.id`
 - FK: `current_status_definition_id -> status_definitions.id`
-- UQ: `(tenant_id, branch_id, production_no)`
+- UQ: `(tenant_id, production_no)`
 - UQ: `(service_order_id)` to preserve exactly one base production-order row per service order while corrective lineage remains exclusively in `production_order_versions`
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
 
@@ -1113,6 +1114,7 @@ Key columns:
 - `tenant_id uuid FK -> tenants.id`
 - `branch_id uuid null FK -> branches.id`
 - `service_order_id uuid null FK -> service_orders.id`
+- `production_order_id uuid null FK -> production_orders.id`
 - `production_order_version_id uuid null FK -> production_order_versions.id`
 - `pickup_authorization_id uuid null FK -> pickup_authorizations.id`
 - `approval_type varchar(40)`
@@ -1123,9 +1125,10 @@ Key columns:
 - `evidence_payload jsonb null`
 
 Constraints:
-- CHECK: `pickup_authorization_id` is mutually exclusive with `production_order_version_id`
-- CHECK: `service_order_id` is mandatory for Service Order approvals and for Production Order Version approvals
-- CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`, or `production_order_version_id` together with its parent `service_order_id`, or standalone `pickup_authorization_id`
+- CHECK: `pickup_authorization_id` is mutually exclusive with `production_order_id` and `production_order_version_id`
+- CHECK: `service_order_id` is mandatory for Service Order approvals, base Production Order approvals, and Production Order Version approvals
+- CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`, or `production_order_id` together with its parent `service_order_id`, or `production_order_version_id` together with its parent `service_order_id`, or standalone `pickup_authorization_id`
+- lineage rule: when `production_order_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order
 - lineage rule: when `production_order_version_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order lineage
 - immutable decision trace after final decision
 
@@ -1198,8 +1201,8 @@ Constraints:
 - tenant codes must be unique
 - branch codes must be unique within tenant
 - customer identity documents may repeat during migration staging and must be resolved through duplicate-detection and review workflows rather than through unconditional hard uniqueness
-- service order numbers must be unique within tenant and branch
-- production order numbers must be unique within tenant and branch
+- service order numbers must be unique within tenant
+- production order numbers must be unique within tenant
 - fiscal document numbers must be unique by tenant, branch, and document type
 - active QR codes must remain one-to-one with Production Order
 
