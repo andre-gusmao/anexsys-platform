@@ -6,7 +6,7 @@
 This document defines the complete frontend architecture of ANEXSYS using the following approved documents as source of truth:
 - `/docs/releases/BASELINE_V3.0.md`
 - `/docs/frozen/SRS_MASTER_V1.3.md`
-- `/docs/BACKEND_ARCHITECTURE_V1.md`
+- `/docs/frozen/ARQUITETURA_V1.md`
 - `/docs/API_DESIGN_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
 
