@@ -63,7 +63,12 @@ Logical design intent:
 
 ## 2. Domain Boundaries
 
-### 2.1 Customer and CRM domain
+### 2.1 Tenant Governance domain
+
+Owns logical entities:
+- Tenant
+
+### 2.2 Customer and CRM domain
 
 Owns logical entities:
 - Customer
@@ -71,24 +76,24 @@ Owns logical entities:
 - Customer Interaction
 - Measurement Record
 
-### 2.2 Service Order domain
+### 2.3 Service Order domain
 
 Owns logical entities:
 - Service Order
 - Service Order Item
 
-### 2.3 Production Execution domain
+### 2.4 Production Execution domain
 
 Owns logical entities:
 - Production Order
 - Production Order Version
 
-### 2.4 Operational Resource domain
+### 2.5 Operational Resource domain
 
 Owns logical entities:
 - Operational Resource
 
-### 2.5 Quality and Corrective domain
+### 2.6 Quality and Corrective domain
 
 Owns logical entities:
 - Quality Record
@@ -97,7 +102,7 @@ Owns logical entities:
 - Warranty Adjustment
 - Warranty Execution
 
-### 2.6 Finance and Fiscal domain
+### 2.7 Finance and Fiscal domain
 
 Owns logical entities:
 - Payment Record
@@ -105,7 +110,7 @@ Owns logical entities:
 - Financial Exception
 - Fiscal Document
 
-### 2.7 Delivery and Pickup domain
+### 2.8 Delivery and Pickup domain
 
 Owns logical entities:
 - Pickup Authorization
@@ -115,13 +120,13 @@ Owns logical entities:
 - Storage Location
 - Physical Production Bag Support Context as optional physical support context only, not as a primary logical entity
 
-### 2.8 QR and Operational Tracking domain
+### 2.9 QR and Operational Tracking domain
 
 Owns logical entities:
 - QR Code
 - QR Event
 
-### 2.9 Audit and Traceability domain
+### 2.10 Audit and Traceability domain
 
 Owns logical entities:
 - Custody Event
@@ -129,14 +134,14 @@ Owns logical entities:
 - CCTV Reference
 - Camera Snapshot
 
-### 2.10 Workflow and SLA Policy domain
+### 2.11 Workflow and SLA Policy domain
 
 Owns logical entities:
 - Workflow Definition
 - Status Definition
 - SLA Rule
 
-### 2.11 Communication and Approval domain
+### 2.12 Communication and Approval domain
 
 Owns logical entities:
 - Communication Event
@@ -147,6 +152,7 @@ Owns logical entities:
 ## 3. Aggregate Root List
 
 Logical aggregate roots:
+- Tenant
 - Customer
 - Service Order
 - Production Order
@@ -163,6 +169,7 @@ Logical aggregate roots:
 - Custody Event
 - Audit Event
 - Workflow Definition
+- Communication Event
 - Digital Approval
 
 Logical aggregate-root guidance:
@@ -172,6 +179,7 @@ Logical aggregate-root guidance:
 - Pickup Authorization is the logical root for pickup credentials and release authorization artifacts
 - Warranty Adjustment and Warranty Execution remain distinct logical roots because the approved model preserves them as separate business responsibilities
 - Workflow Definition is the logical root for configurable lifecycle policy
+- Communication Event is the logical root for non-approval message and notification trace
 - Custody Event is the logical root for chain-of-custody traceability
 - Audit Event is the logical root for immutable audit trace
 
@@ -179,8 +187,9 @@ Logical aggregate-root guidance:
 
 ## 4. Logical Entity Catalog
 
-| Logical Entity | Logical Responsibility | Owning Domain | Aggregate Root |
+| Logical Entity | Logical Responsibility | Owning Domain | Governing Aggregate Root |
 |---|---|---|---|
+| Tenant | tenant isolation and policy boundary | Tenant Governance | Tenant |
 | Customer | customer relationship identity | Customer and CRM | Customer |
 | Customer Contact | customer reachability and communication preferences | Customer and CRM | Customer |
 | Customer Interaction | communication, complaint, and follow-up history | Customer and CRM | Customer |
@@ -188,7 +197,7 @@ Logical aggregate-root guidance:
 | Service Order | commercial commitment and financial truth | Service Order | Service Order |
 | Service Order Item | itemized commercial and execution scope | Service Order | Service Order |
 | Production Order | primary operational execution identity and state | Production Execution | Production Order |
-| Production Order Version | corrective version lineage subordinate to Production Order | Production Execution | Production Order |
+| Production Order Version | corrective version lineage subordinate to the primary Production Order state | Production Execution | Production Order |
 | Operational Resource | execution-capacity identity and capability ownership | Operational Resource | Operational Resource |
 | Quality Record | inspection result and release decision | Quality and Corrective | Quality Record |
 | Customer Rejection | customer-facing rejection outcome | Quality and Corrective | Customer Rejection |
@@ -213,11 +222,12 @@ Logical aggregate-root guidance:
 | Workflow Definition | lifecycle policy and transition governance | Workflow and SLA Policy | Workflow Definition |
 | Status Definition | configurable status meaning | Workflow and SLA Policy | Workflow Definition |
 | SLA Rule | timing, pause, resume, and breach policy | Workflow and SLA Policy | Workflow Definition |
-| Communication Event | message and notification trace | Communication and Approval | Digital Approval |
+| Communication Event | message and notification trace | Communication and Approval | Communication Event |
 | Digital Approval | auditable approval or consent decision | Communication and Approval | Digital Approval |
 
 Logical support rule:
 - Physical Production Bag Support Context may exist only as optional support context associated to Service Order and Production Order retrieval or transport flows; it is not a logical aggregate root and not a primary business entity.
+- The Governing Aggregate Root column identifies which listed aggregate root governs a logical entity's lifecycle and boundary; it does not imply that every listed logical entity is itself an aggregate root.
 
 ---
 
@@ -276,13 +286,17 @@ Logical support rule:
 
 ## 6. Parent-Child Relationships
 
-### 6.1 Customer root lineage
+### 6.1 Tenant root lineage
+- Tenant -> Customer
+- Tenant -> Service Order
+
+### 6.2 Customer root lineage
 - Customer -> Customer Contact
 - Customer -> Customer Interaction
 - Customer -> Measurement Record
 - Customer -> Service Order reference lineage
 
-### 6.2 Service Order root lineage
+### 6.3 Service Order root lineage
 - Service Order -> Service Order Item
 - Service Order -> Payment Record
 - Service Order -> Partial Payment when settlement applies at order level
@@ -294,7 +308,7 @@ Logical support rule:
 - Service Order -> Storage Location history
 - Service Order -> exactly 1 Primary Production Order
 
-### 6.3 Production root lineage
+### 6.4 Production root lineage
 - Production Order -> Production Order Version
 - Production Order -> QR Code
 - Production Order -> QR Event
@@ -303,7 +317,7 @@ Logical support rule:
 - Production Order -> Warranty Execution reference lineage
 - Production Order -> Operational Resource assignment and execution-event lineage
 
-### 6.4 Quality and corrective lineage
+### 6.5 Quality and corrective lineage
 - Service Order Item -> Customer Rejection
 - Service Order Item -> Warranty Adjustment
 - Service Order Item -> Fiscal Document when issuance occurs at item scope
@@ -311,7 +325,7 @@ Logical support rule:
 - Production Order lineage -> Rework Case
 - Production Order lineage -> Warranty Execution
 
-### 6.5 Pickup, workflow, and audit lineage
+### 6.6 Pickup, workflow, and audit lineage
 - Pickup Authorization -> Pickup Token
 - Pickup Authorization -> Pickup QR Code
 - Pickup Authorization -> Temporary Pickup Code
@@ -326,6 +340,7 @@ Logical support rule:
 
 | Logical Entity | Logical Owner | Owned Meaning |
 |---|---|---|
+| Tenant | Tenant Governance | tenant isolation and policy boundary |
 | Customer | Customer and CRM | customer identity and relationship continuity |
 | Customer Contact | Customer and CRM | contact channels and preferences |
 | Customer Interaction | Customer and CRM | interaction history |
@@ -367,14 +382,16 @@ Logical support rule:
 
 | Entity A | Logical Relationship | Entity B | Logical Meaning |
 |---|---|---|---|
+| Tenant | governs | Customer | customer identity exists inside one tenant boundary |
+| Tenant | governs | Service Order | commercial truth exists inside one tenant boundary |
 | Customer | owns | Customer Contact | contact channels belong to customer identity |
 | Customer | owns | Customer Interaction | interactions remain customer-traceable |
 | Customer | owns | Measurement Record | measurements remain customer-traceable and versioned |
 | Customer | places | Service Order | customer initiates a commercial commitment |
 | Service Order | contains | Service Order Item | itemized business scope lives under Service Order |
-| Service Order | generates | Primary Production Order | one Service Order creates the single base operational root |
-| Primary Production Order | covers execution scope for | Service Order Item | one Primary Production Order covers all items in the same Service Order scope |
-| Primary Production Order | is versioned by | Production Order Version | corrective lineage extends the same operational root |
+| Service Order | generates | Production Order | one Service Order creates exactly one Production Order as the single base operational root |
+| Production Order | covers execution scope for | Service Order Item | the primary Production Order state covers all items in the same Service Order scope |
+| Production Order | is versioned by | Production Order Version | corrective lineage extends the same operational root |
 | Production Order | is executed by | Operational Resource | operational work is performed through Production Order execution |
 | Production Order | is identified by | QR Code | QR ownership belongs only to Production Order |
 | QR Code | generates | QR Event | scan history is event-based |
@@ -419,8 +436,8 @@ Logical support rule:
 | Customer | Measurement Record | 1 -> many | measurement history is versioned over time |
 | Customer | Service Order | 1 -> many | one customer may originate many Service Orders |
 | Service Order | Service Order Item | 1 -> many | items cannot exist outside the parent Service Order |
-| Service Order | Primary Production Order | 1 -> 1 | exactly one Primary Production Order per Service Order |
-| Primary Production Order | Production Order Version | 1 -> many over time | versions exist only for rework, warranty execution, or corrective production |
+| Service Order | Production Order | 1 -> 1 | exactly one Production Order exists as the primary operational root per Service Order |
+| Production Order | Production Order Version | 1 -> many over time | versions exist only for rework, warranty execution, or corrective production under the same primary lineage |
 | Production Order | QR Code | 1 -> 1 active | operational QR identity belongs only to Production Order |
 | Production Order | QR Event | 1 -> many | scan history is event-based |
 | Production Order | Quality Record | 1 -> many | multiple inspections may exist over time |
