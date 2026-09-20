@@ -3,7 +3,7 @@
 
 ## Document Purpose
 
-This document transforms the approved implementation plan into an executable development roadmap for ANEXSYS using the following documents as source of truth:
+This document transforms the approved implementation plan into an executable development roadmap for ANEXSYS using the following approved repository planning documents as governing inputs carried by `BASELINE_V3.0`:
 - `/docs/releases/BASELINE_V3.0.md`
 - `/docs/BACKEND_IMPLEMENTATION_V1.md`
 - `/docs/BACKEND_ARCHITECTURE_V1.md`
@@ -628,8 +628,8 @@ The sprint plan below assumes:
 ## 3. MVP Definition
 
 ### MVP Cut Line
-- the atelier-replacement MVP cut line is **after Sprint 10**
-- the back-office operational MVP cut line is **after Sprint 9**
+- the **official atelier-replacement MVP cut line** is **after Sprint 10**
+- the **internal back-office operational readiness checkpoint** is **after Sprint 9**
 
 ### Minimum features required to replace the current atelier system
 - tenant and branch governance

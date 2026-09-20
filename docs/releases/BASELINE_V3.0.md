@@ -18,7 +18,7 @@ It records the already-approved functional, architectural, data-modeling, API, b
 
 All document paths in this section are repository-root paths and intentionally use a leading `/`.
 
-Canonical frozen baseline artifacts and approved immutable repository snapshots/documents constituting the V3.0 baseline are listed below. This section records the exact repository paths approved by V3.0 and does not imply that every listed document was created or modified in this change set.
+Canonical frozen baseline artifacts and approved immutable repository snapshots/documents referenced by the V3.0 baseline are listed below. This section records the exact repository paths approved by V3.0 and does not imply that every listed document was created or modified in this change set.
 
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
