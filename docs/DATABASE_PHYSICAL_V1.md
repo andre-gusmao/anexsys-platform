@@ -529,14 +529,14 @@ Key columns:
 - `piece_description text`
 - `measurements_snapshot jsonb null`
 - `observations text`
-- standard audit + soft-delete columns
+- standard audit columns
 
 Constraints:
 - FK: `service_order_id -> service_orders.id`
 - FK: `workflow_definition_id -> workflow_definitions.id`
 - FK: `current_status_definition_id -> status_definitions.id`
 - UQ: `(tenant_id, production_no)`
-- UQ: filtered uniqueness on `(service_order_id)` for rows where `is_deleted = false` to preserve exactly one lifetime base production-order row per service order
+- UQ: `(service_order_id)` to preserve exactly one lifetime base production-order row per service order
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
 - lifecycle-anchor rule: the base `production_orders` row remains the lifetime anchor for its Service Order, and corrective or replacement semantics must be represented through status history and execution-capable `production_order_versions` rather than through additional base Production Order rows
 
@@ -641,7 +641,10 @@ Key columns:
 - `skill_profile jsonb null`
 - `qualification_notes text null`
 - `status varchar(30)`
-- standard audit + soft-delete columns
+- `is_deleted boolean`
+- `deleted_at timestamptz null`
+- `deleted_by uuid null`
+- standard audit columns
 
 Constraints:
 - CHECK: `resource_type` in approved operational-resource values
@@ -889,7 +892,10 @@ Key columns:
 - `drawer_code varchar(50) null`
 - `display_label text`
 - `status varchar(30)`
-- standard audit + soft-delete columns
+- `is_deleted boolean`
+- `deleted_at timestamptz null`
+- `deleted_by uuid null`
+- standard audit columns
 
 Constraints:
 - UQ: `(tenant_id, branch_id, area, corridor, row_code, shelf_code, cabinet_code, drawer_code)`

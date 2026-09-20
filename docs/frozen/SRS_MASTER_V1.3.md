@@ -2586,9 +2586,9 @@ Assessment method and ownership:
 - Acceptance criteria: each checklist control must be explicitly mapped to a section in this SRS and marked implemented/not-implemented.
 - Governance rule: this score is informational for architecture readiness planning and does not replace formal release approval gates; Product Leadership and Architecture Governance jointly approve, accept with conditions, or override the score rationale.
 
-### 46.1 Versioned assessment entry (V1.2)
+### 46.1 Historical versioned assessment entry (Preserved from V1.2)
 
-- Historical assessment date/version preserved from V1.2: 2026-09-20 / V1.2 release baseline
+- Historical appendix entry preserved from the V1.2 release baseline: 2026-09-20 / V1.2 release baseline
 - Checklist result: all 20 controls marked implemented
 - Computed score: **100/100**
 
