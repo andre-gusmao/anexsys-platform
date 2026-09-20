@@ -36,6 +36,9 @@ This document does not define:
 - APIs
 - implementation details
 
+Baseline status:
+- This conceptual model remains an approved carried-forward design artifact in `BASELINE_V2.0`.
+
 ---
 
 ## 1. Executive Summary
