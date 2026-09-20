@@ -6,7 +6,7 @@
 
 This document is the authoritative functional specification for the ANEXSYS platform. It defines the business, operational, security, and integration requirements for the product and is the source of truth for all subsequent analysis, architecture, implementation, testing, and deployment work.
 
-Version V1.3 extends the functional baseline established in V1.0, V1.1, and V1.2, and adds formal enterprise requirements for Service Order versus Production Order separation, visually managed production deadlines, governed Production Bags, operational diary execution support, refined warranty and rework attribution models, expanded pickup controls, and broader chain-of-custody accountability.
+Version V1.3 extends the functional baseline established in V1.0, V1.1, and V1.2, and adds formal enterprise requirements for Service Order versus Production Order separation, visually managed production deadlines, production bag/container business demarcation, operational diary execution support, refined warranty and rework attribution models, expanded pickup controls, and broader chain-of-custody accountability.
 
 This document intentionally excludes:
 - database entity definitions
@@ -75,7 +75,7 @@ The SRS covers the following core business domains:
 - workflow engine and dynamic statuses
 - delivery types and operational priorities
 - QR-code operational tracking
-- production bag management
+- physical production bag/container handling
 - scheduling and attendance tracking
 - digital approvals and customer consent
 - WhatsApp integration
@@ -124,7 +124,7 @@ Each tenant may manage one or more branches or operational units. A branch is an
 - schedules
 - attendance records
 - financial movements
-- production bags
+- physical production bag/container usage
 
 Business requirements:
 - a user may belong to one or more branches
@@ -334,7 +334,7 @@ The platform must support allocation of Operational Resources to:
 - service order items
 - production orders
 - production order versions
-- production batches or Production Bags
+- production batches or physical bag/container handling tasks where applicable
 - quality inspections
 - rework activities
 - warranty repairs
@@ -436,7 +436,7 @@ The platform must retain a complete operational history for each resource, inclu
 
 ### 6.12 Piece-based productivity model
 
-The primary productivity metric must be Pieces Produced, not the number of Service Orders or Production Bags.
+The primary productivity metric must be Pieces Produced, not the number of Service Orders or physical bag/container counts.
 
 Illustrative productivity example:
 - Service Order A = 10 pieces
@@ -448,7 +448,7 @@ Ranking and performance rules:
 - Operational rankings must also consider Quality Indicators
 - Operational rankings must also consider Rework Indicators
 - Operational rankings must also consider Warranty Indicators
-- Service Order counts and Production Bag counts may be used as secondary workload references, but not as the primary productivity result
+- Service Order counts and physical bag/container counts may be used as secondary workload references, but not as the primary productivity result
 
 ---
 
@@ -480,6 +480,8 @@ Each service order must contain:
 - tenant and branch
 - customer reference
 - sales representative
+- Commercial Responsible
+- Technical Measurement Responsible
 - created date
 - expected completion date
 - delivery commitment date(s)
@@ -495,10 +497,26 @@ Each service order must contain:
 - customer communication records
 - fiscal references
 - related production orders
-- related Production Bags where applicable
+- related physical bag/container reference where applicable
 - QR Code reference
 - related documents
 - notes and attachments
+
+Responsibility requirements for each Service Order:
+- Commercial Responsible
+  - purpose: customer service and commercial responsibility
+  - default: logged user
+  - editable: yes
+- Technical Measurement Responsible
+  - purpose: measurements, markings, and technical evaluation
+  - may differ from Commercial Responsible
+  - editable: yes
+- Operational Responsible
+  - defined through Production Order execution
+- Quality Responsible
+  - defined through Quality workflow
+
+The platform must support separated accountability for commercial service, technical measurement, operational execution, and quality validation.
 
 ### 7.4 Service order items
 
@@ -523,7 +541,7 @@ Each item must have:
 - status or stage of execution
 - related production order(s)
 - QR Code reference
-- related Production Bag where applicable
+- related physical bag/container reference where applicable
 
 ### 7.5 Item-level business rules
 
@@ -609,13 +627,19 @@ Requirements:
 ### 7.12 Delivery Types and Operational Priority
 
 The platform must support configurable delivery types. The baseline types are:
-- Normal
+- Standard
 - Priority
 - Express
 
-Tenants may configure additional types while preserving the baseline semantics.
+Priority and Express may apply a configurable surcharge.
 
-The platform must support Operational Priority as a distinct control that may be applied at service order, service order item, production order, Production Bag, workflow, or task level.
+Supported surcharge methods:
+- Fixed value
+- Percentage
+
+Tenants may configure additional types while preserving the baseline semantics of Standard, Priority, and Express.
+
+The platform must support Operational Priority as a distinct control that may be applied at service order, service order item, production order, physical bag/container context where used, workflow, or task level.
 
 Delivery Type and Operational Priority requirements:
 - visual identification throughout the platform
@@ -630,6 +654,32 @@ Delivery Type and Operational Priority requirements:
 - audit trail for changes
 
 Delivery Type and Operational Priority must influence planning and alerts but must not automatically override approval, quality, safety, or compliance controls unless explicitly configured.
+
+Delivery Type must affect:
+- Workflow
+- Scheduling
+- Dashboards
+- Alerts
+- SLA
+
+### 7.12.1 Delivery Date Engine
+
+The platform shall automatically suggest delivery dates.
+
+Default rule:
+- Monday -> next Monday
+- Tuesday -> next Tuesday
+- Wednesday -> next Wednesday
+- Thursday -> next Thursday
+- Friday -> next Friday
+- Saturday -> next Saturday
+
+The platform must automatically consider:
+- Holidays
+- Branch Calendars
+- Tenant Calendars
+
+If the calculated date falls on a non-working day, the system must automatically move the date to the next valid business day.
 
 ### 7.13 Service Order versus Production Order
 
@@ -709,7 +759,7 @@ Each production order must contain:
 - workflow information and current status context
 - version reference
 - QR Code reference
-- Production Bag reference where applicable
+- physical bag/container reference where applicable
 - linked quality control results
 - linked rework records
 - linked warranty execution records where applicable
@@ -753,8 +803,12 @@ Visual-delivery-date requirements:
 - the format must remain readable from a distance
 - the format must remain visible in production-line displays and operational camera views
 - the display must support visual production management and fast deadline recognition
+- highly visible indicators such as `[ EXPRESS ]`, `[ WARRANTY ]`, `[ REWORK ]`, and `[ PRIORITY ]` must be supported when applicable
+- the printed Production Order document must remain financially clean and must not display prices, discounts, margins, profit, commissions, payment information, or other financial data
 
 Illustrative format example: large day number `26` with smaller month `SEP` beneath or beside it.
+
+The physical printed Production Order used with the bag/container must support an A5 operational format when printed.
 
 ### 8.7 Production buffer / safety window
 
@@ -762,7 +816,7 @@ The platform must support a configurable Production Buffer / Safety Window whose
 
 Buffer requirements:
 - configuration must be tenant-specific
-- baseline example defaults are Normal = 3 days, Priority = 2 days, Express = 0 days
+- baseline example defaults are Standard = 3 days, Priority = 2 days, Express = 0 days
 - the system must calculate Promised Delivery Date
 - the system must calculate Internal Production Deadline
 - the system must calculate Internal Quality Deadline
@@ -800,14 +854,14 @@ Each quality record must include:
 - severity
 - corrective action required
 - approval or rejection decision
-- linked QR Code or Production Bag where applicable
+- linked Production Order QR Code and physical bag/container context where applicable
 
 ### 9.4 Customer rejection
 
 The platform must support customer rejection events after delivery or during final acceptance.
 
 Requirements:
-- rejection must be linked to a specific item, quantity, batch, Production Bag, or lot
+- rejection must be linked to a specific item, quantity, batch, physical bag/container context, or lot
 - reason codes must be recorded
 - issue severity must be classified
 - rejection status must trigger operational review
@@ -919,8 +973,10 @@ The platform must support QR Codes for:
 - each Service Order
 - each Service Order Item
 - each Production Order
-- each Production Batch or Operational Bag
+- each Production Batch or other configurable workflow object where required
 - other configurable workflow objects where required
+
+For production execution, QR Codes belong to Production Orders.
 
 ### 10.3 Scanning requirements
 
@@ -928,8 +984,12 @@ QR Code scanning must be supported during workflow execution for activities incl
 - receiving and identifying work
 - starting an operational step
 - assigning or confirming an Operational Resource
+- starting execution by scanning the Production Order QR Code
+- assuming operational responsibility by scanning the Production Order QR Code
+- updating production status by scanning the Production Order QR Code
+- updating the Operational Diary by scanning the Production Order QR Code
 - moving work between stages
-- confirming Production Bag identification or responsibility transfer under governance rules
+- confirming physical bag/container usage context when operationally necessary, always through the Production Order QR Code context
 - quality inspection
 - rework initiation
 - warranty repair initiation
@@ -948,7 +1008,7 @@ Each scan must be traceable to:
 - resulting action or status change
 - device or channel where available
 
-The system must support complete operational traceability from Service Order to Service Order Item, Production Order, Production Bag, quality events, delivery, rework, warranty repair, and customer confirmation.
+The system must support complete operational traceability from Service Order to Service Order Item, Production Order, physical bag/container context where used, quality events, delivery, rework, warranty repair, and customer confirmation.
 
 ---
 
@@ -956,74 +1016,66 @@ The system must support complete operational traceability from Service Order to 
 
 ### 11.1 Objective
 
-Production Bags are governed operational containers used to group, transport, stage, and control work with clear operational accountability and prevention of item mixing.
+The Production Bag is a physical container used to store the pieces belonging to a Service Order and the printed Production Order (A5).
+
+The Production Bag is not a primary business entity. The primary operational execution entity is the Production Order.
 
 ### 11.2 Bag requirements
 
 The platform must support:
-- Production Bag identification
-- Bag label and QR Code
 - linked Service Order
 - linked Service Order Items
 - linked Production Orders
-- responsible branch or operational area
-- current status and location
-- primary Operational Resource ownership
-- original Operational Resource ownership history
-- creation and closure dates
+- responsible branch or operational area where physically relevant
+- current physical status and location when the bag/container is used
 - notes and attachments
 
-### 11.3 Production Bag governance
+The bag/container itself does not require:
+- business numbering
+- independent QR Code
+- independent business identity
+
+### 11.3 Production Bag business rules
 
 The following rules are mandatory:
-- 1 Service Order = 1 Production Bag
-- 1 Production Bag = 1 Customer
-- 1 Production Bag = 1 Primary Operational Resource
+- the Production Bag may be used as a physical container when operationally useful
+- the bag/container stores the pieces belonging to a Service Order
+- the bag/container stores the printed Production Order (A5)
+- the bag/container must not become the primary governed execution object
 
 The following conditions are prohibited:
-- multiple customers in one Production Bag
-- multiple Service Orders in one Production Bag
-- multiple primary responsible Operational Resources in one Production Bag
+- treating the Production Bag as an independent primary business entity
+- assigning independent business numbering to the Production Bag
+- assigning an independent QR Code to the Production Bag
+- treating the Production Bag as a standalone QR-tracked business identity
 
-If governed execution must proceed in parallel under different primary Operational Resources, the intake must be registered as multiple Service Orders and therefore multiple Production Bags before governed production release, rather than splitting one active governed bag across simultaneous primary ownership.
+### 11.4 Production Order execution responsibility
 
-Illustrative governance example:
-- customer delivers 10 pieces and governed intake is registered as Service Order A -> Production Bag A -> Operational Resource A
-- customer delivers 10 pieces and governed intake is registered as Service Order B -> Production Bag B -> Operational Resource B
+Operational responsibility must be defined through Production Order execution, not through bag ownership.
 
-The purpose of this governance model is operational accountability and prevention of item mixing.
+Execution requirements:
+- QR Codes belong to Production Orders
+- the Operational Resource scans the Production Order QR Code to start execution
+- the Operational Resource scans the Production Order QR Code to assume responsibility
+- the Operational Resource scans the Production Order QR Code to update production status
+- the Operational Resource scans the Production Order QR Code to update the Operational Diary
 
-### 11.4 Production Bag responsibility
+### 11.5 Physical handling restrictions
 
-A Production Bag may change Operational Resource ownership during execution while preserving single-current-owner accountability. A transfer replaces the current owner and must never create co-ownership or multiple simultaneous primary Operational Resources for the active bag.
+Because the bag is a physical container rather than a primary business entity, bag handling must preserve the traceability of the linked Service Order and Production Order without creating a separate business-governance model.
 
-Responsibility-transfer requirements:
-- the system must record the original responsible Operational Resource
-- the system must record the current responsible Operational Resource
-- the system must record the transfer date
-- the system must record the transfer reason
-- the system must maintain the full audit trail of responsibility changes
-- illustrative ownership changes may include an original resource such as Maria and a corrective resource such as Joana, while the general rule remains tenant-agnostic and role-neutral
-
-### 11.5 Consolidation, split, and merge restrictions under governance
-
-Under the V1.3 governance model, consolidation across multiple Service Orders or customers is prohibited.
-
-Additional governance restrictions:
-- merge operations that would combine governed Production Bags into a shared bag are prohibited
-- split operations that would create multiple active bags from one Service Order are prohibited in the governed baseline flow
-- if workload must be executed in parallel by multiple primary Operational Resources, the work must be registered as multiple Service Orders and then as multiple governed Production Bags before governed production release, rather than by splitting one active governed bag across simultaneous primary ownership
-- any exceptional historical replacement of a bag identifier must preserve full traceability and must not break the one-Service-Order, one-customer, one-primary-resource rule for the active bag
+Physical handling rules:
+- any bag/container replacement must preserve traceability through the linked Service Order and Production Order context
+- any operational use of the bag/container must not break piece retrieval visibility
+- any movement or storage event may be recorded as physical traceability context without creating an independent bag business identity
 
 ### 11.6 Bag lifecycle and history
 
-Production Bags must support a configurable lifecycle, including creation, staging, in progress, quality review, ready for delivery, delivered, closed, transferred, rework support, warranty support, and cancelled.
+When used, a physical Production Bag/container may support operational lifecycle visibility such as staging, in progress, quality review, ready for delivery, delivered, closed, rework support, warranty support, and cancelled.
 
 The platform must maintain full history of:
-- creation
-- QR scans
+- physical association when used
 - movement
-- responsibility assignment and transfer
 - quality events
 - rework or warranty repair
 - storage
@@ -1044,7 +1096,7 @@ Partial delivery must be independently tracked from overall completion.
 
 Requirements:
 - delivered quantity and remaining quantity must both be visible
-- each delivery may be linked to a warehouse, branch movement, Production Bag, or QR-tracked event
+- each delivery may be linked to a warehouse, branch movement, physical bag/container context, or QR-tracked event
 - financial settlement may occur by delivered quantity
 - open balances must be recalculated automatically
 
@@ -1174,7 +1226,7 @@ Examples of status domains:
 - payment status
 - delivery status
 - customer rejection status
-- Production Bag status
+- physical bag/container status where used
 - approval status
 - attendance status
 
@@ -1264,7 +1316,7 @@ The workflow engine must allow automated actions such as:
 - creating operational alerts for Priority or Express work
 - initiating payment from the Service Order context
 - assigning or reassigning an Operational Resource
-- creating a Production Bag or updating governance-safe Production Bag status/location fields only
+- associating a physical bag/container or updating its location/handling context when used
 
 ---
 
@@ -1284,7 +1336,7 @@ The system must support scheduling for:
 - Operational Resources
 - capacity planning
 - machine or resource assignment
-- Production Bags
+- physical bag/container handling where used
 - branch-level work planning
 - quality inspections
 - rework and warranty repair activities
@@ -1517,7 +1569,7 @@ Required dashboard families include:
 - Operational Diary
 - branch and tenant performance
 - delivery type and operational priority performance
-- Production Bag and QR-code traceability status
+- physical bag/container location visibility and QR-code traceability status
 
 ### 21.3 Operational Resource Dashboard
 
@@ -1566,7 +1618,7 @@ The system should support KPIs such as:
 - Operational Resource quality performance
 - capacity utilization
 - SLA adherence
-- Production Bag status and aging
+- physical bag/container location and aging visibility
 - QR scan and traceability exceptions
 
 ### 21.5 Real-time versus retrospective reporting
@@ -1583,7 +1635,9 @@ The platform must provide an Operational Diary that allows Operational Resources
 
 Operational Diary views:
 - Synthetic View: pieces completed today, Service Orders completed, reworks, warranty repairs, and quality indicators
-- Analytical View: every assigned Production Order or governed operational task showing parent Service Order number, customer, Production Bag, piece description, service description, measurements, photos, delivery date, priority, and current status
+- Analytical View: every assigned Production Order or operational task showing parent Service Order number, customer, physical bag/container reference or location where applicable, piece description, service description, measurements, photos, delivery date, priority, and current status
+
+Operational Diary execution updates must be driven by Production Order QR Code scanning, not by independent bag/container scanning.
 
 ---
 
@@ -1606,7 +1660,7 @@ The system must log:
 - warranty repair actions
 - payment actions and terminal reconciliation
 - QR Code scans
-- Production Bag creation, responsibility transfer, replacement, and movement
+- physical bag/container association, replacement when applicable, and movement
 - user logins, permission changes, and role modifications
 - resource allocation and reassignment
 - document generation and cancellation
@@ -1621,7 +1675,7 @@ Each log record must include:
 - event type
 - object type and object identifier
 - previous and new value where applicable
-- related Service Order, Service Order Item, Production Order, Production Bag, or approval context where applicable
+- related Service Order, Service Order Item, Production Order, physical bag/container context, or approval context where applicable
 - reason or justification when required
 
 ### 22.4 Audit retention
@@ -1688,7 +1742,7 @@ The platform must support reliable and regularly tested backup procedures for:
 - files and attachments
 - photographs and approval evidence
 - configuration and workflow data
-- QR-code and Production Bag traceability data
+- QR-code and physical bag/container location traceability data
 - audit logs
 
 ### 24.2 Recovery objectives
@@ -1741,7 +1795,7 @@ The platform must support operational workflows with acceptable latency for:
 
 ### 25.3 Scalability
 
-The system must support increasing user counts, branches, Operational Resources, Production Bags, QR-code events, and data volume without requiring redesign of the core functional model.
+The system must support increasing user counts, branches, Operational Resources, physical bag/container references, QR-code events, and data volume without requiring redesign of the core functional model.
 
 ### 25.4 Maintainability
 
@@ -1765,7 +1819,7 @@ The platform must allow the following end-to-end journey:
 5. delivery type and operational priority assignment
 6. production planning and scheduling
 7. Operational Resource allocation
-8. Production Bag creation under governed Production Bag accountability rules
+8. optional physical bag/container association where operationally useful
 9. QR-code identification and operational tracking
 10. execution and progress updates
 11. quality check and validation
@@ -1808,7 +1862,7 @@ All modules must support:
 - The platform will evolve from a modular monolith into a more service-oriented solution only when scale or operational demands justify it.
 - Different industries will use different terminology, workflows, quality rules, scheduling methods, and productivity measures.
 - Operational Resources may be people, teams, machines, workstations, contractors, or other configurable capacity types.
-- Body measurements, Production Bags, facial recognition, Smart Concierge, and inventory may be enabled only for relevant tenants or phases.
+- Body measurements, physical Production Bags/containers, facial recognition, Smart Concierge, and inventory may be enabled only for relevant tenants or phases.
 
 ### 27.2 Constraints
 
@@ -2027,6 +2081,8 @@ This workflow exists to support fast Service Order retrieval and delivery operat
 
 The platform must manage physical storage and operational location references for tracked items across service and production workflows.
 
+Service Orders may be physically stored in the supported location hierarchy, and the selected location must remain visible during retrieval.
+
 ### 34.2 Location structure
 
 The location model must support a hierarchical structure composed of:
@@ -2058,7 +2114,10 @@ Location data must be visible on:
 - Service Orders
 - Item View
 - Pickup Process
+- Direct Service Order Retrieval
 - Search Results
+
+Location must be visible during retrieval.
 
 ---
 
@@ -2386,8 +2445,8 @@ Domain-to-classification matrix:
 - Piece-based productivity model — Mandatory
 - Operational Diary — Mandatory
 - QR Code operational tracking — Mandatory
-- Production Bag management — Mandatory
-- Production Bag governance and responsibility transfer — Mandatory
+- Physical Production Bag / Container Handling — Mandatory
+- Production Order-based execution responsibility and bag/container visibility — Mandatory
 - Digital approvals and customer consent — Mandatory
 - WhatsApp integration — Mandatory
 - Communication and notification framework — Mandatory
@@ -2548,69 +2607,71 @@ The following areas were modified or added in V1.2:
 
 ---
 
-## 48. V1.2 to V1.3 Delta Summary
+## 48. V1.3 Update Delta Summary
 
-### 48.1 Sections added
-- Section 6.12 Piece-based productivity model
-- Section 7.13 Service Order versus Production Order
-- Section 8.6 Production Order visual delivery date
-- Section 8.7 Production buffer / safety window
-- Section 9.10 Rework Attribution Model
-- Section 9.11 Warranty model refinement
-- Section 21.7 Operational Diary
-- Section 48 V1.2 to V1.3 Delta Summary
-- Section 49 Updated SRS Completeness Score
-- Section 50 Updated Architecture Readiness Score
-- Section 51 Updated Database Readiness Score
-- Section 52 Remaining Gaps Before Architecture Design
-- Section 53 Modified and Added Sections List
+### 48.1 Updated topics in this change
+- Production Bag final model changes
+- Service Order responsibility model additions
+- Delivery Date Engine additions
+- Delivery Type taxonomy and surcharge updates
+- Production Order printed document updates
+- Physical Storage Location updates
 
-### 48.2 Sections modified
+### 48.2 Production Bag final model changes
+- The Production Bag is redefined as a physical container, not a primary business entity.
+- The primary operational execution entity is the Production Order.
+- The bag/container stores Service Order pieces and the printed Production Order (A5).
+- Production Bags no longer require independent business numbering, independent QR Codes, or independent business identity.
+- Production execution responsibility and Operational Diary updates are driven by Production Order QR Code scanning.
+
+### 48.3 Service Order responsibility model additions
+- Service Orders now require Commercial Responsible and Technical Measurement Responsible fields.
+- Commercial Responsible defaults to the logged user and remains editable.
+- Technical Measurement Responsible is editable and may differ from Commercial Responsible.
+- Operational Responsible is defined through Production Order execution.
+- Quality Responsible is defined through the Quality workflow.
+
+### 48.4 Delivery Date Engine additions
+- The platform shall automatically suggest delivery dates by weekday-to-next-same-weekday rule.
+- Holidays, Branch Calendars, and Tenant Calendars must be considered automatically.
+- Dates that fall on non-working days must move to the next valid business day.
+
+### 48.5 Delivery Type taxonomy and surcharge updates
+- Delivery Types are normalized to Standard, Priority, and Express.
+- Priority and Express may apply configurable surcharge by Fixed value or Percentage.
+- Delivery Type impact is formalized across Workflow, Scheduling, Dashboards, Alerts, and SLA.
+
+### 48.6 Production Order printed document updates
+- Production Orders must display a large delivery day number and a smaller month.
+- Highly visible indicators such as `[ EXPRESS ]`, `[ WARRANTY ]`, `[ REWORK ]`, and `[ PRIORITY ]` are required when applicable.
+- Production Orders remain financially clean and must not display financial data.
+
+### 48.7 Physical Storage Location updates
+- Service Orders may be physically stored by Area, Corridor, Row, Shelf, Cabinet, and Drawer.
+- Location visibility is reinforced for retrieval, Direct Service Order Retrieval, Pickup Process, and Search Results.
+
+### 48.8 Sections modified
 - Section 1 Document status
+- Section 2 Product overview
+- Section 3 SaaS operating model
 - Section 6 Operational Resource Management
 - Section 7 Service orders
 - Section 8 Production orders
+- Section 9 Quality control, customer rejection, rework, and warranty repair
+- Section 10 QR Code Operational Tracking
 - Section 11 Production Bag management
 - Section 12 Delivery, financial settlement, and payments
+- Section 14 Workflow engine and dynamic statuses
+- Section 15 Production scheduling and operational planning
 - Section 21 Dashboards and analytics
+- Section 22 Audit logs and traceability
+- Section 24 Backup, recovery, and continuity
+- Section 25 Non-functional requirements
 - Section 26 Functional requirements summary by domain
-- Section 31 Document control
-- Section 32 Customer Reception and Smart Concierge Workflow
-- Section 33 Direct Service Order Retrieval Workflow
+- Section 27 Assumptions and constraints
 - Section 34 Physical Item Location Management
-- Section 35 Third-Party Pickup Authorization
-- Section 36 Chain of Custody and Pickup Evidence
-- Section 41 Financial Source of Truth
 - Section 42 Requirement Classification Model
-
-### 48.3 Business rules added
-- Service Orders remain the commercial, financial, customer-facing source document.
-- Production Orders remain operational execution documents and must never display financial information.
-- Production Orders must display the customer delivery date in a visually dominant format.
-- Production Buffer / Safety Window dates must be calculated from the customer commitment date.
-- Production Bag governance is one Service Order, one customer, and one primary Operational Resource per active bag.
-- Responsibility transfer in a Production Bag must preserve original owner, current owner, date, reason, and audit trail.
-- Rework attribution must penalize the original failing resource while crediting the corrective resource for executed correction output.
-- Warranty Adjustment and Warranty Execution must remain separate tracked concepts.
-- Pieces Produced is the primary productivity metric.
-- Chain-of-custody events across intake, production, quality, rework, warranty, storage, delivery, and pickup must be auditable.
-
-### 48.4 Existing rules changed
-- Production Bag consolidation, split, and merge language from V1.2 is restricted by the new governance model and may not violate the one-Service-Order, one-customer, one-primary-resource rule.
-- Physical location visibility is extended to Item View, Pickup Process, and Search Results.
-- Third-party pickup authorization terminology is normalized around customer-owned authorization and released-by accountability.
-- Pickup evidence is expanded from pickup-only traceability to end-to-end chain-of-custody coverage.
-- Reception queue visibility is explicitly positioned to support pickup-only customer arrivals.
-
-### 48.5 New concepts introduced
-- Service Order versus Production Order document boundary
-- visually managed Production Order delivery date presentation
-- Production Buffer / Safety Window with internal deadlines
-- Production Bag ownership transfer governance
-- Rework Attribution Model
-- Warranty Adjustment versus Warranty Execution
-- Operational Diary mobile execution view
-- Piece-based productivity baseline
+- Section 48 V1.3 Update Delta Summary
 
 ---
 
@@ -2619,7 +2680,7 @@ The following areas were modified or added in V1.2:
 **Score: 97/100**
 
 Rationale:
-- V1.3 now covers the major functional boundaries between commercial documents, operational execution, bag governance, productivity, warranty, pickup, and chain-of-custody control at enterprise level.
+- V1.3 now covers the major functional boundaries between commercial documents, operational execution, physical bag/container usage, productivity, warranty, pickup, and chain-of-custody control at enterprise level.
 - The document is intentionally still functional-only and avoids database, API, and implementation design, which is appropriate for the SRS scope.
 - A small residual gap remains for tenant-by-tenant policy decisions such as exact default governance exceptions, ranking formulas, and evidence-retention durations that should be confirmed before downstream design decisions are frozen.
 
@@ -2630,8 +2691,8 @@ Rationale:
 **Score: 96/100**
 
 Rationale:
-- The functional model now provides enough separation of concerns for architecture design across Service Orders, Production Orders, Production Bags, quality, warranty, pickup, and mobility-oriented operational execution.
-- Internal deadline computation, governed ownership transfer, and end-to-end custody events are now specified well enough to support architecture decomposition and bounded-context definition.
+- The functional model now provides enough separation of concerns for architecture design across Service Orders, Production Orders, physical bag/container usage, quality, warranty, pickup, and mobility-oriented operational execution.
+- Internal deadline computation, Production Order-centered execution responsibility, and end-to-end custody events are now specified well enough to support architecture decomposition and bounded-context definition.
 - This score is informational only and not a release gate; final architecture still depends on confirming the remaining business-policy gaps listed below.
 
 ---
@@ -2641,7 +2702,7 @@ Rationale:
 **Score: 94/100**
 
 Rationale:
-- The functional rules now define clearer data boundaries for core entities such as Service Order, Production Order, Production Bag, warranty cases, rework attribution, custody events, and pickup authorization.
+- The functional rules now define clearer data boundaries for core entities such as Service Order, Production Order, warranty cases, rework attribution, custody events, pickup authorization, and physical bag/container context.
 - Auditability requirements are materially stronger, which improves downstream database readiness for history and accountability modeling.
 - Remaining uncertainty is limited mainly to configurable policy ranges, final classification vocabularies, and tenant-specific retention/governance choices that should be settled before schema design begins.
 
@@ -2649,7 +2710,7 @@ Rationale:
 
 ## 52. Remaining Gaps Before Architecture Design
 
-- Confirm whether any exceptional bag-replacement scenario is allowed beyond the governed baseline and under what approval policy.
+- Confirm the tenant policy for when physical bags/containers are used or replaced operationally while preserving Service Order and Production Order traceability.
 - Confirm the tenant-configurable policy set for warranty periods, priority defaults, and Production Buffer defaults when tenants do not override them.
 - Confirm whether Pickup Process visibility must expose full location hierarchy to all pickup roles or only to authorized pickup/reception roles.
 - Confirm the exact governance of ranking formulas when Pieces Produced, Quality Indicators, Rework Indicators, and Warranty Indicators conflict in weighting.
@@ -2660,25 +2721,28 @@ Rationale:
 ## 53. Modified and Added Sections List
 
 - Header and document status version references (V1.3)
-- Section 6 Operational Resource Management (extended)
-- Section 7 Service orders (extended)
-- Section 8 Production orders (extended)
-- Section 9 Quality control, customer rejection, rework, and warranty repair (extended)
-- Section 11 Production Bag management (governance revision)
-- Section 12 Delivery, financial settlement, and payments (consistency update)
-- Section 21 Dashboards and analytics (extended)
-- Section 26 Functional requirements summary by domain (consistency update)
-- Section 31 Document control (V1.3 update)
-- Section 32 Customer Reception and Smart Concierge Workflow (extended)
-- Section 33 Direct Service Order Retrieval Workflow (extended)
-- Section 34 Physical Item Location Management (extended)
-- Section 35 Third-Party Pickup Authorization (extended)
-- Section 36 Chain of Custody and Pickup Evidence (expanded)
-- Section 41 Financial Source of Truth (consistency update)
-- Section 42 Requirement Classification Model (V1.3 matrix update)
-- Section 48 V1.2 to V1.3 Delta Summary (new)
-- Section 49 Updated SRS Completeness Score (new)
-- Section 50 Updated Architecture Readiness Score (new)
-- Section 51 Updated Database Readiness Score (new)
-- Section 52 Remaining Gaps Before Architecture Design (new)
-- Section 53 Modified and Added Sections List (new)
+- Section 2 Product overview (scope terminology update)
+- Section 3 SaaS operating model (branch scope terminology update)
+- Section 6 Operational Resource Management (container-reference consistency update)
+- Section 7 Service orders (responsibility model, delivery types, Delivery Date Engine)
+- Section 8 Production orders (printed-document and delivery-visibility update)
+- Section 9 Quality control, customer rejection, rework, and warranty repair (Production Order QR-code consistency update)
+- Section 10 QR Code Operational Tracking (Production Order QR-code ownership update)
+- Section 11 Production Bag management (final physical-container model)
+- Section 12 Delivery, financial settlement, and payments (container-reference consistency update)
+- Section 14 Workflow engine and dynamic statuses (container-context consistency update)
+- Section 15 Production scheduling and operational planning (container-context consistency update)
+- Section 21 Dashboards and analytics (Operational Diary and visibility update)
+- Section 22 Audit logs and traceability (container-context consistency update)
+- Section 24 Backup, recovery, and continuity (traceability terminology update)
+- Section 25 Non-functional requirements (scalability terminology update)
+- Section 26 Functional requirements summary by domain (journey consistency update)
+- Section 27 Assumptions and constraints (scope terminology update)
+- Section 34 Physical Item Location Management (retrieval visibility update)
+- Section 42 Requirement Classification Model (matrix terminology update)
+- Section 48 V1.3 Update Delta Summary (updated)
+- Section 49 Updated SRS Completeness Score (consistency update)
+- Section 50 Updated Architecture Readiness Score (consistency update)
+- Section 51 Updated Database Readiness Score (consistency update)
+- Section 52 Remaining Gaps Before Architecture Design (consistency update)
+- Section 53 Modified and Added Sections List (updated)
