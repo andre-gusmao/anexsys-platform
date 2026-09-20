@@ -10,9 +10,9 @@
 
 ## Purpose of the baseline
 
-This document marks the completion of the Product Definition, Architecture, Database Design, Backend Planning, and Frontend Architecture phases of ANEXSYS.
+This document marks the completion of the Product Definition, Architecture, Database Design, and Backend Planning phases of ANEXSYS.
 
-It records the approved functional, architectural, data-modeling, API, backend-architecture, backend-implementation, and backend-planning baseline for the next delivery stages.
+It records the already-approved functional, architectural, data-modeling, API, backend-architecture, backend-implementation, and backend-planning repository baseline carried forward into the next delivery stages.
 
 ## Approved documents
 
@@ -29,7 +29,6 @@ Canonical approved baseline artifacts and approved referenced repository materia
 - `/docs/API_DESIGN_V1.md`
 - `/docs/BACKEND_ARCHITECTURE_V1.md`
 - `/docs/BACKEND_IMPLEMENTATION_V1.md`
-- `/docs/FRONTEND_ARCHITECTURE_V1.md`
 - `/docs/working/MIGRATION_AND_ONBOARDING_V1.md` (approved referenced planning input; working-path document retained outside the frozen artifact set)
 
 ## Approved decisions
