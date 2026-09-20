@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   OperationalAvailabilityStatus,
+  OperationalResourceStatus,
   OperationalResourceType,
 } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
@@ -75,5 +76,60 @@ describe('OperationalResourceService', () => {
         }),
       DomainValidationError,
     );
+  });
+
+  it('updates availability fields through the generic update flow', async () => {
+    const audits: Array<Record<string, unknown>> = [];
+    const savedResources: Array<Record<string, unknown>> = [];
+    const resource = {
+      id: 'resource-1',
+      tenantId: 'tenant-1',
+      homeBranchId: 'branch-1',
+      resourceType: OperationalResourceType.EMPLOYEE,
+      displayName: 'Maria',
+      documentNo: null,
+      phone: null,
+      email: null,
+      qualificationNotes: null,
+      availabilityStatus: OperationalAvailabilityStatus.AVAILABLE,
+      availableFrom: null,
+      availableUntil: null,
+      availabilityNotes: null,
+      status: OperationalResourceStatus.ACTIVE,
+      updatedBy: null,
+    };
+
+    const service = new OperationalResourceService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return resource;
+        },
+        async save(payload: Record<string, unknown>) {
+          savedResources.push({ ...payload });
+          return payload;
+        },
+      } as never,
+      { async findCurrentByResource() { return []; }, async save() {}, async saveMany() {} } as never,
+      { async findByResource() { return []; } } as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async record(payload: Record<string, unknown>) { audits.push(payload); }, async listByEntity() { return []; } } as never,
+    );
+
+    const updated = await service.update('resource-1', 'tenant-1', {
+      actorUserId: 'user-1',
+      availabilityStatus: OperationalAvailabilityStatus.UNAVAILABLE,
+      availableFrom: '2026-10-10',
+      availableUntil: '2026-10-12',
+      availabilityNotes: '  Assigned to urgent job  ',
+    });
+
+    assert.equal(updated.availabilityStatus, OperationalAvailabilityStatus.UNAVAILABLE);
+    assert.equal(updated.availableFrom, '2026-10-10');
+    assert.equal(updated.availableUntil, '2026-10-12');
+    assert.equal(updated.availabilityNotes, 'Assigned to urgent job');
+    assert.equal(savedResources[0]?.availabilityStatus, OperationalAvailabilityStatus.UNAVAILABLE);
+    assert.equal(audits[0]?.action, 'operational_resource.updated');
   });
 });

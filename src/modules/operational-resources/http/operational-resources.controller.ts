@@ -123,6 +123,22 @@ class UpdateOperationalResourceBody {
   @IsArray()
   @IsUUID('4', { each: true })
   branchScopeBranchIds?: string[];
+
+  @IsOptional()
+  @IsEnum(OperationalAvailabilityStatus)
+  availabilityStatus?: OperationalAvailabilityStatus;
+
+  @IsOptional()
+  @IsString()
+  availableFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  availableUntil?: string;
+
+  @IsOptional()
+  @IsString()
+  availabilityNotes?: string;
 }
 
 class AddSkillsBody {

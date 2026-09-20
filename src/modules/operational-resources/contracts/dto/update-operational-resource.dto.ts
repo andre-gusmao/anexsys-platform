@@ -1,4 +1,5 @@
 import {
+  OperationalAvailabilityStatus,
   OperationalResourceStatus,
   OperationalResourceType,
 } from 'src/shared/domain/enums';
@@ -14,4 +15,8 @@ export interface UpdateOperationalResourceDto {
   qualificationNotes?: string | null;
   status?: OperationalResourceStatus;
   branchScopeBranchIds?: string[];
+  availabilityStatus?: OperationalAvailabilityStatus;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  availabilityNotes?: string | null;
 }

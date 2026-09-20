@@ -142,6 +142,7 @@ export class OperationalResourceService {
     const resource = await this.getById(resourceId, tenantId);
     const scopeBranchIds = dto.branchScopeBranchIds?.map((value) => value) ?? undefined;
     await this.assertBranchesBelongToTenant(tenantId, [dto.homeBranchId ?? undefined, ...(scopeBranchIds ?? [])]);
+    this.assertAvailabilityWindow(dto.availableFrom ?? null, dto.availableUntil ?? null);
 
     if (dto.homeBranchId !== undefined) {
       resource.homeBranchId = dto.homeBranchId ?? null;
@@ -166,6 +167,18 @@ export class OperationalResourceService {
     }
     if (dto.status !== undefined) {
       resource.status = dto.status;
+    }
+    if (dto.availabilityStatus !== undefined) {
+      resource.availabilityStatus = dto.availabilityStatus;
+    }
+    if (dto.availableFrom !== undefined) {
+      resource.availableFrom = dto.availableFrom ?? null;
+    }
+    if (dto.availableUntil !== undefined) {
+      resource.availableUntil = dto.availableUntil ?? null;
+    }
+    if (dto.availabilityNotes !== undefined) {
+      resource.availabilityNotes = dto.availabilityNotes?.trim() || null;
     }
     resource.updatedBy = dto.actorUserId;
 
@@ -265,15 +278,14 @@ export class OperationalResourceService {
   }
 
   async assertResourceBranchAccess(resourceId: string, tenantId: string, accessibleBranchIds: string[]): Promise<void> {
-    const detail = await this.getDetails(tenantId, resourceId);
+    const resource = await this.getById(resourceId, tenantId);
+    const currentScopes = await this.branchScopeRepository.findCurrentByResource(resourceId);
     const visibleBranchIds = new Set<string>();
-    if (detail.resource.homeBranchId) {
-      visibleBranchIds.add(detail.resource.homeBranchId);
+    if (resource.homeBranchId) {
+      visibleBranchIds.add(resource.homeBranchId);
     }
-    for (const scope of detail.branchScopes) {
-      if (scope.validTo === null || scope.validTo >= this.today()) {
-        visibleBranchIds.add(scope.branchId);
-      }
+    for (const scope of currentScopes) {
+      visibleBranchIds.add(scope.branchId);
     }
     if (![...visibleBranchIds].some((branchId) => accessibleBranchIds.includes(branchId))) {
       throw new DomainValidationError('Requested operational resource is outside the authenticated branch scope.');
