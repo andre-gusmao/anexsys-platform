@@ -3,7 +3,7 @@
 
 ## Document Purpose
 
-This repository-carried backend architecture document remains part of the approved downstream design baseline referenced by `BASELINE_V3.0`.
+This repository-carried backend architecture document remains part of the approved downstream design baseline referenced by `BASELINE_V3.0` and the governing sprint-planning input set referenced by `SPRINT_EXECUTION_V1`.
 
 This document defines the complete backend architecture for ANEXSYS using only the following approved documents as source of truth:
 - `/docs/frozen/SRS_MASTER_V1.3.md`

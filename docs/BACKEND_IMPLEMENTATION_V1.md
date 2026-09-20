@@ -3,7 +3,7 @@
 
 ## Document Purpose
 
-This repository-carried backend implementation document remains part of the approved downstream design baseline referenced by `BASELINE_V3.0`.
+This repository-carried backend implementation document remains part of the approved downstream design baseline referenced by `BASELINE_V3.0` and the governing sprint-planning input set referenced by `SPRINT_EXECUTION_V1`.
 
 This document defines the implementation blueprint for the ANEXSYS backend using the following approved documents as source of truth:
 - `/docs/releases/BASELINE_V2.0.md`
