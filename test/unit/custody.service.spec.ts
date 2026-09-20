@@ -157,8 +157,8 @@ describe('CustodyService', () => {
     const firstLocation = await service.createStorageLocation({ tenantId: 'tenant-1', actorUserId: 'user-1', branchId: 'branch-1', rowCode: 'A', shelfCode: '01' });
     const secondLocation = await service.createStorageLocation({ tenantId: 'tenant-1', actorUserId: 'user-1', branchId: 'branch-1', rowCode: 'A', shelfCode: '02' });
 
-    await service.assignStorageLocation({ tenantId: 'tenant-1', actorUserId: 'user-1', serviceOrderId: 'service-order-1', storageLocationId: firstLocation.id, bagLabel: 'Bag-A', bagInUse: true });
-    await service.assignStorageLocation({ tenantId: 'tenant-1', actorUserId: 'user-2', serviceOrderId: 'service-order-1', storageLocationId: secondLocation.id, bagLabel: '', bagNotes: '', bagInUse: false });
+    await service.assignStorageLocation({ tenantId: 'tenant-1', actorUserId: 'user-1', serviceOrderId: 'service-order-1', storageLocationId: firstLocation.id, assignedAt: '2026-09-20T10:00:00.000Z', bagLabel: 'Bag-A', bagInUse: true });
+    await service.assignStorageLocation({ tenantId: 'tenant-1', actorUserId: 'user-2', serviceOrderId: 'service-order-1', storageLocationId: secondLocation.id, assignedAt: '2026-09-20T11:00:00.000Z', bagLabel: '', bagNotes: '', bagInUse: false });
 
     const current = await service.getServiceOrderLocation('tenant-1', 'service-order-1');
     const history = await service.listServiceOrderLocationHistory('tenant-1', 'service-order-1');

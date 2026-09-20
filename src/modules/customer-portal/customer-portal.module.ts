@@ -9,7 +9,6 @@ import { DigitalApprovalEntity } from '../pickup/infrastructure/persistence/enti
 import { CommunicationEventEntity } from '../pickup/infrastructure/persistence/entities/communication-event.entity';
 import { CommunicationEventRepository } from '../pickup/infrastructure/persistence/repositories/communication-event.repository';
 import { DigitalApprovalRepository } from '../pickup/infrastructure/persistence/repositories/digital-approval.repository';
-import { PickupAuthorizationRepository } from '../pickup/infrastructure/persistence/repositories/pickup-authorization.repository';
 import { ServiceOrdersModule } from '../service-orders/service-orders.module';
 import { WarrantyModule } from '../warranty/warranty.module';
 import { CustomerPortalService } from './application/customer-portal/customer-portal.service';
@@ -42,7 +41,6 @@ import { StatusVisibilityMappingRepository } from './infrastructure/persistence/
     StatusVisibilityMappingRepository,
     DigitalApprovalRepository,
     CommunicationEventRepository,
-    PickupAuthorizationRepository,
   ],
   exports: [CustomerPortalService, CustomerPortalProfileRepository],
 })

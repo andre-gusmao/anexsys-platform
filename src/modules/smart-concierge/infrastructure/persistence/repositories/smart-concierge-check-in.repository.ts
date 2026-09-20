@@ -27,9 +27,9 @@ export class SmartConciergeCheckInRepository {
     if (filters.q?.trim()) {
       const normalized = `%${filters.q.trim().toLowerCase()}%`;
       query.andWhere(new Brackets((qb) => {
-        qb.where('LOWER(COALESCE(check_in.identification_value, '')) LIKE :normalized', { normalized })
-          .orWhere('LOWER(COALESCE(check_in.notes, '')) LIKE :normalized', { normalized })
-          .orWhere('COALESCE(check_in.service_order_id::text, '') LIKE :normalized', { normalized });
+        qb.where("LOWER(COALESCE(check_in.identification_value, '')) LIKE :normalized", { normalized })
+          .orWhere("LOWER(COALESCE(check_in.notes, '')) LIKE :normalized", { normalized })
+          .orWhere("COALESCE(check_in.service_order_id::text, '') LIKE :normalized", { normalized });
       }));
     }
     return query.orderBy('check_in.created_at', 'DESC').getMany();

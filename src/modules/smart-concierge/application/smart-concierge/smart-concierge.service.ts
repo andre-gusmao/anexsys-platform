@@ -6,7 +6,6 @@ import { CustomerService } from 'src/modules/crm/application/customer/customer.s
 import { CustodyService } from 'src/modules/custody/application/custody/custody.service';
 import { FinanceService } from 'src/modules/finance/application/finance/finance.service';
 import { PickupService } from 'src/modules/pickup/application/pickup/pickup.service';
-import { CommunicationEventEntity } from 'src/modules/pickup/infrastructure/persistence/entities/communication-event.entity';
 import { CommunicationEventRepository } from 'src/modules/pickup/infrastructure/persistence/repositories/communication-event.repository';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
 import { ServiceOrderRepository } from 'src/modules/service-orders/infrastructure/persistence/repositories/service-order.repository';
@@ -182,7 +181,7 @@ export class SmartConciergeService {
       payloadSnapshot: { source: 'smart_concierge' },
       createdBy: params.actorUserId,
       updatedBy: params.actorUserId,
-    } as CommunicationEventEntity);
+    });
     const saved = await this.communicationEventRepository.save(event);
     await this.auditService.record({
       tenantId: params.tenantId,
