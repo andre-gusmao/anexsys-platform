@@ -17,14 +17,15 @@ export class TenantService {
   ) {}
 
   async create(dto: CreateTenantDto): Promise<TenantEntity> {
-    const existing = await this.tenantRepository.findByCode(dto.code);
+    const normalizedCode = dto.code.trim().toUpperCase();
+    const existing = await this.tenantRepository.findByCode(normalizedCode);
     if (existing) {
       throw new DomainValidationError(`Tenant code '${dto.code}' already exists.`);
     }
 
     const tenant = this.tenantRepository.create({
       id: randomUUID(),
-      code: dto.code.trim().toUpperCase(),
+      code: normalizedCode,
       legalName: dto.legalName.trim(),
       displayName: dto.displayName.trim(),
       status: TenantStatus.ACTIVE,
@@ -62,12 +63,13 @@ export class TenantService {
   async update(id: string, dto: UpdateTenantDto): Promise<TenantEntity> {
     const tenant = await this.getById(id);
 
-    if (dto.code && dto.code.toUpperCase() !== tenant.code) {
-      const existing = await this.tenantRepository.findByCode(dto.code.toUpperCase());
+    if (dto.code && dto.code.trim().toUpperCase() !== tenant.code) {
+      const normalizedCode = dto.code.trim().toUpperCase();
+      const existing = await this.tenantRepository.findByCode(normalizedCode);
       if (existing && existing.id !== id) {
         throw new DomainValidationError(`Tenant code '${dto.code}' already exists.`);
       }
-      tenant.code = dto.code.trim().toUpperCase();
+      tenant.code = normalizedCode;
     }
 
     tenant.legalName = dto.legalName?.trim() ?? tenant.legalName;

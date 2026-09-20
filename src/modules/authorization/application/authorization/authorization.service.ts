@@ -193,21 +193,17 @@ export class AuthorizationService {
     const assignments = await this.userRoleAssignmentRepository.findActiveByUserId(userId);
     const roleIds = assignments.map((assignment) => assignment.roleId);
     const rolePermissions = await this.rolePermissionRepository.findByRoleIds(roleIds);
-    const permissions = await Promise.all(
-      [...new Set(rolePermissions.map((rolePermission) => rolePermission.permissionId))].map((permissionId) =>
-        this.getPermission(permissionId),
-      ),
-    );
+    const permissions = await this.permissionRepository.findByIds([
+      ...new Set(rolePermissions.map((rolePermission) => rolePermission.permissionId)),
+    ]);
     const branchScopes = await this.userBranchScopeRepository.findByUserId(userId);
 
-    const branchIds = branchScopes.map((scope) => scope.branchId);
-    if (assignments.some((assignment) => assignment.assignedBranchId)) {
-      for (const assignment of assignments) {
-        if (assignment.assignedBranchId) {
-          branchIds.push(assignment.assignedBranchId);
-        }
-      }
-    }
+    const branchIds = [
+      ...branchScopes.map((scope) => scope.branchId),
+      ...assignments
+        .map((assignment) => assignment.assignedBranchId)
+        .filter((branchId): branchId is string => Boolean(branchId)),
+    ];
 
     return {
       branchIds: [...new Set(branchIds)],

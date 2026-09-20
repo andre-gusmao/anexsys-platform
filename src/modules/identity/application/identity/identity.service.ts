@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
@@ -8,6 +9,7 @@ import { UserStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { CreateUserDto } from '../../contracts/dto/create-user.dto';
+import { UserCredentialEntity } from '../../infrastructure/persistence/entities/user-credential.entity';
 import { UserCredentialRepository } from '../../infrastructure/persistence/repositories/user-credential.repository';
 import { UserIdentityEntity } from '../../infrastructure/persistence/entities/user-identity.entity';
 import { UserIdentityRepository } from '../../infrastructure/persistence/repositories/user-identity.repository';
@@ -15,6 +17,7 @@ import { UserIdentityRepository } from '../../infrastructure/persistence/reposit
 @Injectable()
 export class IdentityService {
   constructor(
+    private readonly dataSource: DataSource,
     private readonly userIdentityRepository: UserIdentityRepository,
     private readonly userCredentialRepository: UserCredentialRepository,
     private readonly tenantService: TenantService,
@@ -61,8 +64,13 @@ export class IdentityService {
       updatedBy: dto.actorUserId,
     });
 
-    const savedUser = await this.userIdentityRepository.save(user);
-    await this.userCredentialRepository.save(credential);
+    const savedUser = await this.dataSource.transaction(async (manager) => {
+      const persistedUser = manager.create(UserIdentityEntity, user);
+      const persistedCredential = manager.create(UserCredentialEntity, credential);
+      await manager.save(UserIdentityEntity, persistedUser);
+      await manager.save(UserCredentialEntity, persistedCredential);
+      return persistedUser;
+    });
     await this.auditService.record({
       tenantId: savedUser.tenantId,
       branchId: savedUser.defaultBranchId,

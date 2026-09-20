@@ -203,6 +203,7 @@ export class InitialSprint1Foundation1760000000000 implements MigrationInterface
     await queryRunner.query('CREATE INDEX idx_permissions_tenant_id ON permissions (tenant_id)');
     await queryRunner.query('CREATE INDEX idx_role_permissions_role_id ON role_permissions (role_id)');
     await queryRunner.query('CREATE INDEX idx_user_role_assignments_user_id ON user_role_assignments (user_id)');
+    await queryRunner.query(`CREATE UNIQUE INDEX uq_user_role_assignments_active_role_branch ON user_role_assignments (user_id, role_id, COALESCE(assigned_branch_id, '00000000-0000-0000-0000-000000000000'::uuid)) WHERE revoked_at IS NULL`);
     await queryRunner.query('CREATE INDEX idx_user_branch_scopes_user_id ON user_branch_scopes (user_id)');
     await queryRunner.query('CREATE INDEX idx_audit_events_tenant_branch ON audit_events (tenant_id, branch_id)');
   }
@@ -210,6 +211,7 @@ export class InitialSprint1Foundation1760000000000 implements MigrationInterface
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('DROP INDEX IF EXISTS idx_audit_events_tenant_branch');
     await queryRunner.query('DROP INDEX IF EXISTS idx_user_branch_scopes_user_id');
+    await queryRunner.query('DROP INDEX IF EXISTS uq_user_role_assignments_active_role_branch');
     await queryRunner.query('DROP INDEX IF EXISTS idx_user_role_assignments_user_id');
     await queryRunner.query('DROP INDEX IF EXISTS idx_role_permissions_role_id');
     await queryRunner.query('DROP INDEX IF EXISTS idx_permissions_tenant_id');

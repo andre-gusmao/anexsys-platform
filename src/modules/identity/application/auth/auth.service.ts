@@ -109,6 +109,10 @@ export class AuthService {
       throw new AuthenticationFailedError('Refresh token is not active.');
     }
 
+    if (session.userId !== payload.sub || session.tenantId !== payload.tenantId) {
+      throw new AuthenticationFailedError('Refresh token session mismatch.');
+    }
+
     const incomingHash = this.tokenFactoryService.hashToken(dto.refreshToken);
     if (incomingHash !== session.refreshTokenHash) {
       throw new AuthenticationFailedError('Refresh token is invalid.');

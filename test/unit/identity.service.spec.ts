@@ -4,7 +4,7 @@ import { IdentityService } from 'src/modules/identity/application/identity/ident
 
 describe('IdentityService', () => {
   it('creates a user and stores a hashed credential', async () => {
-    const credentialSaves: Array<Record<string, unknown>> = [];
+    const transactionSaves: Array<Record<string, unknown>> = [];
     const userIdentityRepository = {
       async findByTenantAndEmail() {
         return null;
@@ -24,7 +24,6 @@ describe('IdentityService', () => {
         return payload;
       },
       async save(payload: Record<string, unknown>) {
-        credentialSaves.push(payload);
         return payload;
       },
     };
@@ -40,8 +39,20 @@ describe('IdentityService', () => {
       },
     };
     const auditService = { async record() {} };
+    const dataSource = {
+      async transaction<T>(callback: (manager: { create: <X>(_: unknown, payload: X) => X; save: <X>(entity: unknown, payload: X) => Promise<X>; }) => Promise<T>) {
+        return callback({
+          create: (_entity, payload) => payload,
+          async save(entity, payload) {
+            transactionSaves.push({ entity: String(entity), ...payload as Record<string, unknown> });
+            return payload;
+          },
+        });
+      },
+    };
 
     const service = new IdentityService(
+      dataSource as never,
       userIdentityRepository as never,
       userCredentialRepository as never,
       tenantService as never,
@@ -60,6 +71,6 @@ describe('IdentityService', () => {
     });
 
     assert.equal(user.email, 'user@example.com');
-    assert.equal(credentialSaves[0]?.passwordHash, 'hashed:super-secret-password');
+    assert.ok(transactionSaves.some((payload) => payload.passwordHash === 'hashed:super-secret-password'));
   });
 });

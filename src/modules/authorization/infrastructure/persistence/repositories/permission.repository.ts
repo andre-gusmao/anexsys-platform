@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { PermissionEntity } from '../entities/permission.entity';
 
 @Injectable()
@@ -25,4 +25,13 @@ export class PermissionRepository {
   async findByTenant(tenantId: string): Promise<PermissionEntity[]> {
     return this.repository.find({ where: { tenantId }, order: { code: 'ASC' } });
   }
+
+  async findByIds(ids: string[]): Promise<PermissionEntity[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.repository.find({ where: { id: In(ids) }, order: { code: 'ASC' } });
+  }
 }
+

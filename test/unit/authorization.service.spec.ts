@@ -5,10 +5,11 @@ import { AuthorizationService } from 'src/modules/authorization/application/auth
 describe('AuthorizationService', () => {
   it('combines permissions and branch scopes into effective access', async () => {
     const permissionRepository = {
-      async findById(permissionId: string) {
-        return permissionId === 'permission-1'
-          ? { id: 'permission-1', code: 'tenant.manage' }
-          : { id: 'permission-2', code: 'branch.manage' };
+      async findByIds() {
+        return [
+          { id: 'permission-1', code: 'tenant.manage' },
+          { id: 'permission-2', code: 'branch.manage' },
+        ];
       },
     };
     const rolePermissionRepository = {
