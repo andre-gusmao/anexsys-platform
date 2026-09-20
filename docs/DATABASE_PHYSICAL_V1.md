@@ -539,7 +539,7 @@ Constraints:
 - UQ: `(tenant_id, production_no)`
 - UQ: `(service_order_id)` to preserve exactly one lifetime base production-order row per service order
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
-- lifecycle-anchor rule: the base `production_orders` row remains the lifetime anchor for its Service Order; soft deletion of a Service Order does not authorize creation of a replacement base Production Order; and corrective or replacement semantics must be represented through status history and execution-capable `production_order_versions` rather than through additional base Production Order rows
+- lifecycle-anchor rule: the base `production_orders` row remains the lifetime anchor for its Service Order; once a Service Order has generated its base Production Order, any later Service Order soft deletion is archival-only and does not authorize recreation of a new base Production Order for that same Service Order lineage; and corrective or replacement semantics must be represented through status history and execution-capable `production_order_versions` rather than through additional base Production Order rows
 
 #### `production_order_item_links`
 Purpose:
@@ -918,6 +918,7 @@ Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
 - UQ: filtered uniqueness on `(service_order_id)` when `is_current = true`
 - CHECK: `is_current = true` requires `released_at is null`, and `released_at is not null` requires `is_current = false`
+- location-history rule: when an assignment row is released it becomes historical but remains queryable as part of the retrieval history; the latest known historical location should be derived from assignment chronology whenever no current row exists, rather than by keeping a released row marked as current
 
 #### `physical_bag_support_contexts`
 Purpose:
@@ -1145,9 +1146,8 @@ Key columns:
 - `evidence_payload jsonb null`
 
 Constraints:
-- CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`; or `production_order_id` together with its parent `service_order_id`; or `production_order_version_id` together with its parent `service_order_id`; or standalone `pickup_authorization_id`
-- implementation invariant: when `production_order_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order; this should be enforced through composite foreign keys, trigger validation, or application-governed write paths rather than a plain single-row CHECK
-- implementation invariant: when `production_order_version_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order lineage; this should be enforced through composite foreign keys, trigger validation, or application-governed write paths rather than a plain single-row CHECK
+- CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`; or standalone `production_order_id`; or standalone `production_order_version_id`; or standalone `pickup_authorization_id`
+- parent-target rule: when the approval target is a Production Order or Production Order Version, the parent Service Order must be derived through the referenced production lineage for read composition and audit linkage rather than stored redundantly as a second required writer-supplied target field
 - immutable decision trace after final decision
 
 ---

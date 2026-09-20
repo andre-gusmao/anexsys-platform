@@ -117,15 +117,14 @@ Status interpretation:
 
 ## Next phase
 
-The historical next approved phase at baseline approval was the backend architecture phase:
+The historical next approved phase at baseline approval was backend architecture planning.
+
+Relevant downstream repository design documents now include:
 
 - `/docs/BACKEND_ARCHITECTURE_V1.md`
-
-Subsequent repository design phases now include:
-
-- `API_DESIGN_V1`
-- `BACKEND_IMPLEMENTATION_V1`
-- `FRONTEND_ARCHITECTURE_V1`
+- `/docs/API_DESIGN_V1.md`
+- `/docs/BACKEND_IMPLEMENTATION_V1.md`
+- `/docs/BACKEND_CODING_PLAN_V1.md`
 
 ## Final baseline statement
 
