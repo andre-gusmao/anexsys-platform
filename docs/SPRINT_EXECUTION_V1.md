@@ -518,7 +518,6 @@ The sprint plan below assumes:
 - reception queue works for lookup and retrieval initiation
 - customer portal exposes customer-safe visibility only
 - reception workflow supports controlled pickup and handoff
-- advanced Smart Concierge automation remains excluded unless explicitly reprioritized
 - advanced concierge automation remains out of scope unless explicitly prioritized
 
 **Risks**
