@@ -3,7 +3,7 @@
 
 ## Document Purpose
 
-This document transforms the approved ANEXSYS logical data model into a complete PostgreSQL-oriented physical data model using the frozen baseline documents as source of truth and the approved downstream modeling documents as design inputs:
+This document transforms the approved ANEXSYS logical data model into a complete PostgreSQL-oriented physical data model using the frozen baseline documents as source of truth and already-approved repository-carried modeling documents as design inputs:
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
 - `/docs/frozen/DATABASE_GUIDELINES_V1.md`
