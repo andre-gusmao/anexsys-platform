@@ -26,12 +26,9 @@ Canonical frozen source documents for this baseline:
 
 Approved downstream design documents in the current baseline set:
 
+- `/docs/DATABASE_CONCEPTUAL_V1.md`
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
-
-Approved predecessor database-design artifact carried forward in the repository baseline set:
-
-- `/docs/DATABASE_CONCEPTUAL_V1.md`
 
 Approved working reference:
 
