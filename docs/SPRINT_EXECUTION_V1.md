@@ -483,13 +483,13 @@ The sprint plan below assumes:
 
 ---
 
-### Sprint 10 - Smart Concierge, Reception Queue, Customer Portal
+### Sprint 10 - Reception Workflow, Reception Queue, Customer Portal
 
 **Sprint Goal**
 - complete the front-of-house experience for reception, customer self-service, and controlled queue/retrieval interaction
 
 **Functional Scope**
-- Smart Concierge
+- Reception Workflow / Concierge Interface Base Scope
 - Reception Queue
 - Customer Portal
 
@@ -497,7 +497,7 @@ The sprint plan below assumes:
 - implement reception queue orchestration
 - implement customer-safe status mapping
 - implement customer portal visibility boundaries
-- implement concierge and pickup lookup/read-model support
+- implement reception lookup and pickup lookup/read-model support
 
 **Frontend Tasks**
 - implement Arrival Queue
@@ -517,11 +517,12 @@ The sprint plan below assumes:
 **Acceptance Criteria**
 - reception queue works for lookup and retrieval initiation
 - customer portal exposes customer-safe visibility only
-- concierge flow supports controlled pickup and handoff
+- reception workflow supports controlled pickup and handoff
+- advanced Smart Concierge automation remains excluded unless explicitly reprioritized
 - advanced concierge automation remains out of scope unless explicitly prioritized
 
 **Risks**
-- Smart Concierge scope may expand beyond approved base scope
+- reception workflow scope may drift into non-approved Smart Concierge automation
 - customer-facing terminology may leak internal workflow vocabulary
 
 **Definition of Done**
@@ -628,7 +629,8 @@ The sprint plan below assumes:
 ## 3. MVP Definition
 
 ### MVP Cut Line
-- the MVP cut line is **after Sprint 9**
+- the atelier-replacement MVP cut line is **after Sprint 10**
+- the back-office operational MVP cut line is **after Sprint 9**
 
 ### Minimum features required to replace the current atelier system
 - tenant and branch governance
@@ -644,10 +646,12 @@ The sprint plan below assumes:
 - Pickup Authorization
 - Chain of Custody
 - Storage Locations
+- Reception Queue
+- Reception lookup and controlled handoff workflow
 
 ### Earliest Pilot Version
 - the earliest pilot version is **after Sprint 10**
-- rationale: the operational MVP is complete after Sprint 9, and Sprint 10 adds the mandatory reception queue and customer-facing support needed for a realistic atelier pilot
+- rationale: the back-office operational MVP is complete after Sprint 9, and Sprint 10 adds the mandatory reception workflow and customer-facing support needed for a realistic atelier pilot
 
 ### Earliest Production Version
 - the earliest production version is **after Sprint 12**
