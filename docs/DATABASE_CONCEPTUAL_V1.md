@@ -591,7 +591,7 @@ Owned by Audit and Custody domain:
 | Service Order | may open | Financial Exception | exceptional settlement or allocation correction flow |
 | Service Order | is documented by | Fiscal Document | fiscal/legal record at order scope |
 | Service Order Item | is documented by | Fiscal Document | fiscal/legal record at item scope |
-| Production Order | represents execution of | Service Order Item | operational execution scope |
+| Primary Production Order | covers execution scope for | Service Order Item | one Primary Production Order covers the Service Order Items within the same Service Order scope |
 | Primary Production Order | is versioned by | Production Order Version | corrective lineage |
 | Production Order | is performed by | Operational Resource | execution accountability participant |
 | Production Order | is identified by | QR Code | exclusive operational scan authority |
@@ -844,9 +844,9 @@ Operational workflow events must be anchored to Production Order execution, not 
 
 ### 16.1 Production root relationship
 
-- Production Order is the primary operational execution entity
-- Production Order belongs to exactly one Service Order
-- Production Order represents all Service Order Items belonging to that Service Order
+- Primary Production Order is the primary operational execution entity generated from the Service Order
+- Primary Production Order belongs to exactly one Service Order
+- Primary Production Order represents all Service Order Items belonging to that Service Order
 
 ### 16.2 Production version relationship
 
@@ -925,7 +925,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 - Custody Event may relate to Service Order, Production Order, delivery, storage, pickup, rework, and warranty lifecycle points
 - Storage Location changes generate custody-relevant history
 - Pickup completion generates mandatory custody evidence
-- Digital Approval, Pickup Token, Pickup QR Code, Temporary Pickup Code, CCTV Reference, Camera Snapshot, and Audit Logs are valid custody evidence relationships where captured
+- Digital Approval, Pickup Token, Pickup QR Code, Temporary Pickup Code, CCTV Reference, Camera Snapshot, and Audit Events are valid custody evidence relationships where captured
 - Chain of custody must remain end-to-end across intake, production, quality, rework, warranty, storage, delivery, and pickup
 
 ---
