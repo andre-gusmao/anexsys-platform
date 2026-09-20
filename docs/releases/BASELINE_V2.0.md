@@ -24,6 +24,8 @@ Frozen approved documents:
 
 ## Approved downstream design documents
 
+Existing approved repository documents referenced by this baseline:
+
 - `/docs/DATABASE_CONCEPTUAL_V1.md`
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
@@ -100,7 +102,7 @@ Frozen approved documents:
 
 - SRS Completeness Score: `97/100`
 - Architecture Readiness Score: `96/100`
-- Database Readiness Score: `93/100`
+- Database Readiness Score: `94/100`
 
 Status interpretation:
 - the business specification is complete enough to govern implementation planning

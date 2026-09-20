@@ -1453,11 +1453,11 @@ Soft deletion of mutable business records must not remove or alter related immut
 
 ## 21. Database Readiness Score
 
-**Score: 93/100**
+**Score: 94/100**
 
 Rationale:
 - the physical table set covers the approved conceptual and logical entities
 - source-of-truth separation remains preserved in table ownership
 - PostgreSQL-oriented key, audit, tenant, branch, and soft-delete strategies are explicit
 - workflow, event, audit, financial, production, quality, and operational-resource tables are defined
-- remaining deductions apply mainly to identity integration details and a few refinement areas, not to the viability of physical database implementation
+- remaining deductions apply mainly to identity integration details and a few implementation-adjacent refinement areas, not to the viability of physical database implementation

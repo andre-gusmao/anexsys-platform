@@ -2588,7 +2588,7 @@ Assessment method and ownership:
 
 ### 46.1 Versioned assessment entry (V1.2)
 
-- Assessment date/version: 2026-09-20 / V1.2 release baseline
+- Historical assessment date/version: 2026-09-20 / V1.2 release baseline
 - Checklist result: all 20 controls marked implemented
 - Computed score: **100/100**
 
@@ -2714,7 +2714,7 @@ Rationale:
 
 ## 51. Updated Database Readiness Score
 
-**Score: 93/100**
+**Score: 94/100**
 
 Rationale:
 - The functional rules now define clearer data boundaries for core entities such as Service Order, Production Order, warranty cases, rework attribution, custody events, pickup authorization, and physical bag/container context.
