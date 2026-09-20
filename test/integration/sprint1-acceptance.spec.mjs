@@ -287,6 +287,29 @@ describe('Sprint 1 acceptance', () => {
     assert.equal(refreshed.status, 201);
     assert.equal(refreshed.json.sessionId, adminSessionId);
     assert.notEqual(refreshed.json.refreshToken, adminRefreshToken);
+    adminToken = refreshed.json.accessToken;
+    adminRefreshToken = refreshed.json.refreshToken;
+  });
+
+  it('revokes the session on logout and blocks refresh reuse', async () => {
+    const logout = await http('/auth/logout', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantOneId,
+      },
+      body: JSON.stringify({ sessionId: adminSessionId }),
+    });
+
+    assert.equal(logout.status, 201);
+    assert.equal(logout.json.success, true);
+
+    const reuse = await http('/auth/token/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken: adminRefreshToken }),
+    });
+
+    assert.equal(reuse.status, 401);
   });
 
   it('enforces tenant isolation', async () => {

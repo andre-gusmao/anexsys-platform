@@ -62,7 +62,9 @@ export class JwtAuthGuard implements CanActivate {
       effectiveBranchIds: effectiveAccess.branchIds,
     };
 
-    request.requestContext.requestedTenantId = payload.tenantId;
+    if (!request.requestContext.requestedTenantId) {
+      request.requestContext.requestedTenantId = payload.tenantId;
+    }
     if (!request.requestContext.requestedBranchId && effectiveAccess.branchIds.length === 1) {
       request.requestContext.requestedBranchId = effectiveAccess.branchIds[0];
     }

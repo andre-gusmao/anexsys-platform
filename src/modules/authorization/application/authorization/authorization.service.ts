@@ -213,6 +213,11 @@ export class AuthorizationService {
         .filter((branchId): branchId is string => Boolean(branchId)),
     ];
 
+    if (assignments.some((assignment) => assignment.assignedBranchId === null)) {
+      const tenantBranches = await this.branchService.listByTenant(tenantId);
+      branchIds.push(...tenantBranches.map((branch) => branch.id));
+    }
+
     return {
       branchIds: [...new Set(branchIds)],
       permissions: [...new Set(permissions.map((permission) => permission.code))].sort(),

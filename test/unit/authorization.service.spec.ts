@@ -43,6 +43,12 @@ describe('AuthorizationService', () => {
         ];
       },
     };
+    const branchService = {
+      async listByTenant(tenantId: string) {
+        assert.equal(tenantId, 'tenant-1');
+        return [{ id: 'branch-1' }, { id: 'branch-2' }];
+      },
+    };
 
     const service = new AuthorizationService(
       {} as never,
@@ -51,7 +57,7 @@ describe('AuthorizationService', () => {
       userRoleAssignmentRepository as never,
       userBranchScopeRepository as never,
       {} as never,
-      {} as never,
+      branchService as never,
       {} as never,
     );
 
@@ -61,6 +67,29 @@ describe('AuthorizationService', () => {
       branchIds: ['branch-2', 'branch-1'],
       permissions: ['branch.manage', 'tenant.manage'],
     });
+  });
+
+  it('treats tenant-wide role assignments as access to all tenant branches', async () => {
+    const branchService = {
+      async listByTenant(tenantId: string) {
+        assert.equal(tenantId, 'tenant-1');
+        return [{ id: 'branch-a' }, { id: 'branch-b' }];
+      },
+    };
+    const service = new AuthorizationService(
+      {} as never,
+      { async findByIds() { return []; } } as never,
+      { async findByRoleIds() { return []; } } as never,
+      { async findActiveByUserId() { return [{ roleId: 'role-1', assignedBranchId: null }]; } } as never,
+      { async findByUserId() { return []; } } as never,
+      {} as never,
+      branchService as never,
+      {} as never,
+    );
+
+    const access = await service.getEffectiveAccessForUser('tenant-1', 'user-1');
+
+    assert.deepEqual(access.branchIds, ['branch-a', 'branch-b']);
   });
 
   it('rejects cross-tenant role assignments', async () => {
