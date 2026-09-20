@@ -671,13 +671,8 @@ The platform shall automatically suggest delivery dates.
 The default suggestion must be calculated from the Service Order creation date/time in the applicable branch time zone.
 
 Default rule:
-- Monday -> the immediately following Monday
-- Tuesday -> the immediately following Tuesday
-- Wednesday -> the immediately following Wednesday
-- Thursday -> the immediately following Thursday
-- Friday -> the immediately following Friday
-- Saturday -> the immediately following Saturday
-- Sunday -> next valid business day according to the applicable calendar rules
+- if the source date is Monday, Tuesday, Wednesday, Thursday, Friday, or Saturday, the suggested date must be the same weekday in the immediately following calendar week, which is exactly 7 calendar days later
+- if the source date is Sunday, the suggested date must be the next valid business day according to the applicable calendar rules
 
 The platform must automatically consider:
 - Holidays
@@ -685,8 +680,8 @@ The platform must automatically consider:
 - Tenant Calendars
 
 Calendar conflict rule:
-- a date is valid only when it is a working day in the applicable Branch Calendar and Tenant Calendar and is not blocked by an applicable Holiday
-- when any applicable calendar marks the date as non-working, that date must be treated as non-working
+- a date is valid only when it is a working day in the applicable Branch Calendar and Tenant Calendar and is not marked as non-working by an applicable Holiday rule
+- when any applicable Branch Calendar, Tenant Calendar, or Holiday rule marks the date as non-working, that date must be treated as non-working
 
 If the calculated date falls on a non-working day, the system must automatically move the date to the next valid business day.
 
@@ -2641,7 +2636,7 @@ The following areas were modified or added in V1.2:
 - Quality Responsible is defined through the Quality workflow.
 
 ### 48.4 Delivery Date Engine additions
-- The platform shall automatically suggest delivery dates by immediately following same-weekday rule from Monday through Saturday, with Sunday moving to the next valid business day.
+- The platform shall automatically suggest delivery dates by using the same weekday in the immediately following calendar week for Monday through Saturday, which is exactly 7 calendar days later, with Sunday moving to the next valid business day.
 - Holidays, Branch Calendars, and Tenant Calendars must be considered automatically.
 - Dates that fall on non-working days must move to the next valid business day.
 
