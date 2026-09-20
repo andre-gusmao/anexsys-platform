@@ -24,7 +24,7 @@ Frozen approved documents:
 
 ## Approved downstream design documents
 
-Existing approved repository documents referenced by this baseline:
+Previously approved repository design documents carried forward into this baseline:
 
 - `/docs/DATABASE_CONCEPTUAL_V1.md`
 - `/docs/DATABASE_LOGICAL_V1.md`
