@@ -3,6 +3,8 @@
 
 ## Document Purpose
 
+This repository-carried API design document remains part of the approved downstream design baseline referenced by `BASELINE_V3.0`.
+
 This document defines the complete API architecture of ANEXSYS using the following approved documents as source of truth:
 - `/docs/releases/BASELINE_V2.0.md`
 - `/docs/frozen/SRS_MASTER_V1.3.md`
