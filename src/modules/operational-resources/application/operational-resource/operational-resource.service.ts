@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { ProductionOrderOperationalAssignmentRepository } from 'src/modules/production-orders/infrastructure/persistence/repositories/production-order-operational-assignment.repository';
@@ -182,10 +182,20 @@ export class OperationalResourceService {
     }
     resource.updatedBy = dto.actorUserId;
 
-    const saved = await this.operationalResourceRepository.save(resource);
-    if (scopeBranchIds) {
-      await this.syncBranchScopes(saved.id, tenantId, saved.homeBranchId, scopeBranchIds, dto.actorUserId);
-    }
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const persisted = await manager.save(OperationalResourceEntity, resource);
+      if (scopeBranchIds) {
+        await this.syncBranchScopes(
+          manager,
+          persisted.id,
+          tenantId,
+          persisted.homeBranchId,
+          scopeBranchIds,
+          dto.actorUserId,
+        );
+      }
+      return persisted;
+    });
 
     await this.auditService.record({
       tenantId,
@@ -293,13 +303,20 @@ export class OperationalResourceService {
   }
 
   private async syncBranchScopes(
+    manager: EntityManager,
     resourceId: string,
     tenantId: string,
     homeBranchId: string | null,
     branchScopeBranchIds: string[],
     actorUserId: string,
   ): Promise<void> {
-    const existingScopes = await this.branchScopeRepository.findCurrentByResource(resourceId);
+    const existingScopes = await manager
+      .createQueryBuilder(OperationalResourceBranchScopeEntity, 'scope')
+      .where('scope.operational_resource_id = :resourceId', { resourceId })
+      .andWhere('(scope.valid_to IS NULL OR scope.valid_to > CURRENT_DATE)')
+      .orderBy('scope.valid_from', 'ASC')
+      .addOrderBy('scope.created_at', 'ASC')
+      .getMany();
     const desiredBranchIds = new Set(this.normalizeBranchScopeBranchIds(homeBranchId, branchScopeBranchIds));
     const today = this.today();
 
@@ -307,7 +324,7 @@ export class OperationalResourceService {
       if (!desiredBranchIds.has(scope.branchId)) {
         scope.validTo = today;
         scope.updatedBy = actorUserId;
-        await this.branchScopeRepository.save(scope);
+        await manager.save(OperationalResourceBranchScopeEntity, scope);
       }
     }
 
@@ -316,7 +333,7 @@ export class OperationalResourceService {
     for (const branchId of desiredBranchIds) {
       if (!existingBranchIds.has(branchId)) {
         missingScopes.push(
-          this.branchScopeRepository.create({
+          manager.create(OperationalResourceBranchScopeEntity, {
             id: randomUUID(),
             tenantId,
             operationalResourceId: resourceId,
@@ -332,7 +349,7 @@ export class OperationalResourceService {
     }
 
     if (missingScopes.length > 0) {
-      await this.branchScopeRepository.saveMany(missingScopes);
+      await manager.save(OperationalResourceBranchScopeEntity, missingScopes);
     }
   }
 
