@@ -68,6 +68,8 @@ The physical bag is not a primary business entity and must not be modeled as an 
 
 Corrective production history must preserve lineage back to the original Production Order rather than creating disconnected operational records.
 
+In this guideline, `Production Order` is the lineage umbrella term for the Primary Production Order plus its corrective versions.
+
 ### 1.5 Audit-first responsibility model
 
 Operational responsibility must be traceable through Production Order execution events, especially QR-driven start, assumption, status update, workflow event registration, and Operational Diary updates.
@@ -142,6 +144,11 @@ Operational responsibility must be traceable through Production Order execution 
 | Production Order -> QR Code | 1 -> 1 active operational code | QR ownership belongs exclusively to the Production Order |
 | Physical Bag Context -> Service Order | many -> 1 when used | A physical bag follows the Service Order context |
 | Physical Bag Context -> Production Order | many -> 1 when used | A physical bag follows the Production Order context |
+
+Conceptual lineage rule:
+- the Primary Production Order is the root operational record for the Service Order
+- Production Order Versions are subordinate lineage records linked to that Primary Production Order
+- corrective versions do not create a second primary operational anchor for the same Service Order
 
 ### 4.3 Quality and corrective relationships
 

@@ -36,6 +36,7 @@ The operational model is:
 - 1 Service Order contains multiple Service Order Items
 - 1 Service Order generates exactly 1 Primary Production Order
 - the Primary Production Order represents all Service Order Items belonging to that Service Order as the single operational execution anchor
+- later versions for rework, warranty execution, or corrective production remain subordinate lineage of that Primary Production Order rather than separate commercial anchors
 - the physical bag only stores the Service Order pieces and the printed Production Order (A5)
 - QR Codes belong exclusively to the Production Order
 - Operational Resources interact operationally by scanning the Production Order QR Code
