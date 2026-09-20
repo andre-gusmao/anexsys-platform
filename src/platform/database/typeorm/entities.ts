@@ -20,6 +20,7 @@ import { WarrantyExecutionEntity } from 'src/modules/warranty/infrastructure/per
 import { FinancialExceptionEntity } from 'src/modules/finance/infrastructure/persistence/entities/financial-exception.entity';
 import { PartialPaymentEntity } from 'src/modules/finance/infrastructure/persistence/entities/partial-payment.entity';
 import { PaymentRecordEntity } from 'src/modules/finance/infrastructure/persistence/entities/payment-record.entity';
+import { FiscalDocumentEntity } from 'src/modules/fiscal/infrastructure/persistence/entities/fiscal-document.entity';
 import { ProductionOrderOperationalAssignmentEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-operational-assignment.entity';
 import { ProductionOrderItemLinkEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-item-link.entity';
 import { ProductionOrderVersionEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-version.entity';
@@ -58,6 +59,7 @@ export const typeOrmEntities = [
   PaymentRecordEntity,
   PartialPaymentEntity,
   FinancialExceptionEntity,
+  FiscalDocumentEntity,
   BusinessCalendarDayEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,

@@ -258,3 +258,17 @@ export enum PaymentProviderName {
   CIELO = 'cielo',
   PAGBANK = 'pagbank',
 }
+
+export enum FiscalDocumentType {
+  NFSE = 'nfse',
+  NFE = 'nfe',
+  CREDIT_DOCUMENT = 'credit_document',
+  DEBIT_DOCUMENT = 'debit_document',
+}
+
+export enum FiscalDocumentStatus {
+  DRAFT = 'draft',
+  ISSUED = 'issued',
+  CANCELLED = 'cancelled',
+  ERROR = 'error',
+}
