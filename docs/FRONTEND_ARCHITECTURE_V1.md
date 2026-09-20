@@ -365,11 +365,16 @@ Purpose:
 - branch-aware arrival board
 
 ### 9.2 Identification methods
+- customer name
 - phone
 - WhatsApp
+- CPF
+- customer code
 - order number
 - pickup code
+- QR Code
 - QR-based pickup credential
+- optional facial-recognition integration where enabled
 - fast manual lookup
 
 ### 9.3 Queue management

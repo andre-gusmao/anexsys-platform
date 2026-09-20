@@ -29,6 +29,7 @@ Canonical approved baseline artifacts and approved referenced repository materia
 - `/docs/API_DESIGN_V1.md`
 - `/docs/BACKEND_ARCHITECTURE_V1.md`
 - `/docs/BACKEND_IMPLEMENTATION_V1.md`
+- `/docs/FRONTEND_ARCHITECTURE_V1.md`
 - `/docs/working/MIGRATION_AND_ONBOARDING_V1.md` (approved referenced planning input; working-path document retained outside the frozen artifact set)
 
 ## Approved decisions
