@@ -671,8 +671,7 @@ The platform shall automatically suggest delivery dates.
 The default suggestion must be calculated from the Service Order creation date/time in the applicable branch time zone.
 
 Default rule:
-- if the source date is Monday, Tuesday, Wednesday, Thursday, Friday, or Saturday, the suggested date must be the same weekday in the immediately following calendar week, which is exactly 7 calendar days later
-- if the source date is Sunday, the suggested date must be the next valid business day according to the applicable calendar rules
+- the suggested date must be the same weekday in the immediately following calendar week, which is exactly 7 calendar days later
 
 The platform must automatically consider:
 - Holidays
@@ -2636,7 +2635,7 @@ The following areas were modified or added in V1.2:
 - Quality Responsible is defined through the Quality workflow.
 
 ### 48.4 Delivery Date Engine additions
-- The platform shall automatically suggest delivery dates by using the same weekday in the immediately following calendar week for Monday through Saturday, which is exactly 7 calendar days later, with Sunday moving to the next valid business day.
+- The platform shall automatically suggest delivery dates by using the same weekday in the immediately following calendar week, which is exactly 7 calendar days later.
 - Holidays, Branch Calendars, and Tenant Calendars must be considered automatically.
 - Dates that fall on non-working days must move to the next valid business day.
 
