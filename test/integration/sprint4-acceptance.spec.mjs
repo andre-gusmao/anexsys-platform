@@ -24,6 +24,7 @@ let branchOneId = '';
 let branchTwoId = '';
 let customerId = '';
 let serviceOrderId = '';
+let serviceOrderItemId = '';
 let productionOrderId = '';
 let primaryResourceId = '';
 let secondaryResourceId = '';
@@ -187,6 +188,7 @@ before(async () => {
     items: [{ itemType: 'shirt', description: 'Blue Shirt', quantity: 2, unitPrice: 50 }],
   });
   serviceOrderId = serviceOrder.serviceOrder.id;
+  serviceOrderItemId = serviceOrder.items[0].id;
 
   const login = await http('/auth/login/password', {
     method: 'POST',
@@ -323,6 +325,7 @@ describe('Sprint 4 acceptance', () => {
         versionReason: 'rework',
         changeSummary: 'Redo stitching on sleeve',
         operationalPriority: 'urgent',
+        affectedServiceOrderItemIds: [serviceOrderItemId],
       }),
     });
     assert.equal(version.status, 201);
