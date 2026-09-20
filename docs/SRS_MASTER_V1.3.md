@@ -644,7 +644,7 @@ The platform must include a Delivery Date Engine that calculates the initial sug
   - Thursday intake -> next Thursday delivery
   - Friday intake -> next Friday delivery
   - Saturday intake -> next Saturday delivery
-  - Sunday intake -> next Sunday delivery
+  - Sunday intake -> next valid business day (typically Monday, per applicable calendar)
 - The default delivery rule must be configurable per tenant (tenants may define a different rollover rule or fixed lead time).
 
 2. Calendar-aware calculation
