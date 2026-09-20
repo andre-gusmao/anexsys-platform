@@ -684,6 +684,8 @@ Calendar conflict rule:
 
 If the calculated date falls on a non-working day, the system must automatically move the date to the next valid business day.
 
+The final calendar-adjusted suggested date becomes the Promised Delivery Date / delivery commitment date used by downstream scheduling, SLA, and Production Buffer / Safety Window calculations unless it is later changed through an authorized business action.
+
 ### 7.13 Service Order versus Production Order
 
 The platform must maintain Service Order and Production Order as separate but linked documents with different business purposes.
