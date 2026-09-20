@@ -1947,7 +1947,7 @@ The following groups shall validate business requirements before implementation:
 
 - Document name: ANEXSYS Platform SRS
 - Version: V1.3
-- Status: Expanded functional specification
+- Status: Baseline approved frozen functional specification
 - Extends: SRS_MASTER_V1.2.md
 - Owner: Product / Business Requirements
 - Review cadence: at least once per major phase or when a business rule changes materially
@@ -2588,7 +2588,7 @@ Assessment method and ownership:
 
 ### 46.1 Historical versioned assessment entry (Preserved from V1.2)
 
-- Historical appendix entry preserved verbatim as V1.2 release-baseline metadata
+- Historical appendix entry preserved from V1.2 release-baseline metadata
 - Checklist result: all 20 controls marked implemented
 - Computed score: **100/100**
 
