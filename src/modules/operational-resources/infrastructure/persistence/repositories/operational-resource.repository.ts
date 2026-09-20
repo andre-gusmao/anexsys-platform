@@ -42,7 +42,7 @@ export class OperationalResourceRepository {
       .leftJoin(
         'operational_resource_branch_scopes',
         'scope',
-        "scope.operational_resource_id = resource.id AND (scope.valid_to IS NULL OR scope.valid_to >= CURRENT_DATE)",
+        "scope.operational_resource_id = resource.id AND scope.valid_from <= CURRENT_DATE AND (scope.valid_to IS NULL OR scope.valid_to > CURRENT_DATE)",
       )
       .where('resource.tenant_id = :tenantId', { tenantId })
       .andWhere('resource.is_deleted = false');

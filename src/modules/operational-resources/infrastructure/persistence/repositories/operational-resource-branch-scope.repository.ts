@@ -35,6 +35,7 @@ export class OperationalResourceBranchScopeRepository {
     return this.repository
       .createQueryBuilder('scope')
       .where('scope.operational_resource_id = :resourceId', { resourceId })
+      .andWhere('scope.valid_from <= CURRENT_DATE')
       .andWhere('(scope.valid_to IS NULL OR scope.valid_to > CURRENT_DATE)')
       .orderBy('scope.valid_from', 'ASC')
       .addOrderBy('scope.created_at', 'ASC')
