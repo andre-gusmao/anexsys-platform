@@ -49,10 +49,10 @@ The conceptual model must preserve the approved operational structure:
 - 1 Customer -> many Service Orders
 - 1 Service Order -> many Service Order Items
 - 1 Service Order -> exactly 1 Primary Production Order
-- 1 Production Order -> many Production Order Versions when corrective lineage is required
+- 1 Primary Production Order -> many Production Order Versions when corrective lineage is required
 - Operational Resources work through Production Orders
 - QR Codes belong only to Production Orders
-- Production Order Versions exist only for Rework, Warranty Execution, and Corrective Production
+- Production Order Versions exist only within Primary Production Order lineage for Rework, Warranty Execution, and Corrective Production
 
 For this conceptual model, the approved Primary Production Order rule governs reconciliation across the frozen baseline set:
 - the Service Order remains the commercial parent
@@ -315,8 +315,8 @@ Owned by Production Order:
 
 ### 5.3 Corrective lineage ownership
 
-Owned by Production Order lineage and Quality/Corrective domains:
-- original Production Order reference
+Owned by Primary Production Order lineage and Quality/Corrective domains:
+- original Primary Production Order reference
 - Production Order Version lineage
 - original Operational Resource
 - corrective Operational Resource
@@ -427,7 +427,7 @@ Owned by Audit and Custody domain:
 
 - 1 Primary Production Order -> many Service Order Items within the same Service Order scope
 - 1 Primary Production Order -> many Production Order Versions over time when corrective lineage exists
-- 1 Production Order Version -> exactly 1 original Production Order lineage
+- 1 Production Order Version -> exactly 1 Primary Production Order lineage
 - 1 Production Order -> many QR Events
 - 1 Production Order -> many Quality Records over time
 - 1 Production Order -> many Rework Cases over time
@@ -470,7 +470,7 @@ Owned by Audit and Custody domain:
 | Customer | Service Order | 1 -> many | service orders inherit customer identity |
 | Service Order | Service Order Item | 1 -> many | item cannot exist outside parent order |
 | Service Order | Production Order | 1 -> 1 primary | exactly one Primary Production Order per Service Order |
-| Production Order | Production Order Version | 1 -> many over time | versions only for rework, warranty execution, corrective production |
+| Primary Production Order | Production Order Version | 1 -> many over time | versions only for rework, warranty execution, corrective production |
 | Service Order | Payment Record | 1 -> many | payment records remain commercially anchored |
 | Service Order Item | Partial Payment | 1 -> many | partial settlement allowed |
 | Service Order / Item | Fiscal Document | 1 -> many | fiscal issuance may be per order or per item |
@@ -483,7 +483,7 @@ Owned by Audit and Custody domain:
 | Service Order Item | Customer Rejection | 1 -> many | rejection is item-traceable |
 | Production Order / Item | Rework Case | 1 -> many | corrective cases preserve lineage |
 | Service Order Item | Warranty Adjustment | 1 -> many | post-delivery adjustment history |
-| Production Order lineage | Warranty Execution | 1 -> many | execution failure lineage preserved |
+| Primary Production Order lineage | Warranty Execution | 1 -> many | execution failure lineage preserved |
 | Production Order / Service Order | Custody Event | 1 -> many | custody history is event-based |
 | Any governed entity | Audit Event | 1 -> many | immutable traceability |
 | Workflow Definition | Status Definition | 1 -> many | status meanings belong to workflow policy |
@@ -508,7 +508,7 @@ Owned by Audit and Custody domain:
 ### 9.3 Production hierarchy
 
 - Production Order is child of Service Order in business lineage
-- Production Order Version is child of Production Order lineage
+- Production Order Version is child of Primary Production Order lineage
 - QR Code is child of Production Order operational identity
 - QR Event is child of Production Order execution traceability
 
@@ -516,9 +516,9 @@ Owned by Audit and Custody domain:
 
 - Quality Record is child of Production Order and optionally item scope
 - Customer Rejection is child of Service Order Item post-delivery context
-- Rework Case is child of Production Order lineage and related item scope
+- Rework Case is child of Primary Production Order lineage and related item scope
 - Warranty Adjustment is child of Service Order Item under warranty context
-- Warranty Execution is child of Production Order lineage under warranty context
+- Warranty Execution is child of Primary Production Order lineage under warranty context
 
 ### 9.5 Physical traceability hierarchy
 
@@ -549,9 +549,9 @@ Owned by Audit and Custody domain:
 | QR Code | generates | QR Event | operational scan history |
 | Production Order | is evaluated by | Quality Record | inspection and release outcome |
 | Service Order Item | may lead to | Customer Rejection | post-delivery rejection flow |
-| Production Order lineage | may open | Rework Case | internal corrective flow |
+| Primary Production Order lineage | may open | Rework Case | internal corrective flow |
 | Service Order Item | may open | Warranty Adjustment | post-delivery fit/adjustment responsibility |
-| Production Order lineage | may open | Warranty Execution | post-delivery execution failure responsibility |
+| Primary Production Order lineage | may open | Warranty Execution | post-delivery execution failure responsibility |
 | Service Order | authorizes release through | Pickup Authorization | pickup control |
 | Pickup Authorization | may issue | Pickup Token | authorization credential |
 | Service Order / item context | is located in | Storage Location | physical retrieval visibility |
@@ -582,8 +582,8 @@ Owned by Audit and Custody domain:
 ### 11.3 Production references
 
 - Quality Record references Production Order and optionally Service Order Item scope
-- Rework Case references original Production Order lineage and responsible Operational Resources
-- Warranty Execution references Production Order lineage and Service Order commercial context
+- Rework Case references original Primary Production Order lineage and responsible Operational Resources
+- Warranty Execution references Primary Production Order lineage and Service Order commercial context
 - QR Event references Production Order through QR identity
 - Custody Event may reference Production Order when production custody is relevant
 
@@ -790,7 +790,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 
 ### 16.2 Production version relationship
 
-- Production Order Version belongs to Production Order lineage
+- Production Order Version belongs to Primary Production Order lineage
 - Production Order Version exists only for Rework, Warranty Execution, and Corrective Production
 - Production Order Version remains under the same Service Order as the original Production Order
 - Production Order Version supplements rather than replaces the original Production Order record
@@ -806,7 +806,7 @@ Operational workflow events must be anchored to Production Order execution, not 
 
 - Quality Record relates to Production Order and optionally Service Order Item scope
 - Customer Rejection relates to delivered Service Order Item scope and customer-facing quality outcome
-- Rework Case relates to original Production Order lineage and the responsible Operational Resource context
+- Rework Case relates to original Primary Production Order lineage and the responsible Operational Resource context
 - Warranty Adjustment relates to post-delivery fit/adjustment obligation on item scope
 - Warranty Execution relates to post-delivery operational defect lineage on Production Order scope
 - Quality Responsible is conceptually derived through the quality workflow, not through Production Bag context
