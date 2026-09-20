@@ -26,12 +26,12 @@ export class PermissionRepository {
     return this.repository.find({ where: { tenantId }, order: { code: 'ASC' } });
   }
 
-  async findByIds(ids: string[]): Promise<PermissionEntity[]> {
+  async findByIds(tenantId: string, ids: string[]): Promise<PermissionEntity[]> {
     if (ids.length === 0) {
       return [];
     }
 
-    return this.repository.find({ where: { id: In(ids) }, order: { code: 'ASC' } });
+    return this.repository.find({ where: { tenantId, id: In(ids) }, order: { code: 'ASC' } });
   }
 }
 

@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
+import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 
 describe('AuthorizationService', () => {
   it('combines permissions and branch scopes into effective access', async () => {
     const permissionRepository = {
-      async findByIds() {
+      async findByIds(tenantId: string) {
+        assert.equal(tenantId, 'tenant-1');
         return [
           { id: 'permission-1', code: 'tenant.manage' },
           { id: 'permission-2', code: 'branch.manage' },
@@ -13,7 +15,8 @@ describe('AuthorizationService', () => {
       },
     };
     const rolePermissionRepository = {
-      async findByRoleIds() {
+      async findByRoleIds(tenantId: string) {
+        assert.equal(tenantId, 'tenant-1');
         return [
           { roleId: 'role-1', permissionId: 'permission-1' },
           { roleId: 'role-2', permissionId: 'permission-2' },
@@ -58,5 +61,54 @@ describe('AuthorizationService', () => {
       branchIds: ['branch-2', 'branch-1'],
       permissions: ['branch.manage', 'tenant.manage'],
     });
+  });
+
+  it('rejects cross-tenant role assignments', async () => {
+    const service = new AuthorizationService(
+      { async findById() { return { id: 'role-1', tenantId: 'tenant-b' }; } } as never,
+      {} as never,
+      {} as never,
+      { create() { return {}; }, async save() {} } as never,
+      {} as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-a' }; } } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.assignRole({
+          tenantId: 'tenant-a',
+          userId: 'user-1',
+          roleId: 'role-1',
+          actorUserId: 'actor-1',
+        }),
+      DomainValidationError,
+    );
+  });
+
+  it('rejects role assignments to a branch from a different tenant', async () => {
+    const service = new AuthorizationService(
+      { async findById() { return { id: 'role-1', tenantId: 'tenant-a' }; } } as never,
+      {} as never,
+      {} as never,
+      { create() { return {}; }, async save() {} } as never,
+      {} as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-a' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-b' }; } } as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.assignRole({
+          tenantId: 'tenant-a',
+          userId: 'user-1',
+          roleId: 'role-1',
+          assignedBranchId: 'branch-1',
+          actorUserId: 'actor-1',
+        }),
+      DomainValidationError,
+    );
   });
 });

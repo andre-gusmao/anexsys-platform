@@ -104,7 +104,13 @@ export class AuthService {
   }
 
   async refreshTokens(dto: RefreshTokenDto): Promise<{ accessToken: string; refreshToken: string; sessionId: string }> {
-    const payload = await this.tokenFactoryService.verifyRefreshToken(dto.refreshToken);
+    let payload;
+    try {
+      payload = await this.tokenFactoryService.verifyRefreshToken(dto.refreshToken);
+    } catch {
+      throw new AuthenticationFailedError('Refresh token is invalid.');
+    }
+
     if (payload.tokenType !== 'refresh') {
       throw new AuthenticationFailedError('Refresh token is invalid.');
     }
@@ -132,6 +138,7 @@ export class AuthService {
 
     session.refreshTokenHash = issuedTokens.refreshTokenHash;
     session.lastUsedAt = new Date();
+    session.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     session.updatedAt = new Date();
     session.updatedBy = payload.sub;
     await this.userSessionRepository.save(session);

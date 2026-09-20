@@ -18,14 +18,15 @@ export class RolePermissionRepository {
     return this.repository.save(rolePermission);
   }
 
-  async findByRoleIds(roleIds: string[]): Promise<RolePermissionEntity[]> {
+  async findByRoleIds(tenantId: string, roleIds: string[]): Promise<RolePermissionEntity[]> {
     if (roleIds.length === 0) {
       return [];
     }
 
     return this.repository
       .createQueryBuilder('rolePermission')
-      .where('rolePermission.role_id IN (:...roleIds)', { roleIds })
+      .where('rolePermission.tenant_id = :tenantId', { tenantId })
+      .andWhere('rolePermission.role_id IN (:...roleIds)', { roleIds })
       .getMany();
   }
 }

@@ -22,6 +22,8 @@ export class BranchService {
     await this.tenantService.getById(dto.tenantId);
     await this.assertParentBranch(dto.tenantId, dto.parentBranchId ?? null);
 
+    const normalizedCalendarName = dto.businessCalendarName?.trim() || null;
+
     const branch = this.branchRepository.create({
       id: randomUUID(),
       tenantId: dto.tenantId,
@@ -30,7 +32,7 @@ export class BranchService {
       displayName: dto.displayName.trim(),
       status: BranchStatus.ACTIVE,
       parentBranchId: dto.parentBranchId ?? null,
-      businessCalendarName: dto.businessCalendarName ?? null,
+      businessCalendarName: normalizedCalendarName,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -73,7 +75,9 @@ export class BranchService {
     branch.displayName = dto.displayName?.trim() ?? branch.displayName;
     branch.parentBranchId = dto.parentBranchId === undefined ? branch.parentBranchId : dto.parentBranchId;
     branch.businessCalendarName =
-      dto.businessCalendarName === undefined ? branch.businessCalendarName : dto.businessCalendarName;
+      dto.businessCalendarName === undefined
+        ? branch.businessCalendarName
+        : dto.businessCalendarName?.trim() || null;
     branch.updatedBy = dto.actorUserId;
 
     const saved = await this.branchRepository.save(branch);

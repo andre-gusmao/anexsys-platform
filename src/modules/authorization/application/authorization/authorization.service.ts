@@ -192,8 +192,8 @@ export class AuthorizationService {
   async getEffectiveAccessForUser(tenantId: string, userId: string): Promise<{ branchIds: string[]; permissions: string[] }> {
     const assignments = await this.userRoleAssignmentRepository.findActiveByUserId(tenantId, userId);
     const roleIds = assignments.map((assignment) => assignment.roleId);
-    const rolePermissions = await this.rolePermissionRepository.findByRoleIds(roleIds);
-    const permissions = await this.permissionRepository.findByIds([
+    const rolePermissions = await this.rolePermissionRepository.findByRoleIds(tenantId, roleIds);
+    const permissions = await this.permissionRepository.findByIds(tenantId, [
       ...new Set(rolePermissions.map((rolePermission) => rolePermission.permissionId)),
     ]);
     const branchScopes = await this.userBranchScopeRepository.findByUserId(tenantId, userId);
