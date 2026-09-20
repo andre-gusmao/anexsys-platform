@@ -45,8 +45,8 @@ ANEXSYS logical data design must preserve the approved business split between co
 The logical model must preserve these approved operating rules:
 - 1 Customer -> many Service Orders
 - 1 Service Order -> many Service Order Items
-- 1 Service Order -> exactly 1 Primary Production Order
-- 1 Primary Production Order -> many Production Order Versions over time when corrective lineage is required
+- 1 Service Order -> exactly 1 Production Order as the primary/base operational record
+- 1 Production Order -> many Production Order Versions over time when corrective lineage is required
 - QR Code belongs only to Production Order
 - Operational Resources execute work through Production Order events
 - Rework, Warranty Execution, and Corrective Production use Production Order version lineage
@@ -118,7 +118,9 @@ Owns logical entities:
 - Pickup QR Code
 - Temporary Pickup Code
 - Storage Location
-- Physical Production Bag Support Context as optional physical support context only, not as a primary logical entity
+
+Support-context note:
+- Physical Production Bag Support Context belongs to Delivery and Pickup traceability as optional physical context only and is intentionally excluded from the logical entity catalog
 
 ### 2.9 QR and Operational Tracking domain
 
@@ -164,7 +166,6 @@ Logical aggregate roots:
 - Warranty Execution
 - Financial Exception
 - Pickup Authorization
-- Storage Location
 - QR Code
 - Custody Event
 - Audit Event
@@ -212,7 +213,7 @@ Logical aggregate-root guidance:
 | Pickup Token | tokenized pickup credential | Delivery and Pickup | Pickup Authorization |
 | Pickup QR Code | scannable pickup credential | Delivery and Pickup | Pickup Authorization |
 | Temporary Pickup Code | short-lived pickup credential | Delivery and Pickup | Pickup Authorization |
-| Storage Location | visible retrieval and physical placement context | Delivery and Pickup | Storage Location |
+| Storage Location | visible retrieval and physical placement catalog context | Delivery and Pickup | Service Order |
 | QR Code | operational scan identity for Production Order | QR and Operational Tracking | QR Code |
 | QR Event | individual execution scan trace | QR and Operational Tracking | QR Code |
 | Custody Event | physical handoff and chain-of-custody trace | Audit and Traceability | Custody Event |
@@ -226,7 +227,8 @@ Logical aggregate-root guidance:
 | Digital Approval | auditable approval or consent decision | Communication and Approval | Digital Approval |
 
 Logical support rule:
-- Physical Production Bag Support Context may exist only as optional support context associated to Service Order and Production Order retrieval or transport flows; it is not a logical aggregate root and not a primary business entity.
+- Physical Production Bag Support Context is intentionally excluded from the logical entity catalog and aggregate-root list.
+- It may exist only as optional support context associated to Service Order and Production Order retrieval or transport flows; it is not a logical aggregate root and not a primary business entity.
 - The Governing Aggregate Root column identifies which listed aggregate root governs a logical entity's lifecycle and boundary; it does not imply that every listed logical entity is itself an aggregate root.
 
 ---
@@ -299,14 +301,13 @@ Logical support rule:
 ### 6.3 Service Order root lineage
 - Service Order -> Service Order Item
 - Service Order -> Payment Record
-- Service Order -> Partial Payment when settlement applies at order level
 - Service Order -> Financial Exception
 - Service Order -> Fiscal Document when issuance occurs at order scope
 - Service Order -> Pickup Authorization
 - Service Order -> Digital Approval reference
 - Service Order -> Communication Event reference
 - Service Order -> Storage Location history
-- Service Order -> exactly 1 Primary Production Order
+- Service Order -> exactly 1 Production Order as the primary/base operational record
 
 ### 6.4 Production root lineage
 - Production Order -> Production Order Version
@@ -322,6 +323,8 @@ Logical support rule:
 - Service Order Item -> Warranty Adjustment
 - Service Order Item -> Fiscal Document when issuance occurs at item scope
 - Payment Record -> Partial Payment when a single recorded payment is allocated in portions
+- Partial Payment -> Service Order target scope by reference only when allocation is order-scoped
+- Partial Payment -> Service Order Item target scope by reference only when allocation is item-scoped
 - Production Order lineage -> Rework Case
 - Production Order lineage -> Warranty Execution
 
@@ -402,6 +405,8 @@ Logical support rule:
 | Production Order lineage | may require | Warranty Execution | execution-related warranty correction preserves operational lineage |
 | Service Order | is settled by | Payment Record | settlement remains commercially anchored |
 | Payment Record | may be allocated through | Partial Payment | one recorded payment may be split into partial obligations |
+| Partial Payment | may target | Service Order | allocation may settle order-level obligation when order-scoped |
+| Partial Payment | may target | Service Order Item | allocation may settle item-level obligation when item-scoped |
 | Service Order | may open | Financial Exception | exceptional settlement or correction flow remains commercially anchored |
 | Service Order | is documented by | Fiscal Document | order-scope fiscal issuance remains commercially anchored |
 | Service Order Item | is documented by | Fiscal Document | item-scope fiscal issuance remains tied to parent order scope |
@@ -446,8 +451,6 @@ Logical support rule:
 | Production Order | Operational Resource assignment | 1 -> many over time | responsibility is longitudinal and auditable |
 | Service Order | Payment Record | 1 -> many | multiple payment records may be linked to a single Service Order |
 | Payment Record | Partial Payment | 1 -> many when allocated in portions | one recorded payment may be split into partial obligations |
-| Service Order | Partial Payment | 1 -> many when settlement is order-scoped | order-level partial settlement remains commercially anchored |
-| Service Order Item | Partial Payment | 1 -> many | item-level partial settlement remains allowed |
 | Service Order | Financial Exception | 1 -> many | many financial corrections may occur over time |
 | Service Order | Fiscal Document | 1 -> many | fiscal documents may be emitted at order scope |
 | Service Order Item | Fiscal Document | 1 -> many | fiscal documents may be emitted at item scope |
@@ -457,7 +460,7 @@ Logical support rule:
 | Pickup Authorization | Temporary Pickup Code | 1 -> many | short-lived release artifacts are policy-driven |
 | Custody Event | CCTV Reference | 1 -> many when evidence is captured | custody evidence may include one or more surveillance references |
 | Custody Event | Camera Snapshot | 1 -> many when evidence is captured | custody evidence may include one or more captured images |
-| Service Order | Storage Location | 1 -> many over time | current and historical retrieval location must be visible |
+| Service Order | Storage Location | 1 -> many over time by reference history | current and historical retrieval location must be visible through referenced location assignments |
 | Service Order | Digital Approval | 1 -> many | multiple approval cycles may exist over time |
 | Service Order | Communication Event | 1 -> many | communication history is longitudinal |
 | Service Order | Custody Event | 1 -> many where custody applies | intake, storage, delivery, and pickup trace remain auditable |
