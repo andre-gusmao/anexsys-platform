@@ -536,7 +536,7 @@ Constraints:
 - FK: `workflow_definition_id -> workflow_definitions.id`
 - FK: `current_status_definition_id -> status_definitions.id`
 - UQ: `(tenant_id, production_no)`
-- UQ: `(tenant_id, service_order_id)` to preserve exactly one base production-order row per service order within the tenant boundary while corrective lineage remains exclusively in `production_order_versions`
+- UQ: `(service_order_id)` to preserve exactly one base production-order row per service order while corrective lineage remains exclusively in `production_order_versions`
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
 
 #### `production_order_item_links`
@@ -593,6 +593,7 @@ Key columns:
 
 Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
+- UQ: filtered uniqueness on `(production_order_id)` when `is_current = true`
 
 #### `production_execution_events`
 Key columns:
@@ -1005,6 +1006,7 @@ Constraints:
 - UQ: `(tenant_id, code_value)`
 - CHECK: `reissue_no >= 1`
 - CHECK: `is_active = true` requires `revoked_at is null`, and `revoked_at is not null` requires `is_active = false`
+- required creation rule: every base Production Order must have one active QR row created as part of its operational activation path
 
 #### `qr_events`
 Key columns:
@@ -1126,6 +1128,7 @@ Key columns:
 
 Constraints:
 - CHECK: `pickup_authorization_id` is mutually exclusive with `production_order_id` and `production_order_version_id`
+- CHECK: `production_order_id` is mutually exclusive with `production_order_version_id`
 - CHECK: at least one governed approval target is populated
 - CHECK: `service_order_id` is mandatory for Service Order approvals, base Production Order approvals, and Production Order Version approvals
 - CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`, or `production_order_id` together with its parent `service_order_id`, or `production_order_version_id` together with its parent `service_order_id`, or standalone `pickup_authorization_id`
