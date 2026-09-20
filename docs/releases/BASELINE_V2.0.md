@@ -32,10 +32,9 @@ Current repository design document locations referenced by this baseline:
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
 
-Current downstream repository planning documents added in later delivery stages:
+Current downstream repository planning document added in a later delivery stage:
 
 - `/docs/BACKEND_IMPLEMENTATION_V1.md`
-- `/docs/BACKEND_CODING_PLAN_V1.md`
 
 ## Approved business decisions
 
@@ -121,7 +120,7 @@ The historical next approved phase at baseline approval was:
 
 - `BACKEND_ARCHITECTURE_V1`
 
-Subsequent repository design phases now include:
+Subsequent repository design phase names now include:
 
 - `API_DESIGN_V1`
 - `BACKEND_IMPLEMENTATION_V1`
