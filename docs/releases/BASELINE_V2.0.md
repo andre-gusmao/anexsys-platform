@@ -32,10 +32,6 @@ Current repository design document locations referenced by this baseline:
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
 
-Current downstream repository planning documents added in later delivery stages:
-
-- `/docs/BACKEND_CODING_PLAN_V1.md`
-
 ## Approved business decisions
 
 ### Core source-of-truth model
