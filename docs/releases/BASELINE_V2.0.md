@@ -22,15 +22,15 @@ Canonical frozen source documents for this baseline:
 - `/docs/frozen/ARQUITETURA_V1.md`
 - `/docs/frozen/DATABASE_GUIDELINES_V1.md`
 
-## Approved downstream design documents
+## Repository design document locations
 
-Approved downstream design documents in the current baseline set:
+Current repository design document locations referenced by this baseline:
 
 - `/docs/DATABASE_CONCEPTUAL_V1.md`
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
 
-Approved working reference:
+Working repository reference:
 
 - `/docs/working/MIGRATION_AND_ONBOARDING_V1.md`
 
