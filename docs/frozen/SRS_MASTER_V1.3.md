@@ -2588,7 +2588,7 @@ Assessment method and ownership:
 
 ### 46.1 Versioned assessment entry (V1.2)
 
-- Historical assessment date/version: 2026-09-20 / V1.2 release baseline
+- Historical assessment date/version preserved from V1.2: 2026-09-20 / V1.2 release baseline
 - Checklist result: all 20 controls marked implemented
 - Computed score: **100/100**
 

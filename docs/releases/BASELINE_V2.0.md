@@ -26,12 +26,9 @@ Frozen approved documents:
 
 Approved downstream design documents in the current baseline set:
 
+- `/docs/DATABASE_CONCEPTUAL_V1.md`
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
-
-Carried-forward repository design reference:
-
-- `/docs/DATABASE_CONCEPTUAL_V1.md`
 
 Approved working reference:
 
