@@ -4,9 +4,9 @@
 ## Document Purpose
 
 This document defines the complete conceptual data model for ANEXSYS using only the following frozen approved baseline documents as source of truth:
-- `/home/runner/work/anexsys-platform/anexsys-platform/docs/frozen/SRS_MASTER_V1.3.md`
-- `/home/runner/work/anexsys-platform/anexsys-platform/docs/frozen/ARQUITETURA_V1.md`
-- `/home/runner/work/anexsys-platform/anexsys-platform/docs/frozen/DATABASE_GUIDELINES_V1.md`
+- `/docs/frozen/SRS_MASTER_V1.3.md`
+- `/docs/frozen/ARQUITETURA_V1.md`
+- `/docs/frozen/DATABASE_GUIDELINES_V1.md`
 
 This document defines:
 - business entities
@@ -53,6 +53,12 @@ The conceptual model must preserve the approved operational structure:
 - Operational Resources work through Production Orders
 - QR Codes belong only to Production Orders
 - Production Order Versions exist only for Rework, Warranty Execution, and Corrective Production
+
+For this conceptual model, the approved Primary Production Order rule governs reconciliation across the frozen baseline set:
+- the Service Order remains the commercial parent
+- the Primary Production Order remains the single operational root generated from that Service Order
+- Service Order Item references remain within that Service Order and Primary Production Order scope
+- corrective production lineage remains subordinate through Production Order Versions rather than through separate commercial roots
 
 The Production Bag is not a primary business entity. It is modeled only as physical operational support context for:
 - Service Order pieces
