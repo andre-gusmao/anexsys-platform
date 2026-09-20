@@ -12,7 +12,7 @@
 
 This document marks the completion of the Business, Architecture, and Database Design phases of ANEXSYS.
 
-It records the approved functional, architectural, and data-modeling baseline, together with the referenced physical-database and onboarding repository materials that govern the next delivery phases.
+It records the approved functional, architectural, and data-modeling baseline, together with referenced repository materials that support subsequent delivery planning.
 
 ## Frozen documents
 
@@ -30,9 +30,9 @@ Current repository design document locations referenced by this baseline:
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
 
-Working repository reference:
+Non-baseline supporting working reference:
 
-- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md`
+- `/docs/working/MIGRATION_AND_ONBOARDING_V1.md` (working-path support material for planning reference only; not a frozen baseline artifact)
 
 ## Approved business decisions
 
@@ -114,12 +114,13 @@ Status interpretation:
 
 ## Next phase
 
-The next approved phase at baseline approval is:
+The historical next approved phase at baseline approval was:
 
 - `BACKEND_ARCHITECTURE_V1`
 
-Subsequent repository design phases include:
+Subsequent repository design phases now include:
 
+- `API_DESIGN_V1`
 - `BACKEND_IMPLEMENTATION_V1`
 - `FRONTEND_ARCHITECTURE_V1`
 

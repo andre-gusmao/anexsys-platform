@@ -602,10 +602,8 @@ Key columns:
 
 Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
-- UQ: filtered uniqueness on `(production_order_id)` when `is_current = true`
 - UQ: filtered uniqueness on `(production_order_id)` when `is_current = true and is_primary_responsible = true`
-- CHECK: `is_current = false or is_primary_responsible = true`
-- assignment-lifecycle rule: historical assignment rows may coexist for the same Production Order, but only one row may remain current at a time, any current row must be the current primary-responsible row, and any Production Order that has entered active execution-capable lifecycle states must have exactly one current primary-responsible assignment enforced by its workflow/application activation path
+- assignment-lifecycle rule: historical assignment rows may coexist for the same Production Order; at most one current row may be marked as the current primary-responsible assignment; additional current non-primary participant rows may coexist when the workflow supports collaborative execution; and any Production Order that has entered active execution-capable lifecycle states must have exactly one current primary-responsible assignment enforced by its workflow/application activation path
 
 #### `production_execution_events`
 Key columns:
