@@ -248,7 +248,7 @@ export class ServiceOrderService {
       serviceOrder.technicalMeasurementResponsibleActorId = dto.technicalMeasurementResponsibleActorId;
     }
 
-    const shouldRecalculate = dto.deliveryCommitmentSourceAt !== undefined || dto.deliveryType !== undefined;
+    const shouldRecalculate = dto.deliveryCommitmentSourceAt !== undefined;
     if (dto.deliveryCommitmentSourceAt !== undefined) {
       serviceOrder.deliveryCommitmentSourceAt = new Date(dto.deliveryCommitmentSourceAt);
     }
@@ -323,6 +323,12 @@ export class ServiceOrderService {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         savedItem = await this.dataSource.transaction(async (manager) => {
+          await manager
+            .createQueryBuilder(ServiceOrderEntity, 'serviceOrder')
+            .setLock('pessimistic_write')
+            .where('serviceOrder.id = :serviceOrderId', { serviceOrderId: dto.serviceOrderId })
+            .getOneOrFail();
+
           const result = await manager
             .createQueryBuilder(ServiceOrderItemEntity, 'item')
             .select('COALESCE(MAX(item.item_no), 0)', 'maxItemNo')

@@ -124,7 +124,6 @@ export class AuthService {
     }
 
     if (session.userId !== payload.sub || session.tenantId !== payload.tenantId) {
-      await this.revokeRefreshSession(session, payload.sub);
       throw new AuthenticationFailedError('Refresh token session mismatch.');
     }
 
