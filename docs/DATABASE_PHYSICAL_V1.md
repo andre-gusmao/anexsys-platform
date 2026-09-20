@@ -901,7 +901,7 @@ Key columns:
 - `id uuid PK`
 - `tenant_id uuid FK -> tenants.id`
 - `branch_id uuid FK -> branches.id`
-- `service_order_id uuid null FK -> service_orders.id`
+- `service_order_id uuid FK -> service_orders.id`
 - `production_order_id uuid null FK -> production_orders.id`
 - `storage_location_assignment_id uuid null FK -> storage_location_assignments.id`
 - `bag_label text null`
@@ -910,7 +910,8 @@ Key columns:
 - standard audit columns
 
 Constraints:
-- CHECK: at least one of `service_order_id` or `production_order_id` is populated
+- CHECK: `service_order_id` is always populated
+- lineage rule: when `production_order_id` is populated, the referenced Production Order must belong to the same `service_order_id`
 - no independent business numbering, QR code, or workflow columns are allowed in this table
 
 ### 7.9 Workflow and SLA tables
@@ -1098,7 +1099,9 @@ Key columns:
 - `evidence_payload jsonb null`
 
 Constraints:
-- CHECK: exactly one governed business reference is populated
+- CHECK: `pickup_authorization_id` is mutually exclusive with `production_order_version_id`
+- CHECK: `service_order_id` is mandatory for Service Order approvals and for Production Order Version approvals
+- lineage rule: when `production_order_version_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order lineage
 - immutable decision trace after final decision
 
 ---
@@ -1262,7 +1265,7 @@ Financial-source-of-truth rule:
 - Production Order must not receive price, discount, commission, margin, or profit ownership
 
 Allocation rule:
-- `partial_payments` may target either Service Order scope or Service Order Item scope, but not both in the same row
+- every `partial_payments` row remains anchored to `service_order_id`, and `service_order_item_id` is optional when the allocation narrows from order scope to a specific item scope
 
 ---
 
