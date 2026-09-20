@@ -121,4 +121,4 @@ Status interpretation:
 
 ## Final baseline statement
 
-BASELINE_V3.0 formally records the approved Product Definition, Architecture, Database Design, and Backend Planning baseline of ANEXSYS and authorizes transition into frontend planning and delivery execution preparation.
+BASELINE_V3.0 formally records the approved Product Definition, Architecture, Database Design, and Backend Planning baseline of ANEXSYS and authorizes transition into frontend implementation and delivery execution preparation.
