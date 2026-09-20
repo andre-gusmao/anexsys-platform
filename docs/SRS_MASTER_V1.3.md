@@ -633,7 +633,8 @@ Delivery Type and Operational Priority must influence planning and alerts but mu
 
 ### 7.13 Delivery Date Engine
 
-The platform must include a Delivery Date Engine that calculates the initial suggested/promised delivery date during Service Order creation and provides this date as the customer-commitment input for the Production Buffer / Safety Window model in section 8.7.
+The platform must include a Delivery Date Engine that calculates the initial suggested delivery date during Service Order creation and seeds the Service Order Promised Delivery Date used as the customer-commitment input for the Production Buffer / Safety Window model in section 8.7.
+The authoritative customer commitment date for section 8.7 is the current Service Order Promised Delivery Date after application of Delivery Date Engine logic and any authorized, auditable manual override or approved Priority custom-date update.
 
 1. Automatic delivery date suggestion
 - The platform shall automatically suggest delivery dates during Service Order creation.
@@ -647,6 +648,7 @@ The platform must include a Delivery Date Engine that calculates the initial sug
   - Saturday intake -> next Saturday delivery
   - Sunday intake -> next Sunday delivery (before calendar-validity adjustment)
 - The default delivery rule must be configurable per tenant (tenants may define a different rollover rule or fixed lead time).
+- Supported tenant configuration modes for the default rule are: (a) weekday rollover map and (b) fixed lead time in calendar or business days.
 - Delivery Date Engine context selection at Service Order creation must use the Service Order tenant and branch; when branch context is not yet explicit, the tenant default branch-calendar policy must be applied deterministically.
 - If branch context changes during Service Order creation, the suggested delivery date must be recalculated automatically; the latest recalculated value becomes authoritative unless an authorized user applies an auditable manual override.
 
@@ -666,7 +668,7 @@ The platform must include a Delivery Date Engine that calculates the initial sug
 - Priority and Express deliveries may apply configurable surcharges.
 - Supported surcharge methods: Percentage, Fixed value.
 - Surcharge configuration must be tenant-configurable.
-- Percentage surcharge must be calculated over the affected Service Order commercial base value defined by tenant pricing policy.
+- Percentage surcharge must support tenant-configurable scope (per Service Order or per applicable Service Order item) and must be calculated over the affected Service Order commercial base value defined by tenant pricing policy.
 - Fixed-value surcharge must support tenant-configurable scope (per Service Order or per applicable Service Order item) and must be auditable in Service Order financial records.
 - Surcharges are part of Service Order financial values (section 7 financial domain) and must not appear on Production Orders, consistent with the Service Order versus Production Order rule that Production Orders never display prices, discounts, margins, profit, commissions, payment information, or other financial information.
 
