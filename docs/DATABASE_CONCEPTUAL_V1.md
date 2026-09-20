@@ -231,8 +231,6 @@ Primary conceptual aggregates:
 - Warranty Execution
 - Financial Exception
 - Pickup Authorization
-- Storage Location Assignment
-- Storage Location
 - QR Code
 - Audit Event
 - Workflow Definition

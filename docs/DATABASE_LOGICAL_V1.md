@@ -47,6 +47,7 @@ The logical model must preserve these approved operating rules:
 - 1 Service Order -> many Service Order Items
 - 1 Service Order -> exactly 1 Production Order as the primary/base operational record
 - 1 Production Order -> many Production Order Versions over time when corrective lineage is required
+- the Production Order is order-scoped and may retain one or more originating Service Order Item references for traceability without changing the one-Production-Order-per-Service-Order rule
 - QR Code belongs only to the Production Order
 - Operational Resources execute work through Production Order events
 - Rework, Warranty Execution, and Corrective Production use Production Order lineage versioning
@@ -168,7 +169,6 @@ Logical aggregate roots:
 - Warranty Adjustment
 - Warranty Execution
 - Pickup Authorization
-- Storage Location
 - QR Code
 - Custody Event
 - Audit Event
@@ -183,6 +183,7 @@ Logical aggregate-root guidance:
 - Service Order is the logical root for commercial scope and financial truth
 - Production Order is the logical root for operational execution and corrective version lineage
 - Pickup Authorization is the logical root for pickup credentials and release authorization artifacts
+- Storage Location remains a shared reference catalog and not an aggregate root
 - Warranty Adjustment and Warranty Execution remain distinct logical roots because the approved model preserves them as separate business responsibilities
 - Workflow Definition is the logical root for configurable lifecycle policy
 - Communication Event is the logical root for non-approval message and notification trace
