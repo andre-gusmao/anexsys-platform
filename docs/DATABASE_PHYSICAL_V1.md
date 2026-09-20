@@ -538,6 +538,7 @@ Constraints:
 - UQ: `(tenant_id, production_no)`
 - UQ: `(service_order_id)` to preserve exactly one base production-order row per service order while corrective lineage remains exclusively in `production_order_versions`
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
+- reconciliation rule: where older source wording suggests rework may open a new Production Order, this approved physical model resolves that path through execution-capable `production_order_versions` under the single base `production_orders` row rather than through additional base Production Order rows
 
 #### `production_order_item_links`
 Purpose:
