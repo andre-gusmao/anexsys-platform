@@ -948,7 +948,7 @@ Each scan must be traceable to:
 - resulting action or status change
 - device or channel where available
 
-The system must support complete operational traceability from Service Order to Service Order Item, Production Order, Production Batch or Operational Bag, quality events, delivery, rework, warranty repair, and customer confirmation.
+The system must support complete operational traceability from Service Order to Service Order Item, Production Order, Production Bag, quality events, delivery, rework, warranty repair, and customer confirmation.
 
 ---
 
@@ -985,17 +985,17 @@ The following conditions are prohibited:
 - multiple Service Orders in one Production Bag
 - multiple primary responsible Operational Resources in one Production Bag
 
-If work must be split among resources, multiple Service Orders and therefore multiple Production Bags must be created instead.
+If governed execution must proceed in parallel under different primary Operational Resources, the intake must be registered as multiple Service Orders and therefore multiple Production Bags before governed production release, rather than splitting one active governed bag across simultaneous primary ownership.
 
 Illustrative governance example:
-- customer delivers 10 pieces -> Service Order A -> Production Bag A -> Operational Resource A
-- customer delivers 10 pieces -> Service Order B -> Production Bag B -> Operational Resource B
+- customer delivers 10 pieces and governed intake is registered as Service Order A -> Production Bag A -> Operational Resource A
+- customer delivers 10 pieces and governed intake is registered as Service Order B -> Production Bag B -> Operational Resource B
 
 The purpose of this governance model is operational accountability and prevention of item mixing.
 
 ### 11.4 Production Bag responsibility
 
-A Production Bag may change Operational Resource ownership during execution while preserving single-current-owner accountability.
+A Production Bag may change Operational Resource ownership during execution while preserving single-current-owner accountability. A transfer replaces the current owner and must never create co-ownership or multiple simultaneous primary Operational Resources for the active bag.
 
 Responsibility-transfer requirements:
 - the system must record the original responsible Operational Resource
@@ -1012,7 +1012,7 @@ Under the V1.3 governance model, consolidation across multiple Service Orders or
 Additional governance restrictions:
 - merge operations that would combine governed Production Bags into a shared bag are prohibited
 - split operations that would create multiple active bags from one Service Order are prohibited in the governed baseline flow
-- if workload must be divided across multiple primary Operational Resources, the work must first be separated into multiple Service Orders and then into multiple governed Production Bags
+- if workload must be executed in parallel by multiple primary Operational Resources, the work must be registered as multiple Service Orders and then as multiple governed Production Bags before governed production release, rather than by splitting one active governed bag across simultaneous primary ownership
 - any exceptional historical replacement of a bag identifier must preserve full traceability and must not break the one-Service-Order, one-customer, one-primary-resource rule for the active bag
 
 ### 11.6 Bag lifecycle and history
@@ -1264,7 +1264,7 @@ The workflow engine must allow automated actions such as:
 - creating operational alerts for Priority or Express work
 - initiating payment from the Service Order context
 - assigning or reassigning an Operational Resource
-- creating or updating a Production Bag
+- creating a Production Bag or updating governance-safe Production Bag status/location fields only
 
 ---
 
@@ -1583,7 +1583,7 @@ The platform must provide an Operational Diary that allows Operational Resources
 
 Operational Diary views:
 - Synthetic View: pieces completed today, Service Orders completed, reworks, warranty repairs, and quality indicators
-- Analytical View: every assigned Service Order showing Service Order number, customer, Production Bag, piece description, service description, measurements, photos, delivery date, priority, and current status
+- Analytical View: every assigned Production Order or governed operational task showing parent Service Order number, customer, Production Bag, piece description, service description, measurements, photos, delivery date, priority, and current status
 
 ---
 
@@ -1765,7 +1765,7 @@ The platform must allow the following end-to-end journey:
 5. delivery type and operational priority assignment
 6. production planning and scheduling
 7. Operational Resource allocation
-8. Production Bag creation under one-Service-Order governance rules
+8. Production Bag creation under governed Production Bag accountability rules
 9. QR-code identification and operational tracking
 10. execution and progress updates
 11. quality check and validation
@@ -2036,6 +2036,8 @@ The location model must support a hierarchical structure composed of:
 - Shelf
 - Cabinet
 - Drawer
+
+To preserve V1.2-compatible structures, the model may also support optional extended levels such as Room and Bin when a tenant requires them.
 
 Tenants may configure additional subordinate labels when needed, provided the baseline hierarchy above remains supported.
 
@@ -2402,7 +2404,7 @@ Domain-to-classification matrix:
 - Physical Item Location Management — Mandatory
 - Third-Party Pickup Authorization — Mandatory
 - Chain of Custody and Pickup Evidence — Mandatory
-- Pickup camera/CCTV evidence integration — Mandatory
+- Pickup camera/CCTV evidence integration — Optional
 - Physical Access Control — Optional
 - User versus Operational Resource formal definitions — Mandatory
 - SLA Model — Mandatory
@@ -2412,7 +2414,9 @@ Domain-to-classification matrix:
 
 ---
 
-## 43. V1.1 to V1.2 Delta Summary
+## 43. Historical V1.1 to V1.2 Delta Summary (Preserved from V1.2)
+
+The following sections are preserved historical appendix content copied forward from V1.2 for traceability inside the V1.3 master document.
 
 V1.2 preserves the complete V1.1 baseline and formalizes/expands enterprise requirements for:
 - terminology normalization to Operational Resource and profession-agnostic wording
@@ -2431,7 +2435,7 @@ V1.2 preserves the complete V1.1 baseline and formalizes/expands enterprise requ
 
 ---
 
-## 44. New Functional Requirements List
+## 44. Historical V1.2 New Functional Requirements List (Preserved from V1.2)
 
 V1.2 adds the following new functional requirements:
 1. Digital reception queue lifecycle with defined statuses and auditability.
@@ -2452,7 +2456,7 @@ V1.2 adds the following new functional requirements:
 
 ---
 
-## 45. Updated Business Rules List
+## 45. Historical V1.2 Updated Business Rules List (Preserved from V1.2)
 
 The following business rules are formally reinforced or introduced in V1.2:
 - The platform must avoid hard-coding profession-specific or industry-specific role names into the core domain model.
@@ -2471,7 +2475,7 @@ The following business rules are formally reinforced or introduced in V1.2:
 
 ---
 
-## 46. Updated SRS Architecture-Readiness Definition Score
+## 46. Historical V1.2 Architecture-Readiness Definition Score (Preserved from V1.2)
 
 SRS architecture-readiness definition scoring method for V1.2 is defined by the checklist and formula in this section.
 
@@ -2517,7 +2521,7 @@ Assessment method and ownership:
 
 ---
 
-## 47. Modified Sections List
+## 47. Historical V1.2 Modified Sections List (Preserved from V1.2)
 
 The following areas were modified or added in V1.2:
 - Header and document status version references (V1.2)
