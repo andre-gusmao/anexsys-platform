@@ -47,7 +47,7 @@ The logical model must preserve these approved operating rules:
 - 1 Service Order -> many Service Order Items
 - 1 Service Order -> exactly 1 Production Order as the primary/base operational record
 - 1 Production Order -> many Production Order Versions over time when corrective lineage is required
-- the Production Order is order-scoped and may retain one or more originating Service Order Item references for traceability without changing the one-Production-Order-per-Service-Order rule
+- the Production Order is order-scoped and may retain one or more originating Service Order Item references for traceability without changing the one-Production-Order-per-Service-Order rule; this is the reconciled interpretation of earlier singular item-origin wording in baseline texts
 - QR Code belongs only to the Production Order
 - Operational Resources execute work through Production Order events
 - Rework, Warranty Execution, and Corrective Production use Production Order lineage versioning
@@ -405,6 +405,9 @@ Logical support rule:
 ---
 
 ## 8. Logical Relationship Matrix
+
+Reconciliation note:
+- where older baseline wording referred to a singular originating Service Order Item on the Production Order, this logical model treats that as item-scope traceability inside one order-scoped Production Order generated per Service Order.
 
 | Entity A | Logical Relationship | Entity B | Logical Meaning |
 |---|---|---|---|

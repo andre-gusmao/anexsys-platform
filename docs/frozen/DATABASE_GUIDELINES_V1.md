@@ -53,6 +53,9 @@ Core approved model:
 - QR Codes belong exclusively to the Production Order
 - Operational Resources assume responsibility through Production Order QR-driven execution events
 
+Reconciliation note:
+- for downstream conceptual and logical modeling, the one-Service-Order-to-one-Production-Order rule supersedes earlier singular item-origin wording; Service Order Item references inside the Production Order are traceability references to item scope, not item-level Production Order cardinality.
+
 This guideline treats the Production Order as the operational root and treats the physical bag only as optional physical context.
 
 ---

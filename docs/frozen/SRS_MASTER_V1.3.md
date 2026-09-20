@@ -139,7 +139,7 @@ Business requirements:
 - a user may belong to one or more branches
 - roles may be branch-specific or cross-branch
 - customers may be global or branch-specific
-- production and service orders may be associated with a single branch or multiple relevant branches
+- each production order and each service order must have a single owning branch, while cross-branch participation may be represented only through references, transfers, or related-branch context
 - reports may aggregate tenant-wide or branch-local data
 - operational resources may be allocated across branches subject to permissions and operational rules
 
@@ -756,7 +756,7 @@ A production order must support lifecycle states such as:
 Each production order must contain:
 - tenant and branch
 - originating Service Order reference
-- originating Service Order Item reference
+- originating Service Order Item reference set or authorized item-scope reference
 - production type
 - service instructions
 - piece description

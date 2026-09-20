@@ -17,4 +17,3 @@ Frozen reference baseline approved before conceptual database modeling.
 ## Next phase
 
 - `/docs/DATABASE_CONCEPTUAL_V1.md`
-- `/docs/DATABASE_LOGICAL_V1.md`
