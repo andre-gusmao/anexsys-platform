@@ -673,6 +673,7 @@ Default rule:
 - Thursday -> next Thursday
 - Friday -> next Friday
 - Saturday -> next Saturday
+- Sunday -> next valid business day according to the applicable calendar rules
 
 The platform must automatically consider:
 - Holidays
