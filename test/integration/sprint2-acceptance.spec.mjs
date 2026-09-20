@@ -332,6 +332,23 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(history.json.history.length, 4);
   });
 
+  it('rejects customer creation for branches outside the authenticated branch scope', async () => {
+    const response = await http('/customers', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantId,
+      },
+      body: JSON.stringify({
+        branchId: branchTwoId,
+        fullName: 'Blocked Branch Customer',
+        mobilePhone: '(11) 94444-3322',
+      }),
+    });
+
+    assert.equal(response.status, 403);
+  });
+
   it('enforces validation on customer and measurement payloads', async () => {
     const invalidCustomer = await http('/customers', {
       method: 'POST',

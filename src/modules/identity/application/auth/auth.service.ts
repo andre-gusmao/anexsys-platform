@@ -126,6 +126,11 @@ export class AuthService {
       throw new AuthenticationFailedError('Refresh token is invalid.');
     }
 
+    const user = await this.identityService.getById(payload.sub);
+    if (user.tenantId !== payload.tenantId || user.status !== UserStatus.ACTIVE) {
+      throw new AuthenticationFailedError('Refresh token is not active.');
+    }
+
     const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(payload.tenantId, payload.sub);
     const issuedTokens = await this.tokenFactoryService.issueTokens(
       {

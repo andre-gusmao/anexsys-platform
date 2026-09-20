@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -91,8 +92,29 @@ export class BranchesController {
 
   @Permissions('branches.read')
   @Get(':branchId')
-  async getById(@Param('branchId') branchId: string) {
-    return this.branchService.getById(branchId);
+  async getById(
+    @Param('branchId') branchId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    const effectiveBranchIds = principal?.effectiveBranchIds ?? [];
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    if (!principal) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    const branch = await this.branchService.getById(branchId);
+    if (branch.tenantId !== tenantId) {
+      throw new ForbiddenException('Requested branch is outside the authenticated tenant scope.');
+    }
+    if (!effectiveBranchIds.includes(branchId)) {
+      throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
+    }
+
+    return branch;
   }
 
   @Permissions('branches.write')

@@ -11,14 +11,12 @@ import { CustomerService } from '../customer/customer.service';
 import { CreateMeasurementRecordDto, CustomMeasurementInputDto } from '../../contracts/dto/create-measurement-record.dto';
 import { CustomerInteractionEntity } from '../../infrastructure/persistence/entities/customer-interaction.entity';
 import { MeasurementRecordEntity } from '../../infrastructure/persistence/entities/measurement-record.entity';
-import { MeasurementRecordRepository } from '../../infrastructure/persistence/repositories/measurement-record.repository';
 
 @Injectable()
 export class MeasurementService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly customerService: CustomerService,
-    private readonly measurementRecordRepository: MeasurementRecordRepository,
     private readonly auditService: AuditService,
   ) {}
 
@@ -27,79 +25,92 @@ export class MeasurementService {
     const inputs = this.buildMeasurementInputs(dto);
     const measuredAt = dto.measuredAt ? new Date(dto.measuredAt) : new Date();
 
-    const createdRecords: MeasurementRecordEntity[] = [];
-    for (const input of inputs) {
-      const nextVersion = (await this.measurementRecordRepository.findLatestVersionNumber(
-        dto.tenantId,
-        dto.customerId,
-        input.label,
-      )) + 1;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const savedRecords = await this.dataSource.transaction(async (manager) => {
+          const persisted: MeasurementRecordEntity[] = [];
+          for (const input of inputs) {
+            const latestRecord = await manager.findOne(MeasurementRecordEntity, {
+              where: {
+                tenantId: dto.tenantId,
+                customerId: dto.customerId,
+                measurementLabel: input.label,
+                isDeleted: false,
+              },
+              order: { versionNo: 'DESC' },
+            });
+            const nextVersion = (latestRecord?.versionNo ?? 0) + 1;
 
-      const record = this.measurementRecordRepository.create({
-        id: randomUUID(),
-        tenantId: dto.tenantId,
-        customerId: dto.customerId,
-        serviceOrderId: null,
-        measurementLabel: input.label,
-        measurementData: {
-          value: input.value,
-          unit: input.unit ?? null,
-          notes: input.notes ?? null,
-        },
-        versionNo: nextVersion,
-        measuredAt,
-        capturedBy: dto.actorUserId,
-        isDeleted: false,
-        deletedAt: null,
-        deletedBy: null,
-        createdBy: dto.actorUserId,
-        updatedBy: dto.actorUserId,
-      });
-      createdRecords.push(record);
-    }
+            const saved = await manager.save(
+              MeasurementRecordEntity,
+              manager.create(MeasurementRecordEntity, {
+                id: randomUUID(),
+                tenantId: dto.tenantId,
+                customerId: dto.customerId,
+                serviceOrderId: null,
+                measurementLabel: input.label,
+                measurementData: {
+                  value: input.value,
+                  unit: input.unit ?? null,
+                  notes: input.notes ?? null,
+                },
+                versionNo: nextVersion,
+                measuredAt,
+                capturedBy: dto.actorUserId,
+                isDeleted: false,
+                deletedAt: null,
+                deletedBy: null,
+                createdBy: dto.actorUserId,
+                updatedBy: dto.actorUserId,
+              }),
+            );
+            persisted.push(saved);
 
-    const savedRecords = await this.dataSource.transaction(async (manager) => {
-      const persisted: MeasurementRecordEntity[] = [];
-      for (const record of createdRecords) {
-        const saved = await manager.save(MeasurementRecordEntity, manager.create(MeasurementRecordEntity, record));
-        persisted.push(saved);
-
-        const interaction = manager.create(CustomerInteractionEntity, {
-          id: randomUUID(),
-          tenantId: dto.tenantId,
-          customerId: dto.customerId,
-          serviceOrderId: null,
-          interactionType: CustomerInteractionType.MEASUREMENT_RECORDED,
-          channel: InteractionChannel.SYSTEM,
-          occurredAt: new Date(),
-          summary: `Measurement '${saved.measurementLabel}' version ${saved.versionNo} recorded.`,
-          detail: `Measurement '${saved.measurementLabel}' received a new historical version for customer '${customer.legalName}'.`,
-          createdBy: dto.actorUserId,
-          updatedBy: dto.actorUserId,
+            const interaction = manager.create(CustomerInteractionEntity, {
+              id: randomUUID(),
+              tenantId: dto.tenantId,
+              customerId: dto.customerId,
+              serviceOrderId: null,
+              interactionType: CustomerInteractionType.MEASUREMENT_RECORDED,
+              channel: InteractionChannel.SYSTEM,
+              occurredAt: new Date(),
+              summary: `Measurement '${saved.measurementLabel}' version ${saved.versionNo} recorded.`,
+              detail: `Measurement '${saved.measurementLabel}' received a new historical version for customer '${customer.legalName}'.`,
+              createdBy: dto.actorUserId,
+              updatedBy: dto.actorUserId,
+            });
+            await manager.save(CustomerInteractionEntity, interaction);
+          }
+          return persisted;
         });
-        await manager.save(CustomerInteractionEntity, interaction);
-      }
-      return persisted;
-    });
 
-    for (const record of savedRecords) {
-      await this.auditService.record({
-        tenantId: dto.tenantId,
-        branchId: customer.branchId,
-        actorUserId: dto.actorUserId,
-        entityType: 'measurement_record',
-        entityId: record.id,
-        action: 'measurement.recorded',
-        eventType: 'crm.write',
-        metadata: {
-          customerId: dto.customerId,
-          label: record.measurementLabel,
-          versionNo: record.versionNo,
-        },
-      });
+        for (const record of savedRecords) {
+          await this.auditService.record({
+            tenantId: dto.tenantId,
+            branchId: customer.branchId,
+            actorUserId: dto.actorUserId,
+            entityType: 'measurement_record',
+            entityId: record.id,
+            action: 'measurement.recorded',
+            eventType: 'crm.write',
+            metadata: {
+              customerId: dto.customerId,
+              label: record.measurementLabel,
+              versionNo: record.versionNo,
+            },
+          });
+        }
+
+        return savedRecords;
+      } catch (error: any) {
+        if (attempt < 2 && this.isMeasurementVersionConflict(error)) {
+          continue;
+        }
+        throw error;
+      }
     }
 
-    return savedRecords;
+    throw new DomainValidationError('Measurement version allocation failed.');
   }
 
   async listByCustomer(tenantId: string, customerId: string): Promise<{
@@ -107,7 +118,10 @@ export class MeasurementService {
     latestByLabel: MeasurementRecordEntity[];
   }> {
     await this.customerService.getById(customerId, tenantId);
-    const history = await this.measurementRecordRepository.findByCustomer(tenantId, customerId);
+    const history = await this.dataSource.getRepository(MeasurementRecordEntity).find({
+      where: { tenantId, customerId, isDeleted: false },
+      order: { measuredAt: 'DESC', measurementLabel: 'ASC', versionNo: 'DESC' },
+    });
     const latestByLabelMap = new Map<string, MeasurementRecordEntity>();
 
     for (const record of history) {
@@ -174,5 +188,9 @@ export class MeasurementService {
       unit: customMeasurement.unit?.trim() || undefined,
       notes: customMeasurement.notes?.trim() || undefined,
     };
+  }
+
+  private isMeasurementVersionConflict(error: { code?: string; constraint?: string } | undefined): boolean {
+    return error?.code === '23505' && error?.constraint === 'uq_measurement_records_customer_label_version';
   }
 }

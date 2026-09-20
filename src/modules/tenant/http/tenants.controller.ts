@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -68,7 +69,14 @@ export class TenantsController {
 
   @Permissions('tenants.read')
   @Get(':tenantId')
-  async getById(@Param('tenantId') tenantId: string) {
+  async getById(@Param('tenantId') tenantId: string, @CurrentTenantId() currentTenantId: string | null) {
+    if (!currentTenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    if (tenantId !== currentTenantId) {
+      throw new ForbiddenException('Requested tenant is outside the authenticated tenant scope.');
+    }
+
     return this.tenantService.getById(tenantId);
   }
 

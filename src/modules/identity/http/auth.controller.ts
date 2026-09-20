@@ -68,6 +68,9 @@ export class AuthController {
     }
 
     const user = await this.identityService.getById(principal.userId);
+    if (user.tenantId !== principal.tenantId) {
+      throw new UnauthorizedException('Authenticated user is outside the tenant scope.');
+    }
 
     return {
       user,

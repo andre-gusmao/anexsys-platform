@@ -29,9 +29,14 @@ import { UserSessionRepository } from './infrastructure/persistence/repositories
     forwardRef(() => AuthorizationModule),
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'anexsys-dev-secret'),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET must be configured.');
+        }
+
+        return { secret };
+      },
     }),
   ],
   controllers: [AuthController, UsersController],

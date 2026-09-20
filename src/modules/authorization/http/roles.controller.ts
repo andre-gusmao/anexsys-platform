@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   Post,
@@ -68,8 +69,17 @@ export class RolesController {
 
   @Permissions('roles.read')
   @Get(':roleId')
-  async getById(@Param('roleId') roleId: string) {
-    return this.authorizationService.getRoleById(roleId);
+  async getById(@Param('roleId') roleId: string, @CurrentTenantId() tenantId: string | null) {
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+
+    const role = await this.authorizationService.getRoleById(roleId);
+    if (role.tenantId !== tenantId) {
+      throw new ForbiddenException('Requested role is outside the authenticated tenant scope.');
+    }
+
+    return role;
   }
 
   @Permissions('roles.write')
