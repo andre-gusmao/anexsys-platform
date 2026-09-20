@@ -462,7 +462,7 @@ Key columns:
 - `customer_id uuid FK -> customers.id`
 - `workflow_definition_id uuid null FK -> workflow_definitions.id`
 - `current_status_definition_id uuid null FK -> status_definitions.id`
-- `order_no varchar(50)`
+- `order_no varchar(50) not null`
 - `opened_at timestamptz`
 - `promised_delivery_date date`
 - `delivery_type varchar(20)` with approved taxonomy `Standard`, `Priority`, `Express`
@@ -514,7 +514,7 @@ Key columns:
 - `service_order_id uuid FK -> service_orders.id`
 - `workflow_definition_id uuid null FK -> workflow_definitions.id`
 - `current_status_definition_id uuid null FK -> status_definitions.id`
-- `production_no varchar(50)`
+- `production_no varchar(50) not null`
 - `production_type varchar(50)`
 - `delivery_type varchar(20)`
 - `operational_priority varchar(30)`
@@ -536,7 +536,7 @@ Constraints:
 - FK: `workflow_definition_id -> workflow_definitions.id`
 - FK: `current_status_definition_id -> status_definitions.id`
 - UQ: `(tenant_id, production_no)`
-- UQ: `(service_order_id)` to preserve exactly one base production-order row per service order while corrective lineage remains exclusively in `production_order_versions`
+- UQ: `(tenant_id, service_order_id)` to preserve exactly one base production-order row per service order within the tenant boundary while corrective lineage remains exclusively in `production_order_versions`
 - CHECK: `delivery_type` in (`Standard`, `Priority`, `Express`)
 
 #### `production_order_item_links`
@@ -588,7 +588,7 @@ Key columns:
 - `assigned_at timestamptz`
 - `released_at timestamptz null`
 - `is_current boolean`
-- assignment_notes text null
+- `assignment_notes text null`
 - standard audit columns
 
 Constraints:
@@ -1126,6 +1126,7 @@ Key columns:
 
 Constraints:
 - CHECK: `pickup_authorization_id` is mutually exclusive with `production_order_id` and `production_order_version_id`
+- CHECK: at least one governed approval target is populated
 - CHECK: `service_order_id` is mandatory for Service Order approvals, base Production Order approvals, and Production Order Version approvals
 - CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`, or `production_order_id` together with its parent `service_order_id`, or `production_order_version_id` together with its parent `service_order_id`, or standalone `pickup_authorization_id`
 - lineage rule: when `production_order_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order
