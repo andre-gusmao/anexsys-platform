@@ -97,6 +97,70 @@ export class BranchesController {
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
+    return this.getScopedBranch(branchId, tenantId, request);
+  }
+
+  @Permissions('branches.write')
+  @Patch(':branchId')
+  async update(
+    @Param('branchId') branchId: string,
+    @Body() body: UpdateBranchBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    await this.getScopedBranch(branchId, tenantId, request);
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    return this.branchService.update(branchId, { ...body, actorUserId });
+  }
+
+  @Permissions('branches.write')
+  @Post(':branchId/activate')
+  async activate(
+    @Param('branchId') branchId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    await this.getScopedBranch(branchId, tenantId, request);
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    return this.branchService.activate(branchId, actorUserId);
+  }
+
+  @Permissions('branches.write')
+  @Post(':branchId/deactivate')
+  async deactivate(
+    @Param('branchId') branchId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    await this.getScopedBranch(branchId, tenantId, request);
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    return this.branchService.deactivate(branchId, actorUserId);
+  }
+
+  @Permissions('branches.read')
+  @Get(':branchId/children')
+  async listChildren(
+    @Param('branchId') branchId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    await this.getScopedBranch(branchId, tenantId, request);
+    return this.branchService.listChildren(branchId);
+  }
+
+  private async getScopedBranch(branchId: string, tenantId: string | null, request: PlatformRequest) {
     const principal = request.requestContext.authenticatedPrincipal;
     const effectiveBranchIds = principal?.effectiveBranchIds ?? [];
     if (!tenantId) {
@@ -115,48 +179,5 @@ export class BranchesController {
     }
 
     return branch;
-  }
-
-  @Permissions('branches.write')
-  @Patch(':branchId')
-  async update(
-    @Param('branchId') branchId: string,
-    @Body() body: UpdateBranchBody,
-    @CurrentRequest() request: PlatformRequest,
-  ) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
-    if (!actorUserId) {
-      throw new UnauthorizedException('Authenticated user is required.');
-    }
-
-    return this.branchService.update(branchId, { ...body, actorUserId });
-  }
-
-  @Permissions('branches.write')
-  @Post(':branchId/activate')
-  async activate(@Param('branchId') branchId: string, @CurrentRequest() request: PlatformRequest) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
-    if (!actorUserId) {
-      throw new UnauthorizedException('Authenticated user is required.');
-    }
-
-    return this.branchService.activate(branchId, actorUserId);
-  }
-
-  @Permissions('branches.write')
-  @Post(':branchId/deactivate')
-  async deactivate(@Param('branchId') branchId: string, @CurrentRequest() request: PlatformRequest) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
-    if (!actorUserId) {
-      throw new UnauthorizedException('Authenticated user is required.');
-    }
-
-    return this.branchService.deactivate(branchId, actorUserId);
-  }
-
-  @Permissions('branches.read')
-  @Get(':branchId/children')
-  async listChildren(@Param('branchId') branchId: string) {
-    return this.branchService.listChildren(branchId);
   }
 }

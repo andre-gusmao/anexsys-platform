@@ -8,7 +8,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
 import { BranchScopeType } from 'src/shared/domain/enums';
 import { CurrentRequest, CurrentTenantId, CurrentUserId } from 'src/platform/http/request-context.decorators';
@@ -21,7 +21,7 @@ class CreateUserBody {
   @IsUUID()
   defaultBranchId?: string;
 
-  @IsString()
+  @IsEmail()
   email!: string;
 
   @IsString()

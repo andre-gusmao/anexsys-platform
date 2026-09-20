@@ -5,7 +5,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsString, IsUUID, MinLength } from 'class-validator';
+import { IsEmail, IsString, IsUUID, MinLength } from 'class-validator';
 import { CurrentRequest } from 'src/platform/http/request-context.decorators';
 import { Public } from 'src/platform/auth/public.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -16,7 +16,7 @@ class LoginPasswordBody {
   @IsUUID()
   tenantId!: string;
 
-  @IsString()
+  @IsEmail()
   email!: string;
 
   @IsString()

@@ -70,13 +70,7 @@ export class TenantsController {
   @Permissions('tenants.read')
   @Get(':tenantId')
   async getById(@Param('tenantId') tenantId: string, @CurrentTenantId() currentTenantId: string | null) {
-    if (!currentTenantId) {
-      throw new BadRequestException('Tenant context is required.');
-    }
-    if (tenantId !== currentTenantId) {
-      throw new ForbiddenException('Requested tenant is outside the authenticated tenant scope.');
-    }
-
+    this.assertTenantScope(tenantId, currentTenantId);
     return this.tenantService.getById(tenantId);
   }
 
@@ -85,9 +79,11 @@ export class TenantsController {
   async update(
     @Param('tenantId') tenantId: string,
     @Body() body: UpdateTenantBody,
+    @CurrentTenantId() currentTenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    this.assertTenantScope(tenantId, currentTenantId);
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
@@ -97,8 +93,13 @@ export class TenantsController {
 
   @Permissions('tenants.write')
   @Post(':tenantId/activate')
-  async activate(@Param('tenantId') tenantId: string, @CurrentRequest() request: PlatformRequest) {
+  async activate(
+    @Param('tenantId') tenantId: string,
+    @CurrentTenantId() currentTenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    this.assertTenantScope(tenantId, currentTenantId);
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
@@ -108,12 +109,26 @@ export class TenantsController {
 
   @Permissions('tenants.write')
   @Post(':tenantId/deactivate')
-  async deactivate(@Param('tenantId') tenantId: string, @CurrentRequest() request: PlatformRequest) {
+  async deactivate(
+    @Param('tenantId') tenantId: string,
+    @CurrentTenantId() currentTenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    this.assertTenantScope(tenantId, currentTenantId);
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
 
     return this.tenantService.deactivate(tenantId, actorUserId);
+  }
+
+  private assertTenantScope(requestedTenantId: string, currentTenantId: string | null): void {
+    if (!currentTenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    if (requestedTenantId !== currentTenantId) {
+      throw new ForbiddenException('Requested tenant is outside the authenticated tenant scope.');
+    }
   }
 }

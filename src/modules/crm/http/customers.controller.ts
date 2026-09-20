@@ -15,6 +15,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsDateString,
+  IsEmail,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -61,7 +62,7 @@ class CreateCustomerBody {
   postalCode?: string;
 
   @IsOptional()
-  @IsString()
+  @IsEmail()
   email?: string;
 
   @IsOptional()
@@ -103,7 +104,7 @@ class UpdateCustomerBody {
   postalCode?: string | null;
 
   @IsOptional()
-  @IsString()
+  @IsEmail()
   email?: string | null;
 
   @IsOptional()
