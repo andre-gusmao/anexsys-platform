@@ -147,19 +147,27 @@ export class CustodyService {
   async getServiceOrderLocation(tenantId: string, serviceOrderId: string) {
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     const current = await this.storageLocationAssignmentRepository.findCurrentByServiceOrder(serviceOrderId);
-    const latest = current ?? (await this.storageLocationAssignmentRepository.findHistoryByServiceOrder(serviceOrderId))[0] ?? null;
-    if (!latest) return { serviceOrder, currentAssignment: null, location: null, bagSupportContext: null };
-    const location = await this.getStorageLocationById(latest.storageLocationId, tenantId);
-    const bagSupportContext = await this.bagSupportContextRepository.findCurrentByServiceOrder(serviceOrderId);
-    return { serviceOrder, currentAssignment: latest, location, bagSupportContext };
+    const latestHistoricalAssignment = current ? null : (await this.storageLocationAssignmentRepository.findHistoryByServiceOrder(serviceOrderId))[0] ?? null;
+    const selectedAssignment = current ?? latestHistoricalAssignment;
+    if (!selectedAssignment) {
+      return { serviceOrder, currentAssignment: null, latestHistoricalAssignment: null, location: null, bagSupportContext: null };
+    }
+    const location = await this.getStorageLocationById(selectedAssignment.storageLocationId, tenantId);
+    const bagContexts = await this.listBagSupportContexts(serviceOrderId);
+    const bagSupportContext = bagContexts.find((item) => item.storageLocationAssignmentId === selectedAssignment.id) ?? null;
+    return { serviceOrder, currentAssignment: current, latestHistoricalAssignment, location, bagSupportContext };
   }
 
   async listServiceOrderLocationHistory(tenantId: string, serviceOrderId: string) {
     await this.serviceOrderService.getById(serviceOrderId, tenantId);
     const history = await this.storageLocationAssignmentRepository.findHistoryByServiceOrder(serviceOrderId);
-    const bagSupportContext = await this.bagSupportContextRepository.findCurrentByServiceOrder(serviceOrderId);
+    const bagContexts = await this.listBagSupportContexts(serviceOrderId);
     const locations = await Promise.all(history.map((assignment) => this.getStorageLocationById(assignment.storageLocationId, tenantId)));
-    return history.map((assignment, index) => ({ assignment, location: locations[index], bagSupportContext }));
+    return history.map((assignment, index) => ({
+      assignment,
+      location: locations[index],
+      bagSupportContext: bagContexts.find((item) => item.storageLocationAssignmentId === assignment.id) ?? null,
+    }));
   }
 
   async searchCustodyEvents(tenantId: string, filters: SearchCustodyEventsDto) {
@@ -222,24 +230,35 @@ export class CustodyService {
       if (productionOrder.serviceOrderId !== input.serviceOrderId) throw new DomainValidationError('Bag support context Production Order must belong to the same Service Order.');
     }
     const existing = await this.bagSupportContextRepository.findCurrentByServiceOrder(input.serviceOrderId);
-    const shouldMaintainContext = Boolean(existing || input.bagLabel || input.bagNotes || input.productionOrderId || input.bagInUse === true);
-    if (!shouldMaintainContext) return null;
-    const entity = existing ?? this.bagSupportContextRepository.create({
+    const hasExplicitBagLabel = input.bagLabel !== undefined;
+    const hasExplicitBagNotes = input.bagNotes !== undefined;
+    const hasExplicitInUse = input.bagInUse !== undefined;
+    const nextBagLabel = hasExplicitBagLabel ? input.bagLabel?.trim() || null : existing?.bagLabel ?? null;
+    const nextBagNotes = hasExplicitBagNotes ? input.bagNotes?.trim() || null : existing?.notes ?? null;
+    const nextProductionOrderId = input.productionOrderId ?? existing?.productionOrderId ?? null;
+    const nextInUse = hasExplicitInUse ? Boolean(input.bagInUse) : existing?.inUse ?? Boolean(nextBagLabel || nextBagNotes || nextProductionOrderId);
+
+    if (existing) {
+      existing.inUse = false;
+      existing.updatedBy = input.actorUserId;
+      await this.bagSupportContextRepository.save(existing);
+    }
+
+    if (!nextInUse && !nextBagLabel && !nextBagNotes && !nextProductionOrderId) return null;
+
+    const entity = this.bagSupportContextRepository.create({
       id: randomUUID(),
       tenantId: input.tenantId,
       branchId: input.branchId,
       serviceOrderId: input.serviceOrderId,
+      productionOrderId: nextProductionOrderId,
+      storageLocationAssignmentId: input.assignmentId,
+      bagLabel: nextBagLabel,
+      notes: nextBagNotes,
+      inUse: nextInUse,
       createdBy: input.actorUserId,
       updatedBy: input.actorUserId,
-      inUse: true,
     } as Partial<PhysicalBagSupportContextEntity>);
-    entity.branchId = input.branchId;
-    entity.productionOrderId = input.productionOrderId ?? entity.productionOrderId ?? null;
-    entity.storageLocationAssignmentId = input.assignmentId;
-    entity.bagLabel = input.bagLabel?.trim() || entity.bagLabel || null;
-    entity.notes = input.bagNotes?.trim() || entity.notes || null;
-    entity.inUse = input.bagInUse ?? true;
-    entity.updatedBy = input.actorUserId;
     return this.bagSupportContextRepository.save(entity);
   }
 
@@ -269,5 +288,13 @@ export class CustodyService {
 
   private buildDisplayLabel(parts: { area: string | null; corridor: string | null; rowCode: string | null; shelfCode: string | null; cabinetCode: string | null; drawerCode: string | null }) {
     return [parts.area && `Area ${parts.area}`, parts.corridor && `Corridor ${parts.corridor}`, parts.rowCode && `Row ${parts.rowCode}`, parts.shelfCode && `Shelf ${parts.shelfCode}`, parts.cabinetCode && `Cabinet ${parts.cabinetCode}`, parts.drawerCode && `Drawer ${parts.drawerCode}`].filter(Boolean).join(' / ');
+  }
+
+  private async listBagSupportContexts(serviceOrderId: string) {
+    if (typeof (this.bagSupportContextRepository as { findByServiceOrder?: unknown }).findByServiceOrder === 'function') {
+      return (this.bagSupportContextRepository as { findByServiceOrder(serviceOrderId: string): Promise<PhysicalBagSupportContextEntity[]> }).findByServiceOrder(serviceOrderId);
+    }
+    const current = await this.bagSupportContextRepository.findCurrentByServiceOrder(serviceOrderId);
+    return current ? [current] : [];
   }
 }

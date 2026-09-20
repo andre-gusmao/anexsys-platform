@@ -11,4 +11,7 @@ export class PhysicalBagSupportContextRepository {
   async findCurrentByServiceOrder(serviceOrderId: string): Promise<PhysicalBagSupportContextEntity | null> {
     return this.repository.findOne({ where: { serviceOrderId, inUse: true }, order: { updatedAt: 'DESC', createdAt: 'DESC' } });
   }
+  async findByServiceOrder(serviceOrderId: string): Promise<PhysicalBagSupportContextEntity[]> {
+    return this.repository.find({ where: { serviceOrderId }, order: { createdAt: 'DESC', updatedAt: 'DESC' } });
+  }
 }
