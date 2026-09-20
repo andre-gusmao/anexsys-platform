@@ -16,7 +16,7 @@ It records the approved functional, architectural, data-modeling, physical-datab
 
 ## Frozen documents
 
-Frozen approved documents:
+Canonical frozen source documents for this baseline:
 
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
@@ -26,9 +26,12 @@ Frozen approved documents:
 
 Approved downstream design documents in the current baseline set:
 
-- `/docs/DATABASE_CONCEPTUAL_V1.md`
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
+
+Approved predecessor database-design artifact carried forward in the repository baseline set:
+
+- `/docs/DATABASE_CONCEPTUAL_V1.md`
 
 Approved working reference:
 
@@ -110,7 +113,7 @@ Approved working reference:
 Status interpretation:
 - the business specification is complete enough to govern implementation planning
 - the architecture direction is mature enough to drive backend architecture definition
-- the database design has progressed through conceptual, logical, and physical phases and is ready for backend-oriented refinement
+- the database design has progressed through conceptual, logical, and physical phases across the approved repository artifact set and is ready for backend-oriented refinement
 
 ## Next phase
 
