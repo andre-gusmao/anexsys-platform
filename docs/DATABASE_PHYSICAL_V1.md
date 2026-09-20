@@ -564,11 +564,17 @@ Key columns:
 - `version_reason varchar(50)`
 - `is_active boolean`
 - `is_draft boolean`
+- `production_type varchar(50) null`
+- `delivery_type varchar(20) null`
+- `operational_priority varchar(30) null`
 - `change_summary text`
 - `planned_quantity numeric(18,4) null`
 - `scheduled_start_at timestamptz null`
 - `scheduled_end_at timestamptz null`
+- `instructions text null`
+- `piece_description text null`
 - `measurements_snapshot jsonb null`
+- `observations text null`
 - `resource_change_notes text null`
 - standard audit columns
 
@@ -576,6 +582,7 @@ Constraints:
 - UQ: `(production_order_id, version_no)`
 - CHECK: `version_no >= 2`
 - CHECK: approved `version_reason` values reflect rework, warranty execution, or corrective production
+- corrective execution rule: each version row carries the full operational state needed for corrective execution while remaining subordinate to the base `production_orders` row
 
 #### `production_order_operational_assignments`
 Key columns:
@@ -588,12 +595,13 @@ Key columns:
 - `assigned_at timestamptz`
 - `released_at timestamptz null`
 - `is_current boolean`
+- `is_primary_responsible boolean`
 - `assignment_notes text null`
 - standard audit columns
 
 Constraints:
 - CHECK: `released_at` is null or `released_at >= assigned_at`
-- UQ: filtered uniqueness on `(production_order_id)` when `is_current = true`
+- UQ: filtered uniqueness on `(production_order_id)` when `is_current = true and is_primary_responsible = true`
 
 #### `production_execution_events`
 Key columns:
@@ -1127,11 +1135,7 @@ Key columns:
 - `evidence_payload jsonb null`
 
 Constraints:
-- CHECK: `pickup_authorization_id` is mutually exclusive with `production_order_id` and `production_order_version_id`
-- CHECK: `production_order_id` is mutually exclusive with `production_order_version_id`
-- CHECK: at least one governed approval target is populated
-- CHECK: `service_order_id` is mandatory for Service Order approvals, base Production Order approvals, and Production Order Version approvals
-- CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`, or `production_order_id` together with its parent `service_order_id`, or `production_order_version_id` together with its parent `service_order_id`, or standalone `pickup_authorization_id`
+- CHECK: exactly one approval-target shape is allowed: standalone `service_order_id`; or `production_order_id` together with its parent `service_order_id`; or `production_order_version_id` together with its parent `service_order_id`; or standalone `pickup_authorization_id`
 - lineage rule: when `production_order_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order
 - lineage rule: when `production_order_version_id` is populated, `service_order_id` must equal the parent Service Order reached through the referenced Production Order lineage
 - immutable decision trace after final decision
