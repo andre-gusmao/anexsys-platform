@@ -2714,7 +2714,7 @@ Rationale:
 
 ## 51. Updated Database Readiness Score
 
-**Score: 94/100**
+**Score: 93/100**
 
 Rationale:
 - The functional rules now define clearer data boundaries for core entities such as Service Order, Production Order, warranty cases, rework attribution, custody events, pickup authorization, and physical bag/container context.

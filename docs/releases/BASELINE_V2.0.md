@@ -16,11 +16,14 @@ It records the approved functional, architectural, data-modeling, physical-datab
 
 ## Frozen documents
 
-Approved documents:
+Frozen approved documents:
 
 - `/docs/frozen/SRS_MASTER_V1.3.md`
 - `/docs/frozen/ARQUITETURA_V1.md`
 - `/docs/frozen/DATABASE_GUIDELINES_V1.md`
+
+## Approved downstream design documents
+
 - `/docs/DATABASE_CONCEPTUAL_V1.md`
 - `/docs/DATABASE_LOGICAL_V1.md`
 - `/docs/DATABASE_PHYSICAL_V1.md`
