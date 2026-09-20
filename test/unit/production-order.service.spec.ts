@@ -37,7 +37,7 @@ function buildDataSource() {
 }
 
 describe('ProductionOrderService', () => {
-  it('generates a production order from a service order with linked items and measurement snapshot', async () => {
+  it('generates a production order with an active QR code and measurement snapshot', async () => {
     const audits: Array<Record<string, unknown>> = [];
     const service = new ProductionOrderService(
       buildDataSource() as never,
@@ -118,6 +118,36 @@ describe('ProductionOrderService', () => {
           return [];
         },
       } as never,
+      {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async findActiveByProductionOrder() {
+          return { id: 'qr-1', productionOrderId: 'generated-order', reissueNo: 1, codeValue: 'PO-QR-1', isActive: true };
+        },
+        async findByCodeValue() {
+          return null;
+        },
+        async findLatestByProductionOrder() {
+          return null;
+        },
+      } as never,
+      {
+        async findByProductionOrder() {
+          return [];
+        },
+      } as never,
+      {
+        async findByProductionOrder() {
+          return [];
+        },
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          return payload;
+        },
+      } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
       {
@@ -173,7 +203,9 @@ describe('ProductionOrderService', () => {
     assert.equal(created.items.length, 2);
     assert.equal(created.productionOrder.customerDeliveryTargetDate, '2026-10-01');
     assert.equal(created.productionOrder.measurementsSnapshot.chest.value, 40);
+    assert.equal(created.activeQrCode.codeValue, 'PO-QR-1');
     assert.equal(audits[0]?.action, 'production_order.generated');
+    assert.equal(audits[1]?.action, 'production_order.qr.issued');
   });
 
   it('builds a financially clean print view with delivery badges and version indicators', async () => {
@@ -223,6 +255,9 @@ describe('ProductionOrderService', () => {
           ];
         },
       } as never,
+      { async findByProductionOrder() { return []; } } as never,
+      { async findActiveByProductionOrder() { return null; } } as never,
+      { async findByProductionOrder() { return []; } } as never,
       { async findByProductionOrder() { return []; } } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,

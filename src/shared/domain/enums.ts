@@ -120,3 +120,22 @@ export enum OperationalAssignmentRole {
   PRIMARY = 'primary',
   PARTICIPANT = 'participant',
 }
+
+export enum QrScanType {
+  START_EXECUTION = 'start_execution',
+  ASSUME_RESPONSIBILITY = 'assume_responsibility',
+  UPDATE_STATUS = 'update_status',
+  UPDATE_DIARY = 'update_diary',
+}
+
+export enum QrScanResult {
+  ACCEPTED = 'accepted',
+  REJECTED = 'rejected',
+}
+
+export enum ProductionExecutionEventType {
+  EXECUTION_START = 'execution_start',
+  RESPONSIBILITY_ASSUMED = 'responsibility_assumed',
+  STATUS_UPDATED = 'status_updated',
+  DIARY_UPDATED = 'diary_updated',
+}

@@ -10,6 +10,7 @@ import { TenantService } from 'src/modules/tenant/application/tenant/tenant.serv
 import {
   DeliveryType,
   OperationalAssignmentRole,
+  ProductionExecutionEventType,
   ProductionOrderStatus,
   ProductionOrderVersionReason,
 } from 'src/shared/domain/enums';
@@ -22,14 +23,19 @@ import { ScheduleProductionOrderDto } from '../../contracts/dto/schedule-product
 import { SearchProductionOrdersDto } from '../../contracts/dto/search-production-orders.dto';
 import { StartProductionOrderDto } from '../../contracts/dto/start-production-order.dto';
 import { UpdateProductionOrderDto } from '../../contracts/dto/update-production-order.dto';
+import { ProductionExecutionEventEntity } from '../../infrastructure/persistence/entities/production-execution-event.entity';
 import { ProductionOrderOperationalAssignmentEntity } from '../../infrastructure/persistence/entities/production-order-operational-assignment.entity';
 import { ProductionOrderEntity } from '../../infrastructure/persistence/entities/production-order.entity';
 import { ProductionOrderItemLinkEntity } from '../../infrastructure/persistence/entities/production-order-item-link.entity';
 import { ProductionOrderVersionEntity } from '../../infrastructure/persistence/entities/production-order-version.entity';
+import { QrCodeEntity } from '../../infrastructure/persistence/entities/qr-code.entity';
+import { ProductionExecutionEventRepository } from '../../infrastructure/persistence/repositories/production-execution-event.repository';
 import { ProductionOrderItemLinkRepository } from '../../infrastructure/persistence/repositories/production-order-item-link.repository';
 import { ProductionOrderOperationalAssignmentRepository } from '../../infrastructure/persistence/repositories/production-order-operational-assignment.repository';
 import { ProductionOrderRepository } from '../../infrastructure/persistence/repositories/production-order.repository';
 import { ProductionOrderVersionRepository } from '../../infrastructure/persistence/repositories/production-order-version.repository';
+import { QrCodeRepository } from '../../infrastructure/persistence/repositories/qr-code.repository';
+import { QrEventRepository } from '../../infrastructure/persistence/repositories/qr-event.repository';
 
 @Injectable()
 export class ProductionOrderService {
@@ -39,6 +45,9 @@ export class ProductionOrderService {
     private readonly itemLinkRepository: ProductionOrderItemLinkRepository,
     private readonly versionRepository: ProductionOrderVersionRepository,
     private readonly assignmentRepository: ProductionOrderOperationalAssignmentRepository,
+    private readonly qrCodeRepository: QrCodeRepository,
+    private readonly qrEventRepository: QrEventRepository,
+    private readonly executionEventRepository: ProductionExecutionEventRepository,
     private readonly tenantService: TenantService,
     private readonly branchService: BranchService,
     private readonly serviceOrderService: ServiceOrderService,
@@ -114,12 +123,15 @@ export class ProductionOrderService {
       }),
     );
 
+    const qrCode = this.buildQrCode(order, input.actorUserId, 1);
+
     await this.dataSource.transaction(async (manager) => {
       await manager.save(ProductionOrderEntity, manager.create(ProductionOrderEntity, order));
       await manager.save(
         ProductionOrderItemLinkEntity,
         linkPayloads.map((link) => manager.create(ProductionOrderItemLinkEntity, link)),
       );
+      await manager.save(QrCodeEntity, manager.create(QrCodeEntity, qrCode));
     });
 
     await this.auditService.record({
@@ -131,6 +143,17 @@ export class ProductionOrderService {
       action: 'production_order.generated',
       eventType: 'production.write',
       metadata: { serviceOrderId: input.serviceOrderId, productionNo: order.productionNo },
+    });
+
+    await this.auditService.record({
+      tenantId: input.tenantId,
+      branchId: order.branchId,
+      actorUserId: input.actorUserId,
+      entityType: 'production_order',
+      entityId: order.id,
+      action: 'production_order.qr.issued',
+      eventType: 'production.traceability',
+      metadata: { qrCodeId: qrCode.id, reissueNo: qrCode.reissueNo },
     });
 
     return this.getDetails(input.tenantId, order.id);
@@ -165,11 +188,14 @@ export class ProductionOrderService {
   async getDetails(tenantId: string, productionOrderId: string) {
     const order = await this.getById(productionOrderId, tenantId);
     const serviceOrderDetails = await this.serviceOrderService.getDetails(tenantId, order.serviceOrderId);
-    const [links, versions, assignments, history] = await Promise.all([
+    const [links, versions, assignments, history, activeQrCode, qrEvents, executionEvents] = await Promise.all([
       this.itemLinkRepository.findByProductionOrder(order.id),
       this.versionRepository.findByProductionOrder(order.id),
       this.assignmentRepository.findByProductionOrder(order.id),
       this.auditService.listByEntity(tenantId, 'production_order', order.id, 200),
+      this.qrCodeRepository.findActiveByProductionOrder(order.id),
+      this.qrEventRepository.findByProductionOrder(order.id),
+      this.executionEventRepository.findByProductionOrder(order.id),
     ]);
     const linkedItemIds = new Set(links.map((link) => link.serviceOrderItemId));
     const linkedItems = serviceOrderDetails.items.filter((item) => linkedItemIds.has(item.id));
@@ -182,6 +208,10 @@ export class ProductionOrderService {
       itemLinks: links,
       versions,
       assignments,
+      activeQrCode,
+      qrEvents,
+      executionEvents,
+      operationalDiary: executionEvents.filter((event) => Boolean(event.diaryEntry)),
       history,
       timeline: [...history].reverse(),
     };
@@ -321,7 +351,7 @@ export class ProductionOrderService {
     return this.getById(productionOrderId, tenantId);
   }
 
-  async start(productionOrderId: string, tenantId: string, dto: StartProductionOrderDto): Promise<ProductionOrderEntity> {
+  async start(productionOrderId: string, tenantId: string, dto: StartProductionOrderDto & { qrEventId?: string | null }): Promise<ProductionOrderEntity> {
     const order = await this.getById(productionOrderId, tenantId);
     if (order.status === ProductionOrderStatus.COMPLETED) {
       throw new DomainValidationError('Completed Production Orders cannot be restarted.');
@@ -329,6 +359,8 @@ export class ProductionOrderService {
     if (![ProductionOrderStatus.OPEN, ProductionOrderStatus.SCHEDULED, ProductionOrderStatus.PAUSED].includes(order.status)) {
       throw new DomainValidationError('Production Order cannot be started from the current status.');
     }
+
+    const statusBefore = order.status;
 
     if (dto.operationalResourceId) {
       await this.operationalResourceService.assertAssignableToBranch(tenantId, dto.operationalResourceId, order.branchId);
@@ -364,6 +396,19 @@ export class ProductionOrderService {
     order.status = ProductionOrderStatus.IN_PROGRESS;
     order.updatedBy = dto.actorUserId;
     const saved = await this.productionOrderRepository.save(order);
+    await this.recordExecutionEvent({
+      tenantId,
+      branchId: saved.branchId,
+      productionOrderId: saved.id,
+      operationalResourceId: primary.operationalResourceId,
+      qrEventId: dto.qrEventId ?? null,
+      actorUserId: dto.actorUserId,
+      eventType: ProductionExecutionEventType.EXECUTION_START,
+      statusBefore,
+      statusAfter: saved.status,
+      diaryEntry: dto.diaryEntry?.trim() || null,
+      eventPayload: { source: dto.qrEventId ? 'qr_scan' : 'manual' },
+    });
     await this.auditService.record({
       tenantId,
       branchId: saved.branchId,
@@ -380,14 +425,29 @@ export class ProductionOrderService {
     return saved;
   }
 
-  async pause(productionOrderId: string, tenantId: string, dto: PauseProductionOrderDto): Promise<ProductionOrderEntity> {
+  async pause(productionOrderId: string, tenantId: string, dto: PauseProductionOrderDto & { qrEventId?: string | null }): Promise<ProductionOrderEntity> {
     const order = await this.getById(productionOrderId, tenantId);
     if (order.status !== ProductionOrderStatus.IN_PROGRESS) {
       throw new DomainValidationError('Only in-progress Production Orders can be paused.');
     }
+    const statusBefore = order.status;
+    const primary = await this.assignmentRepository.findCurrentPrimaryByProductionOrder(productionOrderId);
     order.status = ProductionOrderStatus.PAUSED;
     order.updatedBy = dto.actorUserId;
     const saved = await this.productionOrderRepository.save(order);
+    await this.recordExecutionEvent({
+      tenantId,
+      branchId: saved.branchId,
+      productionOrderId: saved.id,
+      operationalResourceId: primary?.operationalResourceId ?? null,
+      qrEventId: dto.qrEventId ?? null,
+      actorUserId: dto.actorUserId,
+      eventType: ProductionExecutionEventType.STATUS_UPDATED,
+      statusBefore,
+      statusAfter: saved.status,
+      diaryEntry: dto.diaryEntry?.trim() || null,
+      eventPayload: { source: dto.qrEventId ? 'qr_scan' : 'manual' },
+    });
     await this.auditService.record({
       tenantId,
       branchId: saved.branchId,
@@ -401,12 +461,14 @@ export class ProductionOrderService {
     return saved;
   }
 
-  async complete(productionOrderId: string, tenantId: string, dto: CompleteProductionOrderDto): Promise<ProductionOrderEntity> {
+  async complete(productionOrderId: string, tenantId: string, dto: CompleteProductionOrderDto & { qrEventId?: string | null }): Promise<ProductionOrderEntity> {
     const order = await this.getById(productionOrderId, tenantId);
     if (![ProductionOrderStatus.IN_PROGRESS, ProductionOrderStatus.PAUSED, ProductionOrderStatus.SCHEDULED].includes(order.status)) {
       throw new DomainValidationError('Only scheduled, in-progress, or paused Production Orders can be completed.');
     }
 
+    const statusBefore = order.status;
+    const primary = await this.assignmentRepository.findCurrentPrimaryByProductionOrder(productionOrderId);
     const completedAt = new Date();
     order.status = ProductionOrderStatus.COMPLETED;
     order.producedQuantity = dto.producedQuantity === null || dto.producedQuantity === undefined
@@ -425,6 +487,19 @@ export class ProductionOrderService {
         .execute();
     });
 
+    await this.recordExecutionEvent({
+      tenantId,
+      branchId: order.branchId,
+      productionOrderId: order.id,
+      operationalResourceId: primary?.operationalResourceId ?? null,
+      qrEventId: dto.qrEventId ?? null,
+      actorUserId: dto.actorUserId,
+      eventType: ProductionExecutionEventType.STATUS_UPDATED,
+      statusBefore,
+      statusAfter: order.status,
+      diaryEntry: dto.diaryEntry?.trim() || null,
+      eventPayload: { source: dto.qrEventId ? 'qr_scan' : 'manual', producedQuantity: order.producedQuantity },
+    });
     await this.auditService.record({
       tenantId,
       branchId: order.branchId,
@@ -434,6 +509,119 @@ export class ProductionOrderService {
       action: 'production_order.completed',
       eventType: 'production.workflow',
       metadata: { producedQuantity: order.producedQuantity, diaryEntry: dto.diaryEntry?.trim() || null },
+    });
+    return order;
+  }
+
+  async assumeResponsibility(
+    productionOrderId: string,
+    tenantId: string,
+    input: { actorUserId: string; operationalResourceId: string; diaryEntry?: string | null; qrEventId?: string | null },
+  ): Promise<ProductionOrderEntity> {
+    const order = await this.getById(productionOrderId, tenantId);
+    if (order.status === ProductionOrderStatus.COMPLETED || order.status === ProductionOrderStatus.CANCELLED) {
+      throw new DomainValidationError('Completed or cancelled Production Orders cannot change execution responsibility.');
+    }
+
+    await this.operationalResourceService.assertAssignableToBranch(tenantId, input.operationalResourceId, order.branchId);
+    const assignedAt = new Date();
+    await this.assignmentRepository.releaseCurrentPrimaryAssignments(productionOrderId, input.actorUserId, assignedAt);
+    await this.assignmentRepository.save(
+      this.assignmentRepository.create({
+        id: randomUUID(),
+        tenantId,
+        branchId: order.branchId,
+        productionOrderId,
+        operationalResourceId: input.operationalResourceId,
+        assignmentRole: OperationalAssignmentRole.PRIMARY,
+        assignedAt,
+        releasedAt: null,
+        isCurrent: true,
+        isPrimaryResponsible: true,
+        assignmentNotes: input.diaryEntry?.trim() || null,
+        createdBy: input.actorUserId,
+        updatedBy: input.actorUserId,
+      }),
+    );
+
+    await this.recordExecutionEvent({
+      tenantId,
+      branchId: order.branchId,
+      productionOrderId: order.id,
+      operationalResourceId: input.operationalResourceId,
+      qrEventId: input.qrEventId ?? null,
+      actorUserId: input.actorUserId,
+      eventType: ProductionExecutionEventType.RESPONSIBILITY_ASSUMED,
+      statusBefore: order.status,
+      statusAfter: order.status,
+      diaryEntry: input.diaryEntry?.trim() || null,
+      eventPayload: { source: input.qrEventId ? 'qr_scan' : 'manual' },
+    });
+    await this.auditService.record({
+      tenantId,
+      branchId: order.branchId,
+      actorUserId: input.actorUserId,
+      entityType: 'production_order',
+      entityId: order.id,
+      action: 'production_order.responsibility.assumed',
+      eventType: 'production.workflow',
+      metadata: {
+        operationalResourceId: input.operationalResourceId,
+        diaryEntry: input.diaryEntry?.trim() || null,
+      },
+    });
+    return this.getById(productionOrderId, tenantId);
+  }
+
+  async recordDiaryEntry(
+    productionOrderId: string,
+    tenantId: string,
+    input: {
+      actorUserId: string;
+      operationalResourceId?: string | null;
+      diaryEntry: string;
+      qrEventId?: string | null;
+      eventPayload?: Record<string, unknown> | null;
+    },
+  ): Promise<ProductionOrderEntity> {
+    const order = await this.getById(productionOrderId, tenantId);
+    if (![ProductionOrderStatus.SCHEDULED, ProductionOrderStatus.IN_PROGRESS, ProductionOrderStatus.PAUSED].includes(order.status)) {
+      throw new DomainValidationError('Operational Diary updates require a scheduled, in-progress, or paused Production Order.');
+    }
+    const diaryEntry = input.diaryEntry.trim();
+    if (!diaryEntry) {
+      throw new DomainValidationError('Operational Diary entry is required.');
+    }
+
+    let operationalResourceId = input.operationalResourceId ?? null;
+    if (operationalResourceId) {
+      await this.operationalResourceService.assertAssignableToBranch(tenantId, operationalResourceId, order.branchId);
+    } else {
+      operationalResourceId = (await this.assignmentRepository.findCurrentPrimaryByProductionOrder(productionOrderId))?.operationalResourceId ?? null;
+    }
+
+    await this.recordExecutionEvent({
+      tenantId,
+      branchId: order.branchId,
+      productionOrderId: order.id,
+      operationalResourceId,
+      qrEventId: input.qrEventId ?? null,
+      actorUserId: input.actorUserId,
+      eventType: ProductionExecutionEventType.DIARY_UPDATED,
+      statusBefore: order.status,
+      statusAfter: order.status,
+      diaryEntry,
+      eventPayload: { ...(input.eventPayload ?? {}), source: input.qrEventId ? 'qr_scan' : 'manual' },
+    });
+    await this.auditService.record({
+      tenantId,
+      branchId: order.branchId,
+      actorUserId: input.actorUserId,
+      entityType: 'production_order',
+      entityId: order.id,
+      action: 'production_order.diary.updated',
+      eventType: 'production.traceability',
+      metadata: { operationalResourceId, diaryEntry },
     });
     return order;
   }
@@ -543,6 +731,65 @@ export class ProductionOrderService {
     };
   }
 
+  async getActiveQrCode(tenantId: string, productionOrderId: string): Promise<QrCodeEntity | null> {
+    await this.getById(productionOrderId, tenantId);
+    return this.qrCodeRepository.findActiveByProductionOrder(productionOrderId);
+  }
+
+  async getActiveQrCodeByValue(tenantId: string, codeValue: string): Promise<QrCodeEntity | null> {
+    const qrCode = await this.qrCodeRepository.findByCodeValue(tenantId, codeValue);
+    if (!qrCode || !qrCode.isActive) {
+      return null;
+    }
+    return qrCode;
+  }
+
+  async reissueQrCode(
+    productionOrderId: string,
+    tenantId: string,
+    actorUserId: string,
+  ): Promise<QrCodeEntity> {
+    const order = await this.getById(productionOrderId, tenantId);
+    const currentActive = await this.qrCodeRepository.findActiveByProductionOrder(productionOrderId);
+    const latest = currentActive ?? (await this.qrCodeRepository.findLatestByProductionOrder(productionOrderId));
+    const nextReissueNo = (latest?.reissueNo ?? 0) + 1;
+    const issuedAt = new Date();
+    const qrCode = this.buildQrCode(order, actorUserId, nextReissueNo, issuedAt);
+
+    await this.dataSource.transaction(async (manager) => {
+      if (currentActive) {
+        currentActive.isActive = false;
+        currentActive.revokedAt = issuedAt;
+        currentActive.updatedBy = actorUserId;
+        await manager.save(QrCodeEntity, currentActive);
+      }
+      await manager.save(QrCodeEntity, manager.create(QrCodeEntity, qrCode));
+    });
+
+    await this.auditService.record({
+      tenantId,
+      branchId: order.branchId,
+      actorUserId,
+      entityType: 'production_order',
+      entityId: order.id,
+      action: 'production_order.qr.reissued',
+      eventType: 'production.traceability',
+      metadata: { qrCodeId: qrCode.id, reissueNo: qrCode.reissueNo },
+    });
+
+    return qrCode;
+  }
+
+  async listQrEvents(productionOrderId: string, tenantId: string) {
+    await this.getById(productionOrderId, tenantId);
+    return this.qrEventRepository.findByProductionOrder(productionOrderId);
+  }
+
+  async listExecutionEvents(productionOrderId: string, tenantId: string) {
+    await this.getById(productionOrderId, tenantId);
+    return this.executionEventRepository.findByProductionOrder(productionOrderId);
+  }
+
   assertBranchAccess(order: ProductionOrderEntity, accessibleBranchIds: string[]): void {
     if (!accessibleBranchIds.includes(order.branchId)) {
       throw new DomainValidationError('Requested production order is outside the authenticated branch scope.');
@@ -553,6 +800,42 @@ export class ProductionOrderService {
     if (order.status === ProductionOrderStatus.COMPLETED) {
       throw new DomainValidationError('Completed Production Orders cannot be edited.');
     }
+  }
+
+  private async recordExecutionEvent(input: {
+    tenantId: string;
+    branchId: string;
+    productionOrderId: string;
+    operationalResourceId: string | null;
+    qrEventId: string | null;
+    actorUserId: string;
+    eventType: ProductionExecutionEventType;
+    statusBefore: ProductionOrderStatus | null;
+    statusAfter: ProductionOrderStatus | null;
+    diaryEntry: string | null;
+    eventPayload?: Record<string, unknown> | null;
+  }): Promise<ProductionExecutionEventEntity> {
+    const activeVersion = (await this.versionRepository.findByProductionOrder(input.productionOrderId)).find((version) => version.isActive) ?? null;
+    return this.executionEventRepository.save(
+      this.executionEventRepository.create({
+        id: randomUUID(),
+        tenantId: input.tenantId,
+        branchId: input.branchId,
+        productionOrderId: input.productionOrderId,
+        productionOrderVersionId: activeVersion?.id ?? null,
+        operationalResourceId: input.operationalResourceId,
+        qrEventId: input.qrEventId,
+        eventType: input.eventType,
+        eventAt: new Date(),
+        statusBefore: input.statusBefore,
+        statusAfter: input.statusAfter,
+        diaryEntry: input.diaryEntry,
+        eventPayload: input.eventPayload ?? null,
+        recordedBy: input.actorUserId,
+        createdBy: input.actorUserId,
+        updatedBy: input.actorUserId,
+      }),
+    );
   }
 
   private buildMeasurementsSnapshot(
@@ -601,6 +884,31 @@ export class ProductionOrderService {
       indicators.push('[ CORRECTIVE ]');
     }
     return indicators;
+  }
+
+  private buildQrCode(
+    order: ProductionOrderEntity,
+    actorUserId: string,
+    reissueNo: number,
+    issuedAt = new Date(),
+  ): QrCodeEntity {
+    return this.qrCodeRepository.create({
+      id: randomUUID(),
+      tenantId: order.tenantId,
+      branchId: order.branchId,
+      productionOrderId: order.id,
+      reissueNo,
+      codeValue: this.generateQrCodeValue(order.productionNo, reissueNo),
+      issuedAt,
+      isActive: true,
+      revokedAt: null,
+      createdBy: actorUserId,
+      updatedBy: actorUserId,
+    });
+  }
+
+  private generateQrCodeValue(productionNo: string, reissueNo: number): string {
+    return `${productionNo}::QR::${reissueNo}::${randomUUID().slice(0, 12).toUpperCase()}`;
   }
 
   private generateProductionNo(): string {

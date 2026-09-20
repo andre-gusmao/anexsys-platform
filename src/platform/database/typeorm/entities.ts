@@ -11,10 +11,13 @@ import { CustomerInteractionEntity } from 'src/modules/crm/infrastructure/persis
 import { MeasurementRecordEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-record.entity';
 import { OperationalResourceBranchScopeEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource-branch-scope.entity';
 import { OperationalResourceEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource.entity';
+import { ProductionExecutionEventEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-execution-event.entity';
 import { ProductionOrderOperationalAssignmentEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-operational-assignment.entity';
 import { ProductionOrderItemLinkEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-item-link.entity';
 import { ProductionOrderVersionEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order-version.entity';
 import { ProductionOrderEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-order.entity';
+import { QrCodeEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/qr-code.entity';
+import { QrEventEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/qr-event.entity';
 import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
@@ -36,6 +39,9 @@ export const typeOrmEntities = [
   ProductionOrderItemLinkEntity,
   ProductionOrderVersionEntity,
   ProductionOrderOperationalAssignmentEntity,
+  QrCodeEntity,
+  QrEventEntity,
+  ProductionExecutionEventEntity,
   BusinessCalendarDayEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,

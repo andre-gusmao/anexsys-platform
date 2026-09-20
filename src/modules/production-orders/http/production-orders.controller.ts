@@ -368,6 +368,43 @@ export class ProductionOrdersController {
     return this.productionOrderService.getPrintView(tenantId!, productionOrderId);
   }
 
+  @Permissions('production_orders.read')
+  @Get(':productionOrderId/qr')
+  async getQr(
+    @Param('productionOrderId', new ParseUUIDPipe()) productionOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    await this.getScopedProductionOrderDetails(productionOrderId, tenantId, request);
+    return this.productionOrderService.getActiveQrCode(tenantId!, productionOrderId);
+  }
+
+  @Permissions('production_orders.write')
+  @Post(':productionOrderId/qr/reissue')
+  async reissueQr(
+    @Param('productionOrderId', new ParseUUIDPipe()) productionOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    await this.getScopedProductionOrderDetails(productionOrderId, tenantId, request);
+    return this.productionOrderService.reissueQrCode(productionOrderId, tenantId, principal.userId);
+  }
+
+  @Permissions('production_orders.read')
+  @Get(':productionOrderId/qr-events')
+  async listQrEvents(
+    @Param('productionOrderId', new ParseUUIDPipe()) productionOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    await this.getScopedProductionOrderDetails(productionOrderId, tenantId, request);
+    return this.productionOrderService.listQrEvents(productionOrderId, tenantId!);
+  }
+
   private async getScopedProductionOrderDetails(
     productionOrderId: string,
     tenantId: string | null,
