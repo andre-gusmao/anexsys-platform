@@ -631,7 +631,43 @@ Delivery Type and Operational Priority requirements:
 
 Delivery Type and Operational Priority must influence planning and alerts but must not automatically override approval, quality, safety, or compliance controls unless explicitly configured.
 
-### 7.13 Service Order versus Production Order
+### 7.13 Delivery Date Engine
+
+The platform must include a Delivery Date Engine that calculates the initial suggested/promised delivery date during Service Order creation and provides this date as the customer-commitment input for the Production Buffer / Safety Window model in section 8.7.
+
+1. Automatic delivery date suggestion
+- The platform shall automatically suggest delivery dates during Service Order creation.
+- Default day-of-week rollover behavior (baseline/default rule, tenant-configurable):
+  - Monday intake -> next Monday delivery
+  - Tuesday intake -> next Tuesday delivery
+  - Wednesday intake -> next Wednesday delivery
+  - Thursday intake -> next Thursday delivery
+  - Friday intake -> next Friday delivery
+  - Saturday intake -> next Saturday delivery
+- The default delivery rule must be configurable per tenant (tenants may define a different rollover rule or fixed lead time).
+
+2. Calendar-aware calculation
+- The platform shall automatically consider Holidays, Business Calendars, and Branch Calendars when calculating the suggested delivery date.
+- If a calculated delivery date falls on a non-working day (holiday or non-business day per the applicable calendar), the platform must automatically move the delivery date to the next valid business day.
+- Calendar-aware delivery-date logic must remain aligned with section 8.7 (Production Buffer / Safety Window) and section 39 (SLA Model calendar/time controls), without duplicating those calculation frameworks.
+
+3. Delivery types alignment with section 7.12 baseline
+- Standard: uses the default delivery rule described above and is equivalent to the section 7.12 baseline Normal delivery type.
+- Priority: uses custom delivery dates and elevated operational priority, aligned with section 7.12 Priority semantics.
+- Express: allows delivery in hours or same-day service, aligned with section 7.12 Express semantics and section 8.7 baseline buffer default of Express = 0 days.
+
+4. Pricing / surcharge rules
+- Priority and Express deliveries may apply configurable surcharges.
+- Supported surcharge methods: Percentage, Fixed value.
+- Surcharge configuration must be tenant-configurable.
+- Surcharges are part of Service Order financial values (section 7 financial domain) and must not appear on Production Orders, consistent with the rule in section 7.14 that Production Orders never display prices, discounts, margins, profit, commissions, payment information, or other financial information.
+
+5. Cross-cutting impacts of Delivery Type
+- Delivery Type must impact production priority, dashboard indicators, workflow behavior, SLA calculations, operational alerts, and Production Order visual indicators.
+- Production Order visual indicator behavior must reuse section 8.6 visual-delivery-date requirements rather than duplicating visual-format definitions.
+- SLA trigger behavior remains governed by section 39.4; Delivery Type affects SLA calculations through those existing trigger and calendar controls.
+
+### 7.14 Service Order versus Production Order
 
 The platform must maintain Service Order and Production Order as separate but linked documents with different business purposes.
 
@@ -2353,6 +2389,7 @@ Domain-to-classification matrix:
 - Customers — Mandatory
 - Body measurements — Optional
 - Service Orders — Mandatory
+- Delivery Date Engine — Mandatory
 - Service Order versus Production Order separation — Mandatory
 - Service Order Items — Mandatory
 - Production Orders — Mandatory
@@ -2552,7 +2589,8 @@ The following areas were modified or added in V1.2:
 
 ### 48.1 Sections added
 - Section 6.12 Piece-based productivity model
-- Section 7.13 Service Order versus Production Order
+- Section 7.13 Delivery Date Engine
+- Section 7.14 Service Order versus Production Order
 - Section 8.6 Production Order visual delivery date
 - Section 8.7 Production buffer / safety window
 - Section 9.10 Rework Attribution Model
@@ -2585,6 +2623,7 @@ The following areas were modified or added in V1.2:
 
 ### 48.3 Business rules added
 - Service Orders remain the commercial, financial, customer-facing source document.
+- Delivery Date Engine must suggest an initial/promised delivery date at Service Order creation using tenant-configurable rollover rules and applicable calendars.
 - Production Orders remain operational execution documents and must never display financial information.
 - Production Orders must display the customer delivery date in a visually dominant format.
 - Production Buffer / Safety Window dates must be calculated from the customer commitment date.
@@ -2604,6 +2643,7 @@ The following areas were modified or added in V1.2:
 
 ### 48.5 New concepts introduced
 - Service Order versus Production Order document boundary
+- Delivery Date Engine for calendar-aware delivery-date suggestion aligned to delivery type and buffer rules
 - visually managed Production Order delivery date presentation
 - Production Buffer / Safety Window with internal deadlines
 - Production Bag ownership transfer governance
