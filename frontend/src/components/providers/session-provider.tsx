@@ -421,7 +421,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     const currentSession = sessionRef.current;
     if (currentSession) {
       try {
-        await authenticatedRequest(currentSession, "/auth/logout", { method: "POST", body: JSON.stringify({}) });
+        await authenticatedRequest(currentSession, "/auth/logout", { method: "POST", body: JSON.stringify({}) }, { allowRefresh: false });
       } catch {
         // ignore logout network errors during local session clearing
       }
@@ -465,7 +465,10 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   const selectBranch = useCallback(async (branchId: string) => {
     const currentSession = sessionRef.current;
     if (!currentSession) return false;
-    if (!currentSession.branchIds.includes(branchId)) {
+    const allowedBranchIds = currentSession.branchIds.length > 0
+      ? currentSession.branchIds
+      : currentSession.branches.map((branch) => branch.id);
+    if (allowedBranchIds.length > 0 && !allowedBranchIds.includes(branchId)) {
       setErrorMessage("Selected branch is outside the authenticated access scope.");
       return false;
     }

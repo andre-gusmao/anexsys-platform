@@ -1,15 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const { session, logout, errorMessage, clearError, selectCompany, selectBranch } = useSession();
+  const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
+  const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
   const activeCompany = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
+  const busy = pendingCompanySwitch || pendingBranchSwitch;
 
   return (
     <div className="app-shell">
@@ -46,11 +48,17 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
               <label className="field" style={{ minWidth: 220, marginBottom: 0 }}>
                 <span>Company</span>
                 <select
+                  disabled={busy}
                   value={session.tenantId}
                   onChange={async (event) => {
-                    const resolved = await selectCompany(event.target.value);
-                    if (!resolved) {
-                      router.push("/select-branch");
+                    setPendingCompanySwitch(true);
+                    try {
+                      const resolved = await selectCompany(event.target.value);
+                      if (!resolved) {
+                        router.push("/select-branch");
+                      }
+                    } finally {
+                      setPendingCompanySwitch(false);
                     }
                   }}
                 >
@@ -67,13 +75,19 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
               <label className="field" style={{ minWidth: 220, marginBottom: 0 }}>
                 <span>Branch</span>
                 <select
+                  disabled={busy}
                   value={session.activeBranchId ?? ""}
                   onChange={async (event) => {
                     if (!event.target.value) {
                       router.push("/select-branch");
                       return;
                     }
-                    await selectBranch(event.target.value);
+                    setPendingBranchSwitch(true);
+                    try {
+                      await selectBranch(event.target.value);
+                    } finally {
+                      setPendingBranchSwitch(false);
+                    }
                   }}
                 >
                   {!session.activeBranchId ? <option value="">Select branch</option> : null}
@@ -86,9 +100,14 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
               </label>
             ) : null}
 
-            <Link className="button-secondary" href="/select-branch">
+            <button
+              className="button-secondary"
+              disabled={busy}
+              onClick={() => router.push("/select-branch")}
+              type="button"
+            >
               Switch Context
-            </Link>
+            </button>
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout
             </button>

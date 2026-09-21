@@ -79,7 +79,7 @@ export class AuthorizationService {
   }
 
   async createPermission(dto: CreatePermissionDto): Promise<PermissionEntity> {
-    const normalizedCode = dto.code.trim();
+    const normalizedCode = dto.code.trim().toLowerCase();
     const existingPermission = await this.permissionRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
     if (existingPermission) {
       throw new DomainValidationError(`Permission code '${normalizedCode}' already exists for this tenant.`);
@@ -386,12 +386,16 @@ export class AuthorizationService {
     const communityIds = memberships.map((membership) => membership.communityId);
     const communities = await this.communityRepository.findByIds(tenantId, communityIds);
     const communityPermissions = await this.communityPermissionRepository.findByCommunityIds(tenantId, communityIds);
-    const permissions = await this.permissionRepository.findByIds(tenantId, [
+    const permissionIds = [
       ...new Set([
         ...rolePermissions.map((rolePermission) => rolePermission.permissionId),
         ...communityPermissions.map((communityPermission) => communityPermission.permissionId),
       ]),
-    ]);
+    ];
+    const permissions = await this.permissionRepository.findByIds(tenantId, permissionIds);
+    if (permissions.length !== permissionIds.length) {
+      throw new DomainValidationError('Permission assignments reference missing permissions.');
+    }
 
     const branchIds = [
       ...branchScopes.map((scope) => scope.branchId),

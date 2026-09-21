@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/providers/session-provider";
 
 export default function SelectBranchPage() {
   const router = useRouter();
   const { status, session, selectCompany, selectBranch } = useSession();
+  const [pendingCompanyId, setPendingCompanyId] = useState<string | null>(null);
+  const [pendingBranchId, setPendingBranchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "anonymous") {
@@ -25,6 +27,7 @@ export default function SelectBranchPage() {
   const activeCompany = session.companies.find((company) => company.tenantId === session.tenantId) ?? null;
   const needsCompanySelection = session.companySelectionRequired;
   const branchTitle = activeCompany ? `Select active branch for ${activeCompany.displayName}` : "Select active branch";
+  const busy = pendingCompanyId !== null || pendingBranchId !== null;
 
   return (
     <div className="screen-shell">
@@ -44,18 +47,24 @@ export default function SelectBranchPage() {
                 {session.companies.map((company) => (
                   <button
                     className="branch-card"
+                    disabled={busy}
                     key={company.tenantId}
                     onClick={async () => {
-                      const resolved = await selectCompany(company.tenantId);
-                      if (resolved) {
-                        router.push("/dashboard");
+                      setPendingCompanyId(company.tenantId);
+                      try {
+                        const resolved = await selectCompany(company.tenantId);
+                        if (resolved) {
+                          router.push("/dashboard");
+                        }
+                      } finally {
+                        setPendingCompanyId(null);
                       }
                     }}
                     type="button"
                   >
                     <div className="eyebrow">Company</div>
                     <h2 style={{ marginTop: 12 }}>{company.displayName}</h2>
-                    <p className="branch-card__meta">{company.code}</p>
+                    <p className="branch-card__meta">{pendingCompanyId === company.tenantId ? "Switching…" : company.code}</p>
                   </button>
                 ))}
               </div>
@@ -70,17 +79,23 @@ export default function SelectBranchPage() {
                 {session.branches.map((branch) => (
                   <button
                     className="branch-card"
+                    disabled={busy}
                     key={branch.id}
                     onClick={async () => {
-                      if (await selectBranch(branch.id)) {
-                        router.push("/dashboard");
+                      setPendingBranchId(branch.id);
+                      try {
+                        if (await selectBranch(branch.id)) {
+                          router.push("/dashboard");
+                        }
+                      } finally {
+                        setPendingBranchId(null);
                       }
                     }}
                     type="button"
                   >
                     <div className="eyebrow">Branch</div>
                     <h2 style={{ marginTop: 12 }}>{branch.label}</h2>
-                    <p className="branch-card__meta">{branch.hint ?? branch.id}</p>
+                    <p className="branch-card__meta">{pendingBranchId === branch.id ? "Applying context…" : branch.hint ?? branch.id}</p>
                   </button>
                 ))}
               </div>

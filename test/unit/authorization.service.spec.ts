@@ -207,6 +207,34 @@ describe('AuthorizationService', () => {
     });
   });
 
+
+  it('fails fast when assignments reference missing permissions', async () => {
+    const service = createService({
+      rolePermissionRepository: {
+        async findByRoleIds() {
+          return [{ roleId: 'role-1', permissionId: 'missing-permission' }];
+        },
+      },
+      userRoleAssignmentRepository: {
+        async findActiveByUserId() {
+          return [{ roleId: 'role-1', assignedBranchId: null }];
+        },
+      },
+      branchService: {
+        async listByTenant() {
+          return [];
+        },
+      },
+      permissionRepository: {
+        async findByIds() {
+          return [];
+        },
+      },
+    });
+
+    await assert.rejects(() => service.getEffectiveAccessForUser('tenant-1', 'user-1'), DomainValidationError);
+  });
+
   it('returns empty effective access when the user has no grants', async () => {
     const service = createService();
     const access = await service.getEffectiveAccessForUser('tenant-1', 'user-1');
