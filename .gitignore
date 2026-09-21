@@ -1,8 +1,11 @@
 node_modules/
+.next/
+frontend/.next/
 dist/
 coverage/
 .env
 .env.*
 !/.env.example
+!frontend/.env.example
 
 tsconfig.build.tsbuildinfo
