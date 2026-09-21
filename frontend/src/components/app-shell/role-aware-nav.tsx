@@ -9,6 +9,7 @@ type NavItem = {
   label: string;
   hint: string;
   requiredPermissions?: string[];
+  permissionMatch?: "all" | "any";
 };
 
 const navItems: NavItem[] = [
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
     label: "Users & Access",
     hint: "Role-aware navigation",
     requiredPermissions: ["users.read", "roles.read", "permissions.read"],
+    permissionMatch: "all",
   },
 ];
 
@@ -42,7 +44,11 @@ export function RoleAwareNav() {
   const { hasAnyPermission } = useSession();
 
   const visibleItems = navItems.filter((item) =>
-    item.requiredPermissions ? hasAnyPermission(...item.requiredPermissions) : true,
+    item.requiredPermissions
+      ? item.permissionMatch === "all"
+        ? item.requiredPermissions.every((permission) => hasAnyPermission(permission))
+        : hasAnyPermission(...item.requiredPermissions)
+      : true,
   );
 
   return (
