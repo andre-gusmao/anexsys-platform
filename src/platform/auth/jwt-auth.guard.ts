@@ -62,6 +62,7 @@ export class JwtAuthGuard implements CanActivate {
       tokenPermissions: payload.permissions,
       effectivePermissions: effectiveAccess.permissions,
       effectiveBranchIds: effectiveAccess.branchIds,
+      communities: effectiveAccess.communities,
     };
 
     if (!requestContext.requestedTenantId) {

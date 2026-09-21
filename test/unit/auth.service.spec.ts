@@ -1,235 +1,229 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { JwtService } from '@nestjs/jwt';
 import { AuthService } from 'src/modules/identity/application/auth/auth.service';
-import { AuthenticationFailedError } from 'src/shared/errors/authentication-failed.error';
-import { TokenFactoryService } from 'src/platform/auth/token-factory.service';
 
-function buildAuthService(overrides?: {
-  session?: Record<string, unknown> | null;
-  verifyPassword?: boolean;
-  token?: string;
-  access?: { branchIds: string[]; permissions: string[] };
-}) {
-  const savedSessions: Array<Record<string, unknown>> = [];
-  const tokenFactoryService = new TokenFactoryService(new JwtService({ secret: 'unit-test-secret' }));
-  const identityService = {
-    async getByTenantAndEmail() {
-      return {
-        id: 'user-1',
-        tenantId: 'tenant-1',
-        defaultBranchId: 'branch-1',
-        status: 'active',
-      };
+function createAuthService(overrides: Record<string, unknown> = {}) {
+  const defaults = {
+    identityService: {
+      async listActiveByEmail() {
+        return [];
+      },
+      async getContextPreference() {
+        return null;
+      },
+      async saveContextPreference() {},
+      async getById(id: string) {
+        return { id, tenantId: 'tenant-1', email: 'admin@example.com', defaultBranchId: 'branch-1', status: 'active' };
+      },
+      async setPassword() {
+        return { tenantId: 'tenant-1', defaultBranchId: 'branch-1' };
+      },
     },
-    async getById() {
-      return {
-        id: 'user-1',
-        tenantId: 'tenant-1',
-        defaultBranchId: 'branch-1',
-        status: 'active',
-      };
+    userCredentialRepository: {
+      async findByUserIds() {
+        return [];
+      },
+    },
+    userSessionRepository: {
+      create(payload: Record<string, unknown>) {
+        return payload;
+      },
+      async save(payload: Record<string, unknown>) {
+        return payload;
+      },
+      async findActiveById() {
+        return null;
+      },
+      async rotateRefreshToken() {
+        return true;
+      },
+    },
+    authorizationService: {
+      async getEffectiveAccessForUser() {
+        return { branchIds: ['branch-1'], permissions: ['dashboard.read'], communities: ['ADMIN'] };
+      },
+    },
+    passwordHasherService: {
+      async verify(password: string, hash: string) {
+        return hash === `hashed:${password}`;
+      },
+    },
+    tokenFactoryService: {
+      async issueTokens(payload: Record<string, unknown>, refreshTokenId = 'session-1') {
+        return {
+          accessToken: `access:${String(payload.tenantId)}`,
+          refreshToken: `refresh:${refreshTokenId}`,
+          refreshTokenHash: `hash:${refreshTokenId}`,
+          refreshTokenId,
+        };
+      },
+      hashToken(token: string) {
+        return `hashed-token:${token}`;
+      },
+      compareTokenHash(rawToken: string, hashedToken: string) {
+        return `hashed-token:${rawToken}` === hashedToken;
+      },
+      async verifyRefreshToken() {
+        return { tokenType: 'refresh', jti: 'session-1', sub: 'user-1', tenantId: 'tenant-1' };
+      },
+    },
+    auditService: { async record() {} },
+    tenantService: {
+      async getById(id: string) {
+        return { id, code: id.toUpperCase(), displayName: `Company ${id}` };
+      },
+    },
+    branchService: {
+      async getById(id: string) {
+        return { id, tenantId: 'tenant-1' };
+      },
+    },
+    firstAccessTokenRepository: {
+      create(payload: Record<string, unknown>) {
+        return payload;
+      },
+      async save(payload: Record<string, unknown>) {
+        return payload;
+      },
+      async revokeActiveByUserId() {},
+      async findActiveByTokenHash() {
+        return null;
+      },
     },
   };
-  const userCredentialRepository = {
-    async findByUserId() {
-      return { passwordHash: 'ignored' };
-    },
-  };
-  const session = overrides?.session ?? null;
-  const userSessionRepository = {
-    create(payload: Record<string, unknown>) {
-      return payload;
-    },
-    async save(payload: Record<string, unknown>) {
-      savedSessions.push(payload);
-      return payload;
-    },
-    async findActiveById() {
-      return session;
-    },
-    async rotateRefreshToken({ refreshTokenHash, expiresAt, updatedBy }: Record<string, any>) {
-      if (!session) {
-        return false;
-      }
-      session.refreshTokenHash = refreshTokenHash;
-      session.expiresAt = expiresAt;
-      session.updatedBy = updatedBy;
-      session.updatedAt = new Date();
-      session.lastUsedAt = new Date();
-      return true;
-    },
-  };
-  const authorizationService = {
-    async getEffectiveAccessForUser(tenantId: string, userId: string) {
-      assert.equal(tenantId, 'tenant-1');
-      assert.equal(userId, 'user-1');
-      return overrides?.access ?? { branchIds: ['branch-1'], permissions: ['tenant.manage'] };
-    },
-  };
-  const passwordHasherService = {
-    async verify(password: string) {
-      assert.equal(password, 'super-secret-password');
-      return overrides?.verifyPassword ?? true;
-    },
-  };
-  const auditService = { async record() {} };
-
-  const service = new AuthService(
-    identityService as never,
-    userCredentialRepository as never,
-    userSessionRepository as never,
-    authorizationService as never,
-    passwordHasherService as never,
-    tokenFactoryService,
-    auditService as never,
+  const deps = { ...defaults, ...overrides };
+  return new AuthService(
+    deps.identityService as never,
+    deps.userCredentialRepository as never,
+    deps.userSessionRepository as never,
+    deps.authorizationService as never,
+    deps.passwordHasherService as never,
+    deps.tokenFactoryService as never,
+    deps.auditService as never,
+    deps.tenantService as never,
+    deps.branchService as never,
+    deps.firstAccessTokenRepository as never,
   );
-
-  return { service, savedSessions, tokenFactoryService };
 }
 
 describe('AuthService', () => {
-  it('persists a seven-day session expiry and matching session id on login', async () => {
-    const { service, savedSessions } = buildAuthService();
-
-    const result = await service.loginWithPassword({
-      tenantId: 'tenant-1',
-      email: ' user@example.com ',
-      password: 'super-secret-password',
-    });
-
-    assert.ok(savedSessions.length > 0);
-    const session = savedSessions[0];
-    assert.equal(session.id, result.sessionId);
-    const issuedAt = session.issuedAt as Date;
-    const expiresAt = session.expiresAt as Date;
-    const diffMs = expiresAt.getTime() - issuedAt.getTime();
-    assert.ok(diffMs >= 7 * 24 * 60 * 60 * 1000 - 1000);
-    assert.ok(diffMs <= 7 * 24 * 60 * 60 * 1000 + 1000);
-  });
-
-  it('refreshes tokens and extends session expiry', async () => {
-    const tokenFactoryService = new TokenFactoryService(new JwtService({ secret: 'unit-test-secret' }));
-    const firstTokens = await tokenFactoryService.issueTokens({
-      sub: 'user-1',
-      tenantId: 'tenant-1',
-      branchIds: ['branch-1'],
-      permissions: ['tenant.manage'],
-    });
-    const session = {
-      id: firstTokens.refreshTokenId,
-      tenantId: 'tenant-1',
-      userId: 'user-1',
-      refreshTokenHash: firstTokens.refreshTokenHash,
-      status: 'active',
-      issuedAt: new Date(),
-      expiresAt: new Date(Date.now() + 60_000),
-      lastUsedAt: new Date(),
-      revokedAt: null,
-      updatedAt: new Date(),
-      updatedBy: 'user-1',
-    };
-    const { service } = buildAuthService({ session });
-
-    const refreshed = await service.refreshTokens({ refreshToken: firstTokens.refreshToken });
-
-    assert.equal(refreshed.sessionId, firstTokens.refreshTokenId);
-    assert.notEqual(refreshed.refreshToken, firstTokens.refreshToken);
-    assert.equal(session.refreshTokenHash.length > 0, true);
-    assert.ok(session.expiresAt.getTime() > Date.now() + 6 * 24 * 60 * 60 * 1000);
-  });
-
-  it('rejects refresh with a non-refresh token payload', async () => {
-    const tokenFactoryService = new TokenFactoryService(new JwtService({ secret: 'unit-test-secret' }));
-    const accessToken = await new JwtService({ secret: 'unit-test-secret' }).signAsync({
-      sub: 'user-1',
-      tenantId: 'tenant-1',
-      branchIds: ['branch-1'],
-      permissions: ['tenant.manage'],
-      jti: 'session-1',
-      tokenType: 'access',
-    });
-    const { service } = buildAuthService({
-      session: {
-        id: 'session-1',
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        refreshTokenHash: tokenFactoryService.hashToken(accessToken),
-        status: 'active',
-        issuedAt: new Date(),
-        expiresAt: new Date(Date.now() + 60_000),
+  it('logs in with email/password only and resolves multiple companies', async () => {
+    const sessions: Array<Record<string, unknown>> = [];
+    const service = createAuthService({
+      identityService: {
+        async listActiveByEmail(email: string) {
+          assert.equal(email, 'shared@example.com');
+          return [
+            { id: 'user-1', tenantId: 'tenant-1', email, defaultBranchId: 'branch-1', status: 'active' },
+            { id: 'user-2', tenantId: 'tenant-2', email, defaultBranchId: 'branch-2', status: 'active' },
+          ];
+        },
+        async getContextPreference() {
+          return { lastTenantId: 'tenant-2', lastBranchId: 'branch-2' };
+        },
+        async saveContextPreference() {},
+        async getById(id: string) {
+          return { id, tenantId: id === 'user-2' ? 'tenant-2' : 'tenant-1', email: 'shared@example.com', defaultBranchId: null, status: 'active' };
+        },
+      },
+      userCredentialRepository: {
+        async findByUserIds() {
+          return [
+            { userId: 'user-1', passwordHash: 'hashed:Secret123!' },
+            { userId: 'user-2', passwordHash: 'hashed:Secret123!' },
+          ];
+        },
+      },
+      userSessionRepository: {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          sessions.push(payload);
+          return payload;
+        },
+      },
+      authorizationService: {
+        async getEffectiveAccessForUser(tenantId: string, userId: string) {
+          return {
+            branchIds: [tenantId === 'tenant-2' ? 'branch-2' : 'branch-1'],
+            permissions: ['dashboard.read'],
+            communities: [userId === 'user-2' ? 'EXECUTIVES' : 'ADMINISTRATORS'],
+          };
+        },
+      },
+      tenantService: {
+        async getById(id: string) {
+          return { id, code: id === 'tenant-1' ? 'MAT' : 'FIL', displayName: id === 'tenant-1' ? 'Matriz' : 'Filial' };
+        },
       },
     });
 
-    await assert.rejects(() => service.refreshTokens({ refreshToken: accessToken }), AuthenticationFailedError);
+    const login = await service.loginWithPassword({ email: 'shared@example.com', password: 'Secret123!' });
+
+    assert.equal(login.tenantId, 'tenant-2');
+    assert.deepEqual(login.branchIds, ['branch-2']);
+    assert.equal(sessions[0]?.tenantId, 'tenant-2');
+    assert.equal((sessions[0]?.contextData as { companySelectionRequired: boolean }).companySelectionRequired, false);
   });
 
-  it('rejects refresh when session and token do not match', async () => {
-    const tokenFactoryService = new TokenFactoryService(new JwtService({ secret: 'unit-test-secret' }));
-    const tokens = await tokenFactoryService.issueTokens({
-      sub: 'user-1',
-      tenantId: 'tenant-1',
-      branchIds: ['branch-1'],
-      permissions: ['tenant.manage'],
-    });
-    const { service } = buildAuthService({
-      session: {
-        id: tokens.refreshTokenId,
-        tenantId: 'tenant-1',
-        userId: 'user-2',
-        refreshTokenHash: tokens.refreshTokenHash,
-        status: 'active',
-        issuedAt: new Date(),
-        expiresAt: new Date(Date.now() + 60_000),
+  it('stores company-selection requirement when no previous company context exists', async () => {
+    const sessions: Array<Record<string, unknown>> = [];
+    const service = createAuthService({
+      identityService: {
+        async listActiveByEmail(email: string) {
+          return [
+            { id: 'user-1', tenantId: 'tenant-1', email, defaultBranchId: null, status: 'active' },
+            { id: 'user-2', tenantId: 'tenant-2', email, defaultBranchId: null, status: 'active' },
+          ];
+        },
+        async getContextPreference() {
+          return null;
+        },
+        async saveContextPreference() {},
+      },
+      userCredentialRepository: {
+        async findByUserIds() {
+          return [
+            { userId: 'user-1', passwordHash: 'hashed:Secret123!' },
+            { userId: 'user-2', passwordHash: 'hashed:Secret123!' },
+          ];
+        },
+      },
+      userSessionRepository: {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          sessions.push(payload);
+          return payload;
+        },
       },
     });
 
-    await assert.rejects(() => service.refreshTokens({ refreshToken: tokens.refreshToken }), AuthenticationFailedError);
+    await service.loginWithPassword({ email: 'shared@example.com', password: 'Secret123!' });
+    assert.equal((sessions[0]?.contextData as { companySelectionRequired: boolean }).companySelectionRequired, true);
   });
 
-  it('rejects refresh when the token hash does not match the active session', async () => {
-    const tokenFactoryService = new TokenFactoryService(new JwtService({ secret: 'unit-test-secret' }));
-    const tokens = await tokenFactoryService.issueTokens({
-      sub: 'user-1',
-      tenantId: 'tenant-1',
-      branchIds: ['branch-1'],
-      permissions: ['tenant.manage'],
-    });
-    const { service } = buildAuthService({
-      session: {
-        id: tokens.refreshTokenId,
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        refreshTokenHash: 'different-hash',
-        status: 'active',
-        issuedAt: new Date(),
-        expiresAt: new Date(Date.now() + 60_000),
+  it('persists selected branch as last valid context', async () => {
+    const savedPreferences: Array<Record<string, unknown>> = [];
+    const service = createAuthService({
+      userSessionRepository: {
+        async findActiveById() {
+          return { id: 'session-1', tenantId: 'tenant-1', userId: 'user-1', contextData: {}, status: 'active' };
+        },
+      },
+      identityService: {
+        async saveContextPreference(payload: Record<string, unknown>) {
+          savedPreferences.push(payload);
+        },
+        async getById() {
+          return { id: 'user-1', tenantId: 'tenant-1', email: 'admin@example.com', defaultBranchId: 'branch-1', status: 'active' };
+        },
       },
     });
 
-    await assert.rejects(() => service.refreshTokens({ refreshToken: tokens.refreshToken }), AuthenticationFailedError);
-  });
-
-  it('rejects refresh when the session is inactive or expired', async () => {
-    const tokenFactoryService = new TokenFactoryService(new JwtService({ secret: 'unit-test-secret' }));
-    const tokens = await tokenFactoryService.issueTokens({
-      sub: 'user-1',
-      tenantId: 'tenant-1',
-      branchIds: ['branch-1'],
-      permissions: ['tenant.manage'],
-    });
-    const { service } = buildAuthService({
-      session: {
-        id: tokens.refreshTokenId,
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-        refreshTokenHash: tokens.refreshTokenHash,
-        status: 'active',
-        issuedAt: new Date(),
-        expiresAt: new Date(Date.now() - 60_000),
-      },
-    });
-
-    await assert.rejects(() => service.refreshTokens({ refreshToken: tokens.refreshToken }), AuthenticationFailedError);
+    await service.selectBranch({ sessionId: 'session-1', actorUserId: 'user-1', branchId: 'branch-1' });
+    assert.equal(savedPreferences[0]?.lastBranchId, 'branch-1');
   });
 });

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UserStatus } from 'src/shared/domain/enums';
 import { UserIdentityEntity } from '../entities/user-identity.entity';
 
 @Injectable()
@@ -28,6 +29,20 @@ export class UserIdentityRepository {
         tenantId,
         email: email.toLowerCase(),
       },
+    });
+  }
+
+  async findActiveByEmail(email: string): Promise<UserIdentityEntity[]> {
+    return this.repository.find({
+      where: { email: email.toLowerCase(), status: UserStatus.ACTIVE },
+      order: { tenantId: 'ASC', displayName: 'ASC' },
+    });
+  }
+
+  async findByEmail(email: string): Promise<UserIdentityEntity[]> {
+    return this.repository.find({
+      where: { email: email.toLowerCase() },
+      order: { tenantId: 'ASC', displayName: 'ASC' },
     });
   }
 

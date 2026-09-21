@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UserCredentialEntity } from '../entities/user-credential.entity';
 
 @Injectable()
@@ -20,5 +20,10 @@ export class UserCredentialRepository {
 
   async findByUserId(userId: string): Promise<UserCredentialEntity | null> {
     return this.repository.findOne({ where: { userId } });
+  }
+
+  async findByUserIds(userIds: string[]): Promise<UserCredentialEntity[]> {
+    if (userIds.length === 0) return [];
+    return this.repository.find({ where: { userId: In(userIds) } });
   }
 }

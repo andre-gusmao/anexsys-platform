@@ -2,16 +2,18 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-type KnownTenantOption = {
+type BranchOption = {
   id: string;
   label: string;
   hint?: string;
 };
 
-type BranchOption = {
-  id: string;
-  label: string;
-  hint?: string;
+type CompanyOption = {
+  tenantId: string;
+  userId: string;
+  code: string;
+  displayName: string;
+  defaultBranchId: string | null;
 };
 
 type AuthenticatedUser = {
@@ -29,16 +31,18 @@ type SessionRecord = {
   refreshToken: string;
   sessionId: string;
   permissions: string[];
+  communities: string[];
   branchIds: string[];
   activeBranchId: string | null;
   user: AuthenticatedUser | null;
   branches: BranchOption[];
+  companies: CompanyOption[];
+  companySelectionRequired: boolean;
 };
 
 type SessionStatus = "loading" | "anonymous" | "branch-selection" | "authenticated";
 
 type LoginInput = {
-  tenantId: string;
   email: string;
   password: string;
 };
@@ -46,19 +50,20 @@ type LoginInput = {
 type SessionContextValue = {
   status: SessionStatus;
   session: SessionRecord | null;
-  knownTenants: KnownTenantOption[];
   errorMessage: string | null;
   login: (input: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
-  selectBranch: (branchId: string) => boolean;
+  selectCompany: (tenantId: string) => Promise<boolean>;
+  selectBranch: (branchId: string) => Promise<boolean>;
   clearError: () => void;
   hasAnyPermission: (...permissions: string[]) => boolean;
 };
 
-type LoginResponse = {
+type AuthResponse = {
   accessToken: string;
   refreshToken: string;
   sessionId: string;
+  tenantId: string;
   branchIds: string[];
   permissions: string[];
 };
@@ -67,6 +72,7 @@ type RefreshResponse = {
   accessToken: string;
   refreshToken: string;
   sessionId: string;
+  tenantId: string;
 };
 
 type MeResponse = {
@@ -74,10 +80,13 @@ type MeResponse = {
   effectiveAccess: {
     branchIds: string[];
     permissions: string[];
+    communities: string[];
   };
   context: {
     tenantId: string;
     branchId: string | null;
+    companySelectionRequired: boolean;
+    availableCompanies: CompanyOption[];
   };
 };
 
@@ -89,7 +98,7 @@ type BranchResponse = {
   status?: string;
 };
 
-const STORAGE_KEY = "anexsys.frontend.session.v1";
+const STORAGE_KEY = "anexsys.frontend.session.v2";
 const SESSION_EXPIRED_EVENT = "anexsys:session-expired";
 const API_BASE = "/backend-api";
 
@@ -107,25 +116,6 @@ function getInitialState(): { status: SessionStatus; session: SessionRecord | nu
     status: session ? "loading" : "anonymous",
     session,
   };
-}
-
-function parseKnownTenants(): KnownTenantOption[] {
-  const raw = process.env.NEXT_PUBLIC_TENANT_OPTIONS;
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((entry) => typeof entry.id === "string" && entry.id.length > 0)
-      .map((entry) => ({
-        id: String(entry.id),
-        label: typeof entry.label === "string" && entry.label.length > 0 ? entry.label : String(entry.id),
-        hint: typeof entry.hint === "string" ? entry.hint : undefined,
-      }));
-  } catch {
-    return [];
-  }
 }
 
 function getErrorMessage(payload: unknown, fallback: string) {
@@ -193,6 +183,7 @@ async function refreshSession(session: SessionRecord): Promise<SessionRecord> {
 
   return {
     ...session,
+    tenantId: refreshed.tenantId,
     accessToken: refreshed.accessToken,
     refreshToken: refreshed.refreshToken,
     sessionId: refreshed.sessionId,
@@ -296,7 +287,6 @@ function resolveActiveBranchId(
 
 export function SessionProvider({ children }: Readonly<{ children: ReactNode }>) {
   const initialState = useMemo(() => getInitialState(), []);
-  const knownTenants = useMemo(() => parseKnownTenants(), []);
   const [status, setStatus] = useState<SessionStatus>(initialState.status);
   const [session, setSession] = useState<SessionRecord | null>(initialState.session);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -304,60 +294,63 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
 
   const clearError = useCallback(() => setErrorMessage(null), []);
 
-  const hydrateSession = useCallback(
-    async (candidate: SessionRecord, preferredBranchId?: string | null) => {
-      const meResult = await authenticatedRequest<MeResponse>(candidate, "/auth/me", { method: "GET" });
-      const me = meResult.data;
-      let workingSession = {
-        ...candidate,
-        accessToken: meResult.session.accessToken,
-        refreshToken: meResult.session.refreshToken,
-        sessionId: meResult.session.sessionId,
-        permissions: me.effectiveAccess.permissions,
-        branchIds: me.effectiveAccess.branchIds,
-        user: me.user,
-      };
+  const hydrateSession = useCallback(async (candidate: SessionRecord, preferredBranchId?: string | null) => {
+    const meResult = await authenticatedRequest<MeResponse>(candidate, "/auth/me", { method: "GET" });
+    const me = meResult.data;
+    let workingSession = {
+      ...candidate,
+      tenantId: me.context.tenantId,
+      accessToken: meResult.session.accessToken,
+      refreshToken: meResult.session.refreshToken,
+      sessionId: meResult.session.sessionId,
+      permissions: me.effectiveAccess.permissions,
+      communities: me.effectiveAccess.communities,
+      branchIds: me.effectiveAccess.branchIds,
+      companies: me.context.availableCompanies,
+      companySelectionRequired: me.context.companySelectionRequired,
+      user: me.user,
+    };
 
-      let branches: BranchOption[] = [];
-      try {
-        const branchResult = await authenticatedRequest<BranchResponse[]>(
-          workingSession,
-          "/branches",
-          { method: "GET" },
-          { branchId: null },
-        );
-        workingSession = {
-          ...workingSession,
-          accessToken: branchResult.session.accessToken,
-          refreshToken: branchResult.session.refreshToken,
-          sessionId: branchResult.session.sessionId,
-        };
-        branches = mapBranches(branchResult.data, me.effectiveAccess.branchIds);
-      } catch {
-        branches = mapBranches(null, me.effectiveAccess.branchIds);
-      }
-
-      const activeBranchId = resolveActiveBranchId(
-        me.effectiveAccess.branchIds,
-        branches,
-        me.user,
-        me.context.branchId,
-        preferredBranchId ?? candidate.activeBranchId,
+    let branches: BranchOption[] = [];
+    try {
+      const branchResult = await authenticatedRequest<BranchResponse[]>(
+        workingSession,
+        "/branches",
+        { method: "GET" },
+        { branchId: null },
       );
-
-      const resolved = {
+      workingSession = {
         ...workingSession,
-        activeBranchId,
-        branches,
+        accessToken: branchResult.session.accessToken,
+        refreshToken: branchResult.session.refreshToken,
+        sessionId: branchResult.session.sessionId,
       };
+      branches = mapBranches(branchResult.data, me.effectiveAccess.branchIds);
+    } catch {
+      branches = mapBranches(null, me.effectiveAccess.branchIds);
+    }
 
-      setSession(resolved);
-      setStatus(activeBranchId || resolved.branchIds.length === 0 ? "authenticated" : "branch-selection");
-      setErrorMessage(null);
-      return resolved;
-    },
-    [],
-  );
+    const activeBranchId = me.context.companySelectionRequired
+      ? null
+      : resolveActiveBranchId(
+          me.effectiveAccess.branchIds,
+          branches,
+          me.user,
+          me.context.branchId,
+          preferredBranchId ?? candidate.activeBranchId,
+        );
+
+    const resolved = {
+      ...workingSession,
+      activeBranchId,
+      branches,
+    };
+
+    setSession(resolved);
+    setStatus(me.context.companySelectionRequired || (!activeBranchId && resolved.branchIds.length > 0) ? "branch-selection" : "authenticated");
+    setErrorMessage(null);
+    return resolved;
+  }, []);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -397,33 +390,26 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   }, [hydrateSession, initialState.session]);
 
   const login = useCallback(
-    async ({ tenantId, email, password }: LoginInput) => {
-      const normalizedTenantId = tenantId.trim();
-      if (!normalizedTenantId) {
-        setErrorMessage("Tenant selection is required.");
-        return;
-      }
-
+    async ({ email, password }: LoginInput) => {
       setErrorMessage(null);
-      const result = await requestJson<LoginResponse>("/auth/login/password", {
+      const result = await requestJson<AuthResponse>("/auth/login/password", {
         method: "POST",
-        body: JSON.stringify({
-          tenantId: normalizedTenantId,
-          email: email.trim(),
-          password,
-        }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const baseSession: SessionRecord = {
-        tenantId: normalizedTenantId,
+        tenantId: result.tenantId,
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
         sessionId: result.sessionId,
         permissions: result.permissions,
+        communities: [],
         branchIds: result.branchIds,
         activeBranchId: null,
         user: null,
         branches: [],
+        companies: [],
+        companySelectionRequired: false,
       };
 
       await hydrateSession(baseSession);
@@ -448,7 +434,35 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     setErrorMessage(null);
   }, []);
 
-  const selectBranch = useCallback((branchId: string) => {
+  const selectCompany = useCallback(async (tenantId: string) => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) return false;
+
+    const result = await authenticatedRequest<AuthResponse>(
+      currentSession,
+      "/auth/context/company",
+      { method: "POST", body: JSON.stringify({ tenantId }) },
+      { branchId: null },
+    );
+
+    const baseSession: SessionRecord = {
+      ...currentSession,
+      tenantId: result.data.tenantId,
+      accessToken: result.data.accessToken,
+      refreshToken: result.data.refreshToken,
+      sessionId: result.data.sessionId,
+      permissions: result.data.permissions,
+      branchIds: result.data.branchIds,
+      activeBranchId: null,
+      branches: [],
+      companySelectionRequired: false,
+    };
+
+    const resolved = await hydrateSession(baseSession);
+    return resolved.companySelectionRequired === false && (resolved.activeBranchId !== null || resolved.branchIds.length === 0);
+  }, [hydrateSession]);
+
+  const selectBranch = useCallback(async (branchId: string) => {
     const currentSession = sessionRef.current;
     if (!currentSession) return false;
     if (!currentSession.branchIds.includes(branchId)) {
@@ -456,9 +470,17 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       return false;
     }
 
+    await authenticatedRequest(
+      currentSession,
+      "/auth/context/branch",
+      { method: "POST", body: JSON.stringify({ branchId }) },
+      { branchId: null },
+    );
+
     const nextSession = {
       ...currentSession,
       activeBranchId: branchId,
+      companySelectionRequired: false,
     };
 
     sessionRef.current = nextSession;
@@ -480,15 +502,15 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     () => ({
       status,
       session,
-      knownTenants,
       errorMessage,
       login,
       logout,
+      selectCompany,
       selectBranch,
       clearError,
       hasAnyPermission,
     }),
-    [clearError, errorMessage, hasAnyPermission, knownTenants, login, logout, selectBranch, session, status],
+    [clearError, errorMessage, hasAnyPermission, login, logout, selectBranch, selectCompany, session, status],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

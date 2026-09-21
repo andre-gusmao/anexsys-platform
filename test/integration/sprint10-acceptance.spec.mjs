@@ -134,9 +134,9 @@ before(async () => {
   });
   serviceOrderId = created.serviceOrder.id;
 
-  const adminLogin = await http('/auth/login/password', { method: 'POST', body: JSON.stringify({ tenantId, email: 'admin@tenantcx.test', password: 'SuperSecret123' }) });
+  const adminLogin = await http('/auth/login/password', { method: 'POST', body: JSON.stringify({ email: 'admin@tenantcx.test', password: 'SuperSecret123' }) });
   adminToken = adminLogin.json.accessToken;
-  const portalLogin = await http('/auth/login/password', { method: 'POST', body: JSON.stringify({ tenantId, email: 'customer@tenantcx.test', password: 'CustomerSecret123' }) });
+  const portalLogin = await http('/auth/login/password', { method: 'POST', body: JSON.stringify({ email: 'customer@tenantcx.test', password: 'CustomerSecret123' }) });
   portalToken = portalLogin.json.accessToken;
 });
 

@@ -8,6 +8,7 @@ export interface AuthenticatedPrincipal {
   tokenPermissions: string[];
   effectivePermissions: string[];
   effectiveBranchIds: string[];
+  communities: string[];
 }
 
 export interface RequestContextState {

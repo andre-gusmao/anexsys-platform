@@ -223,9 +223,7 @@ before(async () => {
 
   const adminLogin = await http('/auth/login/password', {
     method: 'POST',
-    body: JSON.stringify({
-      tenantId: tenantOne.id,
-      email: 'admin@tenant1.test',
+    body: JSON.stringify({ email: 'admin@tenant1.test',
       password: 'SuperSecret123',
     }),
   });
@@ -235,9 +233,7 @@ before(async () => {
 
   const limitedLogin = await http('/auth/login/password', {
     method: 'POST',
-    body: JSON.stringify({
-      tenantId: tenantOne.id,
-      email: 'limited@tenant1.test',
+    body: JSON.stringify({ email: 'limited@tenant1.test',
       password: 'SuperSecret123',
     }),
   });

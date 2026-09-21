@@ -2,6 +2,9 @@ import { AuditEventEntity } from 'src/modules/audit/infrastructure/persistence/e
 import { RoleEntity } from 'src/modules/authorization/infrastructure/persistence/entities/role.entity';
 import { PermissionEntity } from 'src/modules/authorization/infrastructure/persistence/entities/permission.entity';
 import { RolePermissionEntity } from 'src/modules/authorization/infrastructure/persistence/entities/role-permission.entity';
+import { CommunityPermissionEntity } from 'src/modules/authorization/infrastructure/persistence/entities/community-permission.entity';
+import { CommunityEntity } from 'src/modules/authorization/infrastructure/persistence/entities/community.entity';
+import { UserCommunityEntity } from 'src/modules/authorization/infrastructure/persistence/entities/user-community.entity';
 import { UserBranchScopeEntity } from 'src/modules/authorization/infrastructure/persistence/entities/user-branch-scope.entity';
 import { UserRoleAssignmentEntity } from 'src/modules/authorization/infrastructure/persistence/entities/user-role-assignment.entity';
 import { BranchEntity } from 'src/modules/branch/infrastructure/persistence/entities/branch.entity';
@@ -44,6 +47,8 @@ import { TemporaryPickupCodeEntity } from 'src/modules/pickup/infrastructure/per
 import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
+import { FirstAccessTokenEntity } from 'src/modules/identity/infrastructure/persistence/entities/first-access-token.entity';
+import { UserContextPreferenceEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-context-preference.entity';
 import { UserCredentialEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-credential.entity';
 import { UserIdentityEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-identity.entity';
 import { UserSessionEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-session.entity';
@@ -96,10 +101,15 @@ export const typeOrmEntities = [
   UserIdentityEntity,
   UserCredentialEntity,
   UserSessionEntity,
+  FirstAccessTokenEntity,
+  UserContextPreferenceEntity,
   RoleEntity,
   PermissionEntity,
   RolePermissionEntity,
   UserRoleAssignmentEntity,
   UserBranchScopeEntity,
+  CommunityEntity,
+  CommunityPermissionEntity,
+  UserCommunityEntity,
   AuditEventEntity,
 ] as const;

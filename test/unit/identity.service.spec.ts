@@ -59,6 +59,7 @@ describe('IdentityService', () => {
       branchService as never,
       passwordHasherService as never,
       auditService as never,
+      { async findByEmail() { return null; }, create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; } } as never,
     );
 
     const user = await service.createUser({

@@ -12,9 +12,13 @@ import { AuthController } from './http/auth.controller';
 import { UsersController } from './http/users.controller';
 import { AuthService } from './application/auth/auth.service';
 import { IdentityService } from './application/identity/identity.service';
+import { FirstAccessTokenEntity } from './infrastructure/persistence/entities/first-access-token.entity';
+import { UserContextPreferenceEntity } from './infrastructure/persistence/entities/user-context-preference.entity';
 import { UserCredentialEntity } from './infrastructure/persistence/entities/user-credential.entity';
 import { UserIdentityEntity } from './infrastructure/persistence/entities/user-identity.entity';
 import { UserSessionEntity } from './infrastructure/persistence/entities/user-session.entity';
+import { FirstAccessTokenRepository } from './infrastructure/persistence/repositories/first-access-token.repository';
+import { UserContextPreferenceRepository } from './infrastructure/persistence/repositories/user-context-preference.repository';
 import { UserCredentialRepository } from './infrastructure/persistence/repositories/user-credential.repository';
 import { UserIdentityRepository } from './infrastructure/persistence/repositories/user-identity.repository';
 import { UserSessionRepository } from './infrastructure/persistence/repositories/user-session.repository';
@@ -22,7 +26,13 @@ import { UserSessionRepository } from './infrastructure/persistence/repositories
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([UserIdentityEntity, UserCredentialEntity, UserSessionEntity]),
+    TypeOrmModule.forFeature([
+      UserIdentityEntity,
+      UserCredentialEntity,
+      UserSessionEntity,
+      FirstAccessTokenEntity,
+      UserContextPreferenceEntity,
+    ]),
     AuditModule,
     TenantModule,
     BranchModule,
@@ -46,6 +56,8 @@ import { UserSessionRepository } from './infrastructure/persistence/repositories
     UserIdentityRepository,
     UserCredentialRepository,
     UserSessionRepository,
+    FirstAccessTokenRepository,
+    UserContextPreferenceRepository,
     PasswordHasherService,
     TokenFactoryService,
   ],
@@ -55,6 +67,8 @@ import { UserSessionRepository } from './infrastructure/persistence/repositories
     UserIdentityRepository,
     UserCredentialRepository,
     UserSessionRepository,
+    FirstAccessTokenRepository,
+    UserContextPreferenceRepository,
     PasswordHasherService,
     TokenFactoryService,
   ],

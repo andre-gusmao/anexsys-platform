@@ -173,7 +173,7 @@ before(async () => {
 
   const login = await http('/auth/login/password', {
     method: 'POST',
-    body: JSON.stringify({ tenantId, email: 'fiscal-admin@tenant.test', password: 'SuperSecret123' }),
+    body: JSON.stringify({ email: 'fiscal-admin@tenant.test', password: 'SuperSecret123' }),
   });
   adminToken = login.json.accessToken;
 });

@@ -15,6 +15,7 @@ import { BranchScopeType } from 'src/shared/domain/enums';
 import { CurrentRequest, CurrentTenantId, CurrentUserId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
+import { AuthService } from '../application/auth/auth.service';
 import { IdentityService } from '../application/identity/identity.service';
 
 class CreateUserBody {
@@ -31,6 +32,18 @@ class CreateUserBody {
   @IsString()
   @MinLength(8)
   password!: string;
+}
+
+class InviteUserBody {
+  @IsOptional()
+  @IsUUID()
+  defaultBranchId?: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  displayName!: string;
 }
 
 class AssignRoleBody {
@@ -55,6 +68,7 @@ export class UsersController {
   constructor(
     private readonly identityService: IdentityService,
     private readonly authorizationService: AuthorizationService,
+    private readonly authService: AuthService,
   ) {}
 
   @Permissions('users.read')
@@ -84,6 +98,34 @@ export class UsersController {
     }
 
     return this.identityService.createUser({ ...body, tenantId, actorUserId });
+  }
+
+  @Permissions('users.write')
+  @Post('invite')
+  async invite(
+    @Body() body: InviteUserBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    const actorUserId = principal?.userId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    const user = await this.identityService.inviteUser({ ...body, tenantId, actorUserId });
+    const firstAccess = await this.authService.issueFirstAccessToken({
+      tenantId,
+      userId: user.id,
+      actorUserId,
+      email: user.email,
+      deliveryChannel: 'email',
+    });
+
+    return { user, firstAccess };
   }
 
   @Permissions('users.read')

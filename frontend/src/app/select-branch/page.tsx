@@ -6,7 +6,7 @@ import { useSession } from "@/components/providers/session-provider";
 
 export default function SelectBranchPage() {
   const router = useRouter();
-  const { status, session, selectBranch } = useSession();
+  const { status, session, selectCompany, selectBranch } = useSession();
 
   useEffect(() => {
     if (status === "anonymous") {
@@ -19,39 +19,73 @@ export default function SelectBranchPage() {
   }, [router, session?.activeBranchId, status]);
 
   if (!session) {
-    return <div className="loading-state">Loading branch access…</div>;
+    return <div className="loading-state">Loading company and branch access…</div>;
   }
+
+  const activeCompany = session.companies.find((company) => company.tenantId === session.tenantId) ?? null;
+  const needsCompanySelection = session.companySelectionRequired;
+  const branchTitle = activeCompany ? `Select active branch for ${activeCompany.displayName}` : "Select active branch";
 
   return (
     <div className="screen-shell">
       <section className="content-card" style={{ maxWidth: 920 }}>
         <div className="content-card__header">
-          <div className="eyebrow">ANEXSYS · Branch selection</div>
-          <h1 className="title">Select active branch</h1>
-          <p className="subtitle">
-            Sprint 1 keeps branch context explicit. Choose one branch before entering the Administrative Portal shell.
-          </p>
+          <div className="eyebrow">ANEXSYS · Operational context</div>
+          <h1 className="title">Choose company and branch</h1>
+          <p className="subtitle">Use the last valid context automatically when possible, otherwise confirm the company and active branch.</p>
         </div>
 
-        <div className="content-card__body">
-          <div className="branch-grid">
-            {session.branches.map((branch) => (
-              <button
-                className="branch-card"
-                key={branch.id}
-                onClick={() => {
-                  if (selectBranch(branch.id)) {
-                    router.push("/dashboard");
-                  }
-                }}
-                type="button"
-              >
-                <div className="eyebrow">Branch</div>
-                <h2 style={{ marginTop: 12 }}>{branch.label}</h2>
-                <p className="branch-card__meta">{branch.hint ?? branch.id}</p>
-              </button>
-            ))}
-          </div>
+        <div className="content-card__body" style={{ display: "grid", gap: 32 }}>
+          {session.companies.length > 1 ? (
+            <section>
+              <div className="eyebrow">Company</div>
+              <h2 style={{ marginTop: 12 }}>{needsCompanySelection ? "Select active company" : activeCompany?.displayName ?? "Switch company"}</h2>
+              <div className="branch-grid" style={{ marginTop: 20 }}>
+                {session.companies.map((company) => (
+                  <button
+                    className="branch-card"
+                    key={company.tenantId}
+                    onClick={async () => {
+                      const resolved = await selectCompany(company.tenantId);
+                      if (resolved) {
+                        router.push("/dashboard");
+                      }
+                    }}
+                    type="button"
+                  >
+                    <div className="eyebrow">Company</div>
+                    <h2 style={{ marginTop: 12 }}>{company.displayName}</h2>
+                    <p className="branch-card__meta">{company.code}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {!needsCompanySelection ? (
+            <section>
+              <div className="eyebrow">Branch</div>
+              <h2 style={{ marginTop: 12 }}>{branchTitle}</h2>
+              <div className="branch-grid" style={{ marginTop: 20 }}>
+                {session.branches.map((branch) => (
+                  <button
+                    className="branch-card"
+                    key={branch.id}
+                    onClick={async () => {
+                      if (await selectBranch(branch.id)) {
+                        router.push("/dashboard");
+                      }
+                    }}
+                    type="button"
+                  >
+                    <div className="eyebrow">Branch</div>
+                    <h2 style={{ marginTop: 12 }}>{branch.label}</h2>
+                    <p className="branch-card__meta">{branch.hint ?? branch.id}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       </section>
     </div>

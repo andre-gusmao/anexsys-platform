@@ -11,13 +11,23 @@ import { AssignRoleDto } from 'src/modules/authorization/contracts/dto/assign-ro
 import { BranchScopeType, BranchStatus, RoleStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
+import { CommunityEntity } from '../../infrastructure/persistence/entities/community.entity';
 import { PermissionEntity } from '../../infrastructure/persistence/entities/permission.entity';
 import { RoleEntity } from '../../infrastructure/persistence/entities/role.entity';
+import { CommunityPermissionRepository } from '../../infrastructure/persistence/repositories/community-permission.repository';
+import { CommunityRepository } from '../../infrastructure/persistence/repositories/community.repository';
 import { PermissionRepository } from '../../infrastructure/persistence/repositories/permission.repository';
 import { RolePermissionRepository } from '../../infrastructure/persistence/repositories/role-permission.repository';
 import { RoleRepository } from '../../infrastructure/persistence/repositories/role.repository';
 import { UserBranchScopeRepository } from '../../infrastructure/persistence/repositories/user-branch-scope.repository';
+import { UserCommunityRepository } from '../../infrastructure/persistence/repositories/user-community.repository';
 import { UserRoleAssignmentRepository } from '../../infrastructure/persistence/repositories/user-role-assignment.repository';
+
+export interface EffectiveAccessResult {
+  branchIds: string[];
+  permissions: string[];
+  communities: string[];
+}
 
 @Injectable()
 export class AuthorizationService {
@@ -30,6 +40,9 @@ export class AuthorizationService {
     private readonly identityService: IdentityService,
     private readonly branchService: BranchService,
     private readonly auditService: AuditService,
+    private readonly communityRepository: CommunityRepository,
+    private readonly communityPermissionRepository: CommunityPermissionRepository,
+    private readonly userCommunityRepository: UserCommunityRepository,
   ) {}
 
   async createRole(dto: CreateRoleDto): Promise<RoleEntity> {
@@ -96,6 +109,44 @@ export class AuthorizationService {
     return saved;
   }
 
+  async createCommunity(dto: {
+    tenantId: string;
+    code: string;
+    displayName: string;
+    description?: string;
+    actorUserId: string;
+  }): Promise<CommunityEntity> {
+    const normalizedCode = dto.code.trim().toUpperCase();
+    const existing = await this.communityRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+    if (existing) {
+      throw new DomainValidationError(`Community code '${normalizedCode}' already exists for this tenant.`);
+    }
+
+    const community = this.communityRepository.create({
+      id: randomUUID(),
+      tenantId: dto.tenantId,
+      code: normalizedCode,
+      displayName: dto.displayName.trim(),
+      description: dto.description?.trim() ?? null,
+      status: RoleStatus.ACTIVE,
+      createdBy: dto.actorUserId,
+      updatedBy: dto.actorUserId,
+    });
+
+    const saved = await this.communityRepository.save(community);
+    await this.auditService.record({
+      tenantId: dto.tenantId,
+      actorUserId: dto.actorUserId,
+      entityType: 'community',
+      entityId: saved.id,
+      action: 'authorization.community.created',
+      eventType: 'authorization.write',
+      metadata: { code: saved.code },
+    });
+
+    return saved;
+  }
+
   async assignPermissionToRole(dto: AssignPermissionToRoleDto): Promise<void> {
     const role = await this.getRole(dto.roleId);
     const permission = await this.getPermission(dto.permissionId);
@@ -130,6 +181,48 @@ export class AuthorizationService {
       action: 'authorization.role.permission.assigned',
       eventType: 'authorization.write',
       metadata: { roleId: dto.roleId, permissionId: dto.permissionId },
+    });
+  }
+
+  async assignPermissionToCommunity(dto: {
+    tenantId: string;
+    communityId: string;
+    permissionId: string;
+    actorUserId: string;
+  }): Promise<void> {
+    const community = await this.getCommunity(dto.communityId);
+    const permission = await this.getPermission(dto.permissionId);
+    if (community.tenantId !== dto.tenantId || permission.tenantId !== dto.tenantId) {
+      throw new DomainValidationError('Community and permission must belong to the assignment tenant.');
+    }
+
+    const existingAssignment = await this.communityPermissionRepository.findByCommunityAndPermission(
+      dto.tenantId,
+      dto.communityId,
+      dto.permissionId,
+    );
+    if (existingAssignment) {
+      throw new DomainValidationError('Community permission assignment already exists.');
+    }
+
+    const link = this.communityPermissionRepository.create({
+      id: randomUUID(),
+      tenantId: dto.tenantId,
+      communityId: dto.communityId,
+      permissionId: dto.permissionId,
+      createdBy: dto.actorUserId,
+      updatedBy: dto.actorUserId,
+    });
+
+    await this.communityPermissionRepository.save(link);
+    await this.auditService.record({
+      tenantId: dto.tenantId,
+      actorUserId: dto.actorUserId,
+      entityType: 'community_permission',
+      entityId: link.id,
+      action: 'authorization.community.permission.assigned',
+      eventType: 'authorization.write',
+      metadata: { communityId: dto.communityId, permissionId: dto.permissionId },
     });
   }
 
@@ -182,6 +275,44 @@ export class AuthorizationService {
     });
   }
 
+  async assignUserToCommunity(dto: {
+    tenantId: string;
+    userId: string;
+    communityId: string;
+    actorUserId: string;
+  }): Promise<void> {
+    const user = await this.identityService.getById(dto.userId);
+    const community = await this.getCommunity(dto.communityId);
+    if (user.tenantId !== dto.tenantId || community.tenantId !== dto.tenantId) {
+      throw new DomainValidationError('User and community must belong to the assignment tenant.');
+    }
+
+    const existing = await this.userCommunityRepository.findByUserAndCommunity(dto.tenantId, dto.userId, dto.communityId);
+    if (existing) {
+      throw new DomainValidationError('User community membership already exists.');
+    }
+
+    const membership = this.userCommunityRepository.create({
+      id: randomUUID(),
+      tenantId: dto.tenantId,
+      userId: dto.userId,
+      communityId: dto.communityId,
+      createdBy: dto.actorUserId,
+      updatedBy: dto.actorUserId,
+    });
+
+    await this.userCommunityRepository.save(membership);
+    await this.auditService.record({
+      tenantId: dto.tenantId,
+      actorUserId: dto.actorUserId,
+      entityType: 'user_community',
+      entityId: membership.id,
+      action: 'authorization.community.assigned',
+      eventType: 'authorization.write',
+      metadata: { userId: dto.userId, communityId: dto.communityId },
+    });
+  }
+
   async assignBranchScope(dto: AssignBranchScopeDto): Promise<void> {
     const user = await this.identityService.getById(dto.userId);
     const branch = await this.branchService.getById(dto.branchId);
@@ -230,6 +361,10 @@ export class AuthorizationService {
     return this.permissionRepository.findByTenant(tenantId);
   }
 
+  async listCommunities(tenantId: string): Promise<CommunityEntity[]> {
+    return this.communityRepository.findByTenant(tenantId);
+  }
+
   async getRoleById(roleId: string): Promise<RoleEntity> {
     return this.getRole(roleId);
   }
@@ -238,14 +373,25 @@ export class AuthorizationService {
     return this.getPermission(permissionId);
   }
 
-  async getEffectiveAccessForUser(tenantId: string, userId: string): Promise<{ branchIds: string[]; permissions: string[] }> {
+  async getCommunityById(communityId: string): Promise<CommunityEntity> {
+    return this.getCommunity(communityId);
+  }
+
+  async getEffectiveAccessForUser(tenantId: string, userId: string): Promise<EffectiveAccessResult> {
     const assignments = await this.userRoleAssignmentRepository.findActiveByUserId(tenantId, userId);
     const roleIds = assignments.map((assignment) => assignment.roleId);
     const rolePermissions = await this.rolePermissionRepository.findByRoleIds(tenantId, roleIds);
-    const permissions = await this.permissionRepository.findByIds(tenantId, [
-      ...new Set(rolePermissions.map((rolePermission) => rolePermission.permissionId)),
-    ]);
     const branchScopes = await this.userBranchScopeRepository.findByUserId(tenantId, userId);
+    const memberships = await this.userCommunityRepository.findByUserId(tenantId, userId);
+    const communityIds = memberships.map((membership) => membership.communityId);
+    const communities = await this.communityRepository.findByIds(tenantId, communityIds);
+    const communityPermissions = await this.communityPermissionRepository.findByCommunityIds(tenantId, communityIds);
+    const permissions = await this.permissionRepository.findByIds(tenantId, [
+      ...new Set([
+        ...rolePermissions.map((rolePermission) => rolePermission.permissionId),
+        ...communityPermissions.map((communityPermission) => communityPermission.permissionId),
+      ]),
+    ]);
 
     const branchIds = [
       ...branchScopes.map((scope) => scope.branchId),
@@ -262,6 +408,7 @@ export class AuthorizationService {
     return {
       branchIds: [...new Set(branchIds)],
       permissions: [...new Set(permissions.map((permission) => permission.code))].sort(),
+      communities: [...new Set(communities.map((community) => community.code))].sort(),
     };
   }
 
@@ -286,5 +433,14 @@ export class AuthorizationService {
     }
 
     return permission;
+  }
+
+  private async getCommunity(communityId: string): Promise<CommunityEntity> {
+    const community = await this.communityRepository.findById(communityId);
+    if (!community) {
+      throw new EntityNotFoundError(`Community '${communityId}' was not found.`);
+    }
+
+    return community;
   }
 }

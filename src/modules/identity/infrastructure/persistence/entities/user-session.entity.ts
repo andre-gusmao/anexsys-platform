@@ -30,6 +30,12 @@ export class UserSessionEntity {
   @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt!: Date | null;
 
+  @Column({ name: 'login_email', type: 'text', nullable: true })
+  loginEmail!: string | null;
+
+  @Column({ name: 'context_data', type: 'jsonb', default: () => "'{}'::jsonb" })
+  contextData!: Record<string, unknown>;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
