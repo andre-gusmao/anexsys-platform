@@ -50,7 +50,7 @@ type SessionContextValue = {
   errorMessage: string | null;
   login: (input: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
-  selectBranch: (branchId: string) => void;
+  selectBranch: (branchId: string) => boolean;
   clearError: () => void;
   hasAnyPermission: (...permissions: string[]) => boolean;
 };
@@ -90,6 +90,7 @@ type BranchResponse = {
 };
 
 const STORAGE_KEY = "anexsys.frontend.session.v1";
+const SESSION_EXPIRED_EVENT = "anexsys:session-expired";
 const API_BASE = "/backend-api";
 
 class HttpError extends Error {
@@ -135,6 +136,15 @@ function getErrorMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+function parsePayload(text: string): unknown {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return { message: text };
+  }
+}
+
 async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -145,7 +155,7 @@ async function requestJson<T>(path: string, init: RequestInit): Promise<T> {
   });
 
   const text = await response.text();
-  const payload = text ? (JSON.parse(text) as unknown) : null;
+  const payload = parsePayload(text);
 
   if (!response.ok) {
     throw new HttpError(response.status, getErrorMessage(payload, "Request failed."));
@@ -187,6 +197,13 @@ async function refreshSession(session: SessionRecord): Promise<SessionRecord> {
     refreshToken: refreshed.refreshToken,
     sessionId: refreshed.sessionId,
   };
+}
+
+function broadcastSessionExpired(message: string) {
+  writeStoredSession(null);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail: { message } }));
+  }
 }
 
 function buildHeaders(session: SessionRecord, branchId?: string | null): HeadersInit {
@@ -234,14 +251,19 @@ async function authenticatedRequest<T>(
     });
 
     const text = await response.text();
-    const payload = text ? (JSON.parse(text) as unknown) : null;
+    const payload = parsePayload(text);
 
     if (response.ok) {
       return { data: payload as T, session: workingSession };
     }
 
     if (response.status === 401 && opts.allowRefresh !== false && attempt === 0 && workingSession.refreshToken) {
-      workingSession = await refreshSession(workingSession);
+      try {
+        workingSession = await refreshSession(workingSession);
+      } catch {
+        broadcastSessionExpired("Session expired. Please sign in again.");
+        throw new HttpError(401, "Session expired. Please sign in again.");
+      }
       continue;
     }
 
@@ -343,6 +365,21 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   }, [session]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleSessionExpired = (event: Event) => {
+      const detail = event instanceof CustomEvent ? (event.detail as { message?: string } | undefined) : undefined;
+      sessionRef.current = null;
+      setSession(null);
+      setStatus("anonymous");
+      setErrorMessage(detail?.message ?? "Session expired. Please sign in again.");
+    };
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired as EventListener);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired as EventListener);
+  }, []);
+
+  useEffect(() => {
     const existing = initialState.session;
     if (!existing) {
       return;
@@ -413,10 +450,10 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
 
   const selectBranch = useCallback((branchId: string) => {
     const currentSession = sessionRef.current;
-    if (!currentSession) return;
+    if (!currentSession) return false;
     if (!currentSession.branchIds.includes(branchId)) {
       setErrorMessage("Selected branch is outside the authenticated access scope.");
-      return;
+      return false;
     }
 
     const nextSession = {
@@ -428,6 +465,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     setSession(nextSession);
     setStatus("authenticated");
     setErrorMessage(null);
+    return true;
   }, []);
 
   const hasAnyPermission = useCallback(

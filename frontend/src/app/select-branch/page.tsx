@@ -40,8 +40,9 @@ export default function SelectBranchPage() {
                 className="branch-card"
                 key={branch.id}
                 onClick={() => {
-                  selectBranch(branch.id);
-                  router.push("/dashboard");
+                  if (selectBranch(branch.id)) {
+                    router.push("/dashboard");
+                  }
                 }}
                 type="button"
               >
