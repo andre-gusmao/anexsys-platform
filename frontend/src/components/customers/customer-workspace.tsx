@@ -1093,7 +1093,7 @@ function CustomerFields({
       <div className="filters-grid">
         <label className="field">
           <span>Complemento</span>
-          <input required value={form.complement} onChange={(event) => onChange((current) => ({ ...current, complement: event.target.value }))} />
+          <input value={form.complement} onChange={(event) => onChange((current) => ({ ...current, complement: event.target.value }))} />
         </label>
         <label className="field">
           <span>Bairro</span>
@@ -1148,33 +1148,7 @@ function MeasurementCatalogQuickCreate({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   return (
-    <form
-      className="form-grid"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setPending(true);
-        setErrorMessage(null);
-        try {
-          const created = await apiJson<{ id: string; code: string; displayName: string }>(endpoint, {
-            method: "POST",
-            body: JSON.stringify(
-              kind === "body-part"
-                ? { displayName, sortOrder }
-                : {
-                    code,
-                    displayName,
-                    sortOrder,
-                  },
-            ),
-          });
-          await onCreated(created);
-        } catch (error) {
-          setErrorMessage(error instanceof Error ? error.message : "O registro não pôde ser criado.");
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
+    <div className="form-grid">
       <h4>Quick create</h4>
       {kind === "unit" ? (
         <label className="field">
@@ -1188,13 +1162,40 @@ function MeasurementCatalogQuickCreate({
       </label>
       {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
       <div className="button-row">
-        <button className="button" disabled={pending} type="submit">
+        <button
+          className="button"
+          disabled={pending}
+          onClick={async () => {
+            setPending(true);
+            setErrorMessage(null);
+            try {
+              const created = await apiJson<{ id: string; code: string; displayName: string }>(endpoint, {
+                method: "POST",
+                body: JSON.stringify(
+                  kind === "body-part"
+                    ? { displayName, sortOrder }
+                    : {
+                        code,
+                        displayName,
+                        sortOrder,
+                      },
+                ),
+              });
+              await onCreated(created);
+            } catch (error) {
+              setErrorMessage(error instanceof Error ? error.message : "O registro não pôde ser criado.");
+            } finally {
+              setPending(false);
+            }
+          }}
+          type="button"
+        >
           {pending ? "Salvando…" : "Salvar e selecionar"}
         </button>
         <button className="button-secondary" onClick={onCancel} type="button">
           Cancelar
         </button>
       </div>
-    </form>
+    </div>
   );
 }

@@ -61,8 +61,9 @@ class CreateCustomerBody {
   @IsString()
   number!: string;
 
+  @IsOptional()
   @IsString()
-  complement!: string;
+  complement?: string;
 
   @IsString()
   district!: string;

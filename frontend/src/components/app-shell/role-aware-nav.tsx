@@ -75,6 +75,17 @@ const navSections: NavSection[] = [
       },
     ],
   },
+  {
+    title: "Operações",
+    items: [
+      {
+        href: "/service-orders",
+        label: "Service Orders",
+        hint: "Gestão operacional de ordens",
+        requiredPermissions: ["service_orders.read"],
+      },
+    ],
+  },
 ];
 
 export function RoleAwareNav() {

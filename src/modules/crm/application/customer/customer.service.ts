@@ -349,7 +349,7 @@ export class CustomerService {
     return {
       street: this.normalizeRequiredAddressField(input.street, 'Street'),
       number: this.normalizeRequiredAddressField(input.number, 'Number'),
-      complement: this.normalizeRequiredAddressField(input.complement, 'Complement'),
+      complement: this.normalizeOptionalAddressField(input.complement),
       district: this.normalizeRequiredAddressField(input.district, 'District'),
       city: this.normalizeRequiredAddressField(input.city, 'City'),
       state: this.normalizeRequiredAddressField(input.state, 'State'),
@@ -365,7 +365,7 @@ export class CustomerService {
       customer.number = this.normalizeUpdatedAddressField(dto.number, 'Number');
     }
     if (dto.complement !== undefined) {
-      customer.complement = this.normalizeUpdatedAddressField(dto.complement, 'Complement');
+      customer.complement = this.normalizeOptionalAddressField(dto.complement);
     }
     if (dto.district !== undefined) {
       customer.district = this.normalizeUpdatedAddressField(dto.district, 'District');
@@ -394,6 +394,11 @@ export class CustomerService {
       throw new DomainValidationError(`${label} is required.`);
     }
     return this.normalizeRequiredAddressField(value, label);
+  }
+
+  private normalizeOptionalAddressField(value: string | null | undefined): string | null {
+    const normalized = value?.trim();
+    return normalized ? normalized : null;
   }
 
   private async assertUniqueDocument(tenantId: string, cpfCnpj: string | null, currentCustomerId?: string): Promise<void> {

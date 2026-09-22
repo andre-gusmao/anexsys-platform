@@ -297,12 +297,12 @@ export function CompaniesWorkspace() {
             <div className="detail-stack">
               <div className="detail-grid">
                 <div className="detail-field">
-                  <span>ID</span>
-                  <strong>{activeCompany.id}</strong>
-                </div>
-                <div className="detail-field">
                   <span>Status</span>
                   <strong>{activeCompany.status}</strong>
+                </div>
+                <div className="detail-field">
+                  <span>Código</span>
+                  <strong>{activeCompany.code}</strong>
                 </div>
                 <div className="detail-field">
                   <span>Escopo atual</span>

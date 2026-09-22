@@ -739,12 +739,12 @@ export function AccessWorkspace() {
               <div className="detail-stack">
                 <div className="detail-grid">
                   <div className="detail-field">
-                    <span>ID</span>
-                    <strong>{activeUser.id}</strong>
-                  </div>
-                  <div className="detail-field">
                     <span>Status</span>
                     <strong>{activeUser.status}</strong>
+                  </div>
+                  <div className="detail-field">
+                    <span>Email</span>
+                    <strong>{activeUser.email}</strong>
                   </div>
                   <div className="detail-field">
                     <span>Permissões efetivas</span>
@@ -1334,24 +1334,7 @@ function QuickCreateBranch({
   const [pending, setPending] = useState(false);
 
   return (
-    <form
-      className="form-grid"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setPending(true);
-        try {
-          const created = await apiJson<BranchRecord>("/branches", {
-            method: "POST",
-            body: JSON.stringify({ code, displayName, legalName }),
-          });
-          onComplete(created);
-        } catch (error) {
-          setMessage(error instanceof Error ? error.message : "A filial não pôde ser criada.");
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
+    <div className="form-grid">
       <h4>Quick create</h4>
       <label className="field">
         <span>Código</span>
@@ -1366,14 +1349,32 @@ function QuickCreateBranch({
         <input required value={legalName} onChange={(event) => setLegalName(event.target.value)} />
       </label>
       <div className="button-row">
-        <button className="button" disabled={pending} type="submit">
+        <button
+          className="button"
+          disabled={pending}
+          onClick={async () => {
+            setPending(true);
+            try {
+              const created = await apiJson<BranchRecord>("/branches", {
+                method: "POST",
+                body: JSON.stringify({ code, displayName, legalName }),
+              });
+              onComplete(created);
+            } catch (error) {
+              setMessage(error instanceof Error ? error.message : "A filial não pôde ser criada.");
+            } finally {
+              setPending(false);
+            }
+          }}
+          type="button"
+        >
           {pending ? "Salvando…" : "Salvar e selecionar"}
         </button>
         <button className="button-secondary" onClick={onCancel} type="button">
           Cancelar
         </button>
       </div>
-    </form>
+    </div>
   );
 }
 
