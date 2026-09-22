@@ -473,10 +473,6 @@ textarea {
   font-weight: 700;
 }
 
-.data-table tbody tr {
-  cursor: pointer;
-}
-
 .data-table tbody tr:hover,
 .data-table__row--active {
   background: var(--primary-soft);

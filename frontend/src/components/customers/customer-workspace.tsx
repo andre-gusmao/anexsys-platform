@@ -367,6 +367,7 @@ export function CustomerWorkspace() {
     setSavingCustomer(true);
     setWorkspaceMessage(null);
     try {
+      const nextStatus = customerForm.status === "blocked" ? undefined : customerForm.status;
       await apiJson<CustomerRecord>(`/customers/${selectedCustomer.id}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -380,7 +381,7 @@ export function CustomerWorkspace() {
           birthDate: customerForm.birthDate || null,
           postalCode: customerForm.postalCode || null,
           observations: customerForm.observations || null,
-          status: customerForm.status,
+          status: nextStatus,
         }),
       });
       setWorkspaceMessage("Customer updated successfully.");
@@ -399,19 +400,25 @@ export function CustomerWorkspace() {
     setSavingMeasurements(true);
     setWorkspaceMessage(null);
     try {
+      const items = measurementForm.items
+        .filter((item) => item.bodyPartId && item.value.trim())
+        .map((item) => ({
+          bodyPartId: item.bodyPartId,
+          unitId: item.unitId || undefined,
+          value: Number(item.value),
+          notes: item.notes || undefined,
+        }));
+
+      if (items.length === 0) {
+        throw new Error("Add at least one valid measurement item before saving the Measurement Set.");
+      }
+
       await apiJson<MeasurementSet>(`/customers/${selectedCustomer.id}/measurements`, {
         method: "POST",
         body: JSON.stringify({
           measurementDate: measurementForm.measurementDate,
           notes: measurementForm.notes || undefined,
-          items: measurementForm.items
-            .filter((item) => item.bodyPartId && item.value.trim())
-            .map((item) => ({
-              bodyPartId: item.bodyPartId,
-              unitId: item.unitId || undefined,
-              value: Number(item.value),
-              notes: item.notes || undefined,
-            })),
+          items,
         }),
       });
       setWorkspaceMessage("Measurement set recorded successfully.");
@@ -535,10 +542,17 @@ export function CustomerWorkspace() {
               </thead>
               <tbody>
                 {customers.map((customer) => (
-                  <tr className={customer.id === activeCustomerId ? "data-table__row--active" : ""} key={customer.id} onClick={() => void loadCustomerDetails(customer.id)}>
+                  <tr className={customer.id === activeCustomerId ? "data-table__row--active" : ""} key={customer.id}>
                     <td>
-                      <strong>{customer.legalName}</strong>
-                      <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
+                      <button
+                        className="button-ghost"
+                        onClick={() => void loadCustomerDetails(customer.id)}
+                        style={{ alignItems: "start", display: "grid", justifyItems: "start", textAlign: "left" }}
+                        type="button"
+                      >
+                        <strong>{customer.legalName}</strong>
+                        <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
+                      </button>
                     </td>
                     <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
                     <td>{customer.branchId ? branchNameById.get(customer.branchId) ?? "Filial vinculada" : "Compartilhado"}</td>
@@ -884,6 +898,7 @@ function CustomerFields({
             <select value={form.status} onChange={(event) => onChange((current) => ({ ...current, status: event.target.value as CustomerStatus }))}>
               <option value="active">Ativo</option>
               <option value="inactive">Inativo</option>
+              <option value="blocked">Bloqueado</option>
             </select>
           </label>
         ) : null}

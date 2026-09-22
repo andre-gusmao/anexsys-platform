@@ -227,7 +227,13 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
                     </td>
                     {canWrite ? (
                       <td>
-                        <button className="button-secondary" disabled={saving} onClick={() => void handleUpdate(record.id)} type="button">
+                        <button
+                          aria-label={`Salvar ${mode === "units" ? `unidade ${editing[record.id]?.code ?? record.id}` : `parte do corpo ${editing[record.id]?.displayName ?? record.id}`}`}
+                          className="button-secondary"
+                          disabled={saving}
+                          onClick={() => void handleUpdate(record.id)}
+                          type="button"
+                        >
                           Salvar
                         </button>
                       </td>

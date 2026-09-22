@@ -80,6 +80,7 @@ const navSections: NavSection[] = [
 export function RoleAwareNav() {
   const pathname = usePathname();
   const { hasAnyPermission } = useSession();
+  const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
   const visibleSections = navSections
     .map((section) => ({
@@ -87,7 +88,7 @@ export function RoleAwareNav() {
       items: section.items.filter((item) =>
         item.requiredPermissions
           ? item.permissionMatch === "all"
-            ? item.requiredPermissions.every((permission) => hasAnyPermission(permission))
+            ? hasAllPermissions(item.requiredPermissions)
             : hasAnyPermission(...item.requiredPermissions)
           : true,
       ),
