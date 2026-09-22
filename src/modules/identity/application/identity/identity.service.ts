@@ -24,6 +24,14 @@ export interface InviteUserDto {
   actorUserId: string;
 }
 
+export interface UpdateUserDto {
+  email?: string;
+  displayName?: string;
+  defaultBranchId?: string | null;
+  status?: UserStatus;
+  actorUserId: string;
+}
+
 @Injectable()
 export class IdentityService {
   constructor(
@@ -213,6 +221,51 @@ export class IdentityService {
   async listByTenant(tenantId: string): Promise<UserIdentityEntity[]> {
     await this.tenantService.getById(tenantId);
     return this.userIdentityRepository.findByTenant(tenantId);
+  }
+
+  async updateUser(id: string, dto: UpdateUserDto): Promise<UserIdentityEntity> {
+    const user = await this.getById(id);
+    await this.assertTenantBranchConsistency(user.tenantId, dto.defaultBranchId === undefined ? user.defaultBranchId ?? undefined : dto.defaultBranchId ?? undefined);
+
+    if (dto.email) {
+      const normalizedEmail = dto.email.trim().toLowerCase();
+      if (normalizedEmail !== user.email) {
+        const existing = await this.userIdentityRepository.findByTenantAndEmail(user.tenantId, normalizedEmail);
+        if (existing && existing.id !== user.id) {
+          throw new DomainValidationError(`User email '${normalizedEmail}' already exists for this tenant.`);
+        }
+        user.email = normalizedEmail;
+      }
+    }
+
+    if (dto.displayName !== undefined) {
+      user.displayName = dto.displayName.trim();
+    }
+    if (dto.defaultBranchId !== undefined) {
+      user.defaultBranchId = dto.defaultBranchId;
+    }
+    if (dto.status !== undefined) {
+      user.status = dto.status;
+    }
+    user.updatedBy = dto.actorUserId;
+
+    const saved = await this.userIdentityRepository.save(user);
+    await this.auditService.record({
+      tenantId: saved.tenantId,
+      branchId: saved.defaultBranchId,
+      actorUserId: dto.actorUserId,
+      entityType: 'user_identity',
+      entityId: saved.id,
+      action: 'identity.user.updated',
+      eventType: 'identity.write',
+      metadata: {
+        email: saved.email,
+        status: saved.status,
+        defaultBranchId: saved.defaultBranchId,
+      },
+    });
+
+    return saved;
   }
 
   async getContextPreference(normalizedEmail: string): Promise<UserContextPreferenceEntity | null> {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { useSession } from "@/components/providers/session-provider";
+import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type CustomerType = "person" | "company";
 type CustomerStatus = "active" | "inactive" | "blocked";
@@ -250,6 +251,24 @@ export function CustomerWorkspace() {
 
   const bodyPartOptions = useMemo(() => catalog?.bodyParts ?? [], [catalog]);
   const unitOptions = useMemo(() => catalog?.units ?? [], [catalog]);
+  const bodyPartLookupOptions = useMemo<SmartLookupOption[]>(
+    () =>
+      bodyPartOptions.map((bodyPart) => ({
+        id: bodyPart.id,
+        label: bodyPart.displayName,
+        hint: bodyPart.code,
+      })),
+    [bodyPartOptions],
+  );
+  const unitLookupOptions = useMemo<SmartLookupOption[]>(
+    () =>
+      unitOptions.map((unit) => ({
+        id: unit.id,
+        label: unit.code,
+        hint: unit.displayName,
+      })),
+    [unitOptions],
+  );
 
   const resetMeasurementForm = useCallback(
     () =>
@@ -795,28 +814,42 @@ export function CustomerWorkspace() {
 
                           {measurementForm.items.map((item, index) => (
                             <div className="custom-measurement-row" key={`measurement-item-${index}`}>
-                              <label className="field">
-                                <span>Parte do corpo</span>
-                                <select
-                                  required
+                              <div className="field">
+                                <SmartLookup
+                                  canCreate={canWriteMeasurements}
+                                  createLabel="Criar nova parte do corpo"
+                                  entityType="body-parts"
+                                  label="Parte do corpo"
+                                  options={bodyPartLookupOptions}
                                   value={item.bodyPartId}
-                                  onChange={(event) =>
+                                  onChange={(option) =>
                                     setMeasurementForm((current) => ({
                                       ...current,
                                       items: current.items.map((entry, entryIndex) =>
-                                        entryIndex === index ? { ...entry, bodyPartId: event.target.value } : entry,
+                                        entryIndex === index ? { ...entry, bodyPartId: option?.id ?? "" } : entry,
                                       ),
                                     }))
                                   }
-                                >
-                                  <option value="">Selecione</option>
-                                  {bodyPartOptions.map((bodyPart) => (
-                                    <option key={bodyPart.id} value={bodyPart.id}>
-                                      {bodyPart.displayName}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
+                                  renderQuickCreate={({ cancelCreate, completeCreate, initialValue }) => (
+                                    <MeasurementCatalogQuickCreate
+                                      endpoint="/measurement-body-parts"
+                                      initialCode={initialValue.toUpperCase().replace(/\s+/g, "_")}
+                                      initialDisplayName={initialValue}
+                                      kind="body-part"
+                                      onCancel={cancelCreate}
+                                      onCreated={async (created) => {
+                                        await loadCatalog();
+                                        completeCreate({
+                                          id: created.id,
+                                          label: created.displayName,
+                                          hint: created.code,
+                                        });
+                                      }}
+                                      sortOrder={bodyPartOptions.length + 1}
+                                    />
+                                  )}
+                                />
+                              </div>
                               <label className="field">
                                 <span>Valor</span>
                                 <input
@@ -834,27 +867,43 @@ export function CustomerWorkspace() {
                                   }
                                 />
                               </label>
-                              <label className="field">
-                                <span>Unidade</span>
-                                <select
+                              <div className="field">
+                                <SmartLookup
+                                  allowClear
+                                  canCreate={canWriteMeasurements}
+                                  createLabel="Criar nova unidade"
+                                  entityType="measurement-units"
+                                  label={`Unidade (padrão ${catalog?.defaultUnitCode ?? "CM"})`}
+                                  options={unitLookupOptions}
                                   value={item.unitId}
-                                  onChange={(event) =>
+                                  onChange={(option) =>
                                     setMeasurementForm((current) => ({
                                       ...current,
                                       items: current.items.map((entry, entryIndex) =>
-                                        entryIndex === index ? { ...entry, unitId: event.target.value } : entry,
+                                        entryIndex === index ? { ...entry, unitId: option?.id ?? "" } : entry,
                                       ),
                                     }))
                                   }
-                                >
-                                  <option value="">Padrão ({catalog?.defaultUnitCode ?? "CM"})</option>
-                                  {unitOptions.map((unit) => (
-                                    <option key={unit.id} value={unit.id}>
-                                      {unit.code}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
+                                  renderQuickCreate={({ cancelCreate, completeCreate, initialValue }) => (
+                                    <MeasurementCatalogQuickCreate
+                                      endpoint="/measurement-units"
+                                      initialCode={initialValue.toUpperCase()}
+                                      initialDisplayName={initialValue}
+                                      kind="unit"
+                                      onCancel={cancelCreate}
+                                      onCreated={async (created) => {
+                                        await loadCatalog();
+                                        completeCreate({
+                                          id: created.id,
+                                          label: created.code,
+                                          hint: created.displayName,
+                                        });
+                                      }}
+                                      sortOrder={unitOptions.length + 1}
+                                    />
+                                  )}
+                                />
+                              </div>
                               <label className="field">
                                 <span>Observações</span>
                                 <input
@@ -1072,5 +1121,80 @@ function CustomerFields({
         <textarea rows={4} value={form.observations} onChange={(event) => onChange((current) => ({ ...current, observations: event.target.value }))} />
       </label>
     </>
+  );
+}
+
+function MeasurementCatalogQuickCreate({
+  endpoint,
+  initialCode,
+  initialDisplayName,
+  kind,
+  sortOrder,
+  onCancel,
+  onCreated,
+}: {
+  endpoint: "/measurement-body-parts" | "/measurement-units";
+  initialCode: string;
+  initialDisplayName: string;
+  kind: "body-part" | "unit";
+  sortOrder: number;
+  onCancel: () => void;
+  onCreated: (record: { id: string; code: string; displayName: string }) => Promise<void>;
+}) {
+  const { apiJson } = useSession();
+  const [code, setCode] = useState(initialCode);
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [pending, setPending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  return (
+    <form
+      className="form-grid"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setPending(true);
+        setErrorMessage(null);
+        try {
+          const created = await apiJson<{ id: string; code: string; displayName: string }>(endpoint, {
+            method: "POST",
+            body: JSON.stringify(
+              kind === "body-part"
+                ? { displayName, sortOrder }
+                : {
+                    code,
+                    displayName,
+                    sortOrder,
+                  },
+            ),
+          });
+          await onCreated(created);
+        } catch (error) {
+          setErrorMessage(error instanceof Error ? error.message : "O registro não pôde ser criado.");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <h4>Quick create</h4>
+      {kind === "unit" ? (
+        <label className="field">
+          <span>Código</span>
+          <input required value={code} onChange={(event) => setCode(event.target.value)} />
+        </label>
+      ) : null}
+      <label className="field">
+        <span>{kind === "body-part" ? "Parte do corpo" : "Nome exibido"}</span>
+        <input required value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+      </label>
+      {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
+      <div className="button-row">
+        <button className="button" disabled={pending} type="submit">
+          {pending ? "Salvando…" : "Salvar e selecionar"}
+        </button>
+        <button className="button-secondary" onClick={onCancel} type="button">
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }

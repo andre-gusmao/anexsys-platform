@@ -29,6 +29,30 @@ export interface EffectiveAccessResult {
   communities: string[];
 }
 
+export interface UserAccessSummary {
+  roles: Array<{
+    assignmentId: string;
+    roleId: string;
+    code: string;
+    displayName: string;
+    assignedBranchId: string | null;
+    assignedBranchLabel: string | null;
+  }>;
+  communities: Array<{
+    membershipId: string;
+    communityId: string;
+    code: string;
+    displayName: string;
+  }>;
+  branchScopes: Array<{
+    scopeId: string;
+    branchId: string;
+    branchLabel: string;
+    scopeType: BranchScopeType;
+  }>;
+  effectiveAccess: EffectiveAccessResult;
+}
+
 @Injectable()
 export class AuthorizationService {
   constructor(
@@ -142,6 +166,156 @@ export class AuthorizationService {
       action: 'authorization.community.created',
       eventType: 'authorization.write',
       metadata: { code: saved.code },
+    });
+
+    return saved;
+  }
+
+  async updateRole(dto: {
+    tenantId: string;
+    roleId: string;
+    code?: string;
+    displayName?: string;
+    description?: string | null;
+    status?: RoleStatus;
+    isSystemManaged?: boolean;
+    actorUserId: string;
+  }): Promise<RoleEntity> {
+    const role = await this.getRole(dto.roleId);
+    if (role.tenantId !== dto.tenantId) {
+      throw new DomainValidationError('Role is outside the tenant scope.');
+    }
+
+    if (dto.code) {
+      const normalizedCode = dto.code.trim().toUpperCase();
+      if (normalizedCode !== role.code) {
+        const existingRole = await this.roleRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+        if (existingRole && existingRole.id !== role.id) {
+          throw new DomainValidationError(`Role code '${normalizedCode}' already exists for this tenant.`);
+        }
+        role.code = normalizedCode;
+      }
+    }
+
+    if (dto.displayName !== undefined) {
+      role.displayName = dto.displayName.trim();
+    }
+    if (dto.description !== undefined) {
+      role.description = dto.description?.trim() || null;
+    }
+    if (dto.status !== undefined) {
+      role.status = dto.status;
+    }
+    if (dto.isSystemManaged !== undefined) {
+      role.isSystemManaged = dto.isSystemManaged;
+    }
+    role.updatedBy = dto.actorUserId;
+
+    const saved = await this.roleRepository.save(role);
+    await this.auditService.record({
+      tenantId: dto.tenantId,
+      actorUserId: dto.actorUserId,
+      entityType: 'role',
+      entityId: saved.id,
+      action: 'authorization.role.updated',
+      eventType: 'authorization.write',
+      metadata: { code: saved.code, status: saved.status },
+    });
+
+    return saved;
+  }
+
+  async updatePermission(dto: {
+    tenantId: string;
+    permissionId: string;
+    code?: string;
+    displayName?: string;
+    description?: string | null;
+    actorUserId: string;
+  }): Promise<PermissionEntity> {
+    const permission = await this.getPermission(dto.permissionId);
+    if (permission.tenantId !== dto.tenantId) {
+      throw new DomainValidationError('Permission is outside the tenant scope.');
+    }
+
+    if (dto.code) {
+      const normalizedCode = dto.code.trim().toLowerCase();
+      if (normalizedCode !== permission.code) {
+        const existingPermission = await this.permissionRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+        if (existingPermission && existingPermission.id !== permission.id) {
+          throw new DomainValidationError(`Permission code '${normalizedCode}' already exists for this tenant.`);
+        }
+        permission.code = normalizedCode;
+      }
+    }
+
+    if (dto.displayName !== undefined) {
+      permission.displayName = dto.displayName.trim();
+    }
+    if (dto.description !== undefined) {
+      permission.description = dto.description?.trim() || null;
+    }
+    permission.updatedBy = dto.actorUserId;
+
+    const saved = await this.permissionRepository.save(permission);
+    await this.auditService.record({
+      tenantId: dto.tenantId,
+      actorUserId: dto.actorUserId,
+      entityType: 'permission',
+      entityId: saved.id,
+      action: 'authorization.permission.updated',
+      eventType: 'authorization.write',
+      metadata: { code: saved.code },
+    });
+
+    return saved;
+  }
+
+  async updateCommunity(dto: {
+    tenantId: string;
+    communityId: string;
+    code?: string;
+    displayName?: string;
+    description?: string | null;
+    status?: RoleStatus;
+    actorUserId: string;
+  }): Promise<CommunityEntity> {
+    const community = await this.getCommunity(dto.communityId);
+    if (community.tenantId !== dto.tenantId) {
+      throw new DomainValidationError('Community is outside the tenant scope.');
+    }
+
+    if (dto.code) {
+      const normalizedCode = dto.code.trim().toUpperCase();
+      if (normalizedCode !== community.code) {
+        const existingCommunity = await this.communityRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+        if (existingCommunity && existingCommunity.id !== community.id) {
+          throw new DomainValidationError(`Community code '${normalizedCode}' already exists for this tenant.`);
+        }
+        community.code = normalizedCode;
+      }
+    }
+
+    if (dto.displayName !== undefined) {
+      community.displayName = dto.displayName.trim();
+    }
+    if (dto.description !== undefined) {
+      community.description = dto.description?.trim() || null;
+    }
+    if (dto.status !== undefined) {
+      community.status = dto.status;
+    }
+    community.updatedBy = dto.actorUserId;
+
+    const saved = await this.communityRepository.save(community);
+    await this.auditService.record({
+      tenantId: dto.tenantId,
+      actorUserId: dto.actorUserId,
+      entityType: 'community',
+      entityId: saved.id,
+      action: 'authorization.community.updated',
+      eventType: 'authorization.write',
+      metadata: { code: saved.code, status: saved.status },
     });
 
     return saved;
@@ -375,6 +549,69 @@ export class AuthorizationService {
 
   async getCommunityById(communityId: string): Promise<CommunityEntity> {
     return this.getCommunity(communityId);
+  }
+
+  async getUserAccessSummary(tenantId: string, userId: string): Promise<UserAccessSummary> {
+    const assignments = await this.userRoleAssignmentRepository.findActiveByUserId(tenantId, userId);
+    const memberships = await this.userCommunityRepository.findByUserId(tenantId, userId);
+    const branchScopes = await this.userBranchScopeRepository.findByUserId(tenantId, userId);
+
+    const roles = await Promise.all(assignments.map((assignment) => this.getRole(assignment.roleId)));
+    const communities = await this.communityRepository.findByIds(
+      tenantId,
+      memberships.map((membership) => membership.communityId),
+    );
+    const branchMap = new Map<string, string>();
+    const branchIds = [
+      ...new Set(
+        [
+          ...assignments.map((assignment) => assignment.assignedBranchId).filter((branchId): branchId is string => Boolean(branchId)),
+          ...branchScopes.map((scope) => scope.branchId),
+        ],
+      ),
+    ];
+    for (const branchId of branchIds) {
+      const branch = await this.branchService.getById(branchId);
+      branchMap.set(branch.id, branch.displayName || branch.code);
+    }
+
+    const communityMap = new Map(communities.map((community) => [community.id, community] as const));
+    const effectiveAccess = await this.getEffectiveAccessForUser(tenantId, userId);
+
+    return {
+      roles: assignments.map((assignment) => {
+        const role = roles.find((candidate) => candidate.id === assignment.roleId);
+        return {
+          assignmentId: assignment.id,
+          roleId: assignment.roleId,
+          code: role?.code ?? assignment.roleId,
+          displayName: role?.displayName ?? assignment.roleId,
+          assignedBranchId: assignment.assignedBranchId,
+          assignedBranchLabel: assignment.assignedBranchId ? branchMap.get(assignment.assignedBranchId) ?? assignment.assignedBranchId : null,
+        };
+      }),
+      communities: memberships.map((membership) => {
+        const community = communityMap.get(membership.communityId);
+        return {
+          membershipId: membership.id,
+          communityId: membership.communityId,
+          code: community?.code ?? membership.communityId,
+          displayName: community?.displayName ?? membership.communityId,
+        };
+      }),
+      branchScopes: await Promise.all(
+        branchScopes.map(async (scope) => {
+          const branch = branchMap.get(scope.branchId) ?? (await this.branchService.getById(scope.branchId)).displayName;
+          return {
+            scopeId: scope.id,
+            branchId: scope.branchId,
+            branchLabel: branch,
+            scopeType: scope.scopeType,
+          };
+        }),
+      ),
+      effectiveAccess,
+    };
   }
 
   async getEffectiveAccessForUser(tenantId: string, userId: string): Promise<EffectiveAccessResult> {

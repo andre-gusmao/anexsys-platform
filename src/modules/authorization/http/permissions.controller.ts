@@ -2,7 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,6 +22,20 @@ class CreatePermissionBody {
 
   @IsString()
   displayName!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+class UpdatePermissionBody {
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  displayName?: string;
 
   @IsOptional()
   @IsString()
@@ -54,5 +72,44 @@ export class PermissionsController {
     }
 
     return this.authorizationService.createPermission({ ...body, tenantId, actorUserId });
+  }
+
+  @Permissions('permissions.read')
+  @Get(':permissionId')
+  async getById(@Param('permissionId', new ParseUUIDPipe()) permissionId: string, @CurrentTenantId() tenantId: string | null) {
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+
+    const permission = await this.authorizationService.getPermissionById(permissionId);
+    if (permission.tenantId !== tenantId) {
+      throw new ForbiddenException('Requested permission is outside the authenticated tenant scope.');
+    }
+
+    return permission;
+  }
+
+  @Permissions('permissions.write')
+  @Patch(':permissionId')
+  async update(
+    @Param('permissionId', new ParseUUIDPipe()) permissionId: string,
+    @Body() body: UpdatePermissionBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    const permission = await this.authorizationService.getPermissionById(permissionId);
+    if (permission.tenantId !== tenantId) {
+      throw new ForbiddenException('Requested permission is outside the authenticated tenant scope.');
+    }
+
+    return this.authorizationService.updatePermission({ tenantId, permissionId, actorUserId, ...body });
   }
 }

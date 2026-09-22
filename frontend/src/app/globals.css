@@ -136,6 +136,16 @@ textarea {
   resize: vertical;
 }
 
+.field--checkbox {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.field--checkbox input {
+  width: 20px;
+  min-height: 20px;
+}
+
 .field__hint {
   color: var(--muted);
   font-size: 13px;
@@ -593,6 +603,111 @@ textarea {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+}
+
+.smart-lookup {
+  display: grid;
+  gap: 10px;
+}
+
+.smart-lookup__label-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.smart-lookup__search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.smart-lookup__search-row input {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--foreground);
+  border-radius: 12px;
+  padding: 0 14px;
+}
+
+.smart-lookup__selected {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.smart-lookup__options {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.smart-lookup__option {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+}
+
+.smart-lookup__option small {
+  color: var(--muted);
+}
+
+.smart-lookup__option--active,
+.smart-lookup__option:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.smart-lookup__quick-create {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.inline-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.inline-form select,
+.inline-form input {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--foreground);
+  border-radius: 12px;
+  padding: 0 14px;
+}
+
+.token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.token-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: var(--primary-soft);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 13px;
 }
 
 @media (max-width: 960px) {
