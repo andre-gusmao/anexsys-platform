@@ -5,6 +5,7 @@ import { PlaceholderWorkspace } from "@/components/ui/placeholder-workspace";
 
 export default function BranchesPage() {
   const { session } = useSession();
+  const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
 
   return (
     <PlaceholderWorkspace
@@ -13,7 +14,7 @@ export default function BranchesPage() {
       bullets={[
         "Branch context stays explicit in the top bar",
         "Switch Branch action is always reachable",
-        `Current active branch: ${session?.activeBranchId ?? "not selected"}`,
+        `Current active branch: ${activeBranch?.label ?? "not selected"}`,
       ]}
       aside={
         <>
