@@ -101,6 +101,9 @@ export function ServiceOrdersWorkspace() {
       }
       setMessage(null);
     } catch (error) {
+      setOrders([]);
+      setActiveOrderId(null);
+      setDetails(null);
       setMessage(error instanceof Error ? error.message : "As Service Orders não puderam ser carregadas.");
     } finally {
       setLoading(false);

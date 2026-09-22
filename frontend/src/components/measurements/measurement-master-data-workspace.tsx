@@ -77,6 +77,8 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
       );
       setMessage(null);
     } catch (error) {
+      setRecords([]);
+      setEditing({});
       setMessage(error instanceof Error ? error.message : `The ${config.title.toLowerCase()} list could not be loaded.`);
     } finally {
       setLoading(false);
