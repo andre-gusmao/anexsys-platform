@@ -192,6 +192,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
                     {mode === "units" ? (
                       <td>
                         <input
+                          disabled={!canWrite}
                           value={editing[record.id]?.code ?? ""}
                           onChange={(event) =>
                             setEditing((current) => ({
@@ -204,6 +205,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
                     ) : null}
                     <td>
                       <input
+                        disabled={!canWrite}
                         value={editing[record.id]?.displayName ?? ""}
                         onChange={(event) =>
                           setEditing((current) => ({
@@ -215,6 +217,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
                     </td>
                     <td>
                       <input
+                        disabled={!canWrite}
                         inputMode="numeric"
                         value={editing[record.id]?.sortOrder ?? "0"}
                         onChange={(event) =>

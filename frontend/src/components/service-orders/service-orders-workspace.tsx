@@ -92,7 +92,7 @@ export function ServiceOrdersWorkspace() {
       const suffix = searchQuery.trim() ? `?q=${encodeURIComponent(searchQuery.trim())}` : "";
       const response = await apiJson<ServiceOrderRecord[]>(`/service-orders${suffix}`);
       setOrders(response);
-      const nextActiveId = activeOrderId ?? response[0]?.id ?? null;
+      const nextActiveId = activeOrderId && response.some((order) => order.id === activeOrderId) ? activeOrderId : response[0]?.id ?? null;
       setActiveOrderId(nextActiveId);
       if (nextActiveId) {
         void loadDetails(nextActiveId);
