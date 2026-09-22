@@ -6,10 +6,6 @@ export class CreateCustomerDto {
   tenantId!: string;
 
   @IsOptional()
-  @IsUUID()
-  branchId?: string | null;
-
-  @IsOptional()
   @IsEnum(CustomerType)
   customerType?: CustomerType;
 
@@ -28,6 +24,27 @@ export class CreateCustomerDto {
   @IsString()
   @Length(8, 20)
   postalCode?: string;
+
+  @IsString()
+  street!: string;
+
+  @IsString()
+  number!: string;
+
+  @IsString()
+  complement!: string;
+
+  @IsString()
+  district!: string;
+
+  @IsString()
+  city!: string;
+
+  @IsString()
+  state!: string;
+
+  @IsString()
+  country!: string;
 
   @IsOptional()
   @IsString()

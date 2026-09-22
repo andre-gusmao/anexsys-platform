@@ -3,10 +3,6 @@ import { CustomerStatus, CustomerType } from 'src/shared/domain/enums';
 
 export class UpdateCustomerDto {
   @IsOptional()
-  @IsUUID()
-  branchId?: string | null;
-
-  @IsOptional()
   @IsEnum(CustomerType)
   customerType?: CustomerType;
 
@@ -27,6 +23,34 @@ export class UpdateCustomerDto {
   @IsString()
   @Length(8, 20)
   postalCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  street?: string | null;
+
+  @IsOptional()
+  @IsString()
+  number?: string | null;
+
+  @IsOptional()
+  @IsString()
+  complement?: string | null;
+
+  @IsOptional()
+  @IsString()
+  district?: string | null;
+
+  @IsOptional()
+  @IsString()
+  city?: string | null;
+
+  @IsOptional()
+  @IsString()
+  state?: string | null;
+
+  @IsOptional()
+  @IsString()
+  country?: string | null;
 
   @IsOptional()
   @ValidateIf((_, value) => value !== null)

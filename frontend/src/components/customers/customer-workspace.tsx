@@ -8,7 +8,6 @@ type CustomerStatus = "active" | "inactive" | "blocked";
 
 type CustomerRecord = {
   id: string;
-  branchId: string | null;
   customerType: CustomerType;
   legalName: string;
   tradeName: string | null;
@@ -17,6 +16,13 @@ type CustomerRecord = {
   phone: string;
   birthDate: string | null;
   postalCode?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  district?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   observations: string | null;
   status: CustomerStatus;
   createdAt?: string;
@@ -112,7 +118,6 @@ type MeasurementHistoryResponse = {
 };
 
 type CustomerFormState = {
-  branchId: string;
   customerType: CustomerType;
   fullName: string;
   tradeName: string;
@@ -121,6 +126,13 @@ type CustomerFormState = {
   email: string;
   birthDate: string;
   postalCode: string;
+  street: string;
+  number: string;
+  complement: string;
+  district: string;
+  city: string;
+  state: string;
+  country: string;
   observations: string;
   status: CustomerStatus;
 };
@@ -133,7 +145,6 @@ type MeasurementDraft = {
 };
 
 const defaultCustomerForm = (): CustomerFormState => ({
-  branchId: "",
   customerType: "person",
   fullName: "",
   tradeName: "",
@@ -142,11 +153,22 @@ const defaultCustomerForm = (): CustomerFormState => ({
   email: "",
   birthDate: "",
   postalCode: "",
+  street: "",
+  number: "",
+  complement: "",
+  district: "",
+  city: "",
+  state: "",
+  country: "Brasil",
   observations: "",
   status: "active",
 });
 
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
+
+function normalizePostalCode(value: string) {
+  return value.replace(/\D/g, "").slice(0, 8);
+}
 
 function createMeasurementDraft(defaultUnitId?: string | null): MeasurementDraft {
   return {
@@ -177,7 +199,6 @@ function formatDate(value: string | null | undefined) {
 
 function mapCustomerToForm(customer: CustomerRecord): CustomerFormState {
   return {
-    branchId: customer.branchId ?? "",
     customerType: customer.customerType,
     fullName: customer.legalName,
     tradeName: customer.tradeName ?? "",
@@ -186,13 +207,20 @@ function mapCustomerToForm(customer: CustomerRecord): CustomerFormState {
     email: customer.email ?? "",
     birthDate: customer.birthDate ?? "",
     postalCode: customer.postalCode ?? "",
+    street: customer.street ?? "",
+    number: customer.number ?? "",
+    complement: customer.complement ?? "",
+    district: customer.district ?? "",
+    city: customer.city ?? "",
+    state: customer.state ?? "",
+    country: customer.country ?? "Brasil",
     observations: customer.observations ?? "",
     status: customer.status,
   };
 }
 
 export function CustomerWorkspace() {
-  const { session, hasAnyPermission, apiJson } = useSession();
+  const { hasAnyPermission, apiJson } = useSession();
   const canWriteCustomers = hasAnyPermission("customers.write");
   const canReadMeasurements = hasAnyPermission("measurements.read");
   const canWriteMeasurements = hasAnyPermission("measurements.write");
@@ -200,7 +228,6 @@ export function CustomerWorkspace() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
-  const [branchFilter, setBranchFilter] = useState("");
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
@@ -212,6 +239,7 @@ export function CustomerWorkspace() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [savingMeasurements, setSavingMeasurements] = useState(false);
+  const [lookingUpPostalCode, setLookingUpPostalCode] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [customerForm, setCustomerForm] = useState<CustomerFormState>(defaultCustomerForm);
   const [measurementForm, setMeasurementForm] = useState({
@@ -220,8 +248,6 @@ export function CustomerWorkspace() {
     items: [createMeasurementDraft(null)] as MeasurementDraft[],
   });
 
-  const branchOptions = useMemo(() => session?.branches ?? [], [session?.branches]);
-  const branchNameById = useMemo(() => new Map(branchOptions.map((branch) => [branch.id, branch.label])), [branchOptions]);
   const bodyPartOptions = useMemo(() => catalog?.bodyParts ?? [], [catalog]);
   const unitOptions = useMemo(() => catalog?.units ?? [], [catalog]);
 
@@ -259,7 +285,6 @@ export function CustomerWorkspace() {
       if (searchQuery.trim()) params.set("q", searchQuery.trim());
       if (statusFilter) params.set("status", statusFilter);
       if (typeFilter) params.set("customerType", typeFilter);
-      if (branchFilter) params.set("branchId", branchFilter);
       const suffix = params.toString() ? `?${params}` : "";
       const response = await apiJson<CustomerRecord[]>(`/customers${suffix}`);
       setCustomers(response);
@@ -269,7 +294,7 @@ export function CustomerWorkspace() {
     } finally {
       setLoadingCustomers(false);
     }
-  }, [apiJson, branchFilter, searchQuery, statusFilter, typeFilter]);
+  }, [apiJson, searchQuery, statusFilter, typeFilter]);
 
   const loadCustomerDetails = useCallback(
     async (customerId: string) => {
@@ -330,6 +355,50 @@ export function CustomerWorkspace() {
     [customers],
   );
 
+  const handlePostalCodeLookup = useCallback(async () => {
+    const postalCode = normalizePostalCode(customerForm.postalCode);
+    if (postalCode.length !== 8) {
+      return;
+    }
+
+    setLookingUpPostalCode(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${postalCode}/json/`);
+      if (!response.ok) {
+        throw new Error("Postal code lookup failed.");
+      }
+
+      const data = (await response.json()) as {
+        erro?: boolean;
+        logradouro?: string;
+        complemento?: string;
+        bairro?: string;
+        localidade?: string;
+        uf?: string;
+      };
+
+      if (data.erro) {
+        throw new Error("Postal code not found.");
+      }
+
+      setCustomerForm((current) => ({
+        ...current,
+        postalCode,
+        street: data.logradouro?.trim() || current.street,
+        complement: data.complemento?.trim() || current.complement,
+        district: data.bairro?.trim() || current.district,
+        city: data.localidade?.trim() || current.city,
+        state: data.uf?.trim() || current.state,
+        country: current.country || "Brasil",
+      }));
+      setWorkspaceMessage(null);
+    } catch (error) {
+      setWorkspaceMessage(error instanceof Error ? error.message : "Postal code lookup could not be completed.");
+    } finally {
+      setLookingUpPostalCode(false);
+    }
+  }, [customerForm.postalCode]);
+
   async function handleCreateCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSavingCustomer(true);
@@ -338,7 +407,6 @@ export function CustomerWorkspace() {
       const created = await apiJson<CustomerRecord>("/customers", {
         method: "POST",
         body: JSON.stringify({
-          branchId: customerForm.branchId || undefined,
           customerType: customerForm.customerType,
           fullName: customerForm.fullName,
           tradeName: customerForm.tradeName || undefined,
@@ -347,6 +415,13 @@ export function CustomerWorkspace() {
           email: customerForm.email || undefined,
           birthDate: customerForm.birthDate || undefined,
           postalCode: customerForm.postalCode || undefined,
+          street: customerForm.street,
+          number: customerForm.number,
+          complement: customerForm.complement,
+          district: customerForm.district,
+          city: customerForm.city,
+          state: customerForm.state,
+          country: customerForm.country,
           observations: customerForm.observations || undefined,
         }),
       });
@@ -371,7 +446,6 @@ export function CustomerWorkspace() {
       await apiJson<CustomerRecord>(`/customers/${selectedCustomer.id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          branchId: customerForm.branchId || null,
           customerType: customerForm.customerType,
           fullName: customerForm.fullName,
           tradeName: customerForm.tradeName || null,
@@ -380,6 +454,13 @@ export function CustomerWorkspace() {
           email: customerForm.email || null,
           birthDate: customerForm.birthDate || null,
           postalCode: customerForm.postalCode || null,
+          street: customerForm.street || null,
+          number: customerForm.number || null,
+          complement: customerForm.complement || null,
+          district: customerForm.district || null,
+          city: customerForm.city || null,
+          state: customerForm.state || null,
+          country: customerForm.country || null,
           observations: customerForm.observations || null,
           status: nextStatus,
         }),
@@ -445,7 +526,7 @@ export function CustomerWorkspace() {
       <section className="hero-card">
         <div className="eyebrow">Módulo operacional</div>
         <h1 className="title">Cadastro de clientes</h1>
-        <p>Cadastre clientes, pesquise rapidamente, edite dados cadastrais e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
+        <p>Cadastre clientes do tenant, pesquise rapidamente, edite dados cadastrais completos e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
       </section>
 
       {workspaceMessage ? (
@@ -505,18 +586,6 @@ export function CustomerWorkspace() {
               <option value="company">Empresa</option>
             </select>
           </label>
-
-          <label className="field">
-            <span>Filial</span>
-            <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
-              <option value="">Todas as filiais visíveis</option>
-              {branchOptions.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.label}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
       </section>
 
@@ -535,7 +604,7 @@ export function CustomerWorkspace() {
                 <tr>
                   <th>Cliente</th>
                   <th>Tipo</th>
-                  <th>Filial</th>
+                  <th>Documento</th>
                   <th>Status</th>
                   <th>Telefone</th>
                 </tr>
@@ -555,7 +624,7 @@ export function CustomerWorkspace() {
                       </button>
                     </td>
                     <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
-                    <td>{customer.branchId ? branchNameById.get(customer.branchId) ?? "Filial vinculada" : "Compartilhado"}</td>
+                    <td>{customer.cpfCnpj ?? "—"}</td>
                     <td>
                       <span className={`status-chip status-chip--${customer.status}`}>{customer.status}</span>
                     </td>
@@ -578,9 +647,15 @@ export function CustomerWorkspace() {
           {showCreateForm ? (
             <article className="mini-card">
               <h3>Novo cliente</h3>
-              <p className="subtitle">Capture primeiro os dados mínimos operacionais. O relacionamento pode ser enriquecido depois.</p>
+              <p className="subtitle">Cadastre o cliente uma única vez no tenant e mantenha o endereço completo para uso operacional futuro.</p>
               <form className="form-grid" onSubmit={handleCreateCustomer}>
-                <CustomerFields branchOptions={branchOptions} form={customerForm} onChange={setCustomerForm} showStatus={false} />
+                <CustomerFields
+                  form={customerForm}
+                  lookingUpPostalCode={lookingUpPostalCode}
+                  onChange={setCustomerForm}
+                  onPostalCodeLookup={() => void handlePostalCodeLookup()}
+                  showStatus={false}
+                />
                 <div className="button-row">
                   <button className="button" disabled={savingCustomer} type="submit">
                     {savingCustomer ? "Salvando…" : "Cadastrar cliente"}
@@ -633,18 +708,32 @@ export function CustomerWorkspace() {
                       <strong>{selectedCustomer.email ?? "—"}</strong>
                     </div>
                     <div className="detail-field">
-                      <span>Filial</span>
-                      <strong>{selectedCustomer.branchId ? branchNameById.get(selectedCustomer.branchId) ?? "Filial vinculada" : "Compartilhado"}</strong>
-                    </div>
-                    <div className="detail-field">
                       <span>Documento</span>
                       <strong>{selectedCustomer.cpfCnpj ?? "—"}</strong>
+                    </div>
+                    <div className="detail-field">
+                      <span>Disponibilidade</span>
+                      <strong>Cliente disponível para todo o tenant</strong>
+                    </div>
+                    <div className="detail-field">
+                      <span>Endereço</span>
+                      <strong>
+                         {[selectedCustomer.street, selectedCustomer.number, selectedCustomer.complement, selectedCustomer.district, selectedCustomer.city, selectedCustomer.state, selectedCustomer.country]
+                           .filter(Boolean)
+                           .join(" · ") || "—"}
+                      </strong>
                     </div>
                   </div>
 
                   {canWriteCustomers ? (
                     <form className="form-grid" onSubmit={handleUpdateCustomer}>
-                      <CustomerFields branchOptions={branchOptions} form={customerForm} onChange={setCustomerForm} showStatus />
+                      <CustomerFields
+                        form={customerForm}
+                        lookingUpPostalCode={lookingUpPostalCode}
+                        onChange={setCustomerForm}
+                        onPostalCodeLookup={() => void handlePostalCodeLookup()}
+                        showStatus
+                      />
                       <div className="button-row">
                         <button className="button" disabled={savingCustomer} type="submit">
                           {savingCustomer ? "Salvando…" : "Salvar alterações"}
@@ -861,12 +950,14 @@ export function CustomerWorkspace() {
 function CustomerFields({
   form,
   onChange,
-  branchOptions,
+  onPostalCodeLookup,
+  lookingUpPostalCode,
   showStatus,
 }: {
   form: CustomerFormState;
   onChange: Dispatch<SetStateAction<CustomerFormState>>;
-  branchOptions: Array<{ id: string; label: string }>;
+  onPostalCodeLookup: () => void;
+  lookingUpPostalCode: boolean;
   showStatus: boolean;
 }) {
   return (
@@ -877,18 +968,6 @@ function CustomerFields({
           <select value={form.customerType} onChange={(event) => onChange((current) => ({ ...current, customerType: event.target.value as CustomerType }))}>
             <option value="person">Pessoa</option>
             <option value="company">Empresa</option>
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Filial</span>
-          <select value={form.branchId} onChange={(event) => onChange((current) => ({ ...current, branchId: event.target.value }))}>
-            <option value="">Compartilhado entre as filiais visíveis</option>
-            {branchOptions.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.label}
-              </option>
-            ))}
           </select>
         </label>
 
@@ -935,9 +1014,56 @@ function CustomerFields({
           <span>Data de nascimento</span>
           <input type="date" value={form.birthDate} onChange={(event) => onChange((current) => ({ ...current, birthDate: event.target.value }))} />
         </label>
+      </div>
+
+      <div className="filters-grid">
         <label className="field">
           <span>CEP</span>
-          <input value={form.postalCode} onChange={(event) => onChange((current) => ({ ...current, postalCode: event.target.value }))} />
+          <div className="button-row">
+            <input
+              required
+              value={form.postalCode}
+              onBlur={onPostalCodeLookup}
+              onChange={(event) => onChange((current) => ({ ...current, postalCode: event.target.value }))}
+            />
+            <button className="button-secondary" disabled={lookingUpPostalCode} onClick={onPostalCodeLookup} type="button">
+              {lookingUpPostalCode ? "Buscando…" : "Buscar CEP"}
+            </button>
+          </div>
+        </label>
+        <label className="field">
+          <span>Rua</span>
+          <input required value={form.street} onChange={(event) => onChange((current) => ({ ...current, street: event.target.value }))} />
+        </label>
+        <label className="field">
+          <span>Número</span>
+          <input required value={form.number} onChange={(event) => onChange((current) => ({ ...current, number: event.target.value }))} />
+        </label>
+      </div>
+
+      <div className="filters-grid">
+        <label className="field">
+          <span>Complemento</span>
+          <input required value={form.complement} onChange={(event) => onChange((current) => ({ ...current, complement: event.target.value }))} />
+        </label>
+        <label className="field">
+          <span>Bairro</span>
+          <input required value={form.district} onChange={(event) => onChange((current) => ({ ...current, district: event.target.value }))} />
+        </label>
+        <label className="field">
+          <span>Cidade</span>
+          <input required value={form.city} onChange={(event) => onChange((current) => ({ ...current, city: event.target.value }))} />
+        </label>
+      </div>
+
+      <div className="filters-grid">
+        <label className="field">
+          <span>Estado</span>
+          <input required value={form.state} onChange={(event) => onChange((current) => ({ ...current, state: event.target.value.toUpperCase() }))} />
+        </label>
+        <label className="field">
+          <span>País</span>
+          <input required value={form.country} onChange={(event) => onChange((current) => ({ ...current, country: event.target.value }))} />
         </label>
       </div>
 

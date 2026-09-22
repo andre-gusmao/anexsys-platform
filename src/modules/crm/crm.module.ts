@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from 'src/modules/audit/audit.module';
-import { BranchModule } from 'src/modules/branch/branch.module';
 import { TenantModule } from 'src/modules/tenant/tenant.module';
 import { CustomerService } from './application/customer/customer.service';
 import { MeasurementCatalogService } from './application/measurement-catalog/measurement-catalog.service';
@@ -38,7 +37,6 @@ import { MeasurementUnitRepository } from './infrastructure/persistence/reposito
       MeasurementSetItemEntity,
     ]),
     AuditModule,
-    BranchModule,
     TenantModule,
   ],
   controllers: [CustomersController, MeasurementCatalogController],

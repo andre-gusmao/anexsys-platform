@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -20,8 +19,6 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  IsUUID,
-  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
@@ -40,11 +37,6 @@ import { MeasurementService } from '../application/measurement/measurement.servi
 
 class CreateCustomerBody {
   @IsOptional()
-  @ValidateIf((_, value) => value !== null)
-  @IsUUID()
-  branchId?: string | null;
-
-  @IsOptional()
   @IsEnum(CustomerType)
   customerType?: CustomerType;
 
@@ -61,6 +53,27 @@ class CreateCustomerBody {
   @IsOptional()
   @IsString()
   postalCode?: string;
+
+  @IsString()
+  street!: string;
+
+  @IsString()
+  number!: string;
+
+  @IsString()
+  complement!: string;
+
+  @IsString()
+  district!: string;
+
+  @IsString()
+  city!: string;
+
+  @IsString()
+  state!: string;
+
+  @IsString()
+  country!: string;
 
   @IsOptional()
   @IsEmail()
@@ -80,11 +93,6 @@ class CreateCustomerBody {
 }
 
 class UpdateCustomerBody {
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null)
-  @IsUUID()
-  branchId?: string | null;
-
   @IsOptional()
   @IsEnum(CustomerType)
   customerType?: CustomerType;
@@ -106,6 +114,35 @@ class UpdateCustomerBody {
   postalCode?: string | null;
 
   @IsOptional()
+  @IsString()
+  street?: string | null;
+
+  @IsOptional()
+  @IsString()
+  number?: string | null;
+
+  @IsOptional()
+  @IsString()
+  complement?: string | null;
+
+  @IsOptional()
+  @IsString()
+  district?: string | null;
+
+  @IsOptional()
+  @IsString()
+  city?: string | null;
+
+  @IsOptional()
+  @IsString()
+  state?: string | null;
+
+  @IsOptional()
+  @IsString()
+  country?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsEmail()
   email?: string | null;
 
@@ -163,14 +200,8 @@ export class CustomersController {
     if (!principal) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
-    if (query.branchId && !principal.effectiveBranchIds.includes(query.branchId)) {
-      throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
-    }
 
-    return this.customerService.search(tenantId, {
-      ...query,
-      accessibleBranchIds: principal.effectiveBranchIds,
-    });
+    return this.customerService.search(tenantId, query);
   }
 
   @Permissions('customers.read')
@@ -184,9 +215,8 @@ export class CustomersController {
     if (!tenantId || !principal) {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
-
     const profile = await this.customerService.getProfile(tenantId, customerId);
-    this.customerService.assertCustomerBranchAccess(profile.customer, principal.effectiveBranchIds);
+    const profile = await this.customerService.getProfile(tenantId, customerId);
     const measurements = await this.measurementService.listByCustomer(tenantId, customerId);
 
     return {
@@ -205,9 +235,6 @@ export class CustomersController {
     const principal = request.requestContext.authenticatedPrincipal;
     if (!tenantId || !principal) {
       throw new UnauthorizedException('Authenticated tenant context is required.');
-    }
-    if (body.branchId && !principal.effectiveBranchIds.includes(body.branchId)) {
-      throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
     }
 
     return this.customerService.create({
@@ -231,10 +258,6 @@ export class CustomersController {
     }
 
     const currentCustomer = await this.customerService.getById(customerId, tenantId);
-    this.customerService.assertCustomerBranchAccess(currentCustomer, principal.effectiveBranchIds);
-    if (body.branchId && !principal.effectiveBranchIds.includes(body.branchId)) {
-      throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
-    }
     if (body.status === CustomerStatus.BLOCKED) {
       throw new BadRequestException('Blocked customer lifecycle is outside Sprint 2 scope.');
     }
@@ -256,9 +279,8 @@ export class CustomersController {
     if (!tenantId || !principal) {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
-
     const customer = await this.customerService.getById(customerId, tenantId);
-    this.customerService.assertCustomerBranchAccess(customer, principal.effectiveBranchIds);
+    const customer = await this.customerService.getById(customerId, tenantId);
     return this.measurementService.listByCustomer(tenantId, customerId);
   }
 
@@ -274,9 +296,8 @@ export class CustomersController {
     if (!tenantId || !principal) {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
-
     const customer = await this.customerService.getById(customerId, tenantId);
-    this.customerService.assertCustomerBranchAccess(customer, principal.effectiveBranchIds);
+    const customer = await this.customerService.getById(customerId, tenantId);
 
     return this.measurementService.create({
       ...(body as CreateMeasurementRecordDto),

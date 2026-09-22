@@ -179,9 +179,16 @@ before(async () => {
 
   const branchTwoCustomer = await customerService.create({
     tenantId,
-    branchId: branchTwoId,
     fullName: 'Out Of Scope Customer',
     mobilePhone: '(11) 97777-6655',
+    postalCode: '01310-100',
+    street: 'Avenida Paulista',
+    number: '900',
+    complement: 'Conjunto 91',
+    district: 'Bela Vista',
+    city: 'São Paulo',
+    state: 'SP',
+    country: 'Brasil',
     actorUserId: bootstrapActorId,
   });
   branchTwoCustomerId = branchTwoCustomer.id;
@@ -226,11 +233,17 @@ describe('Sprint 2 acceptance', () => {
         'x-tenant-id': tenantId,
       },
       body: JSON.stringify({
-        branchId: branchOneId,
         fullName: 'Maria da Silva',
         mobilePhone: '(11) 99888-7766',
-        cpf: '123.456.789-01',
+        cpf: '529.982.247-25',
         postalCode: '12345-678',
+        street: 'Rua das Flores',
+        number: '123',
+        complement: 'Casa 2',
+        district: 'Centro',
+        city: 'São Paulo',
+        state: 'SP',
+        country: 'Brasil',
         email: 'maria@cliente.test',
         birthDate: '1992-03-10',
         observations: 'VIP customer',
@@ -240,6 +253,8 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(created.status, 201);
     assert.equal(created.json.legalName, 'Maria da Silva');
     assert.equal(created.json.phone, '11998887766');
+    assert.equal(created.json.branchId, null);
+    assert.equal(created.json.street, 'Rua das Flores');
     customerId = created.json.id;
 
     const profile = await http(`/customers/${customerId}`, {
@@ -256,7 +271,7 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(profile.json.interactions[0].interactionType, 'profile_created');
   });
 
-  it('searches customers only inside the authenticated branch scope', async () => {
+  it('searches tenant-wide customers regardless of branch scope', async () => {
     const response = await http('/customers?q=maria', {
       method: 'GET',
       headers: {
@@ -267,7 +282,15 @@ describe('Sprint 2 acceptance', () => {
 
     assert.equal(response.status, 200);
     assert.equal(response.json.some((customer) => customer.id === customerId), true);
-    assert.equal(response.json.some((customer) => customer.id === branchTwoCustomerId), false);
+    const sharedResponse = await http('/customers?q=scope', {
+      method: 'GET',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantId,
+      },
+    });
+    assert.equal(sharedResponse.status, 200);
+    assert.equal(sharedResponse.json.some((customer) => customer.id === branchTwoCustomerId), true);
   });
 
   it('updates, deactivates, and reactivates customers', async () => {
@@ -277,10 +300,20 @@ describe('Sprint 2 acceptance', () => {
         authorization: 'Bearer ' + adminToken,
         'x-tenant-id': tenantId,
       },
-      body: JSON.stringify({ observations: 'Updated note' }),
+      body: JSON.stringify({
+        observations: 'Updated note',
+        street: 'Rua Atualizada',
+        number: '456',
+        complement: 'Casa 4',
+        district: 'Jardins',
+        city: 'São Paulo',
+        state: 'SP',
+        country: 'Brasil',
+      }),
     });
     assert.equal(updated.status, 200);
     assert.equal(updated.json.observations, 'Updated note');
+    assert.equal(updated.json.street, 'Rua Atualizada');
 
     const deactivated = await http(`/customers/${customerId}`, {
       method: 'PATCH',
@@ -355,15 +388,16 @@ describe('Sprint 2 acceptance', () => {
   });
 
   it('lists and extends measurement master data', async () => {
-    const bodyParts = await http('/measurement-body-parts', {
-      method: 'GET',
+    const createdBodyPart = await http('/measurement-body-parts', {
+      method: 'POST',
       headers: {
         authorization: 'Bearer ' + adminToken,
         'x-tenant-id': tenantId,
       },
+      body: JSON.stringify({ displayName: 'Tórax', sortOrder: 99 }),
     });
-    assert.equal(bodyParts.status, 200);
-    assert.equal(bodyParts.json.some((item) => item.code === 'BUSTO'), true);
+    assert.equal(createdBodyPart.status, 201);
+    assert.equal(createdBodyPart.json.code, 'TORAX');
 
     const createdUnit = await http('/measurement-units', {
       method: 'POST',
@@ -377,7 +411,7 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(createdUnit.json.code, 'IN');
   });
 
-  it('rejects customer creation for branches outside the authenticated branch scope', async () => {
+  it('rejects duplicate customer documents inside the same tenant', async () => {
     const response = await http('/customers', {
       method: 'POST',
       headers: {
@@ -385,13 +419,21 @@ describe('Sprint 2 acceptance', () => {
         'x-tenant-id': tenantId,
       },
       body: JSON.stringify({
-        branchId: branchTwoId,
         fullName: 'Blocked Branch Customer',
         mobilePhone: '(11) 94444-3322',
+        cpf: '529.982.247-25',
+        postalCode: '01001-000',
+        street: 'Praça da Sé',
+        number: '1',
+        complement: 'Loja 1',
+        district: 'Sé',
+        city: 'São Paulo',
+        state: 'SP',
+        country: 'Brasil',
       }),
     });
 
-    assert.equal(response.status, 403);
+    assert.equal(response.status, 400);
   });
 
   it('enforces validation on customer and measurement payloads', async () => {
@@ -401,7 +443,7 @@ describe('Sprint 2 acceptance', () => {
         authorization: 'Bearer ' + adminToken,
         'x-tenant-id': tenantId,
       },
-      body: JSON.stringify({ fullName: 'Invalid Customer' }),
+      body: JSON.stringify({ fullName: 'Invalid Customer', mobilePhone: '(11) 95555-1111' }),
     });
     assert.equal(invalidCustomer.status, 400);
 
@@ -416,7 +458,7 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(invalidMeasurement.status, 400);
   });
 
-  it('blocks cross-branch customer profile access', async () => {
+  it('returns tenant-wide customer profiles across branches', async () => {
     const response = await http(`/customers/${branchTwoCustomerId}`, {
       method: 'GET',
       headers: {
@@ -425,6 +467,7 @@ describe('Sprint 2 acceptance', () => {
       },
     });
 
-    assert.equal(response.status, 403);
+    assert.equal(response.status, 200);
+    assert.equal(response.json.customer.id, branchTwoCustomerId);
   });
 });

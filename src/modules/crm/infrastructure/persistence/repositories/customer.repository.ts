@@ -8,8 +8,6 @@ export interface CustomerSearchFilters {
   q?: string;
   status?: CustomerStatus;
   customerType?: CustomerType;
-  branchId?: string;
-  accessibleBranchIds: string[];
 }
 
 @Injectable()
@@ -31,29 +29,17 @@ export class CustomerRepository {
     return this.repository.findOne({ where: { id, isDeleted: false } });
   }
 
+  async findByTenantAndDocument(tenantId: string, cpfCnpj: string): Promise<CustomerEntity | null> {
+    return this.repository.findOne({
+      where: { tenantId, cpfCnpj, isDeleted: false },
+    });
+  }
+
   async search(tenantId: string, filters: CustomerSearchFilters): Promise<CustomerEntity[]> {
     const query = this.repository
       .createQueryBuilder('customer')
       .where('customer.tenant_id = :tenantId', { tenantId })
       .andWhere('customer.is_deleted = false');
-
-    if (filters.accessibleBranchIds.length > 0) {
-      query.andWhere(
-        new Brackets((branchQuery) => {
-          branchQuery
-            .where('customer.branch_id IS NULL')
-            .orWhere('customer.branch_id IN (:...accessibleBranchIds)', {
-              accessibleBranchIds: filters.accessibleBranchIds,
-            });
-        }),
-      );
-    } else {
-      query.andWhere('customer.branch_id IS NULL');
-    }
-
-    if (filters.branchId) {
-      query.andWhere('customer.branch_id = :branchId', { branchId: filters.branchId });
-    }
 
     if (filters.status) {
       query.andWhere('customer.status = :status', { status: filters.status });

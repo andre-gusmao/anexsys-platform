@@ -35,10 +35,13 @@ export class CustomerEntity extends SoftDeletableBusinessEntity {
   observations!: string | null;
 
   @Column({ name: 'address_line_1', type: 'text', nullable: true })
-  addressLine1!: string | null;
+  street!: string | null;
 
   @Column({ name: 'address_line_2', type: 'text', nullable: true })
-  addressLine2!: string | null;
+  complement!: string | null;
+
+  @Column({ name: 'address_number', type: 'text', nullable: true })
+  number!: string | null;
 
   @Column({ name: 'district', type: 'text', nullable: true })
   district!: string | null;
@@ -51,6 +54,9 @@ export class CustomerEntity extends SoftDeletableBusinessEntity {
 
   @Column({ name: 'postal_code', type: 'varchar', length: 20, nullable: true })
   postalCode!: string | null;
+
+  @Column({ name: 'country', type: 'text', nullable: true })
+  country!: string | null;
 
   @Column({ name: 'status', type: 'varchar', length: 30, default: CustomerStatus.ACTIVE })
   status!: CustomerStatus;

@@ -25,7 +25,7 @@ function buildTransactionDataSource() {
 }
 
 describe('CustomerService', () => {
-  it('creates a customer, primary contact, interaction, and audit entry', async () => {
+  it('creates a tenant-wide customer, primary contact, interaction, and audit entry', async () => {
     const auditCalls: Array<Record<string, unknown>> = [];
     const service = new CustomerService(
       buildTransactionDataSource() as never,
@@ -33,22 +33,30 @@ describe('CustomerService', () => {
         create(payload: Record<string, unknown>) {
           return payload;
         },
+        async findByTenantAndDocument() {
+          return null;
+        },
       } as never,
       {} as never,
       {} as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
-      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
       { async record(payload: Record<string, unknown>) { auditCalls.push(payload); } } as never,
     );
 
     const customer = await service.create({
       tenantId: 'tenant-1',
-      branchId: 'branch-1',
       customerType: CustomerType.PERSON,
       fullName: ' Maria Silva ',
       mobilePhone: '(11) 99888-7766',
-      cpf: '123.456.789-01',
+      cpf: '529.982.247-25',
       postalCode: '12345-678',
+      street: 'Rua das Flores',
+      number: '123',
+      complement: 'Casa 2',
+      district: 'Centro',
+      city: 'São Paulo',
+      state: 'SP',
+      country: 'Brasil',
       email: ' Maria@Example.com ',
       birthDate: '1990-05-20',
       observations: 'VIP',
@@ -56,22 +64,33 @@ describe('CustomerService', () => {
     });
 
     assert.equal(customer.legalName, 'Maria Silva');
+    assert.equal(customer.branchId, null);
     assert.equal(customer.phone, '11998887766');
-    assert.equal(customer.cpfCnpj, '12345678901');
+    assert.equal(customer.cpfCnpj, '52998224725');
     assert.equal(customer.email, 'maria@example.com');
     assert.equal(customer.postalCode, '12345678');
+    assert.equal(customer.street, 'Rua das Flores');
+    assert.equal(customer.number, '123');
+    assert.equal(customer.country, 'Brasil');
     assert.equal(customer.status, CustomerStatus.ACTIVE);
     assert.equal(auditCalls[0]?.action, 'customer.created');
+    assert.equal(auditCalls[0]?.branchId, null);
   });
 
   it('rejects future birth dates', async () => {
     const service = new CustomerService(
       buildTransactionDataSource() as never,
-      { create(payload: Record<string, unknown>) { return payload; } } as never,
+      {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async findByTenantAndDocument() {
+          return null;
+        },
+      } as never,
       {} as never,
       {} as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
-      {} as never,
       {} as never,
     );
 
@@ -81,7 +100,94 @@ describe('CustomerService', () => {
           tenantId: 'tenant-1',
           fullName: 'Maria Silva',
           mobilePhone: '(11) 99888-7766',
+          postalCode: '12345-678',
+          street: 'Rua das Flores',
+          number: '123',
+          complement: 'Casa 2',
+          district: 'Centro',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'Brasil',
           birthDate: '2999-01-01',
+          actorUserId: 'actor-1',
+        }),
+      DomainValidationError,
+    );
+  });
+
+  it('rejects invalid CPF values', async () => {
+    const service = new CustomerService(
+      buildTransactionDataSource() as never,
+      {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async findByTenantAndDocument() {
+          return null;
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.create({
+          tenantId: 'tenant-1',
+          customerType: CustomerType.PERSON,
+          fullName: 'Maria Silva',
+          mobilePhone: '(11) 99888-7766',
+          cpf: '123.456.789-01',
+          postalCode: '12345-678',
+          street: 'Rua das Flores',
+          number: '123',
+          complement: 'Casa 2',
+          district: 'Centro',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'Brasil',
+          actorUserId: 'actor-1',
+        }),
+      DomainValidationError,
+    );
+  });
+
+  it('rejects duplicate CPF/CNPJ inside the same tenant', async () => {
+    const service = new CustomerService(
+      buildTransactionDataSource() as never,
+      {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async findByTenantAndDocument() {
+          return { id: 'customer-existing' };
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.create({
+          tenantId: 'tenant-1',
+          customerType: CustomerType.COMPANY,
+          fullName: 'Empresa XPTO',
+          tradeName: 'XPTO',
+          mobilePhone: '(11) 99888-7766',
+          cpf: '04.252.011/0001-10',
+          postalCode: '12345-678',
+          street: 'Rua das Flores',
+          number: '123',
+          complement: 'Sala 4',
+          district: 'Centro',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'Brasil',
           actorUserId: 'actor-1',
         }),
       DomainValidationError,
@@ -93,16 +199,23 @@ describe('CustomerService', () => {
     const customer = {
       id: 'customer-1',
       tenantId: 'tenant-1',
-      branchId: 'branch-1',
+      branchId: null,
       customerType: CustomerType.PERSON,
       legalName: 'Maria Silva',
       tradeName: null,
-      cpfCnpj: null,
+      cpfCnpj: '52998224725',
       email: 'maria@example.com',
       phone: '11998887766',
       birthDate: null,
       observations: null,
-      postalCode: null,
+      postalCode: '12345678',
+      street: 'Rua das Flores',
+      number: '123',
+      complement: 'Casa 2',
+      district: 'Centro',
+      city: 'São Paulo',
+      state: 'SP',
+      country: 'Brasil',
       status: CustomerStatus.ACTIVE,
     };
     const service = new CustomerService(
@@ -128,11 +241,17 @@ describe('CustomerService', () => {
           return callback(manager);
         },
       } as never,
-      { async findById() { return customer; } } as never,
+      {
+        async findById() {
+          return customer;
+        },
+        async findByTenantAndDocument() {
+          return customer;
+        },
+      } as never,
       {} as never,
       {} as never,
       {} as never,
-      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
       { async record(payload: Record<string, unknown>) { auditCalls.push(payload); } } as never,
     );
 
@@ -142,6 +261,7 @@ describe('CustomerService', () => {
     });
 
     assert.equal(updated.status, CustomerStatus.INACTIVE);
+    assert.equal(updated.branchId, null);
     assert.equal(auditCalls[0]?.action, 'customer.deactivated');
   });
 });
