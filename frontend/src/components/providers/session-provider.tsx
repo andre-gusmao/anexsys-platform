@@ -224,6 +224,36 @@ function mapBranches(input: BranchResponse[] | null, fallbackIds: string[]): Bra
     }));
 }
 
+function createPendingHydrationSession(input: {
+  tenantId: string;
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
+  permissions: string[];
+  branchIds: string[];
+  communities?: string[];
+  activeBranchId?: string | null;
+  user?: AuthenticatedUser | null;
+  branches?: BranchOption[];
+  companies?: CompanyOption[];
+  companySelectionRequired?: boolean;
+}): SessionRecord {
+  return {
+    tenantId: input.tenantId,
+    accessToken: input.accessToken,
+    refreshToken: input.refreshToken,
+    sessionId: input.sessionId,
+    permissions: input.permissions,
+    communities: input.communities ?? [],
+    branchIds: input.branchIds,
+    activeBranchId: input.activeBranchId ?? null,
+    user: input.user ?? null,
+    branches: input.branches ?? [],
+    companies: input.companies ?? [],
+    companySelectionRequired: input.companySelectionRequired ?? false,
+  };
+}
+
 async function authenticatedRequest<T>(
   session: SessionRecord,
   path: string,
@@ -402,20 +432,14 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
         body: JSON.stringify({ email: loginEmail, password }),
       });
 
-      const baseSession: SessionRecord = {
+      const baseSession = createPendingHydrationSession({
         tenantId: result.tenantId,
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
         sessionId: result.sessionId,
         permissions: result.permissions,
-        communities: [],
         branchIds: result.branchIds,
-        activeBranchId: null,
-        user: null,
-        branches: [],
-        companies: [],
-        companySelectionRequired: false,
-      };
+      });
 
       await hydrateSession(baseSession);
     },
@@ -450,18 +474,20 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       { branchId: null },
     );
 
-    const baseSession: SessionRecord = {
-      ...currentSession,
+    const baseSession = createPendingHydrationSession({
       tenantId: result.data.tenantId,
       accessToken: result.data.accessToken,
       refreshToken: result.data.refreshToken,
       sessionId: result.data.sessionId,
       permissions: result.data.permissions,
+      communities: currentSession.communities,
       branchIds: result.data.branchIds,
-      activeBranchId: null,
-      branches: [],
-      companySelectionRequired: false,
-    };
+      user: currentSession.user,
+      companies: currentSession.companies,
+    });
+
+    sessionRef.current = baseSession;
+    setSession(baseSession);
 
     const resolved = await hydrateSession(baseSession);
     return resolved.companySelectionRequired === false && (resolved.activeBranchId !== null || resolved.branchIds.length === 0);
