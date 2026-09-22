@@ -388,6 +388,16 @@ describe('Sprint 2 acceptance', () => {
   });
 
   it('lists and extends measurement master data', async () => {
+    const listedBodyParts = await http('/measurement-body-parts', {
+      method: 'GET',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantId,
+      },
+    });
+    assert.equal(listedBodyParts.status, 200);
+    assert.equal(listedBodyParts.json.some((item) => item.code === 'BUSTO'), true);
+
     const createdBodyPart = await http('/measurement-body-parts', {
       method: 'POST',
       headers: {
@@ -399,6 +409,16 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(createdBodyPart.status, 201);
     assert.equal(createdBodyPart.json.code, 'TORAX');
 
+    const listedUnits = await http('/measurement-units', {
+      method: 'GET',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantId,
+      },
+    });
+    assert.equal(listedUnits.status, 200);
+    assert.equal(listedUnits.json.some((item) => item.code === 'CM'), true);
+
     const createdUnit = await http('/measurement-units', {
       method: 'POST',
       headers: {
@@ -409,6 +429,17 @@ describe('Sprint 2 acceptance', () => {
     });
     assert.equal(createdUnit.status, 201);
     assert.equal(createdUnit.json.code, 'IN');
+
+    const catalog = await http('/measurement-catalog', {
+      method: 'GET',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantId,
+      },
+    });
+    assert.equal(catalog.status, 200);
+    assert.equal(catalog.json.bodyParts.some((item) => item.code === 'TORAX'), true);
+    assert.equal(catalog.json.units.some((item) => item.code === 'IN'), true);
   });
 
   it('rejects duplicate customer documents inside the same tenant', async () => {

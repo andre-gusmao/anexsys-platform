@@ -5,7 +5,11 @@ import { TenantModule } from 'src/modules/tenant/tenant.module';
 import { CustomerService } from './application/customer/customer.service';
 import { MeasurementCatalogService } from './application/measurement-catalog/measurement-catalog.service';
 import { MeasurementService } from './application/measurement/measurement.service';
-import { MeasurementCatalogController } from './http/measurement-catalog.controller';
+import {
+  MeasurementBodyPartsController,
+  MeasurementCatalogController,
+  MeasurementUnitsController,
+} from './http/measurement-catalog.controller';
 import { CustomersController } from './http/customers.controller';
 import { CustomerEntity } from './infrastructure/persistence/entities/customer.entity';
 import { CustomerContactEntity } from './infrastructure/persistence/entities/customer-contact.entity';
@@ -39,7 +43,7 @@ import { MeasurementUnitRepository } from './infrastructure/persistence/reposito
     AuditModule,
     TenantModule,
   ],
-  controllers: [CustomersController, MeasurementCatalogController],
+  controllers: [CustomersController, MeasurementCatalogController, MeasurementBodyPartsController, MeasurementUnitsController],
   providers: [
     CustomerService,
     MeasurementCatalogService,

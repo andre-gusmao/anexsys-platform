@@ -42,12 +42,12 @@ class UpsertMeasurementUnitBody {
   sortOrder?: number;
 }
 
-@Controller()
+@Controller('measurement-catalog')
 export class MeasurementCatalogController {
   constructor(private readonly measurementCatalogService: MeasurementCatalogService) {}
 
   @Permissions('measurements.read')
-  @Get('measurement-catalog')
+  @Get()
   async getCatalog(@CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
     const principal = request.requestContext.authenticatedPrincipal;
     if (!tenantId || !principal) {
@@ -56,9 +56,14 @@ export class MeasurementCatalogController {
 
     return this.measurementCatalogService.getCatalog(tenantId, principal.userId);
   }
+}
+
+@Controller('measurement-body-parts')
+export class MeasurementBodyPartsController {
+  constructor(private readonly measurementCatalogService: MeasurementCatalogService) {}
 
   @Permissions('measurements.read')
-  @Get('measurement-body-parts')
+  @Get()
   async listBodyParts(@CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
     const principal = request.requestContext.authenticatedPrincipal;
     if (!tenantId || !principal) {
@@ -69,7 +74,7 @@ export class MeasurementCatalogController {
   }
 
   @Permissions('measurements.write')
-  @Post('measurement-body-parts')
+  @Post()
   async createBodyPart(
     @Body() body: UpsertMeasurementBodyPartBody,
     @CurrentTenantId() tenantId: string | null,
@@ -92,7 +97,7 @@ export class MeasurementCatalogController {
   }
 
   @Permissions('measurements.write')
-  @Patch('measurement-body-parts/:bodyPartId')
+  @Patch(':bodyPartId')
   async updateBodyPart(
     @Param('bodyPartId', new ParseUUIDPipe()) bodyPartId: string,
     @Body() body: UpsertMeasurementBodyPartBody,
@@ -111,9 +116,14 @@ export class MeasurementCatalogController {
       actorUserId: principal.userId,
     });
   }
+}
+
+@Controller('measurement-units')
+export class MeasurementUnitsController {
+  constructor(private readonly measurementCatalogService: MeasurementCatalogService) {}
 
   @Permissions('measurements.read')
-  @Get('measurement-units')
+  @Get()
   async listUnits(@CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
     const principal = request.requestContext.authenticatedPrincipal;
     if (!tenantId || !principal) {
@@ -124,7 +134,7 @@ export class MeasurementCatalogController {
   }
 
   @Permissions('measurements.write')
-  @Post('measurement-units')
+  @Post()
   async createUnit(
     @Body() body: UpsertMeasurementUnitBody,
     @CurrentTenantId() tenantId: string | null,
@@ -148,7 +158,7 @@ export class MeasurementCatalogController {
   }
 
   @Permissions('measurements.write')
-  @Patch('measurement-units/:unitId')
+  @Patch(':unitId')
   async updateUnit(
     @Param('unitId', new ParseUUIDPipe()) unitId: string,
     @Body() body: UpsertMeasurementUnitBody,
