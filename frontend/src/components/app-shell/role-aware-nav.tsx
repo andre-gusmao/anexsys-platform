@@ -19,6 +19,12 @@ const navItems: NavItem[] = [
     hint: "Sprint 1 shell",
   },
   {
+    href: "/customers",
+    label: "Customers",
+    hint: "CRM and measurements",
+    requiredPermissions: ["customers.read"],
+  },
+  {
     href: "/admin/tenants",
     label: "Companies",
     hint: "Company administration",

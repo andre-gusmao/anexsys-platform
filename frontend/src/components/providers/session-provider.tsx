@@ -57,6 +57,7 @@ type SessionContextValue = {
   selectBranch: (branchId: string) => Promise<boolean>;
   clearError: () => void;
   hasAnyPermission: (...permissions: string[]) => boolean;
+  apiJson: <T>(path: string, init?: RequestInit, opts?: { allowRefresh?: boolean; branchId?: string | null }) => Promise<T>;
 };
 
 type AuthResponse = {
@@ -501,6 +502,36 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     [session?.permissions],
   );
 
+  const apiJson = useCallback(
+    async <T,>(path: string, init: RequestInit = {}, opts: { allowRefresh?: boolean; branchId?: string | null } = {}) => {
+      const currentSession = sessionRef.current;
+      if (!currentSession) {
+        throw new HttpError(401, "Session expired. Please sign in again.");
+      }
+
+      const result = await authenticatedRequest<T>(currentSession, path, { method: "GET", ...init }, opts);
+      if (
+        result.session.accessToken !== currentSession.accessToken ||
+        result.session.refreshToken !== currentSession.refreshToken ||
+        result.session.sessionId !== currentSession.sessionId ||
+        result.session.tenantId !== currentSession.tenantId
+      ) {
+        const nextSession = {
+          ...currentSession,
+          accessToken: result.session.accessToken,
+          refreshToken: result.session.refreshToken,
+          sessionId: result.session.sessionId,
+          tenantId: result.session.tenantId,
+        };
+        sessionRef.current = nextSession;
+        setSession(nextSession);
+      }
+
+      return result.data;
+    },
+    [],
+  );
+
   const value = useMemo<SessionContextValue>(
     () => ({
       status,
@@ -512,8 +543,9 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       selectBranch,
       clearError,
       hasAnyPermission,
+      apiJson,
     }),
-    [clearError, errorMessage, hasAnyPermission, login, logout, selectBranch, selectCompany, session, status],
+    [apiJson, clearError, errorMessage, hasAnyPermission, login, logout, selectBranch, selectCompany, session, status],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
