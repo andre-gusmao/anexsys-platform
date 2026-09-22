@@ -1,7 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { useSession } from "@/components/providers/session-provider";
+import {
+  MasterDataDuplicateGuard,
+  normalizeBodyPartCodeValue,
+  normalizeCodeValue,
+  normalizeDocumentValue,
+} from "@/components/ui/master-data-duplicate-guard";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type CustomerType = "person" | "company";
@@ -243,6 +249,9 @@ export function CustomerWorkspace() {
   const [lookingUpPostalCode, setLookingUpPostalCode] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [customerForm, setCustomerForm] = useState<CustomerFormState>(defaultCustomerForm);
+  const [customerDuplicateStatus, setCustomerDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
+  const [customerDuplicateMatch, setCustomerDuplicateMatch] = useState<CustomerRecord | null>(null);
+  const customerDuplicateCheckRef = useRef(0);
   const [measurementForm, setMeasurementForm] = useState({
     measurementDate: todayIsoDate(),
     notes: "",
@@ -418,8 +427,49 @@ export function CustomerWorkspace() {
     }
   }, [customerForm.postalCode]);
 
+  const clearCustomerDuplicate = useCallback(() => {
+    customerDuplicateCheckRef.current += 1;
+    setCustomerDuplicateStatus("idle");
+    setCustomerDuplicateMatch(null);
+  }, []);
+
+  const handleCustomerDocumentBlur = useCallback(async () => {
+    const normalizedDocument = normalizeDocumentValue(customerForm.cpf);
+    const currentCustomerId = showCreateForm ? null : selectedCustomer?.id ?? null;
+    if (!normalizedDocument) {
+      clearCustomerDuplicate();
+      return;
+    }
+
+    const requestId = customerDuplicateCheckRef.current + 1;
+    customerDuplicateCheckRef.current = requestId;
+    setCustomerDuplicateStatus("checking");
+    try {
+      const response = await apiJson<CustomerRecord[]>(`/customers?q=${encodeURIComponent(normalizedDocument)}`);
+      if (customerDuplicateCheckRef.current !== requestId) {
+        return;
+      }
+      const duplicate =
+        response.find(
+          (customer) => normalizeDocumentValue(customer.cpfCnpj) === normalizedDocument && customer.id !== currentCustomerId,
+        ) ?? null;
+      setCustomerDuplicateMatch(duplicate);
+      setCustomerDuplicateStatus(duplicate ? "duplicate" : "idle");
+    } catch (error) {
+      if (customerDuplicateCheckRef.current !== requestId) {
+        return;
+      }
+      clearCustomerDuplicate();
+      setWorkspaceMessage(error instanceof Error ? error.message : "A validação de duplicidade do cliente não pôde ser concluída.");
+    }
+  }, [apiJson, clearCustomerDuplicate, customerForm.cpf, selectedCustomer?.id, showCreateForm]);
+
   async function handleCreateCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (customerDuplicateStatus !== "idle") {
+      setWorkspaceMessage("Revise a duplicidade detectada do cliente antes de salvar.");
+      return;
+    }
     setSavingCustomer(true);
     setWorkspaceMessage(null);
     try {
@@ -458,6 +508,10 @@ export function CustomerWorkspace() {
   async function handleUpdateCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedCustomer) return;
+    if (customerDuplicateStatus !== "idle") {
+      setWorkspaceMessage("Revise a duplicidade detectada do cliente antes de salvar.");
+      return;
+    }
     setSavingCustomer(true);
     setWorkspaceMessage(null);
     try {
@@ -569,6 +623,7 @@ export function CustomerWorkspace() {
                 setProfile(null);
                 setMeasurements(null);
                 setCustomerForm(defaultCustomerForm());
+                clearCustomerDuplicate();
               }}
               type="button"
             >
@@ -669,14 +724,51 @@ export function CustomerWorkspace() {
               <p className="subtitle">Cadastre o cliente uma única vez no tenant e mantenha o endereço completo para uso operacional futuro.</p>
               <form className="form-grid" onSubmit={handleCreateCustomer}>
                 <CustomerFields
+                  duplicateGuard={
+                    <MasterDataDuplicateGuard
+                      entityLabel="cliente"
+                      match={
+                        customerDuplicateMatch
+                          ? {
+                              id: customerDuplicateMatch.id,
+                              title: customerDuplicateMatch.legalName,
+                              subtitle: customerDuplicateMatch.cpfCnpj ?? customerDuplicateMatch.email ?? "Cadastro existente",
+                            }
+                          : null
+                      }
+                      onCancel={() => {
+                        setCustomerForm((current) => ({ ...current, cpf: "" }));
+                        clearCustomerDuplicate();
+                      }}
+                      onEdit={
+                        customerDuplicateMatch
+                          ? () => {
+                              clearCustomerDuplicate();
+                              void loadCustomerDetails(customerDuplicateMatch.id);
+                            }
+                          : undefined
+                      }
+                      onView={
+                        customerDuplicateMatch
+                          ? () => {
+                              clearCustomerDuplicate();
+                              void loadCustomerDetails(customerDuplicateMatch.id);
+                            }
+                          : undefined
+                      }
+                      status={customerDuplicateStatus}
+                    />
+                  }
                   form={customerForm}
                   lookingUpPostalCode={lookingUpPostalCode}
                   onChange={setCustomerForm}
+                  onDocumentBlur={() => void handleCustomerDocumentBlur()}
+                  onDocumentChange={() => clearCustomerDuplicate()}
                   onPostalCodeLookup={() => void handlePostalCodeLookup()}
                   showStatus={false}
                 />
                 <div className="button-row">
-                  <button className="button" disabled={savingCustomer} type="submit">
+                  <button className="button" disabled={savingCustomer || customerDuplicateStatus !== "idle"} type="submit">
                     {savingCustomer ? "Salvando…" : "Cadastrar cliente"}
                   </button>
                   <button
@@ -747,14 +839,51 @@ export function CustomerWorkspace() {
                   {canWriteCustomers ? (
                     <form className="form-grid" onSubmit={handleUpdateCustomer}>
                       <CustomerFields
+                        duplicateGuard={
+                          <MasterDataDuplicateGuard
+                            entityLabel="cliente"
+                            match={
+                              customerDuplicateMatch
+                                ? {
+                                    id: customerDuplicateMatch.id,
+                                    title: customerDuplicateMatch.legalName,
+                                    subtitle: customerDuplicateMatch.cpfCnpj ?? customerDuplicateMatch.email ?? "Cadastro existente",
+                                  }
+                                : null
+                            }
+                            onCancel={() => {
+                              setCustomerForm((current) => ({ ...current, cpf: selectedCustomer.cpfCnpj ?? "" }));
+                              clearCustomerDuplicate();
+                            }}
+                            onEdit={
+                              customerDuplicateMatch
+                                ? () => {
+                                    clearCustomerDuplicate();
+                                    void loadCustomerDetails(customerDuplicateMatch.id);
+                                  }
+                                : undefined
+                            }
+                            onView={
+                              customerDuplicateMatch
+                                ? () => {
+                                    clearCustomerDuplicate();
+                                    void loadCustomerDetails(customerDuplicateMatch.id);
+                                  }
+                                : undefined
+                            }
+                            status={customerDuplicateStatus}
+                          />
+                        }
                         form={customerForm}
                         lookingUpPostalCode={lookingUpPostalCode}
                         onChange={setCustomerForm}
+                        onDocumentBlur={() => void handleCustomerDocumentBlur()}
+                        onDocumentChange={() => clearCustomerDuplicate()}
                         onPostalCodeLookup={() => void handlePostalCodeLookup()}
                         showStatus
                       />
                       <div className="button-row">
-                        <button className="button" disabled={savingCustomer} type="submit">
+                        <button className="button" disabled={savingCustomer || customerDuplicateStatus !== "idle"} type="submit">
                           {savingCustomer ? "Salvando…" : "Salvar alterações"}
                         </button>
                       </div>
@@ -833,6 +962,7 @@ export function CustomerWorkspace() {
                                   renderQuickCreate={({ cancelCreate, completeCreate, initialValue }) => (
                                     <MeasurementCatalogQuickCreate
                                       endpoint="/measurement-body-parts"
+                                      existingRecords={bodyPartOptions}
                                       initialCode={initialValue.toUpperCase().replace(/\s+/g, "_")}
                                       initialDisplayName={initialValue}
                                       kind="body-part"
@@ -887,6 +1017,7 @@ export function CustomerWorkspace() {
                                   renderQuickCreate={({ cancelCreate, completeCreate, initialValue }) => (
                                     <MeasurementCatalogQuickCreate
                                       endpoint="/measurement-units"
+                                      existingRecords={unitOptions}
                                       initialCode={initialValue.toUpperCase()}
                                       initialDisplayName={initialValue}
                                       kind="unit"
@@ -997,14 +1128,20 @@ export function CustomerWorkspace() {
 }
 
 function CustomerFields({
+  duplicateGuard,
   form,
   onChange,
+  onDocumentBlur,
+  onDocumentChange,
   onPostalCodeLookup,
   lookingUpPostalCode,
   showStatus,
 }: {
+  duplicateGuard?: ReactNode;
   form: CustomerFormState;
   onChange: Dispatch<SetStateAction<CustomerFormState>>;
+  onDocumentBlur?: () => void;
+  onDocumentChange?: () => void;
   onPostalCodeLookup: () => void;
   lookingUpPostalCode: boolean;
   showStatus: boolean;
@@ -1050,9 +1187,17 @@ function CustomerFields({
         </label>
         <label className="field">
           <span>{form.customerType === "company" ? "CNPJ" : "CPF"}</span>
-          <input value={form.cpf} onChange={(event) => onChange((current) => ({ ...current, cpf: event.target.value }))} />
+          <input
+            value={form.cpf}
+            onBlur={onDocumentBlur}
+            onChange={(event) => {
+              onDocumentChange?.();
+              onChange((current) => ({ ...current, cpf: event.target.value }));
+            }}
+          />
         </label>
       </div>
+      {duplicateGuard}
 
       <div className="filters-grid">
         <label className="field">
@@ -1126,6 +1271,7 @@ function CustomerFields({
 
 function MeasurementCatalogQuickCreate({
   endpoint,
+  existingRecords,
   initialCode,
   initialDisplayName,
   kind,
@@ -1134,6 +1280,7 @@ function MeasurementCatalogQuickCreate({
   onCreated,
 }: {
   endpoint: "/measurement-body-parts" | "/measurement-units";
+  existingRecords: Array<{ id: string; code: string; displayName: string }>;
   initialCode: string;
   initialDisplayName: string;
   kind: "body-part" | "unit";
@@ -1146,6 +1293,19 @@ function MeasurementCatalogQuickCreate({
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [pending, setPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [duplicateStatus, setDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
+  const [duplicateMatch, setDuplicateMatch] = useState<{ id: string; code: string; displayName: string } | null>(null);
+
+  const checkDuplicate = useCallback(() => {
+    const duplicate =
+      existingRecords.find((record) =>
+        kind === "body-part"
+          ? normalizeBodyPartCodeValue(record.displayName) === normalizeBodyPartCodeValue(displayName)
+          : normalizeCodeValue(record.code) === normalizeCodeValue(code),
+      ) ?? null;
+    setDuplicateMatch(duplicate);
+    setDuplicateStatus(duplicate ? "duplicate" : "idle");
+  }, [code, displayName, existingRecords, kind]);
 
   return (
     <div className="form-grid">
@@ -1153,19 +1313,64 @@ function MeasurementCatalogQuickCreate({
       {kind === "unit" ? (
         <label className="field">
           <span>Código</span>
-          <input required value={code} onChange={(event) => setCode(event.target.value)} />
+          <input
+            required
+            value={code}
+            onBlur={checkDuplicate}
+            onChange={(event) => {
+              setDuplicateStatus("idle");
+              setDuplicateMatch(null);
+              setCode(event.target.value);
+            }}
+          />
         </label>
       ) : null}
       <label className="field">
         <span>{kind === "body-part" ? "Parte do corpo" : "Nome exibido"}</span>
-        <input required value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+        <input
+          required
+          value={displayName}
+          onBlur={checkDuplicate}
+          onChange={(event) => {
+            setDuplicateStatus("idle");
+            setDuplicateMatch(null);
+            setDisplayName(event.target.value);
+          }}
+        />
       </label>
+      <MasterDataDuplicateGuard
+        entityLabel={kind === "body-part" ? "parte do corpo" : "unidade de medida"}
+        match={
+          duplicateMatch
+            ? {
+                id: duplicateMatch.id,
+                title: kind === "body-part" ? duplicateMatch.displayName : duplicateMatch.code,
+                subtitle: kind === "body-part" ? duplicateMatch.code : duplicateMatch.displayName,
+              }
+            : null
+        }
+        onCancel={() => {
+          setDuplicateStatus("idle");
+          setDuplicateMatch(null);
+          if (kind === "body-part") {
+            setDisplayName("");
+          } else {
+            setCode("");
+          }
+        }}
+        status={duplicateStatus}
+        variant="warning"
+      />
       {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
       <div className="button-row">
         <button
           className="button"
-          disabled={pending}
+          disabled={pending || duplicateStatus !== "idle"}
           onClick={async () => {
+            if (duplicateStatus !== "idle") {
+              setErrorMessage("Revise a duplicidade detectada antes de salvar.");
+              return;
+            }
             setPending(true);
             setErrorMessage(null);
             try {

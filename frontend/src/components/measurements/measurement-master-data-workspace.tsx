@@ -2,6 +2,11 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "@/components/providers/session-provider";
+import {
+  MasterDataDuplicateGuard,
+  normalizeBodyPartCodeValue,
+  normalizeCodeValue,
+} from "@/components/ui/master-data-duplicate-guard";
 
 type BodyPartRecord = {
   id: string;
@@ -35,6 +40,8 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
   const [newCode, setNewCode] = useState("");
   const [newSortOrder, setNewSortOrder] = useState("0");
   const [editing, setEditing] = useState<Record<string, { displayName: string; code?: string; sortOrder: string }>>({});
+  const [duplicateStatus, setDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
+  const [duplicateMatch, setDuplicateMatch] = useState<BodyPartRecord | UnitRecord | null>(null);
 
   const config = useMemo(
     () =>
@@ -92,9 +99,30 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
     return () => window.clearTimeout(timeoutId);
   }, [loadRecords]);
 
+  const clearDuplicate = useCallback(() => {
+    setDuplicateStatus("idle");
+    setDuplicateMatch(null);
+  }, []);
+
+  const checkDuplicate = useCallback(() => {
+    setDuplicateStatus("checking");
+    const duplicate =
+      records.find((record) =>
+        mode === "body-parts"
+          ? normalizeBodyPartCodeValue(record.displayName) === normalizeBodyPartCodeValue(newDisplayName)
+          : normalizeCodeValue("code" in record ? record.code : "") === normalizeCodeValue(newCode),
+      ) ?? null;
+    setDuplicateMatch(duplicate);
+    setDuplicateStatus(duplicate ? "duplicate" : "idle");
+  }, [mode, newCode, newDisplayName, records]);
+
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWrite) return;
+    if (duplicateStatus !== "idle") {
+      setMessage("Revise a duplicidade detectada antes de salvar o cadastro.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -109,6 +137,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
       setNewDisplayName("");
       setNewCode("");
       setNewSortOrder("0");
+      clearDuplicate();
       setMessage(`${config.title} updated successfully.`);
       await loadRecords();
     } catch (error) {
@@ -264,19 +293,59 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
               {mode === "units" ? (
                 <label className="field">
                   <span>Código</span>
-                  <input required placeholder="CM" value={newCode} onChange={(event) => setNewCode(event.target.value)} />
+                  <input
+                    required
+                    placeholder="CM"
+                    value={newCode}
+                    onBlur={checkDuplicate}
+                    onChange={(event) => {
+                      clearDuplicate();
+                      setNewCode(event.target.value);
+                    }}
+                  />
                 </label>
               ) : null}
               <label className="field">
                 <span>{mode === "body-parts" ? "Nome da parte do corpo" : "Nome exibido"}</span>
-                <input required placeholder={mode === "body-parts" ? "Busto" : "Centímetros"} value={newDisplayName} onChange={(event) => setNewDisplayName(event.target.value)} />
+                <input
+                  required
+                  placeholder={mode === "body-parts" ? "Busto" : "Centímetros"}
+                  value={newDisplayName}
+                  onBlur={checkDuplicate}
+                  onChange={(event) => {
+                    clearDuplicate();
+                    setNewDisplayName(event.target.value);
+                  }}
+                />
               </label>
+              <MasterDataDuplicateGuard
+                entityLabel={mode === "body-parts" ? "parte do corpo" : "unidade de medida"}
+                match={
+                  duplicateMatch
+                    ? {
+                        id: duplicateMatch.id,
+                        title: mode === "body-parts" ? duplicateMatch.displayName : duplicateMatch.code,
+                        subtitle: mode === "body-parts" ? duplicateMatch.code : duplicateMatch.displayName,
+                      }
+                    : null
+                }
+                onCancel={() => {
+                  clearDuplicate();
+                  if (mode === "body-parts") {
+                    setNewDisplayName("");
+                  } else {
+                    setNewCode("");
+                  }
+                }}
+                status={duplicateStatus}
+                variant="warning"
+              />
               <label className="field">
                 <span>Ordem</span>
                 <input inputMode="numeric" value={newSortOrder} onChange={(event) => setNewSortOrder(event.target.value)} />
               </label>
               <div className="button-row">
-                <button className="button" disabled={saving} type="submit">
+                <button className="button" disabled={saving || duplicateStatus !== "idle"} type="submit">
                   {saving ? "Salvando…" : config.createButton}
                 </button>
               </div>

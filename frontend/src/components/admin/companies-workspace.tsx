@@ -1,7 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useSession } from "@/components/providers/session-provider";
+import {
+  MasterDataDuplicateGuard,
+  normalizeCodeValue,
+} from "@/components/ui/master-data-duplicate-guard";
 
 type CompanyRecord = {
   id: string;
@@ -55,6 +59,8 @@ export function CompaniesWorkspace() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<CompanyForm>(emptyForm);
+  const [companyDuplicateStatus, setCompanyDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
+  const [companyDuplicateMatch, setCompanyDuplicateMatch] = useState<CompanyRecord | null>(null);
 
   const filteredCompanies = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
@@ -90,6 +96,33 @@ export function CompaniesWorkspace() {
     }
   }, [apiJson, canRead, showCreateForm]);
 
+  const clearCompanyDuplicate = useCallback(() => {
+    setCompanyDuplicateStatus("idle");
+    setCompanyDuplicateMatch(null);
+  }, []);
+
+  const handleSelectCompany = useCallback((company: CompanyRecord) => {
+    setActiveCompanyId(company.id);
+    setShowCreateForm(false);
+    setForm(mapCompanyToForm(company));
+    clearCompanyDuplicate();
+  }, [clearCompanyDuplicate]);
+
+  const handleCompanyCodeBlur = useCallback(() => {
+    const normalizedCode = normalizeCodeValue(form.code);
+    const currentCompanyId = showCreateForm ? null : activeCompany?.id ?? null;
+    if (!normalizedCode) {
+      clearCompanyDuplicate();
+      return;
+    }
+
+    setCompanyDuplicateStatus("checking");
+    const duplicate =
+      companies.find((company) => normalizeCodeValue(company.code) === normalizedCode && company.id !== currentCompanyId) ?? null;
+    setCompanyDuplicateMatch(duplicate);
+    setCompanyDuplicateStatus(duplicate ? "duplicate" : "idle");
+  }, [activeCompany?.id, clearCompanyDuplicate, companies, form.code, showCreateForm]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadCompanies();
@@ -100,6 +133,10 @@ export function CompaniesWorkspace() {
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWrite) return;
+    if (companyDuplicateStatus !== "idle") {
+      setMessage("Revise a duplicidade detectada antes de salvar a empresa.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -129,6 +166,10 @@ export function CompaniesWorkspace() {
   async function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWrite || !activeCompany || activeCompany.id !== session?.tenantId) return;
+    if (companyDuplicateStatus !== "idle") {
+      setMessage("Revise a duplicidade detectada antes de salvar a empresa.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -206,6 +247,7 @@ export function CompaniesWorkspace() {
                 onClick={() => {
                   setShowCreateForm(true);
                   setForm(emptyForm());
+                  clearCompanyDuplicate();
                 }}
                 type="button"
               >
@@ -236,9 +278,7 @@ export function CompaniesWorkspace() {
                     key={company.id}
                     className={company.id === activeCompanyId ? "data-table__row--active" : undefined}
                     onClick={() => {
-                      setActiveCompanyId(company.id);
-                      setShowCreateForm(false);
-                      setForm(mapCompanyToForm(company));
+                      handleSelectCompany(company);
                     }}
                   >
                     <td>
@@ -283,9 +323,35 @@ export function CompaniesWorkspace() {
 
           {showCreateForm ? (
             <form className="form-grid" onSubmit={handleCreate}>
-              <CompanyFormFields form={form} setForm={setForm} />
+              <CompanyFormFields
+                duplicateGuard={
+                  <MasterDataDuplicateGuard
+                    entityLabel="empresa"
+                    match={
+                      companyDuplicateMatch
+                        ? {
+                            id: companyDuplicateMatch.id,
+                            title: companyDuplicateMatch.displayName,
+                            subtitle: `${companyDuplicateMatch.code} · ${companyDuplicateMatch.legalName}`,
+                          }
+                        : null
+                    }
+                    onCancel={() => {
+                      setForm((current) => ({ ...current, code: "" }));
+                      clearCompanyDuplicate();
+                    }}
+                    onEdit={companyDuplicateMatch ? () => handleSelectCompany(companyDuplicateMatch) : undefined}
+                    onView={companyDuplicateMatch ? () => handleSelectCompany(companyDuplicateMatch) : undefined}
+                    status={companyDuplicateStatus}
+                  />
+                }
+                form={form}
+                onCodeBlur={handleCompanyCodeBlur}
+                onCodeChange={() => clearCompanyDuplicate()}
+                setForm={setForm}
+              />
               <div className="button-row">
-                <button className="button" disabled={saving} type="submit">
+                <button className="button" disabled={saving || companyDuplicateStatus !== "idle"} type="submit">
                   {saving ? "Salvando…" : "Salvar empresa"}
                 </button>
                 <button className="button-secondary" onClick={() => setShowCreateForm(false)} type="button">
@@ -311,9 +377,39 @@ export function CompaniesWorkspace() {
               </div>
 
               <form className="form-grid" onSubmit={handleUpdate}>
-                <CompanyFormFields form={form} setForm={setForm} />
+                <CompanyFormFields
+                  duplicateGuard={
+                    <MasterDataDuplicateGuard
+                      entityLabel="empresa"
+                      match={
+                        companyDuplicateMatch
+                          ? {
+                              id: companyDuplicateMatch.id,
+                              title: companyDuplicateMatch.displayName,
+                              subtitle: `${companyDuplicateMatch.code} · ${companyDuplicateMatch.legalName}`,
+                            }
+                          : null
+                      }
+                      onCancel={() => {
+                        setForm((current) => ({ ...current, code: activeCompany.code }));
+                        clearCompanyDuplicate();
+                      }}
+                      onEdit={companyDuplicateMatch ? () => handleSelectCompany(companyDuplicateMatch) : undefined}
+                      onView={companyDuplicateMatch ? () => handleSelectCompany(companyDuplicateMatch) : undefined}
+                      status={companyDuplicateStatus}
+                    />
+                  }
+                  form={form}
+                  onCodeBlur={handleCompanyCodeBlur}
+                  onCodeChange={() => clearCompanyDuplicate()}
+                  setForm={setForm}
+                />
                 <div className="button-row">
-                  <button className="button" disabled={saving || activeCompany.id !== session?.tenantId || !canWrite} type="submit">
+                  <button
+                    className="button"
+                    disabled={saving || activeCompany.id !== session?.tenantId || !canWrite || companyDuplicateStatus !== "idle"}
+                    type="submit"
+                  >
                     {saving ? "Salvando…" : "Salvar alterações"}
                   </button>
                   <button
@@ -345,18 +441,33 @@ export function CompaniesWorkspace() {
 }
 
 function CompanyFormFields({
+  duplicateGuard,
   form,
+  onCodeBlur,
+  onCodeChange,
   setForm,
 }: {
+  duplicateGuard?: ReactNode;
   form: CompanyForm;
+  onCodeBlur?: () => void;
+  onCodeChange?: () => void;
   setForm: Dispatch<SetStateAction<CompanyForm>>;
 }) {
   return (
     <>
       <label className="field">
         <span>Código</span>
-        <input required value={form.code} onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))} />
+        <input
+          required
+          value={form.code}
+          onBlur={onCodeBlur}
+          onChange={(event) => {
+            onCodeChange?.();
+            setForm((current) => ({ ...current, code: event.target.value }));
+          }}
+        />
       </label>
+      {duplicateGuard}
       <label className="field">
         <span>Razão social</span>
         <input required value={form.legalName} onChange={(event) => setForm((current) => ({ ...current, legalName: event.target.value }))} />

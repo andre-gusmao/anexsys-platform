@@ -2,6 +2,10 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useSession } from "@/components/providers/session-provider";
+import {
+  MasterDataDuplicateGuard,
+  normalizeEmailValue,
+} from "@/components/ui/master-data-duplicate-guard";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type BranchRecord = {
@@ -210,6 +214,8 @@ export function AccessWorkspace() {
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
 
   const [userForm, setUserForm] = useState<UserForm>(emptyUserForm);
+  const [userDuplicateStatus, setUserDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
+  const [userDuplicateMatch, setUserDuplicateMatch] = useState<UserRecord | null>(null);
   const [roleForm, setRoleForm] = useState<RoleForm>(emptyRoleForm);
   const [permissionForm, setPermissionForm] = useState<PermissionForm>(emptyPermissionForm);
   const [communityForm, setCommunityForm] = useState<CommunityForm>(emptyCommunityForm);
@@ -332,9 +338,39 @@ export function AccessWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [activeUser, loadUserSummary, showCreateUser]);
 
+  const clearUserDuplicate = useCallback(() => {
+    setUserDuplicateStatus("idle");
+    setUserDuplicateMatch(null);
+  }, []);
+
+  const handleSelectUser = useCallback((user: UserRecord) => {
+    setActiveUserId(user.id);
+    setShowCreateUser(false);
+    setUserForm(mapUserToForm(user));
+    clearUserDuplicate();
+  }, [clearUserDuplicate]);
+
+  const handleUserEmailBlur = useCallback(() => {
+    const normalizedEmail = normalizeEmailValue(userForm.email);
+    const currentUserId = showCreateUser ? null : activeUser?.id ?? null;
+    if (!normalizedEmail) {
+      clearUserDuplicate();
+      return;
+    }
+
+    setUserDuplicateStatus("checking");
+    const duplicate = users.find((user) => normalizeEmailValue(user.email) === normalizedEmail && user.id !== currentUserId) ?? null;
+    setUserDuplicateMatch(duplicate);
+    setUserDuplicateStatus(duplicate ? "duplicate" : "idle");
+  }, [activeUser?.id, clearUserDuplicate, showCreateUser, userForm.email, users]);
+
   async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWriteUsers) return;
+    if (userDuplicateStatus !== "idle") {
+      setMessage("Revise a duplicidade detectada do usuário antes de salvar.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -362,6 +398,10 @@ export function AccessWorkspace() {
   async function handleUpdateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWriteUsers || !activeUser) return;
+    if (userDuplicateStatus !== "idle") {
+      setMessage("Revise a duplicidade detectada do usuário antes de salvar.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -676,6 +716,7 @@ export function AccessWorkspace() {
                   onClick={() => {
                     setShowCreateUser(true);
                     setUserForm(emptyUserForm());
+                    clearUserDuplicate();
                   }}
                   type="button"
                 >
@@ -700,9 +741,7 @@ export function AccessWorkspace() {
                   branches.find((branch) => branch.id === user.defaultBranchId)?.displayName ?? "—",
                 ],
                 onClick: () => {
-                  setActiveUserId(user.id);
-                  setShowCreateUser(false);
-                  setUserForm(mapUserToForm(user));
+                  handleSelectUser(user);
                 },
               }))}
             />
@@ -717,9 +756,32 @@ export function AccessWorkspace() {
             {showCreateUser ? (
               <form className="form-grid" onSubmit={handleCreateUser}>
                 <UserFormFields
+                  duplicateGuard={
+                    <MasterDataDuplicateGuard
+                      entityLabel="usuário"
+                      match={
+                        userDuplicateMatch
+                          ? {
+                              id: userDuplicateMatch.id,
+                              title: userDuplicateMatch.displayName,
+                              subtitle: userDuplicateMatch.email,
+                            }
+                          : null
+                      }
+                      onCancel={() => {
+                        setUserForm((current) => ({ ...current, email: "" }));
+                        clearUserDuplicate();
+                      }}
+                      onEdit={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                      onView={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                      status={userDuplicateStatus}
+                    />
+                  }
                   branches={branches}
                   canQuickCreateBranch={hasAnyPermission("branches.write")}
                   form={userForm}
+                  onEmailBlur={handleUserEmailBlur}
+                  onEmailChange={clearUserDuplicate}
                   requirePassword
                   saving={saving}
                   setBranches={setBranches}
@@ -727,7 +789,7 @@ export function AccessWorkspace() {
                   setMessage={setMessage}
                 />
                 <div className="button-row">
-                  <button className="button" disabled={saving} type="submit">
+                  <button className="button" disabled={saving || userDuplicateStatus !== "idle"} type="submit">
                     {saving ? "Salvando…" : "Salvar usuário"}
                   </button>
                   <button className="button-secondary" onClick={() => setShowCreateUser(false)} type="button">
@@ -754,16 +816,39 @@ export function AccessWorkspace() {
 
                 <form className="form-grid" onSubmit={handleUpdateUser}>
                   <UserFormFields
+                    duplicateGuard={
+                      <MasterDataDuplicateGuard
+                        entityLabel="usuário"
+                        match={
+                          userDuplicateMatch
+                            ? {
+                                id: userDuplicateMatch.id,
+                                title: userDuplicateMatch.displayName,
+                                subtitle: userDuplicateMatch.email,
+                              }
+                            : null
+                        }
+                        onCancel={() => {
+                          setUserForm((current) => ({ ...current, email: activeUser.email }));
+                          clearUserDuplicate();
+                        }}
+                        onEdit={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                        onView={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                        status={userDuplicateStatus}
+                      />
+                    }
                     branches={branches}
                     canQuickCreateBranch={hasAnyPermission("branches.write")}
                     form={userForm}
+                    onEmailBlur={handleUserEmailBlur}
+                    onEmailChange={clearUserDuplicate}
                     saving={saving}
                     setBranches={setBranches}
                     setForm={setUserForm}
                     setMessage={setMessage}
                   />
                   <div className="button-row">
-                    <button className="button" disabled={saving || !canWriteUsers} type="submit">
+                    <button className="button" disabled={saving || !canWriteUsers || userDuplicateStatus !== "idle"} type="submit">
                       {saving ? "Salvando…" : "Salvar alterações"}
                     </button>
                   </div>
@@ -1224,7 +1309,10 @@ function TokenBlock({ title, values }: { title: string; values: string[] }) {
 function UserFormFields({
   branches,
   canQuickCreateBranch,
+  duplicateGuard,
   form,
+  onEmailBlur,
+  onEmailChange,
   setForm,
   setBranches,
   setMessage,
@@ -1233,7 +1321,10 @@ function UserFormFields({
 }: {
   branches: BranchRecord[];
   canQuickCreateBranch: boolean;
+  duplicateGuard?: ReactNode;
   form: UserForm;
+  onEmailBlur?: () => void;
+  onEmailChange?: () => void;
   setForm: Dispatch<SetStateAction<UserForm>>;
   setBranches: Dispatch<SetStateAction<BranchRecord[]>>;
   setMessage: Dispatch<SetStateAction<string | null>>;
@@ -1255,8 +1346,17 @@ function UserFormFields({
     <>
       <label className="field">
         <span>E-mail</span>
-        <input required value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
+        <input
+          required
+          value={form.email}
+          onBlur={onEmailBlur}
+          onChange={(event) => {
+            onEmailChange?.();
+            setForm((current) => ({ ...current, email: event.target.value }));
+          }}
+        />
       </label>
+      {duplicateGuard}
       <label className="field">
         <span>Nome exibido</span>
         <input required value={form.displayName} onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))} />
