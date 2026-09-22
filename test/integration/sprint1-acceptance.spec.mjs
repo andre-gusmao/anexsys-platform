@@ -148,8 +148,8 @@ before(async () => {
   const adminUser = await identityService.createUser({
     tenantId: tenantOne.id,
     defaultBranchId: branchOne.id,
-    email: 'admin@tenant1.test',
-    displayName: 'Tenant Admin',
+    email: 'andre@anexsys.local',
+    displayName: 'Andre Admin',
     password: 'SuperSecret123',
     actorUserId: bootstrapActorId,
   });
@@ -223,7 +223,7 @@ before(async () => {
 
   const adminLogin = await http('/auth/login/password', {
     method: 'POST',
-    body: JSON.stringify({ email: 'admin@tenant1.test',
+    body: JSON.stringify({ email: 'andre@anexsys.local',
       password: 'SuperSecret123',
     }),
   });
@@ -255,6 +255,22 @@ after(async () => {
 });
 
 describe('Sprint 1 acceptance', () => {
+  it('authenticates with email and password only and resolves tenant context automatically', async () => {
+    const login = await http('/auth/login/password', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: 'andre@anexsys.local',
+        password: 'SuperSecret123',
+      }),
+    });
+
+    assert.equal(login.status, 201);
+    assert.equal(login.json.tenantId, tenantOneId);
+    assert.ok(login.json.accessToken);
+    assert.ok(login.json.refreshToken);
+    assert.ok(login.json.sessionId);
+  });
+
   it('runs migrations successfully against PostgreSQL', async () => {
     const client = await adminClient(DB_NAME);
     const result = await client.query(`SELECT to_regclass('public.user_sessions') AS session_table`);
@@ -272,7 +288,7 @@ describe('Sprint 1 acceptance', () => {
     });
 
     assert.equal(me.status, 200);
-    assert.equal(me.json.user.email, 'admin@tenant1.test');
+    assert.equal(me.json.user.email, 'andre@anexsys.local');
     assert.ok(me.json.effectiveAccess.permissions.includes('users.write'));
 
     const refreshed = await http('/auth/token/refresh', {

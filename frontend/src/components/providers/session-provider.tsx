@@ -393,9 +393,10 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   const login = useCallback(
     async ({ email, password }: LoginInput) => {
       setErrorMessage(null);
+      const loginEmail = email.trim().toLowerCase();
       const result = await requestJson<AuthResponse>("/auth/login/password", {
         method: "POST",
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: loginEmail, password }),
       });
 
       const baseSession: SessionRecord = {

@@ -62,6 +62,7 @@ export class AuthService {
     permissions: string[];
   }> {
     const normalizedEmail = dto.email.trim().toLowerCase();
+    const password = dto.password;
     const candidates = await this.identityService.listActiveByEmail(normalizedEmail);
     if (candidates.length === 0) {
       await this.recordLoginFailure(normalizedEmail);
@@ -75,7 +76,7 @@ export class AuthService {
     for (const candidate of candidates) {
       const credential = credentialByUserId.get(candidate.id);
       if (!credential) continue;
-      const valid = await this.passwordHasherService.verify(dto.password, credential.passwordHash);
+      const valid = await this.passwordHasherService.verify(password, credential.passwordHash);
       if (valid) {
         matchingUsers.push(candidate);
       }
