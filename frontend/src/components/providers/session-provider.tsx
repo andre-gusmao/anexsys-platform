@@ -327,7 +327,10 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
         sessionId: branchResult.session.sessionId,
       };
       branches = mapBranches(branchResult.data, me.effectiveAccess.branchIds);
-    } catch {
+    } catch (error) {
+      if (error instanceof HttpError && [401, 403].includes(error.status)) {
+        throw error;
+      }
       branches = mapBranches(null, me.effectiveAccess.branchIds);
     }
 
@@ -475,7 +478,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       return false;
     }
 
-    await authenticatedRequest(
+    const result = await authenticatedRequest(
       currentSession,
       "/auth/context/branch",
       { method: "POST", body: JSON.stringify({ branchId }) },
@@ -484,6 +487,9 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
 
     const nextSession = {
       ...currentSession,
+      accessToken: result.session.accessToken,
+      refreshToken: result.session.refreshToken,
+      sessionId: result.session.sessionId,
       activeBranchId: branchId,
       companySelectionRequired: false,
     };
