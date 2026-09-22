@@ -36,10 +36,10 @@ export default function LoginPage() {
     <div className="screen-shell">
       <section className="auth-card">
         <div className="auth-card__header">
-          <div className="eyebrow">ANEXSYS · SaaS Identity</div>
+          <div className="eyebrow">ANEXSYS</div>
           <h1 className="title">Administrative login</h1>
           <p className="subtitle">
-            Sign in with email and password only. Company and branch context are resolved after authentication.
+            Sign in with your email and password. Company and branch open automatically when possible.
           </p>
         </div>
 

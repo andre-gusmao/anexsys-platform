@@ -9,18 +9,18 @@ export default function AccessPage() {
   return (
     <PlaceholderWorkspace
       title="Users and access placeholder"
-      description="Sprint 1 already consumes the backend identity and authorization model. This workspace exists to validate role-aware navigation and permission-aware UX framing."
+      description="Sprint 1 already supports secure sign-in and context-aware access. This workspace reserves the future area for user and access administration."
       bullets={[
-        `Effective permissions loaded: ${session?.permissions.length ?? 0}`,
-        "Login, refresh, logout, and /auth/me are integrated",
-        "Navigation items disappear when related permissions are missing",
+        `Available access rules loaded: ${session?.permissions.length ?? 0}`,
+        "Login, refresh, logout, and context reopening are connected",
+        "Navigation adapts when access is not available",
       ]}
       aside={
         <>
-          <h3>Authentication flow delivered</h3>
+          <h3>Current experience</h3>
           <p>
-            Sessions are restored from local storage, refresh tokens are rotated through the backend, and protected routes redirect
-            when the user is anonymous or missing branch context.
+            Sessions reopen automatically when possible, and protected areas redirect the user back to login or branch selection when
+            context is missing.
           </p>
         </>
       }

@@ -21,7 +21,7 @@ export default function SelectBranchPage() {
   }, [router, session?.activeBranchId, status]);
 
   if (!session) {
-    return <div className="loading-state">Loading company and branch access…</div>;
+    return <div className="loading-state">Loading your company and branch…</div>;
   }
 
   const activeCompany = session.companies.find((company) => company.tenantId === session.tenantId) ?? null;
@@ -33,9 +33,9 @@ export default function SelectBranchPage() {
     <div className="screen-shell">
       <section className="content-card" style={{ maxWidth: 920 }}>
         <div className="content-card__header">
-          <div className="eyebrow">ANEXSYS · Operational context</div>
+          <div className="eyebrow">ANEXSYS</div>
           <h1 className="title">Choose company and branch</h1>
-          <p className="subtitle">Use the last valid context automatically when possible, otherwise confirm the company and active branch.</p>
+          <p className="subtitle">We open your last valid context automatically when possible. If needed, confirm your company and branch.</p>
         </div>
 
         <div className="content-card__body" style={{ display: "grid", gap: 32 }}>
@@ -64,7 +64,7 @@ export default function SelectBranchPage() {
                   >
                     <div className="eyebrow">Company</div>
                     <h2 style={{ marginTop: 12 }}>{company.displayName}</h2>
-                    <p className="branch-card__meta">{pendingCompanyId === company.tenantId ? "Switching…" : company.code}</p>
+                    <p className="branch-card__meta">{pendingCompanyId === company.tenantId ? "Switching…" : "Open company"}</p>
                   </button>
                 ))}
               </div>
@@ -95,7 +95,7 @@ export default function SelectBranchPage() {
                   >
                     <div className="eyebrow">Branch</div>
                     <h2 style={{ marginTop: 12 }}>{branch.label}</h2>
-                    <p className="branch-card__meta">{pendingBranchId === branch.id ? "Applying context…" : branch.hint ?? branch.id}</p>
+                    <p className="branch-card__meta">{pendingBranchId === branch.id ? "Applying context…" : branch.hint ?? "Open branch"}</p>
                   </button>
                 ))}
               </div>

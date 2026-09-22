@@ -11,15 +11,16 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
   const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
   const activeCompany = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
+  const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const busy = pendingCompanySwitch || pendingBranchSwitch;
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar__brand">
-          <div className="eyebrow">ANEXSYS · SaaS Identity</div>
+          <div className="eyebrow">ANEXSYS</div>
           <h1>Administrative Portal</h1>
-          <p>Email-only login, company-aware context selection, branch memory, and role-aware navigation shell.</p>
+          <p>Fast access to your company, branch, and daily administrative work.</p>
         </div>
 
         <RoleAwareNav />
@@ -28,14 +29,14 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
       <div className="workspace">
         <header className="topbar">
           <div>
-            <div className="eyebrow">Authenticated Context</div>
+            <div className="eyebrow">Active context</div>
             <h2>{session?.user?.displayName ?? "Authenticated user"}</h2>
             <div className="topbar__meta">
               <span className="pill">
-                Company <strong>{activeCompany?.displayName ?? session?.tenantId ?? "-"}</strong>
+                Company <strong>{activeCompany?.displayName ?? "Select company"}</strong>
               </span>
               <span className="pill">
-                Branch <strong>{session?.branches.find((branch) => branch.id === session?.activeBranchId)?.label ?? session?.activeBranchId ?? "Select branch"}</strong>
+                Branch <strong>{activeBranch?.label ?? "Select branch"}</strong>
               </span>
               <span className="pill">
                 Permissions <strong>{session?.permissions.length ?? 0}</strong>

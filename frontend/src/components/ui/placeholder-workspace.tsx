@@ -30,8 +30,8 @@ export function PlaceholderWorkspace({ title, description, bullets, aside }: Rea
         <article className="mini-card">
           <h3>Implementation note</h3>
           <p>
-            This screen is intentionally a placeholder in Sprint 1. The shell, session context, authentication flow, and
-            role-aware navigation are ready so the team can validate UX structure before deeper domain work begins.
+            This screen is intentionally a placeholder in Sprint 1. The shell, active context, sign-in flow, and access-based
+            navigation are ready so the team can validate the UX structure before deeper domain work begins.
           </p>
         </article>
         {aside ? <article className="mini-card">{aside}</article> : null}

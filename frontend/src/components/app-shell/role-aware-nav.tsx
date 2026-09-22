@@ -20,8 +20,8 @@ const navItems: NavItem[] = [
   },
   {
     href: "/admin/tenants",
-    label: "Tenants",
-    hint: "Governance placeholder",
+    label: "Companies",
+    hint: "Company administration",
     requiredPermissions: ["tenants.read"],
   },
   {
@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   {
     href: "/admin/access",
     label: "Users & Access",
-    hint: "Role-aware navigation",
+    hint: "Profiles and access",
     requiredPermissions: ["users.read", "roles.read", "permissions.read"],
     permissionMatch: "all",
   },

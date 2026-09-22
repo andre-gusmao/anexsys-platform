@@ -207,10 +207,10 @@ function buildHeaders(session: SessionRecord, branchId?: string | null): Headers
 
 function mapBranches(input: BranchResponse[] | null, fallbackIds: string[]): BranchOption[] {
   if (!input || input.length === 0) {
-    return fallbackIds.map((branchId) => ({
+    return fallbackIds.map((branchId, index) => ({
       id: branchId,
-      label: branchId,
-      hint: "Visible through effective access.",
+      label: `Branch ${index + 1}`,
+      hint: "Available in your access context.",
     }));
   }
 
