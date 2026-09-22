@@ -12,36 +12,56 @@ type NavItem = {
   permissionMatch?: "all" | "any";
 };
 
-const navItems: NavItem[] = [
+type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
   {
-    href: "/dashboard",
-    label: "Dashboard",
-    hint: "Sprint 1 shell",
+    title: "Geral",
+    items: [
+      {
+        href: "/dashboard",
+        label: "Dashboard",
+        hint: "Visão inicial",
+      },
+    ],
   },
   {
-    href: "/customers",
-    label: "Customers",
-    hint: "CRM and measurements",
-    requiredPermissions: ["customers.read"],
+    title: "Cadastros",
+    items: [
+      {
+        href: "/customers",
+        label: "Clientes",
+        hint: "Cadastro e medidas",
+        requiredPermissions: ["customers.read"],
+      },
+    ],
   },
   {
-    href: "/admin/tenants",
-    label: "Companies",
-    hint: "Company administration",
-    requiredPermissions: ["tenants.read"],
-  },
-  {
-    href: "/admin/branches",
-    label: "Branches",
-    hint: "Branch selector placeholder",
-    requiredPermissions: ["branches.read"],
-  },
-  {
-    href: "/admin/access",
-    label: "Users & Access",
-    hint: "Profiles and access",
-    requiredPermissions: ["users.read", "roles.read", "permissions.read"],
-    permissionMatch: "all",
+    title: "Administração",
+    items: [
+      {
+        href: "/admin/tenants",
+        label: "Empresas",
+        hint: "Administração de empresas",
+        requiredPermissions: ["tenants.read"],
+      },
+      {
+        href: "/admin/branches",
+        label: "Filiais",
+        hint: "Administração de filiais",
+        requiredPermissions: ["branches.read"],
+      },
+      {
+        href: "/admin/access",
+        label: "Usuários e Acessos",
+        hint: "Perfis e permissões",
+        requiredPermissions: ["users.read", "roles.read", "permissions.read"],
+        permissionMatch: "all",
+      },
+    ],
   },
 ];
 
@@ -49,30 +69,39 @@ export function RoleAwareNav() {
   const pathname = usePathname();
   const { hasAnyPermission } = useSession();
 
-  const visibleItems = navItems.filter((item) =>
-    item.requiredPermissions
-      ? item.permissionMatch === "all"
-        ? item.requiredPermissions.every((permission) => hasAnyPermission(permission))
-        : hasAnyPermission(...item.requiredPermissions)
-      : true,
-  );
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        item.requiredPermissions
+          ? item.permissionMatch === "all"
+            ? item.requiredPermissions.every((permission) => hasAnyPermission(permission))
+            : hasAnyPermission(...item.requiredPermissions)
+          : true,
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <nav>
-      <div className="sidebar__section-title">Navigation</div>
-      <ul className="nav-list">
-        {visibleItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <li key={item.href}>
-              <Link className={`nav-link${active ? " nav-link--active" : ""}`} href={item.href}>
-                <span>{item.label}</span>
-                <span className="nav-hint">{item.hint}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {visibleSections.map((section) => (
+        <div key={section.title}>
+          <div className="sidebar__section-title">{section.title}</div>
+          <ul className="nav-list">
+            {section.items.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <li key={item.href}>
+                  <Link className={`nav-link${active ? " nav-link--active" : ""}`} href={item.href}>
+                    <span>{item.label}</span>
+                    <span className="nav-hint">{item.hint}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 }

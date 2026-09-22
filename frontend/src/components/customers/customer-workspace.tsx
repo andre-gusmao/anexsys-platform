@@ -337,8 +337,8 @@ export function CustomerWorkspace() {
   if (!hasAnyPermission("customers.read")) {
     return (
       <section className="mini-card">
-        <h3>Customers unavailable</h3>
-        <p>You do not have access to the customer workspace in the current context.</p>
+        <h3>Clientes indisponíveis</h3>
+        <p>Você não possui acesso ao cadastro de clientes no contexto atual.</p>
       </section>
     );
   }
@@ -346,11 +346,11 @@ export function CustomerWorkspace() {
   return (
     <>
       <section className="hero-card">
-        <div className="eyebrow">Operational module</div>
-        <h1 className="title">Customers and measurements</h1>
+        <div className="eyebrow">Módulo operacional</div>
+        <h1 className="title">Cadastro de clientes</h1>
         <p>
-          Register customers, search the directory quickly, review relationship history, and maintain measurements in the first
-          operational ANEXSYS workspace.
+          Cadastre clientes, pesquise rapidamente, edite dados cadastrais e mantenha as medidas integradas ao primeiro menu
+          operacional do ANEXSYS.
         </p>
       </section>
 
@@ -363,8 +363,8 @@ export function CustomerWorkspace() {
       <section className="mini-card">
         <div className="workspace-toolbar">
           <div className="workspace-toolbar__copy">
-            <h3>Customer search</h3>
-            <p>Autocomplete helps staff find customers quickly without leaving the operational flow.</p>
+            <h3>Pesquisa de clientes</h3>
+            <p>O autocomplete ajuda a localizar clientes rapidamente sem sair do fluxo operacional.</p>
           </div>
           {canWriteCustomers ? (
             <button
@@ -378,17 +378,17 @@ export function CustomerWorkspace() {
               }}
               type="button"
             >
-              New Customer
+              Novo cliente
             </button>
           ) : null}
         </div>
 
         <div className="filters-grid">
           <label className="field">
-            <span>Search</span>
+            <span>Busca</span>
             <input
               list="customer-suggestions"
-              placeholder="Name, phone, CPF or email"
+              placeholder="Nome, telefone, CPF/CNPJ ou email"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
             />
@@ -402,25 +402,25 @@ export function CustomerWorkspace() {
           <label className="field">
             <span>Status</span>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="">Todos</option>
+              <option value="active">Ativo</option>
+              <option value="inactive">Inativo</option>
             </select>
           </label>
 
           <label className="field">
-            <span>Customer type</span>
+            <span>Tipo de cliente</span>
             <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-              <option value="">All types</option>
-              <option value="person">Person</option>
-              <option value="company">Company</option>
+              <option value="">Todos</option>
+              <option value="person">Pessoa</option>
+              <option value="company">Empresa</option>
             </select>
           </label>
 
           <label className="field">
-            <span>Branch</span>
+            <span>Filial</span>
             <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
-              <option value="">All visible branches</option>
+              <option value="">Todas as filiais visíveis</option>
               {branchOptions.map((branch) => (
                 <option key={branch.id} value={branch.id}>
                   {branch.label}
@@ -435,8 +435,8 @@ export function CustomerWorkspace() {
         <article className="mini-card">
           <div className="workspace-toolbar">
             <div className="workspace-toolbar__copy">
-              <h3>Customer grid</h3>
-              <p>{loadingCustomers ? "Loading customers…" : `${customers.length} customer(s) found`}</p>
+              <h3>Grade de clientes</h3>
+              <p>{loadingCustomers ? "Carregando clientes…" : `${customers.length} cliente(s) encontrado(s)`}</p>
             </div>
           </div>
 
@@ -444,11 +444,11 @@ export function CustomerWorkspace() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Customer</th>
-                  <th>Type</th>
-                  <th>Branch</th>
+                  <th>Cliente</th>
+                  <th>Tipo</th>
+                  <th>Filial</th>
                   <th>Status</th>
-                  <th>Phone</th>
+                  <th>Telefone</th>
                 </tr>
               </thead>
               <tbody>
@@ -460,10 +460,10 @@ export function CustomerWorkspace() {
                   >
                     <td>
                       <strong>{customer.legalName}</strong>
-                      <div className="table-subtle">{customer.tradeName ?? customer.email ?? "No secondary reference"}</div>
+                      <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
                     </td>
-                    <td>{customer.customerType === "company" ? "Company" : "Person"}</td>
-                    <td>{customer.branchId ? branchNameById.get(customer.branchId) ?? "Assigned branch" : "Shared"}</td>
+                    <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
+                    <td>{customer.branchId ? branchNameById.get(customer.branchId) ?? "Filial vinculada" : "Compartilhado"}</td>
                     <td>
                       <span className={`status-chip status-chip--${customer.status}`}>{customer.status}</span>
                     </td>
@@ -473,7 +473,7 @@ export function CustomerWorkspace() {
                 {!loadingCustomers && customers.length === 0 ? (
                   <tr>
                     <td colSpan={5}>
-                      <div className="empty-state">No customers match the current search.</div>
+                      <div className="empty-state">Nenhum cliente encontrado para os filtros informados.</div>
                     </td>
                   </tr>
                 ) : null}
@@ -485,8 +485,8 @@ export function CustomerWorkspace() {
         <div className="workspace-stack">
           {showCreateForm ? (
             <article className="mini-card">
-              <h3>New customer</h3>
-              <p className="subtitle">Capture the minimum operational data first. The platform can evolve the relationship later.</p>
+              <h3>Novo cliente</h3>
+              <p className="subtitle">Capture primeiro os dados mínimos operacionais. O relacionamento pode ser enriquecido depois.</p>
               <form className="form-grid" onSubmit={handleCreateCustomer}>
                 <CustomerFields
                   branchOptions={branchOptions}
@@ -496,7 +496,7 @@ export function CustomerWorkspace() {
                 />
                 <div className="button-row">
                   <button className="button" disabled={savingCustomer} type="submit">
-                    {savingCustomer ? "Saving…" : "Create customer"}
+                    {savingCustomer ? "Salvando…" : "Cadastrar cliente"}
                   </button>
                   <button
                     className="button-secondary"
@@ -506,7 +506,7 @@ export function CustomerWorkspace() {
                     }}
                     type="button"
                   >
-                    Cancel
+                    Cancelar
                   </button>
                 </div>
               </form>
@@ -517,28 +517,28 @@ export function CustomerWorkspace() {
             <article className="mini-card">
               <div className="workspace-toolbar">
                 <div className="workspace-toolbar__copy">
-                  <h3>Customer details</h3>
-                  <p>{selectedCustomer ? "Review profile, history, and measurements." : "Select a customer from the grid."}</p>
+                  <h3>Detalhes do cliente</h3>
+                  <p>{selectedCustomer ? "Revise cadastro, histórico e medidas." : "Selecione um cliente na grade."}</p>
                 </div>
               </div>
 
-              {detailLoading ? <div className="empty-state">Loading customer details…</div> : null}
+              {detailLoading ? <div className="empty-state">Carregando detalhes do cliente…</div> : null}
               {detailError ? <div className="error-banner">{detailError}</div> : null}
 
               {selectedCustomer ? (
                 <div className="detail-stack">
                   <div className="detail-summary">
                     <div>
-                      <div className="eyebrow">Customer</div>
+                      <div className="eyebrow">Cliente</div>
                       <h2>{selectedCustomer.legalName}</h2>
-                      <p className="subtitle">{selectedCustomer.tradeName ?? "Business relationship overview"}</p>
+                      <p className="subtitle">{selectedCustomer.tradeName ?? "Visão geral do relacionamento"}</p>
                     </div>
                     <span className={`status-chip status-chip--${selectedCustomer.status}`}>{selectedCustomer.status}</span>
                   </div>
 
                   <div className="detail-grid">
                     <div className="detail-field">
-                      <span>Phone</span>
+                      <span>Telefone</span>
                       <strong>{formatPhone(selectedCustomer.phone)}</strong>
                     </div>
                     <div className="detail-field">
@@ -546,11 +546,11 @@ export function CustomerWorkspace() {
                       <strong>{selectedCustomer.email ?? "—"}</strong>
                     </div>
                     <div className="detail-field">
-                      <span>Branch</span>
-                      <strong>{selectedCustomer.branchId ? branchNameById.get(selectedCustomer.branchId) ?? "Assigned branch" : "Shared"}</strong>
+                      <span>Filial</span>
+                      <strong>{selectedCustomer.branchId ? branchNameById.get(selectedCustomer.branchId) ?? "Filial vinculada" : "Compartilhado"}</strong>
                     </div>
                     <div className="detail-field">
-                      <span>Document</span>
+                      <span>Documento</span>
                       <strong>{selectedCustomer.cpfCnpj ?? "—"}</strong>
                     </div>
                   </div>
@@ -560,18 +560,18 @@ export function CustomerWorkspace() {
                       <CustomerFields branchOptions={branchOptions} form={customerForm} onChange={setCustomerForm} showStatus />
                       <div className="button-row">
                         <button className="button" disabled={savingCustomer} type="submit">
-                          {savingCustomer ? "Saving…" : "Update customer"}
+                          {savingCustomer ? "Salvando…" : "Salvar alterações"}
                         </button>
                       </div>
                     </form>
                   ) : null}
 
                   <section className="mini-section">
-                    <h4>Primary contacts</h4>
+                    <h4>Contatos principais</h4>
                     <ul className="placeholder-list">
                       {(profile?.contacts ?? []).map((contact) => (
                         <li key={contact.id}>
-                          <strong>{contact.contactName}</strong> · {contact.email ?? "No email"} · {formatPhone(contact.phone)}
+                          <strong>{contact.contactName}</strong> · {contact.email ?? "Sem email"} · {formatPhone(contact.phone)}
                         </li>
                       ))}
                     </ul>
@@ -581,8 +581,8 @@ export function CustomerWorkspace() {
                     <section className="mini-section">
                       <div className="workspace-toolbar">
                         <div className="workspace-toolbar__copy">
-                          <h4>Measurements management</h4>
-                          <p>Record new measurements and keep the full version history connected to the customer profile.</p>
+                          <h4>Gestão de medidas</h4>
+                          <p>Registre novas medidas e mantenha o histórico versionado vinculado ao cadastro do cliente.</p>
                         </div>
                       </div>
 
@@ -597,7 +597,7 @@ export function CustomerWorkspace() {
                           </div>
                         ))}
                         {(measurements?.latestByLabel ?? []).length === 0 ? (
-                          <div className="empty-state">No measurements recorded yet.</div>
+                          <div className="empty-state">Nenhuma medida registrada ainda.</div>
                         ) : null}
                       </div>
 
@@ -605,7 +605,7 @@ export function CustomerWorkspace() {
                         <form className="form-grid" onSubmit={handleCreateMeasurements}>
                           <div className="filters-grid">
                             <label className="field">
-                              <span>Weight (kg)</span>
+                              <span>Peso (kg)</span>
                               <input
                                 inputMode="decimal"
                                 placeholder="72.5"
@@ -614,7 +614,7 @@ export function CustomerWorkspace() {
                               />
                             </label>
                             <label className="field">
-                              <span>Height (cm)</span>
+                              <span>Altura (cm)</span>
                               <input
                                 inputMode="decimal"
                                 placeholder="178"
@@ -623,7 +623,7 @@ export function CustomerWorkspace() {
                               />
                             </label>
                             <label className="field">
-                              <span>Measured at</span>
+                              <span>Data da medição</span>
                               <input
                                 type="date"
                                 value={measurementForm.measuredAt}
@@ -635,9 +635,9 @@ export function CustomerWorkspace() {
                           {measurementForm.customMeasurements.map((item, index) => (
                             <div className="custom-measurement-row" key={`custom-${index}`}>
                               <label className="field">
-                                <span>Label</span>
+                                <span>Nome</span>
                                 <input
-                                  placeholder="Waist"
+                                  placeholder="Cintura"
                                   value={item.label}
                                   onChange={(event) =>
                                     setMeasurementForm((current) => ({
@@ -650,7 +650,7 @@ export function CustomerWorkspace() {
                                 />
                               </label>
                               <label className="field">
-                                <span>Value</span>
+                                <span>Valor</span>
                                 <input
                                   inputMode="decimal"
                                   placeholder="86"
@@ -666,7 +666,7 @@ export function CustomerWorkspace() {
                                 />
                               </label>
                               <label className="field">
-                                <span>Unit</span>
+                                <span>Unidade</span>
                                 <input
                                   placeholder="cm"
                                   value={item.unit}
@@ -681,9 +681,9 @@ export function CustomerWorkspace() {
                                 />
                               </label>
                               <label className="field">
-                                <span>Notes</span>
+                                <span>Observações</span>
                                 <input
-                                  placeholder="Optional notes"
+                                  placeholder="Observações opcionais"
                                   value={item.notes}
                                   onChange={(event) =>
                                     setMeasurementForm((current) => ({
@@ -709,17 +709,17 @@ export function CustomerWorkspace() {
                               }
                               type="button"
                             >
-                              Add custom measurement
+                              Adicionar medida personalizada
                             </button>
                             <button className="button" disabled={savingMeasurements} type="submit">
-                              {savingMeasurements ? "Saving…" : "Record measurements"}
+                              {savingMeasurements ? "Salvando…" : "Registrar medidas"}
                             </button>
                           </div>
                         </form>
                       ) : null}
 
                       <section className="mini-section">
-                        <h4>Measurement history</h4>
+                        <h4>Histórico de medidas</h4>
                         <ul className="placeholder-list">
                           {(measurements?.history ?? []).map((measurement) => (
                             <li key={measurement.id}>
@@ -733,7 +733,7 @@ export function CustomerWorkspace() {
                   ) : null}
 
                   <section className="mini-section">
-                    <h4>Latest interactions</h4>
+                    <h4>Últimas interações</h4>
                     <ul className="placeholder-list">
                       {(profile?.interactions ?? []).slice(0, 6).map((interaction) => (
                         <li key={interaction.id}>
@@ -744,7 +744,7 @@ export function CustomerWorkspace() {
                     </ul>
                   </section>
                 </div>
-              ) : !detailLoading && !detailError ? <div className="empty-state">Select a customer to open the full profile.</div> : null}
+              ) : !detailLoading && !detailError ? <div className="empty-state">Selecione um cliente para abrir o cadastro completo.</div> : null}
             </article>
           ) : null}
         </div>
@@ -768,17 +768,17 @@ function CustomerFields({
     <>
       <div className="filters-grid">
         <label className="field">
-          <span>Customer type</span>
+          <span>Tipo de cliente</span>
           <select value={form.customerType} onChange={(event) => onChange((current) => ({ ...current, customerType: event.target.value as CustomerType }))}>
-            <option value="person">Person</option>
-            <option value="company">Company</option>
+            <option value="person">Pessoa</option>
+            <option value="company">Empresa</option>
           </select>
         </label>
 
         <label className="field">
-          <span>Branch</span>
+          <span>Filial</span>
           <select value={form.branchId} onChange={(event) => onChange((current) => ({ ...current, branchId: event.target.value }))}>
-            <option value="">Shared across visible branches</option>
+            <option value="">Compartilhado entre as filiais visíveis</option>
             {branchOptions.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {branch.label}
@@ -791,8 +791,8 @@ function CustomerFields({
           <label className="field">
             <span>Status</span>
             <select value={form.status} onChange={(event) => onChange((current) => ({ ...current, status: event.target.value as CustomerStatus }))}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="active">Ativo</option>
+              <option value="inactive">Inativo</option>
             </select>
           </label>
         ) : null}
@@ -800,18 +800,18 @@ function CustomerFields({
 
       <div className="filters-grid">
         <label className="field">
-          <span>Full name</span>
+          <span>Nome completo / razão social</span>
           <input required value={form.fullName} onChange={(event) => onChange((current) => ({ ...current, fullName: event.target.value }))} />
         </label>
         <label className="field">
-          <span>Trade name</span>
+          <span>Nome fantasia</span>
           <input value={form.tradeName} onChange={(event) => onChange((current) => ({ ...current, tradeName: event.target.value }))} />
         </label>
       </div>
 
       <div className="filters-grid">
         <label className="field">
-          <span>Mobile / WhatsApp</span>
+          <span>Celular / WhatsApp</span>
           <input required value={form.mobilePhone} onChange={(event) => onChange((current) => ({ ...current, mobilePhone: event.target.value }))} />
         </label>
         <label className="field">
@@ -826,17 +826,17 @@ function CustomerFields({
           <input type="email" value={form.email} onChange={(event) => onChange((current) => ({ ...current, email: event.target.value }))} />
         </label>
         <label className="field">
-          <span>Birth date</span>
+          <span>Data de nascimento</span>
           <input type="date" value={form.birthDate} onChange={(event) => onChange((current) => ({ ...current, birthDate: event.target.value }))} />
         </label>
         <label className="field">
-          <span>Postal code</span>
+          <span>CEP</span>
           <input value={form.postalCode} onChange={(event) => onChange((current) => ({ ...current, postalCode: event.target.value }))} />
         </label>
       </div>
 
       <label className="field">
-        <span>Observations</span>
+        <span>Observações</span>
         <textarea rows={4} value={form.observations} onChange={(event) => onChange((current) => ({ ...current, observations: event.target.value }))} />
       </label>
     </>
