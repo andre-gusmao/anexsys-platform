@@ -1,9 +1,16 @@
-STATUS: MANDATORY ARCHITECTURAL RULE
+STATUS: MANDATORY FUTURE-STATE ARCHITECTURAL RULE
 
 DATE: 2026-09-22
 
 PURPOSE:
 This document becomes the source of truth for all future ANEXSYS modules regarding organizational scope, master data ownership, operational ownership, authorization scope, and future holding readiness.
+
+CLARIFICATION:
+This directive defines the approved future-state architecture and future evolution path.
+
+It does not require immediate refactoring of the current Tenant, Company, or Branch implementation.
+
+Current product development must continue using the existing Company/Branch structure until a future dedicated evolution initiative is approved.
 
 ---
 
@@ -12,7 +19,7 @@ This document becomes the source of truth for all future ANEXSYS modules regardi
 
 ## 1. Purpose
 
-This document defines the mandatory multi-company architecture directive for ANEXSYS.
+This document defines the mandatory future-state multi-company architecture directive for ANEXSYS.
 
 This document defines:
 - organizational scope principles
@@ -29,23 +36,28 @@ This document does not define:
 - infrastructure
 - deployment topology
 - implementation sequencing
+- immediate refactoring of current organizational structures
 
 ---
 
 ## 2. Executive Summary
 
-ANEXSYS must be architected now to support:
+ANEXSYS must be designed with a future-state target that supports:
 - Multi Company
 - Multi Branch
 - Future Holding Structures
 - Consolidated Reporting
 
-The architecture must prevent future refactoring caused by incorrect ownership boundaries.
+The architectural direction must prevent future structural rework caused by incorrect ownership boundaries.
 
 The mandatory organizational model is:
 - Holding Group = future superior consolidation layer
 - Company = legal and managerial operating entity
 - Branch = local operating unit
+
+This model is the approved target state for future evolution.
+
+It is not an instruction to immediately replace the current live organizational implementation.
 
 The mandatory data ownership model is:
 - Master Data = global and reusable
@@ -67,6 +79,8 @@ ANEXSYS must support, by architecture and not by exception:
 - consolidated reporting across branches and companies
 
 This requirement is mandatory and non-negotiable for every future module.
+
+It must be used as directional guidance for future-compatible design, not as an instruction to stop current development and refactor the existing platform immediately.
 
 ---
 
@@ -99,7 +113,7 @@ Holding
 -> Company  
 -> Branch
 
-Even before the Holding layer is activated in production, the architecture must preserve this future expansion path.
+Even before the Holding layer is activated in production, future modules should preserve this expansion path whenever practical.
 
 ---
 
@@ -305,3 +319,21 @@ No new module may:
 - block future holding consolidation
 
 If any new proposal conflicts with this directive, this directive prevails.
+
+### 12.1 Current implementation clarification
+
+The current platform architecture remains valid for ongoing delivery.
+
+At present:
+- no database refactoring is required
+- no entity refactoring is required
+- no migration effort is required
+- no API restructuring is required
+- no authorization restructuring is required
+
+This directive must therefore be used as:
+- future-state guidance
+- architectural review guidance
+- evolution guidance for future holding support
+
+It must not be interpreted as a requirement for immediate structural change in the current platform baseline.

@@ -5,6 +5,13 @@ DATE: 2026-09-22
 PURPOSE:
 This document reviews current ANEXSYS implementations against the mandatory multi-company directive and identifies architectural conflicts, gaps, and future refactoring risks.
 
+CLARIFICATION:
+This analysis is future-state oriented.
+
+It does not mean the current Tenant, Company, or Branch implementation must be refactored now.
+
+Its purpose is to identify future evolution considerations while preserving the current implementation baseline for ongoing product delivery.
+
 ---
 
 # ANEXSYS Platform
@@ -27,12 +34,12 @@ The review is architectural and intentionally avoids database redesign detail.
 
 ## 2. Executive Summary
 
-The current platform already contains partial alignment with the new directive:
+The current platform already contains partial alignment with the future-state directive:
 - customer branch ownership has already been removed in the CRM domain
 - branch access is already directly user-scoped
 - operational entities already preserve branch context
 
-However, the platform still contains major architectural gaps for the new mandatory target:
+However, the platform still contains architectural gaps relative to the future-state target:
 - Tenant is currently acting as the effective Company boundary
 - there is no distinct Company layer below a future Holding layer
 - there is no Holding layer at all
@@ -40,11 +47,15 @@ However, the platform still contains major architectural gaps for the new mandat
 - several current master data structures are tenant-scoped rather than global/shared across companies in the same environment
 - multi-company login/context currently resolves “company” through tenant selection, not through a dedicated company model and user company scope
 
-This means the current architecture is not yet future-safe for true holding/company/branch consolidation without further refactoring.
+This means the current architecture is not yet the final future-state model for true holding/company/branch consolidation.
+
+This does not invalidate the current implementation for ongoing delivery.
 
 ---
 
 ## 3. Impact Classification Summary
+
+The classifications below describe future evolution impact, not immediate remediation urgency for the current product baseline.
 
 ### CRITICAL
 
@@ -104,7 +115,7 @@ Without separation of Tenant and Company, future support for:
 - holding consolidation
 - master data sharing across companies
 
-will require refactoring of identity, authorization context, branch ownership, and operational reporting boundaries.
+would require future evolution of identity, authorization context, branch ownership, and operational reporting boundaries when that roadmap is activated.
 
 ---
 
@@ -132,7 +143,7 @@ Holding
 
 **Architectural impact**
 
-This is a foundational structural gap. Future company-specific policies, access, reporting, and consolidation will otherwise remain coupled to Tenant and later require broad refactoring.
+This is a foundational future-state gap. Company-specific policies, access, reporting, and consolidation will otherwise remain coupled to Tenant until a dedicated evolution initiative is executed.
 
 ---
 
@@ -165,7 +176,7 @@ The new rule requires every operational record to support:
 
 **Architectural impact**
 
-Branch reporting is supported directionally, but future company reports and holding reports are not safely represented by the current model. This creates a future refactoring risk for every operational domain.
+Branch reporting is supported directionally, but future company reports and holding reports are not safely represented by the current model. This creates a future evolution risk for every operational domain, not an immediate delivery blocker by itself.
 
 ---
 
@@ -190,7 +201,7 @@ The new directive requires direct user-scoped Company Access and Branch Access, 
 
 **Architectural impact**
 
-True multi-company support within one environment will require redesign of:
+True multi-company support within one environment would require future redesign of:
 - authentication company selection
 - session context
 - user organizational scope
@@ -217,7 +228,7 @@ The new architectural directive defines them as Master Data that may be shared b
 
 **Architectural impact**
 
-This is not a branch-duplication problem anymore, but it still stops the platform from reaching the new global/shared master-data target.
+This is not a branch-duplication problem anymore, but it still prevents the platform from fully reaching the future global/shared master-data target.
 
 ---
 
@@ -244,7 +255,7 @@ This is directionally compatible for access visibility, but not fully aligned if
 
 **Architectural impact**
 
-This is not the same as granting company ownership through communities, but it still means communities are stronger than the new directive intends. Future governance may require narrowing community responsibility.
+This is not the same as granting company ownership through communities, but it still means communities are stronger than the future directive intends. Future governance may require narrowing community responsibility if and when that evolution is prioritized.
 
 ---
 
@@ -265,7 +276,7 @@ Under the target model, branches must belong to a Company, and Companies must su
 
 **Architectural impact**
 
-This creates a core organizational mismatch that will affect:
+This creates a core organizational mismatch that would affect:
 - branch registration
 - access scope
 - operational attribution
@@ -405,4 +416,6 @@ Because of this, ANEXSYS is not yet fully prepared for:
 - holding-level consolidation
 - globally reusable master data shared across companies
 
-The directive can be adopted immediately as the governing source of truth, but significant architectural evolution is still required for full compliance.
+The directive can be adopted immediately as the future-state source of truth, while the current platform baseline remains valid for ongoing development.
+
+Significant architectural evolution may be executed later for full future-state compliance, but no immediate refactoring is implied by this analysis.
