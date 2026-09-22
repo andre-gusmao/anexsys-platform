@@ -210,8 +210,8 @@ function mapBranches(input: BranchResponse[] | null, fallbackIds: string[]): Bra
   if (!input || input.length === 0) {
     return fallbackIds.map((branchId, index) => ({
       id: branchId,
-      label: `Branch ${index + 1}`,
-      hint: "Available in your access context.",
+      label: `Filial ${index + 1}`,
+      hint: "Disponível no seu contexto de acesso.",
     }));
   }
 
@@ -471,7 +471,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       ? currentSession.branchIds
       : currentSession.branches.map((branch) => branch.id);
     if (allowedBranchIds.length > 0 && !allowedBranchIds.includes(branchId)) {
-      setErrorMessage("Selected branch is outside the authenticated access scope.");
+      setErrorMessage("A filial selecionada está fora do escopo de acesso autenticado.");
       return false;
     }
 

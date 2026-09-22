@@ -20,7 +20,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
         <div className="sidebar__brand">
           <div className="eyebrow">ANEXSYS</div>
           <h1>Administrative Portal</h1>
-          <p>Fast access to your company, branch, and daily administrative work.</p>
+          <p>Fast access to your company, filial, and daily administrative work.</p>
         </div>
 
         <RoleAwareNav />
@@ -36,7 +36,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
                 Company <strong>{activeCompany?.displayName ?? "Select company"}</strong>
               </span>
               <span className="pill">
-                Branch <strong>{activeBranch?.label ?? "Select branch"}</strong>
+                Filial <strong>{activeBranch?.label ?? "Selecione a filial"}</strong>
               </span>
               <span className="pill">
                 Permissions <strong>{session?.permissions.length ?? 0}</strong>
@@ -74,7 +74,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
 
             {session ? (
               <label className="field" style={{ minWidth: 220, marginBottom: 0 }}>
-                <span>Branch</span>
+                <span>Filial</span>
                 <select
                   disabled={busy}
                   value={session.activeBranchId ?? ""}
@@ -91,7 +91,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
                     }
                   }}
                 >
-                  {!session.activeBranchId ? <option value="">Select branch</option> : null}
+                  {!session.activeBranchId ? <option value="">Selecione a filial</option> : null}
                   {session.branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>
                       {branch.label}
@@ -107,7 +107,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
               onClick={() => router.push("/select-branch")}
               type="button"
             >
-              Switch Context
+              Alterar contexto
             </button>
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout

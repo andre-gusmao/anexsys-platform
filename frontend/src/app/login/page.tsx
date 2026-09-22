@@ -67,7 +67,7 @@ export default function LoginPage() {
           <div className="eyebrow">ANEXSYS</div>
           <h1 className="title">Administrative login</h1>
           <p className="subtitle">
-            Sign in with your email and password. Company and branch open automatically when possible.
+            Sign in with your email and password. Company and filial open automatically when possible.
           </p>
         </div>
 
