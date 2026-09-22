@@ -19,6 +19,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
@@ -216,7 +217,6 @@ export class CustomersController {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
     const profile = await this.customerService.getProfile(tenantId, customerId);
-    const profile = await this.customerService.getProfile(tenantId, customerId);
     const measurements = await this.measurementService.listByCustomer(tenantId, customerId);
 
     return {
@@ -257,7 +257,6 @@ export class CustomersController {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
 
-    const currentCustomer = await this.customerService.getById(customerId, tenantId);
     if (body.status === CustomerStatus.BLOCKED) {
       throw new BadRequestException('Blocked customer lifecycle is outside Sprint 2 scope.');
     }
@@ -279,8 +278,7 @@ export class CustomersController {
     if (!tenantId || !principal) {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
-    const customer = await this.customerService.getById(customerId, tenantId);
-    const customer = await this.customerService.getById(customerId, tenantId);
+    await this.customerService.getById(customerId, tenantId);
     return this.measurementService.listByCustomer(tenantId, customerId);
   }
 
@@ -296,8 +294,7 @@ export class CustomersController {
     if (!tenantId || !principal) {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
-    const customer = await this.customerService.getById(customerId, tenantId);
-    const customer = await this.customerService.getById(customerId, tenantId);
+    await this.customerService.getById(customerId, tenantId);
 
     return this.measurementService.create({
       ...(body as CreateMeasurementRecordDto),
