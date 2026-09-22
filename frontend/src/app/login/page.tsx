@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/providers/session-provider";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function looksLikeLegacyTenantUuid(value: string) {
+  return UUID_PATTERN.test(value.trim());
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,6 +16,18 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const hasUserEditedEmailRef = useRef(false);
+
+  const clearLegacyTenantEmail = useCallback(() => {
+    const injectedValue = emailInputRef.current?.value ?? "";
+    if (!hasUserEditedEmailRef.current && looksLikeLegacyTenantUuid(injectedValue)) {
+      setEmail("");
+      if (emailInputRef.current) {
+        emailInputRef.current.value = "";
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -20,6 +38,16 @@ export default function LoginPage() {
       router.replace("/select-branch");
     }
   }, [router, status]);
+
+  useEffect(() => {
+    const animationFrameId = window.requestAnimationFrame(clearLegacyTenantEmail);
+    const timerIds = [150, 500].map((delay) => window.setTimeout(clearLegacyTenantEmail, delay));
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+    };
+  }, [clearLegacyTenantEmail]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,7 +72,7 @@ export default function LoginPage() {
         </div>
 
         <div className="auth-card__body">
-          <form className="form-grid" onSubmit={handleSubmit}>
+          <form autoComplete="off" className="form-grid" onSubmit={handleSubmit}>
             {errorMessage ? (
               <div className="error-banner">
                 <strong>Authentication failed</strong>
@@ -56,14 +84,18 @@ export default function LoginPage() {
             ) : null}
 
             <div className="field">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="login-email">Email</label>
               <input
-                id="email"
-                name="email"
+                ref={emailInputRef}
+                id="login-email"
+                name="login-email"
                 type="email"
-                autoComplete="email"
+                autoComplete="username"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  hasUserEditedEmailRef.current = true;
+                  setEmail(event.target.value);
+                }}
                 placeholder="admin@company.test"
                 required
               />
