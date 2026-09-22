@@ -205,6 +205,43 @@ describe('AuthService', () => {
     assert.equal((sessions[0]?.contextData as { companySelectionRequired: boolean }).companySelectionRequired, true);
   });
 
+  it('persists the default branch as the restored context for single-company login', async () => {
+    const savedPreferences: Array<Record<string, unknown>> = [];
+    const service = createAuthService({
+      identityService: {
+        async listActiveByEmail(email: string) {
+          return [{ id: 'user-1', tenantId: 'tenant-1', email, defaultBranchId: 'branch-1', status: 'active' }];
+        },
+        async getContextPreference() {
+          return null;
+        },
+        async saveContextPreference(payload: Record<string, unknown>) {
+          savedPreferences.push(payload);
+        },
+        async getById(id: string) {
+          return { id, tenantId: 'tenant-1', email: 'andre@anexsys.local', defaultBranchId: 'branch-1', status: 'active' };
+        },
+      },
+      userCredentialRepository: {
+        async findByUserIds() {
+          return [{ userId: 'user-1', passwordHash: 'hashed:Secret123!' }];
+        },
+      },
+      authorizationService: {
+        async getEffectiveAccessForUser() {
+          return { branchIds: ['branch-1'], permissions: ['customers.read', 'customers.write'], communities: ['GLOBAL_ADMINISTRATORS'] };
+        },
+      },
+    });
+
+    const login = await service.loginWithPassword({ email: 'andre@anexsys.local', password: 'Secret123!' });
+
+    assert.equal(login.tenantId, 'tenant-1');
+    assert.deepEqual(login.branchIds, ['branch-1']);
+    assert.equal(savedPreferences[0]?.lastTenantId, 'tenant-1');
+    assert.equal(savedPreferences[0]?.lastBranchId, 'branch-1');
+  });
+
   it('persists selected branch as last valid context', async () => {
     const savedPreferences: Array<Record<string, unknown>> = [];
     const service = createAuthService({

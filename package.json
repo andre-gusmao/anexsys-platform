@@ -13,6 +13,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "bootstrap:master-admin": "npm run build && node scripts/bootstrap-master-admin.cjs",
     "test": "tsx --test test/unit/**/*.spec.ts",
     "test:watch": "tsx watch --test test/unit/**/*.spec.ts",
     "test:cov": "tsx --test test/unit/**/*.spec.ts",

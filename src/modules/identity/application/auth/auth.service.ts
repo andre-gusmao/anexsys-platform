@@ -96,6 +96,14 @@ export class AuthService {
     }
 
     const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(activeCompany.tenantId, activeCompany.userId);
+    const restoredBranchId =
+      availableCompanies.length === 1
+        ? this.resolveRestoredBranchId(
+            preference?.lastTenantId === activeCompany.tenantId ? preference.lastBranchId ?? null : null,
+            activeCompany.defaultBranchId,
+            effectiveAccess.branchIds,
+          )
+        : null;
     const session = await this.createSession({
       loginEmail: normalizedEmail,
       activeCompany,
@@ -108,7 +116,7 @@ export class AuthService {
       await this.identityService.saveContextPreference({
         normalizedEmail,
         lastTenantId: activeCompany.tenantId,
-        lastBranchId: preference?.lastTenantId === activeCompany.tenantId ? preference.lastBranchId : null,
+        lastBranchId: restoredBranchId,
         actorUserId: activeCompany.userId,
       });
     }
@@ -538,6 +546,22 @@ export class AuthService {
       if (preferred) return preferred;
     }
     return companies[0] ?? null;
+  }
+
+  private resolveRestoredBranchId(
+    preferredBranchId: string | null,
+    defaultBranchId: string | null,
+    effectiveBranchIds: string[],
+  ): string | null {
+    const allowed = new Set(effectiveBranchIds);
+    const candidates = [preferredBranchId, defaultBranchId].filter((value): value is string => Boolean(value));
+    for (const branchId of candidates) {
+      if (allowed.has(branchId)) {
+        return branchId;
+      }
+    }
+
+    return effectiveBranchIds[0] ?? null;
   }
 
   private parseSessionContext(input: Record<string, unknown> | null | undefined): SessionContextData {
