@@ -511,21 +511,30 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       { branchId: null },
     );
 
-    const nextSession = {
-      ...currentSession,
+    const baseSession = createPendingHydrationSession({
+      tenantId: currentSession.tenantId,
       accessToken: result.session.accessToken,
       refreshToken: result.session.refreshToken,
       sessionId: result.session.sessionId,
+      permissions: currentSession.permissions,
+      communities: currentSession.communities,
+      branchIds: currentSession.branchIds,
       activeBranchId: branchId,
-      companySelectionRequired: false,
-    };
+      user: currentSession.user,
+      branches: currentSession.branches,
+      companies: currentSession.companies,
+    });
 
+    sessionRef.current = baseSession;
+    setSession(baseSession);
+
+    const nextSession = await hydrateSession(baseSession, branchId);
     sessionRef.current = nextSession;
     setSession(nextSession);
     setStatus("authenticated");
     setErrorMessage(null);
     return true;
-  }, []);
+  }, [hydrateSession]);
 
   const hasAnyPermission = useCallback(
     (...permissions: string[]) => {
