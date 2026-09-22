@@ -42,13 +42,60 @@ type CustomerInteraction = {
 type MeasurementRecord = {
   id: string;
   measurementLabel: string;
+  measurementSetId: string;
   measurementData: {
     value?: number;
     unit?: string | null;
     notes?: string | null;
+    displayName?: string | null;
+    bodyPartId?: string | null;
+    unitId?: string | null;
   };
   versionNo: number;
   measuredAt: string;
+};
+
+type MeasurementSetItem = {
+  id: string;
+  bodyPartId: string;
+  bodyPartCode: string;
+  bodyPartDisplayName: string;
+  measurementUnitId: string;
+  measurementUnitCode: string;
+  measurementUnitDisplayName: string;
+  measuredValue: number;
+  notes: string | null;
+};
+
+type MeasurementSet = {
+  id: string;
+  customerId: string;
+  measurementDate: string;
+  notes: string | null;
+  createdBy: string;
+  versionNo: number;
+  items: MeasurementSetItem[];
+};
+
+type BodyPartRecord = {
+  id: string;
+  code: string;
+  displayName: string;
+  sortOrder: number;
+};
+
+type MeasurementUnitRecord = {
+  id: string;
+  code: string;
+  displayName: string;
+  sortOrder: number;
+};
+
+type MeasurementCatalogResponse = {
+  bodyParts: BodyPartRecord[];
+  units: MeasurementUnitRecord[];
+  defaultUnitCode: string;
+  defaultUnitId: string | null;
 };
 
 type CustomerProfileResponse = {
@@ -61,6 +108,7 @@ type CustomerProfileResponse = {
 type MeasurementHistoryResponse = {
   history: MeasurementRecord[];
   latestByLabel: MeasurementRecord[];
+  measurementSets: MeasurementSet[];
 };
 
 type CustomerFormState = {
@@ -78,9 +126,9 @@ type CustomerFormState = {
 };
 
 type MeasurementDraft = {
-  label: string;
+  bodyPartId: string;
+  unitId: string;
   value: string;
-  unit: string;
   notes: string;
 };
 
@@ -98,6 +146,17 @@ const defaultCustomerForm = (): CustomerFormState => ({
   status: "active",
 });
 
+const todayIsoDate = () => new Date().toISOString().slice(0, 10);
+
+function createMeasurementDraft(defaultUnitId?: string | null): MeasurementDraft {
+  return {
+    bodyPartId: "",
+    unitId: defaultUnitId ?? "",
+    value: "",
+    notes: "",
+  };
+}
+
 function formatPhone(value: string | null | undefined) {
   if (!value) return "—";
   if (value.length === 11) {
@@ -113,7 +172,7 @@ function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-GB").format(date);
+  return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
 function mapCustomerToForm(customer: CustomerRecord): CustomerFormState {
@@ -149,23 +208,49 @@ export function CustomerWorkspace() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [profile, setProfile] = useState<CustomerProfileResponse | null>(null);
   const [measurements, setMeasurements] = useState<MeasurementHistoryResponse | null>(null);
+  const [catalog, setCatalog] = useState<MeasurementCatalogResponse | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [savingMeasurements, setSavingMeasurements] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [customerForm, setCustomerForm] = useState<CustomerFormState>(defaultCustomerForm);
   const [measurementForm, setMeasurementForm] = useState({
-    weight: "",
-    height: "",
-    measuredAt: "",
-    customMeasurements: [{ label: "", value: "", unit: "", notes: "" }] as MeasurementDraft[],
+    measurementDate: todayIsoDate(),
+    notes: "",
+    items: [createMeasurementDraft(null)] as MeasurementDraft[],
   });
 
   const branchOptions = useMemo(() => session?.branches ?? [], [session?.branches]);
-  const branchNameById = useMemo(
-    () => new Map(branchOptions.map((branch) => [branch.id, branch.label])),
-    [branchOptions],
+  const branchNameById = useMemo(() => new Map(branchOptions.map((branch) => [branch.id, branch.label])), [branchOptions]);
+  const bodyPartOptions = useMemo(() => catalog?.bodyParts ?? [], [catalog]);
+  const unitOptions = useMemo(() => catalog?.units ?? [], [catalog]);
+
+  const resetMeasurementForm = useCallback(
+    () =>
+      setMeasurementForm({
+        measurementDate: todayIsoDate(),
+        notes: "",
+        items: [createMeasurementDraft(catalog?.defaultUnitId)],
+      }),
+    [catalog?.defaultUnitId],
   );
+
+  const loadCatalog = useCallback(async () => {
+    if (!canReadMeasurements) return;
+    try {
+      const response = await apiJson<MeasurementCatalogResponse>("/measurement-catalog");
+      setCatalog(response);
+      setMeasurementForm((current) => ({
+        ...current,
+        items:
+          current.items.length > 0
+            ? current.items.map((item) => ({ ...item, unitId: item.unitId || response.defaultUnitId || "" }))
+            : [createMeasurementDraft(response.defaultUnitId)],
+      }));
+    } catch (error) {
+      setWorkspaceMessage(error instanceof Error ? error.message : "Measurement catalog could not be loaded.");
+    }
+  }, [apiJson, canReadMeasurements]);
 
   const loadCustomers = useCallback(async () => {
     setLoadingCustomers(true);
@@ -186,26 +271,37 @@ export function CustomerWorkspace() {
     }
   }, [apiJson, branchFilter, searchQuery, statusFilter, typeFilter]);
 
-  const loadCustomerDetails = useCallback(async (customerId: string) => {
-    setDetailLoading(true);
-    setDetailError(null);
-    try {
-      const [profileResponse, measurementResponse] = await Promise.all([
-        apiJson<CustomerProfileResponse>(`/customers/${customerId}`),
-        canReadMeasurements ? apiJson<MeasurementHistoryResponse>(`/customers/${customerId}/measurements`) : Promise.resolve(null),
-      ]);
+  const loadCustomerDetails = useCallback(
+    async (customerId: string) => {
+      setDetailLoading(true);
+      setDetailError(null);
+      try {
+        const [profileResponse, measurementResponse] = await Promise.all([
+          apiJson<CustomerProfileResponse>(`/customers/${customerId}`),
+          canReadMeasurements ? apiJson<MeasurementHistoryResponse>(`/customers/${customerId}/measurements`) : Promise.resolve(null),
+        ]);
 
-      setProfile(profileResponse);
-      setMeasurements(measurementResponse);
-      setCustomerForm(mapCustomerToForm(profileResponse.customer));
-      setActiveCustomerId(customerId);
-      setShowCreateForm(false);
-    } catch (error) {
-      setDetailError(error instanceof Error ? error.message : "Customer details could not be loaded.");
-    } finally {
-      setDetailLoading(false);
-    }
-  }, [apiJson, canReadMeasurements]);
+        setProfile(profileResponse);
+        setMeasurements(measurementResponse);
+        setCustomerForm(mapCustomerToForm(profileResponse.customer));
+        setActiveCustomerId(customerId);
+        setShowCreateForm(false);
+        resetMeasurementForm();
+      } catch (error) {
+        setDetailError(error instanceof Error ? error.message : "Customer details could not be loaded.");
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [apiJson, canReadMeasurements, resetMeasurementForm],
+  );
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadCatalog();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadCatalog]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -303,29 +399,23 @@ export function CustomerWorkspace() {
     setSavingMeasurements(true);
     setWorkspaceMessage(null);
     try {
-      await apiJson<MeasurementRecord[]>(`/customers/${selectedCustomer.id}/measurements`, {
+      await apiJson<MeasurementSet>(`/customers/${selectedCustomer.id}/measurements`, {
         method: "POST",
         body: JSON.stringify({
-          weight: measurementForm.weight ? Number(measurementForm.weight) : undefined,
-          height: measurementForm.height ? Number(measurementForm.height) : undefined,
-          measuredAt: measurementForm.measuredAt || undefined,
-          customMeasurements: measurementForm.customMeasurements
-            .filter((item) => item.label.trim() && item.value.trim())
+          measurementDate: measurementForm.measurementDate,
+          notes: measurementForm.notes || undefined,
+          items: measurementForm.items
+            .filter((item) => item.bodyPartId && item.value.trim())
             .map((item) => ({
-              label: item.label,
+              bodyPartId: item.bodyPartId,
+              unitId: item.unitId || undefined,
               value: Number(item.value),
-              unit: item.unit || undefined,
               notes: item.notes || undefined,
             })),
         }),
       });
-      setWorkspaceMessage("Measurements recorded successfully.");
-      setMeasurementForm({
-        weight: "",
-        height: "",
-        measuredAt: "",
-        customMeasurements: [{ label: "", value: "", unit: "", notes: "" }],
-      });
+      setWorkspaceMessage("Measurement set recorded successfully.");
+      resetMeasurementForm();
       await loadCustomerDetails(selectedCustomer.id);
     } catch (error) {
       setWorkspaceMessage(error instanceof Error ? error.message : "Measurements could not be recorded.");
@@ -348,10 +438,7 @@ export function CustomerWorkspace() {
       <section className="hero-card">
         <div className="eyebrow">Módulo operacional</div>
         <h1 className="title">Cadastro de clientes</h1>
-        <p>
-          Cadastre clientes, pesquise rapidamente, edite dados cadastrais e mantenha as medidas integradas ao primeiro menu
-          operacional do ANEXSYS.
-        </p>
+        <p>Cadastre clientes, pesquise rapidamente, edite dados cadastrais e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
       </section>
 
       {workspaceMessage ? (
@@ -386,12 +473,7 @@ export function CustomerWorkspace() {
         <div className="filters-grid">
           <label className="field">
             <span>Busca</span>
-            <input
-              list="customer-suggestions"
-              placeholder="Nome, telefone, CPF/CNPJ ou email"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
+            <input list="customer-suggestions" placeholder="Nome, telefone, CPF/CNPJ ou email" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
             <datalist id="customer-suggestions">
               {customerSuggestions.map((customer) => (
                 <option key={customer.id} value={customer.label} />
@@ -453,11 +535,7 @@ export function CustomerWorkspace() {
               </thead>
               <tbody>
                 {customers.map((customer) => (
-                  <tr
-                    className={customer.id === activeCustomerId ? "data-table__row--active" : ""}
-                    key={customer.id}
-                    onClick={() => void loadCustomerDetails(customer.id)}
-                  >
+                  <tr className={customer.id === activeCustomerId ? "data-table__row--active" : ""} key={customer.id} onClick={() => void loadCustomerDetails(customer.id)}>
                     <td>
                       <strong>{customer.legalName}</strong>
                       <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
@@ -488,12 +566,7 @@ export function CustomerWorkspace() {
               <h3>Novo cliente</h3>
               <p className="subtitle">Capture primeiro os dados mínimos operacionais. O relacionamento pode ser enriquecido depois.</p>
               <form className="form-grid" onSubmit={handleCreateCustomer}>
-                <CustomerFields
-                  branchOptions={branchOptions}
-                  form={customerForm}
-                  onChange={setCustomerForm}
-                  showStatus={false}
-                />
+                <CustomerFields branchOptions={branchOptions} form={customerForm} onChange={setCustomerForm} showStatus={false} />
                 <div className="button-row">
                   <button className="button" disabled={savingCustomer} type="submit">
                     {savingCustomer ? "Salvando…" : "Cadastrar cliente"}
@@ -518,7 +591,7 @@ export function CustomerWorkspace() {
               <div className="workspace-toolbar">
                 <div className="workspace-toolbar__copy">
                   <h3>Detalhes do cliente</h3>
-                  <p>{selectedCustomer ? "Revise cadastro, histórico e medidas." : "Selecione um cliente na grade."}</p>
+                  <p>{selectedCustomer ? "Revise cadastro, histórico e Measurement Sets versionados." : "Selecione um cliente na grade."}</p>
                 </div>
               </div>
 
@@ -582,83 +655,76 @@ export function CustomerWorkspace() {
                       <div className="workspace-toolbar">
                         <div className="workspace-toolbar__copy">
                           <h4>Gestão de medidas</h4>
-                          <p>Registre novas medidas e mantenha o histórico versionado vinculado ao cadastro do cliente.</p>
+                          <p>Registre Measurement Sets versionados com data, observações, partes do corpo padronizadas e unidade padrão automática.</p>
                         </div>
                       </div>
 
                       <div className="measurement-grid">
                         {(measurements?.latestByLabel ?? []).map((measurement) => (
                           <div className="measurement-card" key={measurement.id}>
-                            <span>{measurement.measurementLabel}</span>
+                            <span>{measurement.measurementData.displayName ?? measurement.measurementLabel}</span>
                             <strong>
                               {String(measurement.measurementData?.value ?? "—")} {measurement.measurementData?.unit ?? ""}
                             </strong>
                             <small>v{measurement.versionNo} · {formatDate(measurement.measuredAt)}</small>
                           </div>
                         ))}
-                        {(measurements?.latestByLabel ?? []).length === 0 ? (
-                          <div className="empty-state">Nenhuma medida registrada ainda.</div>
-                        ) : null}
+                        {(measurements?.latestByLabel ?? []).length === 0 ? <div className="empty-state">Nenhuma medida registrada ainda.</div> : null}
                       </div>
 
                       {canWriteMeasurements ? (
                         <form className="form-grid" onSubmit={handleCreateMeasurements}>
                           <div className="filters-grid">
                             <label className="field">
-                              <span>Peso (kg)</span>
-                              <input
-                                inputMode="decimal"
-                                placeholder="72.5"
-                                value={measurementForm.weight}
-                                onChange={(event) => setMeasurementForm((current) => ({ ...current, weight: event.target.value }))}
-                              />
-                            </label>
-                            <label className="field">
-                              <span>Altura (cm)</span>
-                              <input
-                                inputMode="decimal"
-                                placeholder="178"
-                                value={measurementForm.height}
-                                onChange={(event) => setMeasurementForm((current) => ({ ...current, height: event.target.value }))}
-                              />
-                            </label>
-                            <label className="field">
                               <span>Data da medição</span>
-                              <input
-                                type="date"
-                                value={measurementForm.measuredAt}
-                                onChange={(event) => setMeasurementForm((current) => ({ ...current, measuredAt: event.target.value }))}
-                              />
+                              <input type="date" value={measurementForm.measurementDate} onChange={(event) => setMeasurementForm((current) => ({ ...current, measurementDate: event.target.value }))} />
+                            </label>
+                            <label className="field">
+                              <span>Unidade padrão</span>
+                              <input disabled value={catalog?.defaultUnitCode ?? "CM"} />
                             </label>
                           </div>
 
-                          {measurementForm.customMeasurements.map((item, index) => (
-                            <div className="custom-measurement-row" key={`custom-${index}`}>
+                          <label className="field">
+                            <span>Observações do conjunto</span>
+                            <textarea rows={3} value={measurementForm.notes} onChange={(event) => setMeasurementForm((current) => ({ ...current, notes: event.target.value }))} />
+                          </label>
+
+                          {measurementForm.items.map((item, index) => (
+                            <div className="custom-measurement-row" key={`measurement-item-${index}`}>
                               <label className="field">
-                                <span>Nome</span>
-                                <input
-                                  placeholder="Cintura"
-                                  value={item.label}
+                                <span>Parte do corpo</span>
+                                <select
+                                  required
+                                  value={item.bodyPartId}
                                   onChange={(event) =>
                                     setMeasurementForm((current) => ({
                                       ...current,
-                                      customMeasurements: current.customMeasurements.map((entry, entryIndex) =>
-                                        entryIndex === index ? { ...entry, label: event.target.value } : entry,
+                                      items: current.items.map((entry, entryIndex) =>
+                                        entryIndex === index ? { ...entry, bodyPartId: event.target.value } : entry,
                                       ),
                                     }))
                                   }
-                                />
+                                >
+                                  <option value="">Selecione</option>
+                                  {bodyPartOptions.map((bodyPart) => (
+                                    <option key={bodyPart.id} value={bodyPart.id}>
+                                      {bodyPart.displayName}
+                                    </option>
+                                  ))}
+                                </select>
                               </label>
                               <label className="field">
                                 <span>Valor</span>
                                 <input
                                   inputMode="decimal"
                                   placeholder="86"
+                                  required
                                   value={item.value}
                                   onChange={(event) =>
                                     setMeasurementForm((current) => ({
                                       ...current,
-                                      customMeasurements: current.customMeasurements.map((entry, entryIndex) =>
+                                      items: current.items.map((entry, entryIndex) =>
                                         entryIndex === index ? { ...entry, value: event.target.value } : entry,
                                       ),
                                     }))
@@ -667,18 +733,24 @@ export function CustomerWorkspace() {
                               </label>
                               <label className="field">
                                 <span>Unidade</span>
-                                <input
-                                  placeholder="cm"
-                                  value={item.unit}
+                                <select
+                                  value={item.unitId}
                                   onChange={(event) =>
                                     setMeasurementForm((current) => ({
                                       ...current,
-                                      customMeasurements: current.customMeasurements.map((entry, entryIndex) =>
-                                        entryIndex === index ? { ...entry, unit: event.target.value } : entry,
+                                      items: current.items.map((entry, entryIndex) =>
+                                        entryIndex === index ? { ...entry, unitId: event.target.value } : entry,
                                       ),
                                     }))
                                   }
-                                />
+                                >
+                                  <option value="">Padrão ({catalog?.defaultUnitCode ?? "CM"})</option>
+                                  {unitOptions.map((unit) => (
+                                    <option key={unit.id} value={unit.id}>
+                                      {unit.code}
+                                    </option>
+                                  ))}
+                                </select>
                               </label>
                               <label className="field">
                                 <span>Observações</span>
@@ -688,13 +760,30 @@ export function CustomerWorkspace() {
                                   onChange={(event) =>
                                     setMeasurementForm((current) => ({
                                       ...current,
-                                      customMeasurements: current.customMeasurements.map((entry, entryIndex) =>
+                                      items: current.items.map((entry, entryIndex) =>
                                         entryIndex === index ? { ...entry, notes: event.target.value } : entry,
                                       ),
                                     }))
                                   }
                                 />
                               </label>
+                              <div className="button-row" style={{ alignItems: "end" }}>
+                                <button
+                                  className="button-secondary"
+                                  onClick={() =>
+                                    setMeasurementForm((current) => ({
+                                      ...current,
+                                      items:
+                                        current.items.length === 1
+                                          ? [createMeasurementDraft(catalog?.defaultUnitId)]
+                                          : current.items.filter((_, entryIndex) => entryIndex !== index),
+                                    }))
+                                  }
+                                  type="button"
+                                >
+                                  Remover
+                                </button>
+                              </div>
                             </div>
                           ))}
 
@@ -704,27 +793,27 @@ export function CustomerWorkspace() {
                               onClick={() =>
                                 setMeasurementForm((current) => ({
                                   ...current,
-                                  customMeasurements: [...current.customMeasurements, { label: "", value: "", unit: "", notes: "" }],
+                                  items: [...current.items, createMeasurementDraft(catalog?.defaultUnitId)],
                                 }))
                               }
                               type="button"
                             >
-                              Adicionar medida personalizada
+                              Adicionar item ao conjunto
                             </button>
                             <button className="button" disabled={savingMeasurements} type="submit">
-                              {savingMeasurements ? "Salvando…" : "Registrar medidas"}
+                              {savingMeasurements ? "Salvando…" : "Registrar Measurement Set"}
                             </button>
                           </div>
                         </form>
                       ) : null}
 
                       <section className="mini-section">
-                        <h4>Histórico de medidas</h4>
+                        <h4>Histórico completo</h4>
                         <ul className="placeholder-list">
-                          {(measurements?.history ?? []).map((measurement) => (
-                            <li key={measurement.id}>
-                              <strong>{measurement.measurementLabel}</strong> · {String(measurement.measurementData?.value ?? "—")}{" "}
-                              {measurement.measurementData?.unit ?? ""} · v{measurement.versionNo} · {formatDate(measurement.measuredAt)}
+                          {(measurements?.measurementSets ?? []).map((set) => (
+                            <li key={set.id}>
+                              <strong>Versão {set.versionNo}</strong> · {formatDate(set.measurementDate)} · {set.items.map((item) => `${item.bodyPartDisplayName}: ${item.measuredValue} ${item.measurementUnitCode}`).join(" | ")}
+                              <div>{set.notes || `Measurement Set ${set.id}`}</div>
                             </li>
                           ))}
                         </ul>
@@ -744,7 +833,9 @@ export function CustomerWorkspace() {
                     </ul>
                   </section>
                 </div>
-              ) : !detailLoading && !detailError ? <div className="empty-state">Selecione um cliente para abrir o cadastro completo.</div> : null}
+              ) : !detailLoading && !detailError ? (
+                <div className="empty-state">Selecione um cliente para abrir o cadastro completo.</div>
+              ) : null}
             </article>
           ) : null}
         </div>

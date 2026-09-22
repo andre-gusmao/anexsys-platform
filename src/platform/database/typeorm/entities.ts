@@ -13,7 +13,11 @@ import { CustomerPortalProfileEntity } from 'src/modules/customer-portal/infrast
 import { StatusVisibilityMappingEntity } from 'src/modules/customer-portal/infrastructure/persistence/entities/status-visibility-mapping.entity';
 import { CustomerContactEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-contact.entity';
 import { CustomerInteractionEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer-interaction.entity';
+import { MeasurementBodyPartEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-body-part.entity';
 import { MeasurementRecordEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-record.entity';
+import { MeasurementSetEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-set.entity';
+import { MeasurementSetItemEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-set-item.entity';
+import { MeasurementUnitEntity } from 'src/modules/crm/infrastructure/persistence/entities/measurement-unit.entity';
 import { OperationalResourceBranchScopeEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource-branch-scope.entity';
 import { OperationalResourceEntity } from 'src/modules/operational-resources/infrastructure/persistence/entities/operational-resource.entity';
 import { ProductionExecutionEventEntity } from 'src/modules/production-orders/infrastructure/persistence/entities/production-execution-event.entity';
@@ -63,6 +67,10 @@ export const typeOrmEntities = [
   CustomerContactEntity,
   CustomerInteractionEntity,
   MeasurementRecordEntity,
+  MeasurementBodyPartEntity,
+  MeasurementUnitEntity,
+  MeasurementSetEntity,
+  MeasurementSetItemEntity,
   OperationalResourceEntity,
   OperationalResourceBranchScopeEntity,
   ProductionOrderEntity,

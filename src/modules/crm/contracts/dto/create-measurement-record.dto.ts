@@ -3,26 +3,26 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsDateString,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Min,
   ValidateNested,
+  IsNumber,
 } from 'class-validator';
 
-export class CustomMeasurementInputDto {
-  @IsString()
-  label!: string;
+export class MeasurementSetItemInputDto {
+  @IsUUID()
+  bodyPartId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  unitId?: string;
 
   @Type(() => Number)
   @IsNumber()
   @Min(0)
   value!: number;
-
-  @IsOptional()
-  @IsString()
-  unit?: string;
 
   @IsOptional()
   @IsString()
@@ -36,28 +36,19 @@ export class CreateMeasurementRecordDto {
   @IsUUID()
   customerId!: string;
 
-  @Type(() => Number)
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  weight?: number;
-
-  @Type(() => Number)
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  height?: number;
+  @IsDateString()
+  measurementDate?: string;
 
   @IsOptional()
+  @IsString()
+  notes?: string;
+
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
-  @Type(() => CustomMeasurementInputDto)
-  customMeasurements?: CustomMeasurementInputDto[];
-
-  @IsOptional()
-  @IsDateString()
-  measuredAt?: string;
+  @Type(() => MeasurementSetItemInputDto)
+  items!: MeasurementSetItemInputDto[];
 
   @IsUUID()
   actorUserId!: string;

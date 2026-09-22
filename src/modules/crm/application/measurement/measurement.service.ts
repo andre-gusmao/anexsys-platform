@@ -2,128 +2,182 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
-import {
-  CustomerInteractionType,
-  InteractionChannel,
-} from 'src/shared/domain/enums';
+import { CustomerInteractionType, InteractionChannel } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
+import { MeasurementCatalogService } from '../measurement-catalog/measurement-catalog.service';
 import { CustomerService } from '../customer/customer.service';
-import { CreateMeasurementRecordDto, CustomMeasurementInputDto } from '../../contracts/dto/create-measurement-record.dto';
+import { CreateMeasurementRecordDto } from '../../contracts/dto/create-measurement-record.dto';
 import { CustomerInteractionEntity } from '../../infrastructure/persistence/entities/customer-interaction.entity';
-import { MeasurementRecordEntity } from '../../infrastructure/persistence/entities/measurement-record.entity';
+import { MeasurementBodyPartEntity } from '../../infrastructure/persistence/entities/measurement-body-part.entity';
+import { MeasurementSetEntity } from '../../infrastructure/persistence/entities/measurement-set.entity';
+import { MeasurementSetItemEntity } from '../../infrastructure/persistence/entities/measurement-set-item.entity';
+import { MeasurementUnitEntity } from '../../infrastructure/persistence/entities/measurement-unit.entity';
+import { MeasurementSetItemRepository } from '../../infrastructure/persistence/repositories/measurement-set-item.repository';
+import { MeasurementSetRepository } from '../../infrastructure/persistence/repositories/measurement-set.repository';
+
+export type MeasurementSetView = {
+  id: string;
+  customerId: string;
+  measurementDate: string;
+  notes: string | null;
+  createdBy: string;
+  versionNo: number;
+  items: Array<{
+    id: string;
+    bodyPartId: string;
+    bodyPartCode: string;
+    bodyPartDisplayName: string;
+    measurementUnitId: string;
+    measurementUnitCode: string;
+    measurementUnitDisplayName: string;
+    measuredValue: number;
+    notes: string | null;
+  }>;
+};
 
 @Injectable()
 export class MeasurementService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly customerService: CustomerService,
+    private readonly measurementSetRepository: MeasurementSetRepository,
+    private readonly measurementSetItemRepository: MeasurementSetItemRepository,
+    private readonly measurementCatalogService: MeasurementCatalogService,
     private readonly auditService: AuditService,
   ) {}
 
-  async create(dto: CreateMeasurementRecordDto): Promise<MeasurementRecordEntity[]> {
+  async create(dto: CreateMeasurementRecordDto): Promise<MeasurementSetView> {
     const customer = await this.customerService.getById(dto.customerId, dto.tenantId);
-    const inputs = this.buildMeasurementInputs(dto);
-    const measuredAt = dto.measuredAt ? new Date(dto.measuredAt) : new Date();
+    const measurementDate = dto.measurementDate ? dto.measurementDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const items = await this.normalizeItems(dto);
+    const nextVersion = (await this.measurementSetRepository.findLatestVersionNumber(dto.tenantId, dto.customerId)) + 1;
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const savedRecords = await this.dataSource.transaction(async (manager) => {
-          const persisted: MeasurementRecordEntity[] = [];
-          for (const input of inputs) {
-            const latestRecord = await manager.findOne(MeasurementRecordEntity, {
-              where: {
-                tenantId: dto.tenantId,
-                customerId: dto.customerId,
-                measurementLabel: input.label,
-                isDeleted: false,
-              },
-              order: { versionNo: 'DESC' },
-            });
-            const nextVersion = (latestRecord?.versionNo ?? 0) + 1;
+    const measurementSet = this.measurementSetRepository.create({
+      id: randomUUID(),
+      tenantId: dto.tenantId,
+      customerId: dto.customerId,
+      serviceOrderId: null,
+      measurementDate,
+      notes: dto.notes?.trim() || null,
+      capturedBy: dto.actorUserId,
+      versionNo: nextVersion,
+      createdBy: dto.actorUserId,
+      updatedBy: dto.actorUserId,
+    });
 
-            const saved = await manager.save(
-              MeasurementRecordEntity,
-              manager.create(MeasurementRecordEntity, {
-                id: randomUUID(),
-                tenantId: dto.tenantId,
-                customerId: dto.customerId,
-                serviceOrderId: null,
-                measurementLabel: input.label,
-                measurementData: {
-                  value: input.value,
-                  unit: input.unit ?? null,
-                  notes: input.notes ?? null,
-                },
-                versionNo: nextVersion,
-                measuredAt,
-                capturedBy: dto.actorUserId,
-                isDeleted: false,
-                deletedAt: null,
-                deletedBy: null,
-                createdBy: dto.actorUserId,
-                updatedBy: dto.actorUserId,
-              }),
-            );
-            persisted.push(saved);
+    const savedMeasurementSet = await this.dataSource.transaction(async (manager) => {
+      const savedSet = await manager.save(MeasurementSetEntity, manager.create(MeasurementSetEntity, measurementSet));
+      const setItems = items.map((item) =>
+        manager.create(MeasurementSetItemEntity, {
+          id: randomUUID(),
+          tenantId: dto.tenantId,
+          measurementSetId: savedSet.id,
+          bodyPartId: item.bodyPart.id,
+          bodyPartCode: item.bodyPart.code,
+          bodyPartDisplayName: item.bodyPart.displayName,
+          measurementUnitId: item.unit.id,
+          measurementUnitCode: item.unit.code,
+          measurementUnitDisplayName: item.unit.displayName,
+          measuredValue: item.value.toFixed(3),
+          notes: item.notes,
+          createdBy: dto.actorUserId,
+          updatedBy: dto.actorUserId,
+        }),
+      );
+      await manager.save(MeasurementSetItemEntity, setItems);
 
-            const interaction = manager.create(CustomerInteractionEntity, {
-              id: randomUUID(),
-              tenantId: dto.tenantId,
-              customerId: dto.customerId,
-              serviceOrderId: null,
-              interactionType: CustomerInteractionType.MEASUREMENT_RECORDED,
-              channel: InteractionChannel.SYSTEM,
-              occurredAt: new Date(),
-              summary: `Measurement '${saved.measurementLabel}' version ${saved.versionNo} recorded.`,
-              detail: `Measurement '${saved.measurementLabel}' received a new historical version for customer '${customer.legalName}'.`,
-              createdBy: dto.actorUserId,
-              updatedBy: dto.actorUserId,
-            });
-            await manager.save(CustomerInteractionEntity, interaction);
-          }
-          return persisted;
-        });
+      const interaction = manager.create(CustomerInteractionEntity, {
+        id: randomUUID(),
+        tenantId: dto.tenantId,
+        customerId: dto.customerId,
+        serviceOrderId: null,
+        interactionType: CustomerInteractionType.MEASUREMENT_RECORDED,
+        channel: InteractionChannel.SYSTEM,
+        occurredAt: new Date(),
+        summary: `Measurement set version ${savedSet.versionNo} recorded.`,
+        detail: `Measurement set '${savedSet.id}' captured for customer '${customer.legalName}' on ${savedSet.measurementDate}.`,
+        createdBy: dto.actorUserId,
+        updatedBy: dto.actorUserId,
+      });
+      await manager.save(CustomerInteractionEntity, interaction);
+      return savedSet;
+    });
 
-        for (const record of savedRecords) {
-          await this.auditService.record({
-            tenantId: dto.tenantId,
-            branchId: customer.branchId,
-            actorUserId: dto.actorUserId,
-            entityType: 'measurement_record',
-            entityId: record.id,
-            action: 'measurement.recorded',
-            eventType: 'crm.write',
-            metadata: {
-              customerId: dto.customerId,
-              label: record.measurementLabel,
-              versionNo: record.versionNo,
-            },
-          });
-        }
+    await this.auditService.record({
+      tenantId: dto.tenantId,
+      branchId: customer.branchId,
+      actorUserId: dto.actorUserId,
+      entityType: 'measurement_set',
+      entityId: savedMeasurementSet.id,
+      action: 'measurement.set.recorded',
+      eventType: 'crm.write',
+      metadata: {
+        customerId: dto.customerId,
+        versionNo: savedMeasurementSet.versionNo,
+        itemCount: items.length,
+      },
+    });
 
-        return savedRecords;
-      } catch (error: any) {
-        if (attempt < 2 && this.isMeasurementVersionConflict(error)) {
-          continue;
-        }
-        throw error;
-      }
-    }
-
-    throw new DomainValidationError('Measurement version allocation failed.');
+    const listed = await this.listByCustomer(dto.tenantId, dto.customerId);
+    return listed.measurementSets.find((entry) => entry.id === savedMeasurementSet.id)!;
   }
 
   async listByCustomer(tenantId: string, customerId: string): Promise<{
-    history: MeasurementRecordEntity[];
-    latestByLabel: MeasurementRecordEntity[];
+    history: Array<{ id: string; measurementLabel: string; measurementData: Record<string, unknown>; versionNo: number; measuredAt: Date; measurementSetId: string }>;
+    latestByLabel: Array<{ id: string; measurementLabel: string; measurementData: Record<string, unknown>; versionNo: number; measuredAt: Date; measurementSetId: string }>;
+    measurementSets: MeasurementSetView[];
   }> {
     await this.customerService.getById(customerId, tenantId);
-    const history = await this.dataSource.getRepository(MeasurementRecordEntity).find({
-      where: { tenantId, customerId, isDeleted: false },
-      order: { measuredAt: 'DESC', measurementLabel: 'ASC', versionNo: 'DESC' },
-    });
-    const latestByLabelMap = new Map<string, MeasurementRecordEntity>();
+    const measurementSets = await this.measurementSetRepository.findByCustomer(tenantId, customerId);
+    const items = await this.measurementSetItemRepository.findByMeasurementSetIds(measurementSets.map((set) => set.id));
+    const itemsBySetId = new Map<string, MeasurementSetItemEntity[]>();
 
+    for (const item of items) {
+      const current = itemsBySetId.get(item.measurementSetId) ?? [];
+      current.push(item);
+      itemsBySetId.set(item.measurementSetId, current);
+    }
+
+    const measurementSetViews = measurementSets.map((set) => ({
+      id: set.id,
+      customerId: set.customerId,
+      measurementDate: set.measurementDate,
+      notes: set.notes,
+      createdBy: set.capturedBy,
+      versionNo: set.versionNo,
+      items: (itemsBySetId.get(set.id) ?? []).map((item) => ({
+        id: item.id,
+        bodyPartId: item.bodyPartId,
+        bodyPartCode: item.bodyPartCode,
+        bodyPartDisplayName: item.bodyPartDisplayName,
+        measurementUnitId: item.measurementUnitId,
+        measurementUnitCode: item.measurementUnitCode,
+        measurementUnitDisplayName: item.measurementUnitDisplayName,
+        measuredValue: Number(item.measuredValue),
+        notes: item.notes,
+      })),
+    }));
+
+    const history = measurementSetViews.flatMap((set) =>
+      set.items.map((item) => ({
+        id: item.id,
+        measurementLabel: item.bodyPartCode.toLowerCase(),
+        measurementData: {
+          value: item.measuredValue,
+          unit: item.measurementUnitCode,
+          notes: item.notes,
+          displayName: item.bodyPartDisplayName,
+          bodyPartId: item.bodyPartId,
+          unitId: item.measurementUnitId,
+          measurementSetId: set.id,
+        },
+        versionNo: set.versionNo,
+        measuredAt: new Date(`${set.measurementDate}T00:00:00.000Z`),
+        measurementSetId: set.id,
+      })),
+    );
+
+    const latestByLabelMap = new Map<string, (typeof history)[number]>();
     for (const record of history) {
       if (!latestByLabelMap.has(record.measurementLabel)) {
         latestByLabelMap.set(record.measurementLabel, record);
@@ -133,64 +187,54 @@ export class MeasurementService {
     return {
       history,
       latestByLabel: [...latestByLabelMap.values()],
+      measurementSets: measurementSetViews,
     };
   }
 
-  private buildMeasurementInputs(dto: CreateMeasurementRecordDto): Array<{
-    label: string;
-    value: number;
-    unit?: string;
-    notes?: string;
-  }> {
-    const measurements: Array<{ label: string; value: number; unit?: string; notes?: string }> = [];
-
-    if (dto.weight !== undefined) {
-      measurements.push({ label: 'weight', value: dto.weight, unit: 'kg' });
+  private async normalizeItems(dto: CreateMeasurementRecordDto): Promise<Array<{ bodyPart: MeasurementBodyPartEntity; unit: MeasurementUnitEntity; value: number; notes: string | null }>> {
+    if (dto.items.length === 0) {
+      throw new DomainValidationError('At least one measurement item must be provided.');
     }
 
-    if (dto.height !== undefined) {
-      measurements.push({ label: 'height', value: dto.height, unit: 'cm' });
-    }
-
-    for (const customMeasurement of dto.customMeasurements ?? []) {
-      measurements.push(this.normalizeCustomMeasurement(customMeasurement));
-    }
-
-    if (measurements.length === 0) {
-      throw new DomainValidationError('At least one measurement must be provided.');
-    }
-
-    const normalizedLabels = new Set<string>();
-    for (const measurement of measurements) {
-      if (normalizedLabels.has(measurement.label)) {
-        throw new DomainValidationError(`Measurement label '${measurement.label}' is duplicated in the request.`);
+    const duplicateBodyParts = new Set<string>();
+    const seenBodyParts = new Set<string>();
+    for (const item of dto.items) {
+      if (seenBodyParts.has(item.bodyPartId)) {
+        duplicateBodyParts.add(item.bodyPartId);
       }
-      normalizedLabels.add(measurement.label);
+      seenBodyParts.add(item.bodyPartId);
+    }
+    if (duplicateBodyParts.size > 0) {
+      throw new DomainValidationError('A Measurement Set cannot contain duplicate body parts.');
     }
 
-    return measurements;
-  }
+    const bodyParts = await this.measurementCatalogService.resolveBodyParts(
+      dto.tenantId,
+      dto.items.map((item) => item.bodyPartId),
+      dto.actorUserId,
+    );
+    const bodyPartById = new Map(bodyParts.map((item) => [item.id, item]));
 
-  private normalizeCustomMeasurement(customMeasurement: CustomMeasurementInputDto): {
-    label: string;
-    value: number;
-    unit?: string;
-    notes?: string;
-  } {
-    const label = customMeasurement.label.trim().toLowerCase();
-    if (!label) {
-      throw new DomainValidationError('Custom measurement label is required.');
-    }
+    const explicitUnitIds = dto.items.flatMap((item) => (item.unitId ? [item.unitId] : []));
+    const explicitUnits = await this.measurementCatalogService.resolveUnits(dto.tenantId, explicitUnitIds, dto.actorUserId);
+    const unitById = new Map(explicitUnits.map((item) => [item.id, item]));
+    const defaultUnit = await this.measurementCatalogService.getDefaultUnit(dto.tenantId, dto.actorUserId);
 
-    return {
-      label,
-      value: customMeasurement.value,
-      unit: customMeasurement.unit?.trim() || undefined,
-      notes: customMeasurement.notes?.trim() || undefined,
-    };
-  }
-
-  private isMeasurementVersionConflict(error: { code?: string; constraint?: string } | undefined): boolean {
-    return error?.code === '23505' && error?.constraint === 'uq_measurement_records_customer_label_version';
+    return dto.items.map((item) => {
+      const bodyPart = bodyPartById.get(item.bodyPartId);
+      if (!bodyPart) {
+        throw new DomainValidationError('Invalid body part supplied.');
+      }
+      const unit = item.unitId ? unitById.get(item.unitId) : defaultUnit;
+      if (!unit) {
+        throw new DomainValidationError('Invalid measurement unit supplied.');
+      }
+      return {
+        bodyPart,
+        unit,
+        value: item.value,
+        notes: item.notes?.trim() || null,
+      };
+    });
   }
 }

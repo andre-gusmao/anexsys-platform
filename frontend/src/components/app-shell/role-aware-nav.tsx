@@ -37,6 +37,18 @@ const navSections: NavSection[] = [
         hint: "Cadastro e medidas",
         requiredPermissions: ["customers.read"],
       },
+      {
+        href: "/body-parts",
+        label: "Partes do Corpo",
+        hint: "Master data de medidas",
+        requiredPermissions: ["measurements.read"],
+      },
+      {
+        href: "/measurement-units",
+        label: "Unidades de Medida",
+        hint: "Unidades padrão",
+        requiredPermissions: ["measurements.read"],
+      },
     ],
   },
   {

@@ -25,6 +25,8 @@ let branchTwoId = '';
 let branchTwoCustomerId = '';
 let customerId = '';
 let adminToken = '';
+let bodyPartIds = {};
+let unitIds = {};
 
 async function adminClient(database = 'postgres') {
   const client = new Client({
@@ -189,6 +191,16 @@ before(async () => {
     body: JSON.stringify({ email: 'crm-admin@tenant.test', password: 'SuperSecret123' }),
   });
   adminToken = login.json.accessToken;
+
+  const catalog = await http('/measurement-catalog', {
+    method: 'GET',
+    headers: {
+      authorization: 'Bearer ' + adminToken,
+      'x-tenant-id': tenantId,
+    },
+  });
+  bodyPartIds = Object.fromEntries(catalog.json.bodyParts.map((item) => [item.code, item.id]));
+  unitIds = Object.fromEntries(catalog.json.units.map((item) => [item.code, item.id]));
 });
 
 after(async () => {
@@ -293,7 +305,7 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(reactivated.json.status, 'active');
   });
 
-  it('versions customer measurements and returns measurement history', async () => {
+  it('versions customer measurements as standardized measurement sets and returns history', async () => {
     const first = await http(`/customers/${customerId}/measurements`, {
       method: 'POST',
       headers: {
@@ -301,13 +313,17 @@ describe('Sprint 2 acceptance', () => {
         'x-tenant-id': tenantId,
       },
       body: JSON.stringify({
-        weight: 72.5,
-        height: 178,
-        customMeasurements: [{ label: 'Waist', value: 86, unit: 'cm' }],
+        measurementDate: '2026-09-22',
+        notes: 'Initial fitting',
+        items: [
+          { bodyPartId: bodyPartIds.CINTURA, unitId: unitIds.CM, value: 86 },
+          { bodyPartId: bodyPartIds.BUSTO, unitId: unitIds.CM, value: 92 },
+        ],
       }),
     });
     assert.equal(first.status, 201);
-    assert.equal(first.json.length, 3);
+    assert.equal(first.json.versionNo, 1);
+    assert.equal(first.json.items.length, 2);
 
     const second = await http(`/customers/${customerId}/measurements`, {
       method: 'POST',
@@ -315,10 +331,15 @@ describe('Sprint 2 acceptance', () => {
         authorization: 'Bearer ' + adminToken,
         'x-tenant-id': tenantId,
       },
-      body: JSON.stringify({ weight: 73.1 }),
+      body: JSON.stringify({
+        measurementDate: '2026-09-23',
+        notes: 'Recheck',
+        items: [{ bodyPartId: bodyPartIds.CINTURA, value: 87 }],
+      }),
     });
     assert.equal(second.status, 201);
-    assert.equal(second.json[0].versionNo, 2);
+    assert.equal(second.json.versionNo, 2);
+    assert.equal(second.json.items[0].measurementUnitCode, 'CM');
 
     const history = await http(`/customers/${customerId}/measurements`, {
       method: 'GET',
@@ -328,8 +349,32 @@ describe('Sprint 2 acceptance', () => {
       },
     });
     assert.equal(history.status, 200);
-    assert.equal(history.json.latestByLabel.find((item) => item.measurementLabel === 'weight').versionNo, 2);
-    assert.equal(history.json.history.length, 4);
+    assert.equal(history.json.measurementSets.length, 2);
+    assert.equal(history.json.measurementSets[0].versionNo, 2);
+    assert.equal(history.json.latestByLabel.find((item) => item.measurementLabel === 'cintura').versionNo, 2);
+  });
+
+  it('lists and extends measurement master data', async () => {
+    const bodyParts = await http('/measurement-body-parts', {
+      method: 'GET',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantId,
+      },
+    });
+    assert.equal(bodyParts.status, 200);
+    assert.equal(bodyParts.json.some((item) => item.code === 'BUSTO'), true);
+
+    const createdUnit = await http('/measurement-units', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + adminToken,
+        'x-tenant-id': tenantId,
+      },
+      body: JSON.stringify({ code: 'IN', displayName: 'Inches' }),
+    });
+    assert.equal(createdUnit.status, 201);
+    assert.equal(createdUnit.json.code, 'IN');
   });
 
   it('rejects customer creation for branches outside the authenticated branch scope', async () => {

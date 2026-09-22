@@ -26,6 +26,9 @@ export class TenantEntity extends MutableBusinessEntity {
   @Column({ name: 'block_delivery_with_outstanding_balance', type: 'boolean', default: false })
   blockDeliveryWithOutstandingBalance!: boolean;
 
+  @Column({ name: 'default_measurement_unit_code', type: 'varchar', length: 20, default: 'CM' })
+  defaultMeasurementUnitCode!: string;
+
   @OneToMany(() => BranchEntity, (branch) => branch.tenant)
   branches?: BranchEntity[];
 }

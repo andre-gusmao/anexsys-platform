@@ -18,11 +18,9 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Min,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -33,7 +31,7 @@ import { CustomerStatus, CustomerType } from 'src/shared/domain/enums';
 import { CreateCustomerDto } from '../contracts/dto/create-customer.dto';
 import {
   CreateMeasurementRecordDto,
-  CustomMeasurementInputDto,
+  MeasurementSetItemInputDto,
 } from '../contracts/dto/create-measurement-record.dto';
 import { SearchCustomersDto } from '../contracts/dto/search-customers.dto';
 import { UpdateCustomerDto } from '../contracts/dto/update-customer.dto';
@@ -129,28 +127,19 @@ class UpdateCustomerBody {
 }
 
 class CreateMeasurementsBody {
-  @Type(() => Number)
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  weight?: number;
-
-  @Type(() => Number)
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  height?: number;
+  @IsDateString()
+  measurementDate?: string;
 
   @IsOptional()
+  @IsString()
+  notes?: string;
+
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
-  @Type(() => CustomMeasurementInputDto)
-  customMeasurements?: CustomMeasurementInputDto[];
-
-  @IsOptional()
-  @IsDateString()
-  measuredAt?: string;
+  @Type(() => MeasurementSetItemInputDto)
+  items!: MeasurementSetItemInputDto[];
 }
 
 @Controller('customers')
