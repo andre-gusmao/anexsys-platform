@@ -2,6 +2,8 @@
 
 ## Files changed
 - `frontend/src/components/service-orders/service-orders-workspace.tsx`
+- `frontend/src/components/service-orders/service-order-workspace-view-model.ts`
+- `test/unit/service-order-workspace-view-model.spec.ts`
 - `SERVICE_ORDER_UX_IMPLEMENTATION_REPORT_V1.md`
 
 ## Buttons added
@@ -23,6 +25,8 @@
   - reloads the form with the selected persisted record
 - Grid selection now loads the form state directly from Service Order details.
 - Existing item data remains visible in the form area for view/update context.
+- Added explicit empty-state handling for selected Service Orders with no linked items.
+- Added focused coverage for selected-order detail view modeling with and without items.
 
 ## Validation executed
 - `npm run build` ✅

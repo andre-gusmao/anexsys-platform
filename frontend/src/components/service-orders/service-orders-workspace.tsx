@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
+import { buildServiceOrderDetailViewModel } from "@/components/service-orders/service-order-workspace-view-model";
 
 type ServiceOrderRecord = {
   id: string;
@@ -203,6 +204,17 @@ export function ServiceOrdersWorkspace() {
 
     return options;
   }, [customers, details]);
+
+  const detailView = useMemo(
+    () =>
+      details
+        ? buildServiceOrderDetailViewModel({
+            totalValue: details.serviceOrder.totalValue,
+            items: details.items,
+          })
+        : null,
+    [details],
+  );
 
   const loadDetails = useCallback(
     async (serviceOrderId: string) => {
@@ -710,20 +722,21 @@ export function ServiceOrdersWorkspace() {
                     </div>
                     <div className="detail-field">
                       <span>Total</span>
-                      <strong>{details.serviceOrder.totalValue ?? "—"}</strong>
+                      <strong>{detailView?.totalValueDisplay ?? "—"}</strong>
                     </div>
                   </div>
 
                   <div className="mini-section">
                     <h4>Items</h4>
-                    <ul className="placeholder-list">
-                      {details.items.map((item) => (
-                        <li key={item.id}>
-                          <strong>#{item.itemNo}</strong> · {item.itemType} · {item.description} · {item.quantity}
-                          {item.unitPrice ? ` · ${item.unitPrice}` : ""} · {item.status}
-                        </li>
-                      ))}
-                    </ul>
+                    {detailView?.hasItems ? (
+                      <ul className="placeholder-list">
+                        {detailView.itemLines.map((item) => (
+                          <li key={item.id}>{item.line}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="empty-state">No items linked to this Service Order yet.</div>
+                    )}
                   </div>
                 </>
               ) : null}
