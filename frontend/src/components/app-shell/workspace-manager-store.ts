@@ -14,6 +14,16 @@ export type WorkspaceStore = {
 
 export const WORKSPACE_QUERY_PARAM = "workspaceTab";
 
+export function normalizeWorkspacePathname(pathname: string): string {
+  const [pathWithQuery, hashFragment = ""] = pathname.trim().split("#");
+  const [basePath, rawQuery = ""] = pathWithQuery.split("?");
+  const params = new URLSearchParams(rawQuery);
+  params.delete(WORKSPACE_QUERY_PARAM);
+  const query = params.toString();
+  const hash = hashFragment ? `#${hashFragment}` : "";
+  return `${query ? `${basePath}?${query}` : basePath}${hash}`;
+}
+
 export function createEmptyWorkspaceStore(): WorkspaceStore {
   return {
     tabs: [],
@@ -29,7 +39,7 @@ export function createWorkspaceTab(input: {
 }): WorkspaceTab {
   return {
     id: input.id.trim(),
-    pathname: input.pathname.trim(),
+    pathname: normalizeWorkspacePathname(input.pathname),
     label: input.label.trim(),
     subtitle: input.subtitle?.trim() || null,
   };
