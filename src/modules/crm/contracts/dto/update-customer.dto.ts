@@ -1,7 +1,7 @@
 import { IsDateString, IsEmail, IsEnum, IsOptional, IsString, IsUUID, Length, ValidateIf } from 'class-validator';
 import { CustomerStatus, CustomerType } from 'src/shared/domain/enums';
 
-export class UpdateCustomerDto {
+export class UpdateCustomerRequestDto {
   @IsOptional()
   @IsEnum(CustomerType)
   customerType?: CustomerType;
@@ -72,7 +72,9 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsEnum(CustomerStatus)
   status?: CustomerStatus;
+}
 
+export class UpdateCustomerDto extends UpdateCustomerRequestDto {
   @IsUUID()
   actorUserId!: string;
 }

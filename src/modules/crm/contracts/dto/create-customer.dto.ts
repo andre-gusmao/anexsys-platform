@@ -1,10 +1,7 @@
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsOptional, IsString, IsUUID, Length } from 'class-validator';
 import { CustomerType } from 'src/shared/domain/enums';
 
-export class CreateCustomerDto {
-  @IsUUID()
-  tenantId!: string;
-
+export class CreateCustomerRequestDto {
   @IsOptional()
   @IsEnum(CustomerType)
   customerType?: CustomerType;
@@ -48,7 +45,7 @@ export class CreateCustomerDto {
   country!: string;
 
   @IsOptional()
-  @IsString()
+  @IsEmail()
   email?: string;
 
   @IsOptional()
@@ -62,6 +59,11 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   tradeName?: string;
+}
+
+export class CreateCustomerDto extends CreateCustomerRequestDto {
+  @IsUUID()
+  tenantId!: string;
 
   @IsUUID()
   actorUserId!: string;

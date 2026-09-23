@@ -11,159 +11,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import {
-  ArrayNotEmpty,
-  IsArray,
-  IsDateString,
-  IsEmail,
-  IsEnum,
-  IsOptional,
-  IsString,
-  ValidateIf,
-  ValidateNested,
-} from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsDateString, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { CustomerStatus, CustomerType } from 'src/shared/domain/enums';
-import { CreateCustomerDto } from '../contracts/dto/create-customer.dto';
+import { CreateCustomerDto, CreateCustomerRequestDto } from '../contracts/dto/create-customer.dto';
 import {
   CreateMeasurementRecordDto,
   MeasurementSetItemInputDto,
 } from '../contracts/dto/create-measurement-record.dto';
 import { SearchCustomersDto } from '../contracts/dto/search-customers.dto';
-import { UpdateCustomerDto } from '../contracts/dto/update-customer.dto';
+import { UpdateCustomerDto, UpdateCustomerRequestDto } from '../contracts/dto/update-customer.dto';
 import { CustomerService } from '../application/customer/customer.service';
 import { MeasurementService } from '../application/measurement/measurement.service';
-
-class CreateCustomerBody {
-  @IsOptional()
-  @IsEnum(CustomerType)
-  customerType?: CustomerType;
-
-  @IsString()
-  fullName!: string;
-
-  @IsString()
-  mobilePhone!: string;
-
-  @IsOptional()
-  @IsString()
-  cpf?: string;
-
-  @IsOptional()
-  @IsString()
-  postalCode?: string;
-
-  @IsString()
-  street!: string;
-
-  @IsString()
-  number!: string;
-
-  @IsOptional()
-  @IsString()
-  complement?: string;
-
-  @IsString()
-  district!: string;
-
-  @IsString()
-  city!: string;
-
-  @IsString()
-  state!: string;
-
-  @IsString()
-  country!: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string;
-
-  @IsOptional()
-  @IsString()
-  observations?: string;
-
-  @IsOptional()
-  @IsString()
-  tradeName?: string;
-}
-
-class UpdateCustomerBody {
-  @IsOptional()
-  @IsEnum(CustomerType)
-  customerType?: CustomerType;
-
-  @IsOptional()
-  @IsString()
-  fullName?: string;
-
-  @IsOptional()
-  @IsString()
-  mobilePhone?: string;
-
-  @IsOptional()
-  @IsString()
-  cpf?: string | null;
-
-  @IsOptional()
-  @IsString()
-  postalCode?: string | null;
-
-  @IsOptional()
-  @IsString()
-  street?: string | null;
-
-  @IsOptional()
-  @IsString()
-  number?: string | null;
-
-  @IsOptional()
-  @IsString()
-  complement?: string | null;
-
-  @IsOptional()
-  @IsString()
-  district?: string | null;
-
-  @IsOptional()
-  @IsString()
-  city?: string | null;
-
-  @IsOptional()
-  @IsString()
-  state?: string | null;
-
-  @IsOptional()
-  @IsString()
-  country?: string | null;
-
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null)
-  @IsEmail()
-  email?: string | null;
-
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string | null;
-
-  @IsOptional()
-  @IsString()
-  observations?: string | null;
-
-  @IsOptional()
-  @IsString()
-  tradeName?: string | null;
-
-  @IsOptional()
-  @IsEnum(CustomerStatus)
-  status?: CustomerStatus;
-}
 
 class CreateMeasurementsBody {
   @IsOptional()
@@ -229,7 +90,7 @@ export class CustomersController {
   @Permissions('customers.write')
   @Post()
   async create(
-    @Body() body: CreateCustomerBody,
+    @Body() body: CreateCustomerRequestDto,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -249,7 +110,7 @@ export class CustomersController {
   @Patch(':customerId')
   async update(
     @Param('customerId', new ParseUUIDPipe()) customerId: string,
-    @Body() body: UpdateCustomerBody,
+    @Body() body: UpdateCustomerRequestDto,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {

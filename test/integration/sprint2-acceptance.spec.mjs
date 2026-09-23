@@ -254,7 +254,14 @@ describe('Sprint 2 acceptance', () => {
     assert.equal(created.json.legalName, 'Maria da Silva');
     assert.equal(created.json.phone, '11998887766');
     assert.equal(created.json.branchId, null);
+    assert.equal(created.json.postalCode, '12345678');
     assert.equal(created.json.street, 'Rua das Flores');
+    assert.equal(created.json.number, '123');
+    assert.equal(created.json.complement, 'Casa 2');
+    assert.equal(created.json.district, 'Centro');
+    assert.equal(created.json.city, 'São Paulo');
+    assert.equal(created.json.state, 'SP');
+    assert.equal(created.json.country, 'Brasil');
     customerId = created.json.id;
 
     const profile = await http(`/customers/${customerId}`, {
@@ -477,6 +484,10 @@ describe('Sprint 2 acceptance', () => {
       body: JSON.stringify({ fullName: 'Invalid Customer', mobilePhone: '(11) 95555-1111' }),
     });
     assert.equal(invalidCustomer.status, 400);
+    assert.equal(
+      invalidCustomer.json.message,
+      'Customer could not be saved. Some registration fields are missing or invalid. Review name, contact, address, and document information, then try again.',
+    );
 
     const invalidMeasurement = await http(`/customers/${customerId}/measurements`, {
       method: 'POST',

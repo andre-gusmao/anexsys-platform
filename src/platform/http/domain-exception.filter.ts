@@ -17,9 +17,12 @@ import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 export class DomainExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse();
+    const request = host.switchToHttp().getRequest<{ method?: string; url?: string }>();
 
     if (exception instanceof HttpException) {
-      response.status(exception.getStatus()).json(exception.getResponse());
+      const status = exception.getStatus();
+      const friendlyMessage = this.getFriendlyHttpMessage(status, exception.getResponse(), request);
+      response.status(status).json(friendlyMessage ? { message: friendlyMessage } : exception.getResponse());
       return;
     }
 
@@ -46,5 +49,26 @@ export class DomainExceptionFilter implements ExceptionFilter {
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       message: exception instanceof Error ? exception.message : 'Internal server error',
     });
+  }
+
+  private getFriendlyHttpMessage(
+    status: number,
+    payload: unknown,
+    request: { method?: string; url?: string } | undefined,
+  ): string | null {
+    if (status !== HttpStatus.BAD_REQUEST || !payload || typeof payload !== 'object') {
+      return null;
+    }
+
+    const message = (payload as { message?: unknown }).message;
+    if (!Array.isArray(message)) {
+      return null;
+    }
+
+    if (request?.method === 'POST' && request.url?.includes('/customers')) {
+      return 'Customer could not be saved. Some registration fields are missing or invalid. Review name, contact, address, and document information, then try again.';
+    }
+
+    return 'The request could not be completed. Some informed fields are missing or invalid. Review the data and try again.';
   }
 }
