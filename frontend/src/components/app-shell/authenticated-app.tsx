@@ -14,7 +14,7 @@ export function AuthenticatedApp({ children }: Readonly<{ children: ReactNode }>
       router.replace("/login");
       return;
     }
-    if (status === "branch-selection") {
+    if (status === "company-selection" || status === "branch-selection") {
       router.replace("/select-branch");
     }
   }, [router, status]);
@@ -23,7 +23,7 @@ export function AuthenticatedApp({ children }: Readonly<{ children: ReactNode }>
     return <div className="loading-state">Restoring session context…</div>;
   }
 
-  if (status === "anonymous" || status === "branch-selection" || !session) {
+  if (status === "anonymous" || status === "company-selection" || status === "branch-selection" || !session) {
     return <div className="loading-state">Redirecting…</div>;
   }
 

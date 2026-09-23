@@ -40,7 +40,7 @@ type SessionRecord = {
   companySelectionRequired: boolean;
 };
 
-type SessionStatus = "loading" | "anonymous" | "branch-selection" | "authenticated";
+type SessionStatus = "loading" | "anonymous" | "company-selection" | "branch-selection" | "authenticated";
 
 type LoginInput = {
   email: string;
@@ -395,7 +395,13 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     };
 
     setSession(resolved);
-    setStatus(me.context.companySelectionRequired || (!activeBranchId && resolved.branchIds.length > 0) ? "branch-selection" : "authenticated");
+    setStatus(
+      me.context.companySelectionRequired
+        ? "company-selection"
+        : !activeBranchId && resolved.branchIds.length > 0
+          ? "branch-selection"
+          : "authenticated",
+    );
     setErrorMessage(null);
     return resolved;
   }, []);
