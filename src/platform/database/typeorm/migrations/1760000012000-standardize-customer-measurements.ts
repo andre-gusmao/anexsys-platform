@@ -18,11 +18,28 @@ export class StandardizeCustomerMeasurements1760000012000 implements MigrationIn
 
     await queryRunner.query(`
       ALTER TABLE tenants
-      ADD COLUMN default_measurement_unit_code varchar(20) NOT NULL DEFAULT 'CM'
+      ADD COLUMN IF NOT EXISTS default_measurement_unit_code varchar(20)
     `);
 
     await queryRunner.query(`
-      CREATE TABLE measurement_body_parts (
+      UPDATE tenants
+      SET default_measurement_unit_code = 'CM'
+      WHERE default_measurement_unit_code IS NULL
+         OR btrim(default_measurement_unit_code) = ''
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE tenants
+      ALTER COLUMN default_measurement_unit_code SET DEFAULT 'CM'
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE tenants
+      ALTER COLUMN default_measurement_unit_code SET NOT NULL
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS measurement_body_parts (
         id uuid PRIMARY KEY,
         tenant_id uuid NOT NULL REFERENCES tenants(id),
         code varchar(100) NOT NULL,
@@ -41,7 +58,7 @@ export class StandardizeCustomerMeasurements1760000012000 implements MigrationIn
     `);
 
     await queryRunner.query(`
-      CREATE TABLE measurement_units (
+      CREATE TABLE IF NOT EXISTS measurement_units (
         id uuid PRIMARY KEY,
         tenant_id uuid NOT NULL REFERENCES tenants(id),
         code varchar(20) NOT NULL,
@@ -60,7 +77,7 @@ export class StandardizeCustomerMeasurements1760000012000 implements MigrationIn
     `);
 
     await queryRunner.query(`
-      CREATE TABLE measurement_sets (
+      CREATE TABLE IF NOT EXISTS measurement_sets (
         id uuid PRIMARY KEY,
         tenant_id uuid NOT NULL REFERENCES tenants(id),
         customer_id uuid NOT NULL REFERENCES customers(id),
@@ -79,7 +96,7 @@ export class StandardizeCustomerMeasurements1760000012000 implements MigrationIn
     `);
 
     await queryRunner.query(`
-      CREATE TABLE measurement_set_items (
+      CREATE TABLE IF NOT EXISTS measurement_set_items (
         id uuid PRIMARY KEY,
         tenant_id uuid NOT NULL REFERENCES tenants(id),
         measurement_set_id uuid NOT NULL REFERENCES measurement_sets(id) ON DELETE CASCADE,
@@ -360,10 +377,18 @@ export class StandardizeCustomerMeasurements1760000012000 implements MigrationIn
       ON CONFLICT (measurement_set_id, body_part_id) DO NOTHING
     `);
 
-    await queryRunner.query('CREATE INDEX idx_measurement_body_parts_tenant_id ON measurement_body_parts (tenant_id, sort_order, display_name)');
-    await queryRunner.query('CREATE INDEX idx_measurement_units_tenant_id ON measurement_units (tenant_id, sort_order, code)');
-    await queryRunner.query('CREATE INDEX idx_measurement_sets_customer_id ON measurement_sets (customer_id, version_no DESC)');
-    await queryRunner.query('CREATE INDEX idx_measurement_set_items_set_id ON measurement_set_items (measurement_set_id)');
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS idx_measurement_body_parts_tenant_id ON measurement_body_parts (tenant_id, sort_order, display_name)',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS idx_measurement_units_tenant_id ON measurement_units (tenant_id, sort_order, code)',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS idx_measurement_sets_customer_id ON measurement_sets (customer_id, version_no DESC)',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS idx_measurement_set_items_set_id ON measurement_set_items (measurement_set_id)',
+    );
     await queryRunner.query('DROP FUNCTION IF EXISTS md5_uuid(text)');
   }
 
@@ -376,7 +401,7 @@ export class StandardizeCustomerMeasurements1760000012000 implements MigrationIn
     await queryRunner.query('DROP TABLE IF EXISTS measurement_sets');
     await queryRunner.query('DROP TABLE IF EXISTS measurement_units');
     await queryRunner.query('DROP TABLE IF EXISTS measurement_body_parts');
-    await queryRunner.query('ALTER TABLE tenants DROP COLUMN default_measurement_unit_code');
+    await queryRunner.query('ALTER TABLE tenants DROP COLUMN IF EXISTS default_measurement_unit_code');
     await queryRunner.query('DROP FUNCTION IF EXISTS md5_uuid(text)');
   }
 }
