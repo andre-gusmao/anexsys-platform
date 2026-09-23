@@ -2,7 +2,13 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useSession } from "@/components/providers/session-provider";
-import { normalizeCompanyListRecords, type CompanyRecord } from "@/components/admin/company-list-records";
+import {
+  normalizeCompanyListRecords,
+  normalizeCompanyRecord,
+  resolveActiveCompanyId,
+  type CompanyApiRecord,
+  type CompanyRecord,
+} from "@/components/admin/company-list-records";
 import {
   MasterDataDuplicateGuard,
   normalizeCodeValue,
@@ -72,11 +78,9 @@ export function CompaniesWorkspace() {
     }
     setLoading(true);
     try {
-      const response = await apiJson<CompanyRecord[]>("/tenants");
+      const response = await apiJson<CompanyApiRecord[]>("/tenants");
       const records = normalizeCompanyListRecords(response);
-      const nextActiveCompanyId = (activeCompanyId && records.some((company) => company.id === activeCompanyId))
-        ? activeCompanyId
-        : records[0]?.id ?? null;
+      const nextActiveCompanyId = resolveActiveCompanyId(records, activeCompanyId);
       const nextActiveCompany = records.find((company) => company.id === nextActiveCompanyId) ?? null;
       setCompanies(records);
       setActiveCompanyId(nextActiveCompanyId);
@@ -135,7 +139,7 @@ export function CompaniesWorkspace() {
     setSaving(true);
     setMessage(null);
     try {
-      const created = await apiJson<CompanyRecord>("/tenants", {
+      const createdResponse = await apiJson<CompanyApiRecord>("/tenants", {
         method: "POST",
         body: JSON.stringify({
           code: form.code,
@@ -146,6 +150,7 @@ export function CompaniesWorkspace() {
           blockDeliveryWithOutstandingBalance: form.blockDeliveryWithOutstandingBalance,
         }),
       });
+      const created = normalizeCompanyRecord(createdResponse, companies.length);
       setCompanies((current) => [created, ...current]);
       setActiveCompanyId(created.id);
       setShowCreateForm(false);
@@ -168,7 +173,7 @@ export function CompaniesWorkspace() {
     setSaving(true);
     setMessage(null);
     try {
-      const updated = await apiJson<CompanyRecord>(`/tenants/${activeCompany.id}`, {
+      const updatedResponse = await apiJson<CompanyApiRecord>(`/tenants/${activeCompany.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           code: form.code,
@@ -179,6 +184,7 @@ export function CompaniesWorkspace() {
           blockDeliveryWithOutstandingBalance: form.blockDeliveryWithOutstandingBalance,
         }),
       });
+      const updated = normalizeCompanyRecord(updatedResponse, 0);
       setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
       setForm(mapCompanyToForm(updated));
       setMessage("Empresa atualizada com sucesso.");
@@ -194,9 +200,10 @@ export function CompaniesWorkspace() {
     setSaving(true);
     setMessage(null);
     try {
-      const updated = await apiJson<CompanyRecord>(`/tenants/${activeCompany.id}/${action}`, {
+      const updatedResponse = await apiJson<CompanyApiRecord>(`/tenants/${activeCompany.id}/${action}`, {
         method: "POST",
       });
+      const updated = normalizeCompanyRecord(updatedResponse, 0);
       setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
       setMessage(action === "activate" ? "Empresa reativada." : "Empresa desativada.");
     } catch (error) {

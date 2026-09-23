@@ -9,7 +9,7 @@ export type CompanyRecord = {
   blockDeliveryWithOutstandingBalance: boolean;
 };
 
-type CompanyApiRecord = Partial<CompanyRecord> & {
+export type CompanyApiRecord = Partial<CompanyRecord> & {
   code?: string;
   legalName?: string;
   displayName?: string;
@@ -34,4 +34,12 @@ export function normalizeCompanyRecord(record: CompanyApiRecord, index: number):
 
 export function normalizeCompanyListRecords(records: CompanyApiRecord[]): CompanyRecord[] {
   return records.map((record, index) => normalizeCompanyRecord(record, index));
+}
+
+export function resolveActiveCompanyId(companies: CompanyRecord[], activeCompanyId: string | null): string | null {
+  if (activeCompanyId && companies.some((company) => company.id === activeCompanyId)) {
+    return activeCompanyId;
+  }
+
+  return companies[0]?.id ?? null;
 }
