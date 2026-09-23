@@ -434,10 +434,11 @@ export function WorkspaceTabsBar() {
               className="workspace-tab__trigger"
               onClick={() => activateWorkspace(tab.id)}
               role="tab"
+              title={tab.subtitle ? `${tab.label} · ${tab.subtitle}` : tab.label}
               type="button"
             >
-              <span>{tab.label}</span>
-              {tab.subtitle ? <small>{tab.subtitle}</small> : null}
+              <span className="workspace-tab__title">{tab.label}</span>
+              {tab.subtitle ? <small className="workspace-tab__subtitle">{tab.subtitle}</small> : null}
             </button>
             <button
               aria-label={`Close ${tab.label}`}
