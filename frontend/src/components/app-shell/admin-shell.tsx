@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
 import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
@@ -18,16 +18,11 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const activeCompany = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
   const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const busy = pendingCompanySwitch || pendingBranchSwitch;
-
-  useEffect(() => {
-    if (isDesktop) {
-      setSidebarOpen(false);
-    }
-  }, [isDesktop]);
+  const sidebarVisible = isDesktop || sidebarOpen;
 
   return (
     <div className="app-shell">
-      <aside className={`sidebar${sidebarOpen ? " sidebar--open" : ""}`}>
+      <aside className={`sidebar${sidebarVisible ? " sidebar--open" : ""}`}>
         <div className="sidebar__brand">
           <div className="eyebrow">ANEXSYS</div>
           <h1>Administrative Portal</h1>
@@ -107,14 +102,14 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
         <RoleAwareNav onNavigate={() => setSidebarOpen(false)} />
       </aside>
 
-      {!isDesktop && sidebarOpen ? <button aria-label="Fechar menu" className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} type="button" /> : null}
+      {!isDesktop && sidebarVisible ? <button aria-label="Fechar menu" className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} type="button" /> : null}
 
       <div className="workspace">
         <header className="topbar">
           <div>
             {!isDesktop ? (
               <button className="button-secondary topbar__menu-button" onClick={() => setSidebarOpen((current) => !current)} type="button">
-                {sidebarOpen ? "Fechar menu" : "Abrir menu"}
+                {sidebarVisible ? "Fechar menu" : "Abrir menu"}
               </button>
             ) : null}
             <div className="eyebrow">Authenticated session</div>
