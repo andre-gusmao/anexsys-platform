@@ -369,7 +369,11 @@ export function ServiceOrdersWorkspace() {
       return;
     }
 
-    openCreateForm();
+    const timeoutId = window.setTimeout(() => {
+      openCreateForm();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [openCreateForm, workspaceMode]);
 
   function restoreSelectedOrderForm() {

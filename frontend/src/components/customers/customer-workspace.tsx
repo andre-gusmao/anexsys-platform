@@ -314,6 +314,18 @@ export function CustomerWorkspace() {
     [catalog?.defaultUnitId, setMeasurementForm],
   );
 
+  const clearCustomerDuplicate = useCallback(() => {
+    customerDuplicateCheckRef.current += 1;
+    setCustomerDuplicateStatus("idle");
+    setCustomerDuplicateMatch(null);
+  }, []);
+
+  const selectedCustomer = profile?.customer ?? null;
+  const { navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+    label: showCreateForm ? "Customer: New" : selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
+    subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
+  });
+
   const loadCatalog = useCallback(async () => {
     if (!canReadMeasurements) return;
     try {
@@ -396,12 +408,6 @@ export function CustomerWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [loadCustomers]);
 
-  const selectedCustomer = profile?.customer ?? null;
-  const { navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
-    label: showCreateForm ? "Customer: New" : selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
-    subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
-  });
-
   useEffect(() => {
     if (!focusCustomerId || focusCustomerId === activeCustomerId || showCreateForm) {
       return;
@@ -441,7 +447,11 @@ export function CustomerWorkspace() {
       return;
     }
 
-    openCreateCustomerForm();
+    const timeoutId = window.setTimeout(() => {
+      openCreateCustomerForm();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [openCreateCustomerForm, workspaceMode]);
 
   const openCreateCustomerWorkspace = useCallback(() => {
@@ -518,12 +528,6 @@ export function CustomerWorkspace() {
       setLookingUpPostalCode(false);
     }
   }, [customerForm.postalCode, setCustomerForm]);
-
-  const clearCustomerDuplicate = useCallback(() => {
-    customerDuplicateCheckRef.current += 1;
-    setCustomerDuplicateStatus("idle");
-    setCustomerDuplicateMatch(null);
-  }, []);
 
   const handleCustomerDocumentBlur = useCallback(async () => {
     const normalizedDocument = normalizeDocumentValue(customerForm.cpf);
