@@ -226,6 +226,21 @@ function mapCustomerToForm(customer: CustomerRecord): CustomerFormState {
   };
 }
 
+function formatCustomerSaveError(error: unknown) {
+  const fallback =
+    "Customer could not be saved. Some registration fields are missing or invalid. Review name, contact, address, and document information, then try again.";
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const technicalValidationHints = ["property ", "should not exist", "must be a", "must be a string"];
+  if (technicalValidationHints.some((hint) => error.message.includes(hint))) {
+    return fallback;
+  }
+
+  return error.message;
+}
+
 export function CustomerWorkspace() {
   const { hasAnyPermission, apiJson } = useSession();
   const canWriteCustomers = hasAnyPermission("customers.write");
@@ -494,12 +509,13 @@ export function CustomerWorkspace() {
           observations: customerForm.observations || undefined,
         }),
       });
-      setWorkspaceMessage("Customer created successfully.");
+      setShowCreateForm(false);
+      setWorkspaceMessage("Customer created successfully. The record is now ready for review and the next operational steps.");
       setCustomerForm(defaultCustomerForm());
       await loadCustomers();
       await loadCustomerDetails(created.id);
     } catch (error) {
-      setWorkspaceMessage(error instanceof Error ? error.message : "Customer could not be created.");
+      setWorkspaceMessage(formatCustomerSaveError(error));
     } finally {
       setSavingCustomer(false);
     }
