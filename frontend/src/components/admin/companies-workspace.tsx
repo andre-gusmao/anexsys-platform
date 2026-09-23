@@ -2,21 +2,11 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useSession } from "@/components/providers/session-provider";
+import { normalizeCompanyListRecords, type CompanyRecord } from "@/components/admin/company-list-records";
 import {
   MasterDataDuplicateGuard,
   normalizeCodeValue,
 } from "@/components/ui/master-data-duplicate-guard";
-
-type CompanyRecord = {
-  id: string;
-  code: string;
-  legalName: string;
-  displayName: string;
-  status: "active" | "inactive";
-  warrantyAdjustmentPeriodDays: number;
-  warrantyExecutionPeriodDays: number;
-  blockDeliveryWithOutstandingBalance: boolean;
-};
 
 type CompanyForm = {
   code: string;
@@ -82,11 +72,16 @@ export function CompaniesWorkspace() {
     }
     setLoading(true);
     try {
-      const records = await apiJson<CompanyRecord[]>("/tenants");
+      const response = await apiJson<CompanyRecord[]>("/tenants");
+      const records = normalizeCompanyListRecords(response);
+      const nextActiveCompanyId = (activeCompanyId && records.some((company) => company.id === activeCompanyId))
+        ? activeCompanyId
+        : records[0]?.id ?? null;
+      const nextActiveCompany = records.find((company) => company.id === nextActiveCompanyId) ?? null;
       setCompanies(records);
-      setActiveCompanyId((current) => current ?? records[0]?.id ?? null);
-      if (!showCreateForm && records[0]) {
-        setForm(mapCompanyToForm(records[0]));
+      setActiveCompanyId(nextActiveCompanyId);
+      if (!showCreateForm && nextActiveCompany) {
+        setForm(mapCompanyToForm(nextActiveCompany));
       }
       setMessage(null);
     } catch (error) {
@@ -94,7 +89,7 @@ export function CompaniesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [apiJson, canRead, showCreateForm]);
+  }, [activeCompanyId, apiJson, canRead, showCreateForm]);
 
   const clearCompanyDuplicate = useCallback(() => {
     setCompanyDuplicateStatus("idle");
