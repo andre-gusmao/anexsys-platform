@@ -121,9 +121,23 @@ function getInitialState(): { status: SessionStatus; session: SessionRecord | nu
 
 function getErrorMessage(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") return fallback;
-  const message = (payload as { message?: unknown }).message;
-  if (Array.isArray(message)) return message.join(", ");
-  if (typeof message === "string" && message.length > 0) return message;
+
+  const candidates = [
+    (payload as { message?: unknown }).message,
+    (payload as { detail?: unknown }).detail,
+    (payload as { error?: { message?: unknown } | unknown }).error,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate.join(", ");
+    if (typeof candidate === "string" && candidate.length > 0) return candidate;
+    if (candidate && typeof candidate === "object") {
+      const nestedMessage = (candidate as { message?: unknown }).message;
+      if (Array.isArray(nestedMessage)) return nestedMessage.join(", ");
+      if (typeof nestedMessage === "string" && nestedMessage.length > 0) return nestedMessage;
+    }
+  }
+
   return fallback;
 }
 
