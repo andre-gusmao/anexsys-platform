@@ -209,7 +209,7 @@ export function ServiceOrdersWorkspace() {
         }
       }
     },
-    [apiJson, showCreateForm],
+    [apiJson, setHeaderForm, setItemRows, showCreateForm],
   );
 
   const loadOrders = useCallback(
@@ -246,7 +246,7 @@ export function ServiceOrdersWorkspace() {
         setLoading(false);
       }
     },
-    [activeOrderId, apiJson, canRead, loadDetails],
+    [activeOrderId, apiJson, canRead, loadDetails, setActiveOrderId],
   );
 
   const loadCustomers = useCallback(async () => {

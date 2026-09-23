@@ -115,7 +115,7 @@ export function BranchesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [apiJson, canRead, loadChildren, showCreateForm]);
+  }, [apiJson, canRead, loadChildren, setActiveBranchId, setForm, showCreateForm]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

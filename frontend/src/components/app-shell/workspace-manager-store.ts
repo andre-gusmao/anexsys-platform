@@ -50,7 +50,8 @@ export function upsertWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): Wo
 }
 
 export function removeWorkspaceTab(store: WorkspaceStore, tabId: string): WorkspaceStore {
-  const { [tabId]: _removed, ...remainingState } = store.stateByTabId;
+  const remainingState = { ...store.stateByTabId };
+  delete remainingState[tabId];
   return {
     tabs: store.tabs.filter((tab) => tab.id !== tabId),
     stateByTabId: remainingState,
@@ -100,7 +101,8 @@ export function clearWorkspaceScopedState(store: WorkspaceStore, tabId: string, 
     return store;
   }
 
-  const { [scope]: _removed, ...remainingScopeState } = tabState;
+  const remainingScopeState = { ...tabState };
+  delete remainingScopeState[scope];
   return {
     ...store,
     stateByTabId: {

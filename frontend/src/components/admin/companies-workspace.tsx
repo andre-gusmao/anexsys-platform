@@ -101,7 +101,7 @@ export function CompaniesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [activeCompany?.code, activeCompanyId, apiJson, canRead, showCreateForm]);
+  }, [activeCompany, activeCompanyId, apiJson, canRead, setActiveCompanyId, setForm, showCreateForm]);
 
   const clearCompanyDuplicate = useCallback(() => {
     setCompanyDuplicateStatus("idle");
@@ -113,7 +113,7 @@ export function CompaniesWorkspace() {
     setShowCreateForm(false);
     setForm(mapCompanyToForm(company));
     clearCompanyDuplicate();
-  }, [clearCompanyDuplicate]);
+  }, [clearCompanyDuplicate, setActiveCompanyId, setForm, setShowCreateForm]);
 
   const handleCompanyCodeBlur = useCallback(() => {
     const normalizedCode = normalizeCodeValue(form.code);

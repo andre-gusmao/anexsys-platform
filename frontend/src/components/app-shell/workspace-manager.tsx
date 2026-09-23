@@ -298,10 +298,11 @@ export function useWorkspaceManager() {
 
 export function useWorkspaceRegistration(input: { label: string; subtitle?: string | null }) {
   const { currentTabId, openWorkspaceInBrowserTab, openWorkspaceInNewTab, registerCurrentWorkspace } = useWorkspaceManager();
+  const { label, subtitle = null } = input;
 
   useEffect(() => {
-    registerCurrentWorkspace(input);
-  }, [input.label, input.subtitle, registerCurrentWorkspace]);
+    registerCurrentWorkspace({ label, subtitle });
+  }, [label, registerCurrentWorkspace, subtitle]);
 
   return {
     currentTabId,
@@ -313,7 +314,7 @@ export function useWorkspaceRegistration(input: { label: string; subtitle?: stri
 export function useWorkspaceScopedState<T>(scope: string, initialValue: T): [T, (value: T | ((current: T) => T)) => void, boolean] {
   const { currentTabId, readScopedState, writeScopedState } = useWorkspaceManager();
   const initialValueRef = useRef(initialValue);
-  const [value, setValue] = useState<T>(initialValueRef.current);
+  const [value, setValue] = useState<T>(() => initialValue);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {

@@ -94,7 +94,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [apiJson, canRead, config.endpoint, config.title]);
+  }, [apiJson, canRead, config.endpoint, config.title, setEditing]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

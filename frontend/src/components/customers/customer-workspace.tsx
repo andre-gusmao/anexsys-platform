@@ -304,7 +304,7 @@ export function CustomerWorkspace() {
         notes: "",
         items: [createMeasurementDraft(catalog?.defaultUnitId)],
       }),
-    [catalog?.defaultUnitId],
+    [catalog?.defaultUnitId, setMeasurementForm],
   );
 
   const loadCatalog = useCallback(async () => {
@@ -322,7 +322,7 @@ export function CustomerWorkspace() {
     } catch (error) {
       setWorkspaceMessage(error instanceof Error ? error.message : "Measurement catalog could not be loaded.");
     }
-  }, [apiJson, canReadMeasurements]);
+  }, [apiJson, canReadMeasurements, setMeasurementForm]);
 
   const loadCustomers = useCallback(async () => {
     setLoadingCustomers(true);
@@ -364,7 +364,7 @@ export function CustomerWorkspace() {
         setDetailLoading(false);
       }
     },
-    [apiJson, canReadMeasurements, resetMeasurementForm],
+    [apiJson, canReadMeasurements, resetMeasurementForm, setActiveCustomerId, setCustomerForm, setShowCreateForm],
   );
 
   useEffect(() => {
@@ -447,7 +447,7 @@ export function CustomerWorkspace() {
     } finally {
       setLookingUpPostalCode(false);
     }
-  }, [customerForm.postalCode]);
+  }, [customerForm.postalCode, setCustomerForm]);
 
   const clearCustomerDuplicate = useCallback(() => {
     customerDuplicateCheckRef.current += 1;
