@@ -1,7 +1,9 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import {
   MasterDataDuplicateGuard,
@@ -30,7 +32,10 @@ type Props = {
 };
 
 export function MeasurementMasterDataWorkspace({ mode }: Props) {
+  const searchParams = useSearchParams();
   const { hasAnyPermission, apiJson } = useSession();
+  const { isMobile } = useWorkspaceViewportMode();
+  const workspaceMode = searchParams.get("workspaceMode");
   const canRead = hasAnyPermission("measurements.read");
   const canWrite = hasAnyPermission("measurements.write");
   const [loading, setLoading] = useState(true);
@@ -64,6 +69,10 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
           },
     [mode],
   );
+  const basePath = mode === "body-parts" ? "/body-parts" : "/measurement-units";
+  const { navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+    label: workspaceMode === "new" ? (mode === "body-parts" ? "Body Part: New" : "Measurement Unit: New") : config.title,
+  });
 
   const loadRecords = useCallback(async () => {
     if (!canRead) {
@@ -103,6 +112,18 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
     return () => window.clearTimeout(timeoutId);
   }, [loadRecords]);
 
+  useEffect(() => {
+    if (workspaceMode !== "new") {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById("measurement-master-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [workspaceMode]);
+
   const clearDuplicate = useCallback(() => {
     setDuplicateStatus("idle");
     setDuplicateMatch(null);
@@ -119,6 +140,17 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
     setDuplicateMatch(duplicate);
     setDuplicateStatus(duplicate ? "duplicate" : "idle");
   }, [mode, newCode, newDisplayName, records]);
+
+  const openCreateWorkspace = useCallback(() => {
+    const targetPath = `${basePath}?workspaceMode=new`;
+    const label = mode === "body-parts" ? "Body Part: New" : "Measurement Unit: New";
+    if (isMobile) {
+      navigateWithinWorkspace(targetPath);
+      return;
+    }
+
+    openWorkspaceInNewTab(targetPath, label, { cloneCurrent: false });
+  }, [basePath, isMobile, mode, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,6 +176,9 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
       clearDuplicate();
       setMessage(`${config.title} updated successfully.`);
       await loadRecords();
+      if (workspaceMode === "new") {
+        navigateWithinWorkspace(basePath);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `The ${config.title.toLowerCase()} record could not be saved.`);
     } finally {
@@ -209,6 +244,11 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
               <h3>Cadastros ativos</h3>
               <p>{loading ? "Carregando…" : `${records.length} registro(s) disponível(is)`}</p>
             </div>
+            {canWrite ? (
+              <button className="button" onClick={openCreateWorkspace} type="button">
+                Novo cadastro
+              </button>
+            ) : null}
           </div>
 
           <div className="data-table-wrapper">
@@ -291,7 +331,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
         </article>
 
         {canWrite ? (
-          <article className="mini-card">
+          <article className="mini-card" id="measurement-master-create-form">
             <h3>Novo cadastro</h3>
             <form className="form-grid" onSubmit={handleCreate}>
               {mode === "units" ? (

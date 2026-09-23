@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
@@ -120,8 +121,11 @@ function formatWorkspaceMessage(error: unknown, fallback: string) {
 }
 
 export function ServiceOrdersWorkspace() {
+  const searchParams = useSearchParams();
   const { session, hasAnyPermission, apiJson } = useSession();
   const { isMobile } = useWorkspaceViewportMode();
+  const focusServiceOrderId = searchParams.get("focusServiceOrderId");
+  const workspaceMode = searchParams.get("workspaceMode");
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
@@ -159,7 +163,7 @@ export function ServiceOrdersWorkspace() {
   const selectedOrder = details?.serviceOrder ?? null;
   const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
   const { navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow, openWorkspaceInNewTab } = useWorkspaceRegistration({
-    label: selectedOrder ? `OS #${selectedOrder.orderNo}` : "Service Orders",
+    label: showCreateForm ? "OS: New" : selectedOrder ? `OS #${selectedOrder.orderNo}` : "Service Orders",
     subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
   });
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
@@ -223,6 +227,9 @@ export function ServiceOrdersWorkspace() {
           setHeaderForm(mapDetailsToHeaderForm(response));
           setItemRows(mapServiceOrderItemsToGridRows(response.items));
         }
+        if (focusServiceOrderId !== serviceOrderId || workspaceMode === "new") {
+          navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(serviceOrderId)}`);
+        }
         setMessage(null);
       } catch (error) {
         if (latestDetailRequestId.current !== requestId) {
@@ -237,7 +244,7 @@ export function ServiceOrdersWorkspace() {
         }
       }
     },
-    [apiJson, setHeaderForm, setItemRows, showCreateForm],
+    [apiJson, focusServiceOrderId, navigateWithinWorkspace, setHeaderForm, setItemRows, showCreateForm, workspaceMode],
   );
 
   const loadOrders = useCallback(
@@ -255,7 +262,7 @@ export function ServiceOrdersWorkspace() {
             ? preferredActiveId
             : activeOrderId && response.some((order) => order.id === activeOrderId)
               ? activeOrderId
-              : response[0]?.id ?? null;
+              : null;
         setActiveOrderId(nextActiveId);
         if (nextActiveId) {
           await loadDetails(nextActiveId);
@@ -313,15 +320,63 @@ export function ServiceOrdersWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [loadCustomers, session?.tenantId]);
 
-  function openCreateForm() {
+  useEffect(() => {
+    if (!focusServiceOrderId || focusServiceOrderId === activeOrderId || showCreateForm) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setActiveOrderId(focusServiceOrderId);
+      void loadDetails(focusServiceOrderId);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeOrderId, focusServiceOrderId, loadDetails, setActiveOrderId, showCreateForm]);
+
+  useEffect(() => {
+    if (!activeOrderId || showCreateForm || selectedOrder?.id === activeOrderId || focusServiceOrderId) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadDetails(activeOrderId);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeOrderId, focusServiceOrderId, loadDetails, selectedOrder?.id, showCreateForm]);
+
+  const openCreateForm = useCallback(() => {
     setShowCreateForm(true);
+    setDetails(null);
+    setActiveOrderId(null);
     setHeaderForm(createEmptyHeaderForm());
     setItemRows([createEmptyServiceOrderItemGridRow(1)]);
     setMessage(null);
-  }
+  }, [setActiveOrderId, setHeaderForm, setItemRows, setShowCreateForm]);
+
+  const openCreateWorkspace = useCallback(() => {
+    const targetPath = "/service-orders?workspaceMode=new";
+    if (isMobile) {
+      navigateWithinWorkspace(targetPath);
+      return;
+    }
+
+    openWorkspaceInNewTab(targetPath, "OS: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
+  }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
+
+  useEffect(() => {
+    if (workspaceMode !== "new") {
+      return;
+    }
+
+    openCreateForm();
+  }, [openCreateForm, workspaceMode]);
 
   function restoreSelectedOrderForm() {
     setShowCreateForm(false);
+    if (workspaceMode === "new") {
+      navigateWithinWorkspace("/service-orders");
+    }
     if (details) {
       setHeaderForm(mapDetailsToHeaderForm(details));
       setItemRows(mapServiceOrderItemsToGridRows(details.items));
@@ -387,6 +442,7 @@ export function ServiceOrdersWorkspace() {
       setShowCreateForm(false);
       setActiveOrderId(createdId);
       await loadOrders(createdId);
+      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(createdId)}`);
       setMessage("Service Order saved. The header and item grid were persisted, the grid was refreshed, and the new record is already selected.");
     } catch (error) {
       setMessage(
@@ -503,7 +559,7 @@ export function ServiceOrdersWorkspace() {
               <p>{loading ? "Loading…" : `${filteredOrders.length} Service Order(s) visible`}</p>
             </div>
             {canWrite ? (
-              <button className="button" onClick={openCreateForm} type="button">
+              <button className="button" onClick={openCreateWorkspace} type="button">
                 New Service Order
               </button>
             ) : null}
@@ -542,6 +598,7 @@ export function ServiceOrdersWorkspace() {
                     onClick={() => {
                       setShowCreateForm(false);
                       setActiveOrderId(order.id);
+                      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}`);
                       void loadDetails(order.id);
                     }}
                   >
@@ -583,7 +640,7 @@ export function ServiceOrdersWorkspace() {
               </p>
             </div>
             {!showCreateForm && selectedOrder && canWrite ? (
-              <button className="button-secondary" onClick={openCreateForm} type="button">
+              <button className="button-secondary" onClick={openCreateWorkspace} type="button">
                 New Service Order
               </button>
             ) : null}

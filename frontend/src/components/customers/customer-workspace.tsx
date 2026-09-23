@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import {
   MasterDataDuplicateGuard,
@@ -247,11 +248,13 @@ function formatCustomerSaveError(error: unknown) {
 export function CustomerWorkspace() {
   const searchParams = useSearchParams();
   const { hasAnyPermission, apiJson } = useSession();
+  const { isMobile } = useWorkspaceViewportMode();
   const canWriteCustomers = hasAnyPermission("customers.write");
   const canReadMeasurements = hasAnyPermission("measurements.read");
   const canWriteMeasurements = hasAnyPermission("measurements.write");
   const focusCustomerId = searchParams.get("focusCustomerId");
   const focusSection = searchParams.get("focusSection");
+  const workspaceMode = searchParams.get("workspaceMode");
 
   const [searchQuery, setSearchQuery] = useWorkspaceScopedState("customers.searchQuery", "");
   const [statusFilter, setStatusFilter] = useWorkspaceScopedState("customers.statusFilter", "");
@@ -362,13 +365,21 @@ export function CustomerWorkspace() {
         setActiveCustomerId(customerId);
         setShowCreateForm(false);
         resetMeasurementForm();
+        if (focusCustomerId !== customerId || workspaceMode === "new") {
+          const params = new URLSearchParams();
+          params.set("focusCustomerId", customerId);
+          if (focusSection === "measurements") {
+            params.set("focusSection", "measurements");
+          }
+          navigateWithinWorkspace(`/customers?${params.toString()}`);
+        }
       } catch (error) {
         setDetailError(error instanceof Error ? error.message : "Customer details could not be loaded.");
       } finally {
         setDetailLoading(false);
       }
     },
-    [apiJson, canReadMeasurements, resetMeasurementForm, setActiveCustomerId, setCustomerForm, setShowCreateForm],
+    [apiJson, canReadMeasurements, focusCustomerId, focusSection, navigateWithinWorkspace, resetMeasurementForm, setActiveCustomerId, setCustomerForm, setShowCreateForm, workspaceMode],
   );
 
   useEffect(() => {
@@ -385,14 +396,11 @@ export function CustomerWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [loadCustomers]);
 
-  useEffect(() => {
-    if (!activeCustomerId && customers.length > 0 && !showCreateForm) {
-      const timeoutId = window.setTimeout(() => {
-        void loadCustomerDetails(customers[0].id);
-      }, 0);
-      return () => window.clearTimeout(timeoutId);
-    }
-  }, [activeCustomerId, customers, loadCustomerDetails, showCreateForm]);
+  const selectedCustomer = profile?.customer ?? null;
+  const { navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+    label: showCreateForm ? "Customer: New" : selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
+    subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
+  });
 
   useEffect(() => {
     if (!focusCustomerId || focusCustomerId === activeCustomerId || showCreateForm) {
@@ -406,11 +414,45 @@ export function CustomerWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [activeCustomerId, focusCustomerId, loadCustomerDetails, showCreateForm]);
 
-  const selectedCustomer = profile?.customer ?? null;
-  useWorkspaceRegistration({
-    label: selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
-    subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
-  });
+  useEffect(() => {
+    if (!activeCustomerId || showCreateForm || selectedCustomer?.id === activeCustomerId || focusCustomerId) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadCustomerDetails(activeCustomerId);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeCustomerId, focusCustomerId, loadCustomerDetails, selectedCustomer?.id, showCreateForm]);
+
+  const openCreateCustomerForm = useCallback(() => {
+    setShowCreateForm(true);
+    setActiveCustomerId(null);
+    setProfile(null);
+    setMeasurements(null);
+    setCustomerForm(defaultCustomerForm());
+    clearCustomerDuplicate();
+    resetMeasurementForm();
+  }, [clearCustomerDuplicate, resetMeasurementForm, setActiveCustomerId, setCustomerForm, setMeasurements, setProfile, setShowCreateForm]);
+
+  useEffect(() => {
+    if (workspaceMode !== "new") {
+      return;
+    }
+
+    openCreateCustomerForm();
+  }, [openCreateCustomerForm, workspaceMode]);
+
+  const openCreateCustomerWorkspace = useCallback(() => {
+    const targetPath = "/customers?workspaceMode=new";
+    if (isMobile) {
+      navigateWithinWorkspace(targetPath);
+      return;
+    }
+
+    openWorkspaceInNewTab(targetPath, "Customer: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
+  }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
   useEffect(() => {
     if (focusSection !== "measurements" || selectedCustomer?.id !== focusCustomerId) {
@@ -681,14 +723,7 @@ export function CustomerWorkspace() {
           {canWriteCustomers ? (
             <button
               className="button"
-              onClick={() => {
-                setShowCreateForm(true);
-                setActiveCustomerId(null);
-                setProfile(null);
-                setMeasurements(null);
-                setCustomerForm(defaultCustomerForm());
-                clearCustomerDuplicate();
-              }}
+              onClick={openCreateCustomerWorkspace}
               type="button"
             >
               Novo cliente
@@ -840,6 +875,7 @@ export function CustomerWorkspace() {
                     onClick={() => {
                       setShowCreateForm(false);
                       setCustomerForm(defaultCustomerForm());
+                      void navigateWithinWorkspace("/customers");
                     }}
                     type="button"
                   >
