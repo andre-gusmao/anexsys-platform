@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AdminShell } from "@/components/app-shell/admin-shell";
+import { WorkspaceManagerProvider } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AuthenticatedApp({ children }: Readonly<{ children: ReactNode }>) {
@@ -27,5 +28,9 @@ export function AuthenticatedApp({ children }: Readonly<{ children: ReactNode }>
     return <div className="loading-state">Redirecting…</div>;
   }
 
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <WorkspaceManagerProvider>
+      <AdminShell>{children}</AdminShell>
+    </WorkspaceManagerProvider>
+  );
 }

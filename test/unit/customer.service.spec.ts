@@ -41,6 +41,7 @@ describe('CustomerService', () => {
       {} as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async record(payload: Record<string, unknown>) { auditCalls.push(payload); } } as never,
+      { async assertCustomerCanInactivate() {} } as never,
     );
 
     const customer = await service.create({
@@ -75,6 +76,7 @@ describe('CustomerService', () => {
     assert.equal(customer.status, CustomerStatus.ACTIVE);
     assert.equal(auditCalls[0]?.action, 'customer.created');
     assert.equal(auditCalls[0]?.branchId, null);
+    assert.equal(auditCalls[0]?.newValues?.legalName, 'Maria Silva');
   });
 
   it('rejects future birth dates', async () => {
@@ -91,6 +93,7 @@ describe('CustomerService', () => {
       {} as never,
       {} as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
       {} as never,
     );
 
@@ -130,6 +133,7 @@ describe('CustomerService', () => {
       {} as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       {} as never,
+      {} as never,
     );
 
     await assert.rejects(
@@ -168,6 +172,7 @@ describe('CustomerService', () => {
       {} as never,
       {} as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
       {} as never,
     );
 
@@ -253,6 +258,7 @@ describe('CustomerService', () => {
       {} as never,
       {} as never,
       { async record(payload: Record<string, unknown>) { auditCalls.push(payload); } } as never,
+      { async assertCustomerCanInactivate() {} } as never,
     );
 
     const updated = await service.update('customer-1', 'tenant-1', {
@@ -263,5 +269,56 @@ describe('CustomerService', () => {
     assert.equal(updated.status, CustomerStatus.INACTIVE);
     assert.equal(updated.branchId, null);
     assert.equal(auditCalls[0]?.action, 'customer.deactivated');
+    assert.equal(auditCalls[0]?.previousValues?.status, CustomerStatus.ACTIVE);
+  });
+
+  it('blocks customer inactivation when dependency validation fails', async () => {
+    const customer = {
+      id: 'customer-1',
+      tenantId: 'tenant-1',
+      branchId: null,
+      customerType: CustomerType.PERSON,
+      legalName: 'Maria Silva',
+      tradeName: null,
+      cpfCnpj: '52998224725',
+      email: 'maria@example.com',
+      phone: '11998887766',
+      birthDate: null,
+      observations: null,
+      postalCode: '12345678',
+      street: 'Rua das Flores',
+      number: '123',
+      complement: 'Casa 2',
+      district: 'Centro',
+      city: 'São Paulo',
+      state: 'SP',
+      country: 'Brasil',
+      status: CustomerStatus.ACTIVE,
+    };
+    const service = new CustomerService(
+      buildTransactionDataSource() as never,
+      {
+        async findById() {
+          return customer;
+        },
+        async findByTenantAndDocument() {
+          return customer;
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { async record() {} } as never,
+      {
+        async assertCustomerCanInactivate() {
+          throw new DomainValidationError('Cliente vinculado a service orders.');
+        },
+      } as never,
+    );
+
+    await assert.rejects(
+      () => service.update('customer-1', 'tenant-1', { status: CustomerStatus.INACTIVE, actorUserId: 'actor-1' }),
+      DomainValidationError,
+    );
   });
 });

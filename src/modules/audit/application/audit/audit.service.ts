@@ -12,6 +12,8 @@ export interface AuditWriteInput {
   action: string;
   eventType: string;
   metadata?: Record<string, unknown>;
+  previousValues?: Record<string, unknown> | null;
+  newValues?: Record<string, unknown> | null;
 }
 
 @Injectable()
@@ -29,6 +31,8 @@ export class AuditService {
       action: input.action,
       eventType: input.eventType,
       metadata: input.metadata ?? {},
+      previousValues: input.previousValues ?? null,
+      newValues: input.newValues ?? null,
       occurredAt: new Date(),
     });
 

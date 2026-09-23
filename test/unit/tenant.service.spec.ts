@@ -23,7 +23,11 @@ describe('TenantService', () => {
         auditCalls.push(payload);
       },
     };
-    const service = new TenantService(tenantRepository as never, auditService as never);
+    const service = new TenantService(
+      tenantRepository as never,
+      auditService as never,
+      { async assertTenantCanDeactivate() {} } as never,
+    );
 
     const tenant = await service.create({
       code: ' atelier ',
@@ -37,6 +41,7 @@ describe('TenantService', () => {
     assert.equal(tenant.warrantyAdjustmentPeriodDays, 7);
     assert.equal(tenant.warrantyExecutionPeriodDays, 7);
     assert.equal(auditCalls[0]?.action, 'tenant.created');
+    assert.equal(auditCalls[0]?.newValues?.code, 'ATELIER');
   });
 
   it('updates tenant warranty configuration periods', async () => {
@@ -60,11 +65,15 @@ describe('TenantService', () => {
         return payload;
       },
     };
-    const service = new TenantService(tenantRepository as never, {
-      async record(payload: Record<string, unknown>) {
-        auditCalls.push(payload);
-      },
-    } as never);
+    const service = new TenantService(
+      tenantRepository as never,
+      {
+        async record(payload: Record<string, unknown>) {
+          auditCalls.push(payload);
+        },
+      } as never,
+      { async assertTenantCanDeactivate() {} } as never,
+    );
 
     const tenant = await service.update('tenant-1', {
       warrantyAdjustmentPeriodDays: 10,
@@ -76,6 +85,7 @@ describe('TenantService', () => {
     assert.equal(tenant.warrantyExecutionPeriodDays, 14);
     assert.equal(auditCalls[0]?.metadata?.warrantyAdjustmentPeriodDays, 10);
     assert.equal(auditCalls[0]?.metadata?.warrantyExecutionPeriodDays, 14);
+    assert.equal(auditCalls[0]?.previousValues?.warrantyAdjustmentPeriodDays, 7);
   });
 
   it('rejects duplicate tenant code on update', async () => {
@@ -89,11 +99,32 @@ describe('TenantService', () => {
         return { id: 'tenant-2', code: 'TENANT2' };
       },
     };
-    const service = new TenantService(tenantRepository as never, {} as never);
+    const service = new TenantService(tenantRepository as never, {} as never, {} as never);
 
     await assert.rejects(
       () => service.update('tenant-1', { code: 'tenant2', actorUserId: 'actor-1' }),
       DomainValidationError,
     );
+  });
+
+  it('blocks tenant deactivation when dependency validation fails', async () => {
+    const service = new TenantService(
+      {
+        async findById() {
+          return { id: 'tenant-1', code: 'TENANT1', legalName: 'Tenant 1', displayName: 'Tenant 1', status: TenantStatus.ACTIVE };
+        },
+        async save(payload: Record<string, unknown>) {
+          return payload;
+        },
+      } as never,
+      { async record() {} } as never,
+      {
+        async assertTenantCanDeactivate() {
+          throw new DomainValidationError('Tenant vinculada a filiais.');
+        },
+      } as never,
+    );
+
+    await assert.rejects(() => service.deactivate('tenant-1', 'actor-1'), DomainValidationError);
   });
 });

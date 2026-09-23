@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
@@ -16,6 +17,7 @@ import { Public } from 'src/platform/auth/public.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from '../application/tenant/tenant.service';
 
 class CreateTenantBody {
@@ -79,7 +81,10 @@ class UpdateTenantBody {
 
 @Controller('tenants')
 export class TenantsController {
-  constructor(private readonly tenantService: TenantService) {}
+  constructor(
+    private readonly tenantService: TenantService,
+    private readonly dependencyValidationService: DependencyValidationService,
+  ) {}
 
   @Permissions('tenants.read')
   @Get()
@@ -120,6 +125,21 @@ export class TenantsController {
     }
 
     return this.tenantService.update(tenantId, { ...body, actorUserId });
+  }
+
+  @Permissions('tenants.write')
+  @Get(':tenantId/dependency-check')
+  async dependencyCheck(
+    @Param('tenantId') tenantId: string,
+    @CurrentTenantId() currentTenantId: string | null,
+    @Query('action') action: string | undefined,
+  ) {
+    this.assertTenantScope(tenantId, currentTenantId);
+    if (action && action !== 'deactivate') {
+      throw new BadRequestException(`Unsupported dependency validation action '${action}'.`);
+    }
+
+    return this.dependencyValidationService.validateTenantDeactivation(tenantId);
   }
 
   @Permissions('tenants.write')

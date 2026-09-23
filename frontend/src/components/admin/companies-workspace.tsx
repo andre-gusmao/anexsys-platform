@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 import {
   normalizeCompanyListRecords,
@@ -13,6 +14,7 @@ import {
   MasterDataDuplicateGuard,
   normalizeCodeValue,
 } from "@/components/ui/master-data-duplicate-guard";
+import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 
 type CompanyForm = {
   code: string;
@@ -48,15 +50,16 @@ export function CompaniesWorkspace() {
   const canRead = hasAnyPermission("tenants.read");
   const canWrite = hasAnyPermission("tenants.write");
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("companies.searchQuery", "");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeCompanyId, setActiveCompanyId] = useWorkspaceScopedState<string | null>("companies.activeCompanyId", null);
+  const [showCreateForm, setShowCreateForm] = useWorkspaceScopedState("companies.showCreateForm", false);
   const [message, setMessage] = useState<string | null>(null);
-  const [form, setForm] = useState<CompanyForm>(emptyForm);
+  const [form, setForm] = useWorkspaceScopedState<CompanyForm>("companies.form", emptyForm());
   const [companyDuplicateStatus, setCompanyDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
   const [companyDuplicateMatch, setCompanyDuplicateMatch] = useState<CompanyRecord | null>(null);
+  const [dependencyValidation, setDependencyValidation] = useState<DependencyValidationResult | null>(null);
 
   const filteredCompanies = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
@@ -70,6 +73,10 @@ export function CompaniesWorkspace() {
     () => companies.find((company) => company.id === activeCompanyId) ?? null,
     [activeCompanyId, companies],
   );
+  useWorkspaceRegistration({
+    label: activeCompany ? `Empresa · ${activeCompany.displayName}` : "Empresas",
+    subtitle: showCreateForm ? "Novo cadastro" : activeCompany?.code ?? null,
+  });
 
   const loadCompanies = useCallback(async () => {
     if (!canRead) {
@@ -88,6 +95,7 @@ export function CompaniesWorkspace() {
         setForm(mapCompanyToForm(nextActiveCompany));
       }
       setMessage(null);
+      setDependencyValidation(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "As empresas não puderam ser carregadas.");
     } finally {
@@ -138,6 +146,7 @@ export function CompaniesWorkspace() {
     }
     setSaving(true);
     setMessage(null);
+    setDependencyValidation(null);
     try {
       const createdResponse = await apiJson<CompanyApiRecord>("/tenants", {
         method: "POST",
@@ -200,7 +209,16 @@ export function CompaniesWorkspace() {
     if (!canWrite || !activeCompany || activeCompany.id !== session?.tenantId) return;
     setSaving(true);
     setMessage(null);
+    setDependencyValidation(null);
     try {
+      if (action === "deactivate") {
+        const validation = await apiJson<DependencyValidationResult>(`/tenants/${activeCompany.id}/dependency-check?action=deactivate`);
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return;
+        }
+      }
       const updatedResponse = await apiJson<CompanyApiRecord>(`/tenants/${activeCompany.id}/${action}`, {
         method: "POST",
       });
@@ -231,6 +249,8 @@ export function CompaniesWorkspace() {
         <h1 className="title">Empresas</h1>
         <p>Gerencie o contexto de empresa atual sem sair do fluxo administrativo.</p>
       </section>
+
+      {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
       {message ? (
         <section className="mini-card">

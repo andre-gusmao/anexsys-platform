@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
+import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 import {
   MasterDataDuplicateGuard,
@@ -8,6 +9,7 @@ import {
   normalizeCodeValue,
   normalizeDocumentValue,
 } from "@/components/ui/master-data-duplicate-guard";
+import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type CustomerType = "person" | "company";
@@ -247,31 +249,32 @@ export function CustomerWorkspace() {
   const canReadMeasurements = hasAnyPermission("measurements.read");
   const canWriteMeasurements = hasAnyPermission("measurements.write");
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("customers.searchQuery", "");
+  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("customers.statusFilter", "");
+  const [typeFilter, setTypeFilter] = useWorkspaceScopedState("customers.typeFilter", "");
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
-  const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
+  const [activeCustomerId, setActiveCustomerId] = useWorkspaceScopedState<string | null>("customers.activeCustomerId", null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [profile, setProfile] = useState<CustomerProfileResponse | null>(null);
   const [measurements, setMeasurements] = useState<MeasurementHistoryResponse | null>(null);
   const [catalog, setCatalog] = useState<MeasurementCatalogResponse | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useWorkspaceScopedState("customers.showCreateForm", false);
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [savingMeasurements, setSavingMeasurements] = useState(false);
   const [lookingUpPostalCode, setLookingUpPostalCode] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
-  const [customerForm, setCustomerForm] = useState<CustomerFormState>(defaultCustomerForm);
+  const [customerForm, setCustomerForm] = useWorkspaceScopedState<CustomerFormState>("customers.customerForm", defaultCustomerForm());
   const [customerDuplicateStatus, setCustomerDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
   const [customerDuplicateMatch, setCustomerDuplicateMatch] = useState<CustomerRecord | null>(null);
   const customerDuplicateCheckRef = useRef(0);
-  const [measurementForm, setMeasurementForm] = useState({
+  const [measurementForm, setMeasurementForm] = useWorkspaceScopedState("customers.measurementForm", {
     measurementDate: todayIsoDate(),
     notes: "",
     items: [createMeasurementDraft(null)] as MeasurementDraft[],
   });
+  const [dependencyValidation, setDependencyValidation] = useState<DependencyValidationResult | null>(null);
 
   const bodyPartOptions = useMemo(() => catalog?.bodyParts ?? [], [catalog]);
   const unitOptions = useMemo(() => catalog?.units ?? [], [catalog]);
@@ -388,6 +391,10 @@ export function CustomerWorkspace() {
   }, [activeCustomerId, customers, loadCustomerDetails, showCreateForm]);
 
   const selectedCustomer = profile?.customer ?? null;
+  useWorkspaceRegistration({
+    label: selectedCustomer ? `Cliente · ${selectedCustomer.legalName}` : "Clientes",
+    subtitle: showCreateForm ? "Novo cadastro" : selectedCustomer?.cpfCnpj ?? null,
+  });
 
   const customerSuggestions = useMemo(
     () =>
@@ -487,6 +494,7 @@ export function CustomerWorkspace() {
     }
     setSavingCustomer(true);
     setWorkspaceMessage(null);
+    setDependencyValidation(null);
     try {
       const created = await apiJson<CustomerRecord>("/customers", {
         method: "POST",
@@ -530,8 +538,17 @@ export function CustomerWorkspace() {
     }
     setSavingCustomer(true);
     setWorkspaceMessage(null);
+    setDependencyValidation(null);
     try {
       const nextStatus = customerForm.status === "blocked" ? undefined : customerForm.status;
+      if (nextStatus === "inactive" && selectedCustomer.status !== "inactive") {
+        const validation = await apiJson<DependencyValidationResult>(`/customers/${selectedCustomer.id}/dependency-check?action=inactivate`);
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setWorkspaceMessage(validation.message);
+          return;
+        }
+      }
       await apiJson<CustomerRecord>(`/customers/${selectedCustomer.id}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -569,6 +586,7 @@ export function CustomerWorkspace() {
     if (!selectedCustomer) return;
     setSavingMeasurements(true);
     setWorkspaceMessage(null);
+    setDependencyValidation(null);
     try {
       const items = measurementForm.items
         .filter((item) => item.bodyPartId && item.value.trim())
@@ -617,6 +635,8 @@ export function CustomerWorkspace() {
         <h1 className="title">Cadastro de clientes</h1>
         <p>Cadastre clientes do tenant, pesquise rapidamente, edite dados cadastrais completos e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
       </section>
+
+      {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
       {workspaceMessage ? (
         <div className="mini-card">

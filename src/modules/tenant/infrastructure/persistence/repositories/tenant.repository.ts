@@ -19,14 +19,14 @@ export class TenantRepository {
   }
 
   async findAll(): Promise<TenantEntity[]> {
-    return this.repository.find({ order: { displayName: 'ASC' } });
+    return this.repository.find({ where: { isDeleted: false }, order: { displayName: 'ASC' } });
   }
 
   async findById(id: string): Promise<TenantEntity | null> {
-    return this.repository.findOne({ where: { id } });
+    return this.repository.findOne({ where: { id, isDeleted: false } });
   }
 
   async findByCode(code: string): Promise<TenantEntity | null> {
-    return this.repository.findOne({ where: { code } });
+    return this.repository.findOne({ where: { code, isDeleted: false } });
   }
 }

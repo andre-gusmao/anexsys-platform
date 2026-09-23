@@ -27,6 +27,7 @@ describe('BranchService', () => {
       branchRepository as never,
       tenantService as never,
       auditService as never,
+      { async assertBranchCanDeactivate() {} } as never,
     );
 
     const branch = await service.create({
@@ -53,7 +54,7 @@ describe('BranchService', () => {
         return { id: 'branch-2', tenantId: 'tenant-a', code: 'BR-02' };
       },
     };
-    const service = new BranchService(branchRepository as never, {} as never, {} as never);
+    const service = new BranchService(branchRepository as never, {} as never, {} as never, {} as never);
 
     await assert.rejects(
       () => service.update('branch-1', { code: 'br-02', actorUserId: 'actor-1' }),
@@ -73,7 +74,7 @@ describe('BranchService', () => {
         return null;
       },
     };
-    const service = new BranchService(branchRepository as never, {} as never, {} as never);
+    const service = new BranchService(branchRepository as never, {} as never, {} as never, {} as never);
 
     await assert.rejects(
       () => service.update('branch-1', { parentBranchId: 'branch-1', actorUserId: 'actor-1' }),
@@ -96,6 +97,7 @@ describe('BranchService', () => {
       branchRepository as never,
       tenantService as never,
       auditService as never,
+      { async assertBranchCanDeactivate() {} } as never,
     );
 
     await assert.rejects(
@@ -110,5 +112,36 @@ describe('BranchService', () => {
         }),
       DomainValidationError,
     );
+  });
+
+  it('blocks branch deactivation when dependency validation fails', async () => {
+    const service = new BranchService(
+      {
+        async findById() {
+          return {
+            id: 'branch-1',
+            tenantId: 'tenant-a',
+            code: 'BR-01',
+            legalName: 'A',
+            displayName: 'A',
+            parentBranchId: null,
+            businessCalendarName: null,
+            status: 'active',
+          };
+        },
+        async save(payload: Record<string, unknown>) {
+          return payload;
+        },
+      } as never,
+      {} as never,
+      { async record() {} } as never,
+      {
+        async assertBranchCanDeactivate() {
+          throw new DomainValidationError('Filial vinculada a service orders.');
+        },
+      } as never,
+    );
+
+    await assert.rejects(() => service.deactivate('branch-1', 'actor-1'), DomainValidationError);
   });
 });

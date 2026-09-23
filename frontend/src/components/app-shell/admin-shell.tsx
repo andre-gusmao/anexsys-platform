@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
+import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const { session, logout, errorMessage, clearError, selectCompany, selectBranch } = useSession();
+  const { duplicateCurrentWorkspace, openWorkspaceInBrowserTab } = useWorkspaceManager();
   const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
   const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
   const activeCompany = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
@@ -109,11 +111,19 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           </div>
 
           <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
+            <button className="button-secondary" onClick={duplicateCurrentWorkspace} type="button">
+              Duplicar workspace
+            </button>
+            <button className="button-secondary" onClick={() => openWorkspaceInBrowserTab()} type="button">
+              Abrir no navegador
+            </button>
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout
             </button>
           </div>
         </header>
+
+        <WorkspaceTabsBar />
 
         <main className="workspace__content">
           {errorMessage ? (

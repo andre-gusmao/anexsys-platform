@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import {
@@ -124,18 +125,18 @@ export function ServiceOrdersWorkspace() {
   const canReadCustomers = hasAnyPermission("customers.read");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("service-orders.searchQuery", "");
+  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("service-orders.statusFilter", "");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useWorkspaceScopedState<string | null>("service-orders.activeOrderId", null);
+  const [showCreateForm, setShowCreateForm] = useWorkspaceScopedState("service-orders.showCreateForm", false);
   const [details, setDetails] = useState<ServiceOrderDetail | null>(null);
-  const [headerForm, setHeaderForm] = useState<ServiceOrderHeaderForm>(createEmptyHeaderForm());
-  const [itemRows, setItemRows] = useState<ServiceOrderItemGridRow[]>([createEmptyServiceOrderItemGridRow(1)]);
+  const [headerForm, setHeaderForm] = useWorkspaceScopedState<ServiceOrderHeaderForm>("service-orders.headerForm", createEmptyHeaderForm());
+  const [itemRows, setItemRows] = useWorkspaceScopedState<ServiceOrderItemGridRow[]>("service-orders.itemRows", [createEmptyServiceOrderItemGridRow(1)]);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -154,6 +155,10 @@ export function ServiceOrdersWorkspace() {
   }, [orders, searchQuery, statusFilter]);
 
   const selectedOrder = details?.serviceOrder ?? null;
+  useWorkspaceRegistration({
+    label: selectedOrder ? `Service Order · ${selectedOrder.orderNo}` : "Service Orders",
+    subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
+  });
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 

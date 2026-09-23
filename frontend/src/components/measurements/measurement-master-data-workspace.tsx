@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 import {
   MasterDataDuplicateGuard,
@@ -36,10 +37,13 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [records, setRecords] = useState<Array<BodyPartRecord | UnitRecord>>([]);
-  const [newDisplayName, setNewDisplayName] = useState("");
-  const [newCode, setNewCode] = useState("");
-  const [newSortOrder, setNewSortOrder] = useState("0");
-  const [editing, setEditing] = useState<Record<string, { displayName: string; code?: string; sortOrder: string }>>({});
+  const [newDisplayName, setNewDisplayName] = useWorkspaceScopedState(`measurement-master.${mode}.newDisplayName`, "");
+  const [newCode, setNewCode] = useWorkspaceScopedState(`measurement-master.${mode}.newCode`, "");
+  const [newSortOrder, setNewSortOrder] = useWorkspaceScopedState(`measurement-master.${mode}.newSortOrder`, "0");
+  const [editing, setEditing] = useWorkspaceScopedState<Record<string, { displayName: string; code?: string; sortOrder: string }>>(
+    `measurement-master.${mode}.editing`,
+    {},
+  );
   const [duplicateStatus, setDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
   const [duplicateMatch, setDuplicateMatch] = useState<BodyPartRecord | UnitRecord | null>(null);
 

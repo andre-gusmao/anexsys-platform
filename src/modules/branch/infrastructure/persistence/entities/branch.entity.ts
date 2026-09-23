@@ -1,10 +1,10 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { TenantEntity } from 'src/modules/tenant/infrastructure/persistence/entities/tenant.entity';
 import { BranchStatus } from 'src/shared/domain/enums';
-import { MutableBusinessEntity } from 'src/shared/persistence/base.entity';
+import { SoftDeletableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'branches' })
-export class BranchEntity extends MutableBusinessEntity {
+export class BranchEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
   tenantId!: string;
 

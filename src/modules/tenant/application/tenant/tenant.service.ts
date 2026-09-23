@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { CreateTenantDto } from 'src/modules/tenant/contracts/dto/create-tenant.dto';
 import { UpdateTenantDto } from 'src/modules/tenant/contracts/dto/update-tenant.dto';
 import { TenantStatus } from 'src/shared/domain/enums';
@@ -14,6 +15,7 @@ export class TenantService {
   constructor(
     private readonly tenantRepository: TenantRepository,
     private readonly auditService: AuditService,
+    private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 
   async create(dto: CreateTenantDto): Promise<TenantEntity> {
@@ -32,6 +34,9 @@ export class TenantService {
       warrantyAdjustmentPeriodDays: dto.warrantyAdjustmentPeriodDays ?? 7,
       warrantyExecutionPeriodDays: dto.warrantyExecutionPeriodDays ?? 7,
       blockDeliveryWithOutstandingBalance: dto.blockDeliveryWithOutstandingBalance ?? false,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -45,6 +50,7 @@ export class TenantService {
       action: 'tenant.created',
       eventType: 'governance.write',
       metadata: { code: saved.code },
+      newValues: this.buildAuditSnapshot(saved),
     });
 
     return saved;
@@ -65,6 +71,7 @@ export class TenantService {
 
   async update(id: string, dto: UpdateTenantDto): Promise<TenantEntity> {
     const tenant = await this.getById(id);
+    const previousValues = this.buildAuditSnapshot(tenant);
 
     if (dto.code && dto.code.trim().toUpperCase() !== tenant.code) {
       const normalizedCode = dto.code.trim().toUpperCase();
@@ -101,6 +108,8 @@ export class TenantService {
         warrantyExecutionPeriodDays: saved.warrantyExecutionPeriodDays,
         blockDeliveryWithOutstandingBalance: saved.blockDeliveryWithOutstandingBalance,
       },
+      previousValues,
+      newValues: this.buildAuditSnapshot(saved),
     });
 
     return saved;
@@ -121,6 +130,10 @@ export class TenantService {
     action: string,
   ): Promise<TenantEntity> {
     const tenant = await this.getById(id);
+    if (status === TenantStatus.INACTIVE) {
+      await this.dependencyValidationService.assertTenantCanDeactivate(id);
+    }
+    const previousValues = this.buildAuditSnapshot(tenant);
     tenant.status = status;
     tenant.updatedBy = actorUserId;
 
@@ -133,8 +146,22 @@ export class TenantService {
       action,
       eventType: 'governance.write',
       metadata: { status },
+      previousValues,
+      newValues: this.buildAuditSnapshot(saved),
     });
 
     return saved;
+  }
+
+  private buildAuditSnapshot(tenant: TenantEntity) {
+    return {
+      code: tenant.code,
+      legalName: tenant.legalName,
+      displayName: tenant.displayName,
+      status: tenant.status,
+      warrantyAdjustmentPeriodDays: tenant.warrantyAdjustmentPeriodDays,
+      warrantyExecutionPeriodDays: tenant.warrantyExecutionPeriodDays,
+      blockDeliveryWithOutstandingBalance: tenant.blockDeliveryWithOutstandingBalance,
+    };
   }
 }

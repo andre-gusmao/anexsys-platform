@@ -15,6 +15,7 @@ import { ArrayNotEmpty, IsArray, IsDateString, IsOptional, IsString, ValidateNes
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { CustomerStatus, CustomerType } from 'src/shared/domain/enums';
 import { CreateCustomerDto, CreateCustomerRequestDto } from '../contracts/dto/create-customer.dto';
 import {
@@ -47,6 +48,7 @@ export class CustomersController {
   constructor(
     private readonly customerService: CustomerService,
     private readonly measurementService: MeasurementService,
+    private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 
   @Permissions('customers.read')
@@ -104,6 +106,25 @@ export class CustomersController {
       tenantId,
       actorUserId: principal.userId,
     });
+  }
+
+  @Permissions('customers.write')
+  @Get(':customerId/dependency-check')
+  async dependencyCheck(
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+    @Query('action') action: string | undefined,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    if (action && action !== 'inactivate') {
+      throw new BadRequestException(`Unsupported dependency validation action '${action}'.`);
+    }
+    await this.customerService.getById(customerId, tenantId);
+    return this.dependencyValidationService.validateCustomerInactivation(tenantId, customerId);
   }
 
   @Permissions('customers.write')

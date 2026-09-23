@@ -1,8 +1,10 @@
 "use client";
 
+import { useWorkspaceRegistration } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 
 export default function DashboardPage() {
+  useWorkspaceRegistration({ label: "Dashboard" });
   const { session } = useSession();
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
   const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;

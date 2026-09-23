@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from 'src/modules/audit/audit.module';
+import { GovernanceModule } from 'src/modules/governance/governance.module';
 import { TenantModule } from 'src/modules/tenant/tenant.module';
 import { BranchesController } from './http/branches.controller';
 import { BranchService } from './application/branch/branch.service';
@@ -8,7 +9,7 @@ import { BranchEntity } from './infrastructure/persistence/entities/branch.entit
 import { BranchRepository } from './infrastructure/persistence/repositories/branch.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([BranchEntity]), AuditModule, TenantModule],
+  imports: [TypeOrmModule.forFeature([BranchEntity]), AuditModule, TenantModule, GovernanceModule],
   controllers: [BranchesController],
   providers: [BranchService, BranchRepository],
   exports: [BranchService, BranchRepository],

@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
+import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 
 type BranchRecord = {
   id: string;
@@ -52,15 +54,16 @@ export function BranchesWorkspace() {
   const canWrite = hasAnyPermission("branches.write");
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [children, setChildren] = useState<ChildRecord[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("branches.searchQuery", "");
+  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("branches.statusFilter", "");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [form, setForm] = useState<BranchForm>(emptyForm);
+  const [activeBranchId, setActiveBranchId] = useWorkspaceScopedState<string | null>("branches.activeBranchId", null);
+  const [showCreateForm, setShowCreateForm] = useWorkspaceScopedState("branches.showCreateForm", false);
+  const [form, setForm] = useWorkspaceScopedState<BranchForm>("branches.form", emptyForm());
+  const [dependencyValidation, setDependencyValidation] = useState<DependencyValidationResult | null>(null);
 
   const filteredBranches = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
@@ -74,6 +77,10 @@ export function BranchesWorkspace() {
   }, [branches, searchQuery, statusFilter]);
 
   const activeBranch = useMemo(() => branches.find((branch) => branch.id === activeBranchId) ?? null, [activeBranchId, branches]);
+  useWorkspaceRegistration({
+    label: activeBranch ? `Filial · ${activeBranch.displayName}` : "Filiais",
+    subtitle: showCreateForm ? "Novo cadastro" : activeBranch?.code ?? null,
+  });
 
   const loadChildren = useCallback(async (branchId: string) => {
     setDetailLoading(true);
@@ -102,6 +109,7 @@ export function BranchesWorkspace() {
         void loadChildren(records[0].id);
       }
       setMessage(null);
+      setDependencyValidation(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "As filiais não puderam ser carregadas.");
     } finally {
@@ -121,6 +129,7 @@ export function BranchesWorkspace() {
     if (!canWrite) return;
     setSaving(true);
     setMessage(null);
+    setDependencyValidation(null);
     try {
       const created = await apiJson<BranchRecord>("/branches", {
         method: "POST",
@@ -149,6 +158,7 @@ export function BranchesWorkspace() {
     if (!canWrite || !activeBranch) return;
     setSaving(true);
     setMessage(null);
+    setDependencyValidation(null);
     try {
       const updated = await apiJson<BranchRecord>(`/branches/${activeBranch.id}`, {
         method: "PATCH",
@@ -175,7 +185,16 @@ export function BranchesWorkspace() {
     if (!canWrite || !activeBranch) return;
     setSaving(true);
     setMessage(null);
+    setDependencyValidation(null);
     try {
+      if (action === "deactivate") {
+        const validation = await apiJson<DependencyValidationResult>(`/branches/${activeBranch.id}/dependency-check?action=deactivate`);
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return;
+        }
+      }
       const updated = await apiJson<BranchRecord>(`/branches/${activeBranch.id}/${action}`, { method: "POST" });
       setBranches((current) => current.map((branch) => (branch.id === updated.id ? updated : branch)));
       setMessage(action === "activate" ? "Filial ativada." : "Filial desativada.");
@@ -202,6 +221,8 @@ export function BranchesWorkspace() {
         <h1 className="title">Filiais</h1>
         <p>Gerencie busca, criação, edição, visualização e hierarquia física das filiais do contexto ativo.</p>
       </section>
+
+      {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
       {message ? (
         <section className="mini-card">

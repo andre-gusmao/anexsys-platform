@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import { BranchStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
@@ -16,6 +17,7 @@ export class BranchService {
     private readonly branchRepository: BranchRepository,
     private readonly tenantService: TenantService,
     private readonly auditService: AuditService,
+    private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 
   async create(dto: CreateBranchDto): Promise<BranchEntity> {
@@ -39,6 +41,9 @@ export class BranchService {
       status: BranchStatus.ACTIVE,
       parentBranchId: dto.parentBranchId ?? null,
       businessCalendarName: normalizedCalendarName,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -53,6 +58,7 @@ export class BranchService {
       action: 'branch.created',
       eventType: 'governance.write',
       metadata: { code: saved.code },
+      newValues: this.buildAuditSnapshot(saved),
     });
 
     return saved;
@@ -74,6 +80,7 @@ export class BranchService {
 
   async update(id: string, dto: UpdateBranchDto): Promise<BranchEntity> {
     const branch = await this.getById(id);
+    const previousValues = this.buildAuditSnapshot(branch);
     await this.assertParentBranch(branch.tenantId, dto.parentBranchId ?? branch.parentBranchId, id);
 
     if (dto.code && dto.code.trim().toUpperCase() !== branch.code) {
@@ -103,6 +110,8 @@ export class BranchService {
       entityId: saved.id,
       action: 'branch.updated',
       eventType: 'governance.write',
+      previousValues,
+      newValues: this.buildAuditSnapshot(saved),
     });
 
     return saved;
@@ -128,6 +137,10 @@ export class BranchService {
     action: string,
   ): Promise<BranchEntity> {
     const branch = await this.getById(id);
+    if (status === BranchStatus.INACTIVE) {
+      await this.dependencyValidationService.assertBranchCanDeactivate(id);
+    }
+    const previousValues = this.buildAuditSnapshot(branch);
     branch.status = status;
     branch.updatedBy = actorUserId;
 
@@ -141,6 +154,8 @@ export class BranchService {
       action,
       eventType: 'governance.write',
       metadata: { status },
+      previousValues,
+      newValues: this.buildAuditSnapshot(saved),
     });
 
     return saved;
@@ -159,5 +174,17 @@ export class BranchService {
     if (parentBranch.tenantId !== tenantId) {
       throw new DomainValidationError('Parent branch must belong to the same tenant.');
     }
+  }
+
+  private buildAuditSnapshot(branch: BranchEntity) {
+    return {
+      tenantId: branch.tenantId,
+      code: branch.code,
+      legalName: branch.legalName,
+      displayName: branch.displayName,
+      status: branch.status,
+      parentBranchId: branch.parentBranchId,
+      businessCalendarName: branch.businessCalendarName,
+    };
   }
 }

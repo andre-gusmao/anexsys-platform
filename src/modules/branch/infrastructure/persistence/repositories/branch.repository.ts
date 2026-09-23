@@ -19,18 +19,18 @@ export class BranchRepository {
   }
 
   async findById(id: string): Promise<BranchEntity | null> {
-    return this.repository.findOne({ where: { id } });
+    return this.repository.findOne({ where: { id, isDeleted: false } });
   }
 
   async findByTenant(tenantId: string): Promise<BranchEntity[]> {
-    return this.repository.find({ where: { tenantId }, order: { displayName: 'ASC' } });
+    return this.repository.find({ where: { tenantId, isDeleted: false }, order: { displayName: 'ASC' } });
   }
 
   async findByTenantAndCode(tenantId: string, code: string): Promise<BranchEntity | null> {
-    return this.repository.findOne({ where: { tenantId, code } });
+    return this.repository.findOne({ where: { tenantId, code, isDeleted: false } });
   }
 
   async findChildren(parentBranchId: string): Promise<BranchEntity[]> {
-    return this.repository.find({ where: { parentBranchId }, order: { displayName: 'ASC' } });
+    return this.repository.find({ where: { parentBranchId, isDeleted: false }, order: { displayName: 'ASC' } });
   }
 }

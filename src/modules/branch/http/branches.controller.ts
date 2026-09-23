@@ -8,12 +8,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { IsOptional, IsString, IsUUID, Length, ValidateIf } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { BranchService } from '../application/branch/branch.service';
 
 class CreateBranchBody {
@@ -62,7 +64,10 @@ class UpdateBranchBody {
 
 @Controller('branches')
 export class BranchesController {
-  constructor(private readonly branchService: BranchService) {}
+  constructor(
+    private readonly branchService: BranchService,
+    private readonly dependencyValidationService: DependencyValidationService,
+  ) {}
 
   @Permissions('branches.read')
   @Get()
@@ -117,6 +122,22 @@ export class BranchesController {
     }
 
     return this.branchService.update(branchId, { ...body, actorUserId });
+  }
+
+  @Permissions('branches.write')
+  @Get(':branchId/dependency-check')
+  async dependencyCheck(
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+    @Query('action') action: string | undefined,
+  ) {
+    await this.getScopedBranch(branchId, tenantId, request);
+    if (action && action !== 'deactivate') {
+      throw new BadRequestException(`Unsupported dependency validation action '${action}'.`);
+    }
+
+    return this.dependencyValidationService.validateBranchDeactivation(branchId);
   }
 
   @Permissions('branches.write')

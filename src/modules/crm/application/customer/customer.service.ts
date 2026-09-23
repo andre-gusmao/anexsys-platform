@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import {
   CustomerInteractionType,
@@ -29,6 +30,7 @@ export class CustomerService {
     private readonly customerInteractionRepository: CustomerInteractionRepository,
     private readonly tenantService: TenantService,
     private readonly auditService: AuditService,
+    private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 
   async create(dto: CreateCustomerDto): Promise<CustomerEntity> {
@@ -103,6 +105,7 @@ export class CustomerService {
       action: 'customer.created',
       eventType: 'crm.write',
       metadata: { customerType: savedCustomer.customerType, phone: savedCustomer.phone },
+      newValues: this.buildAuditSnapshot(savedCustomer),
     });
 
     return savedCustomer;
@@ -110,6 +113,7 @@ export class CustomerService {
 
   async update(id: string, tenantId: string, dto: UpdateCustomerDto): Promise<CustomerEntity> {
     const customer = await this.getById(id, tenantId);
+    const previousValues = this.buildAuditSnapshot(customer);
     const customerTypeBeforeUpdate = customer.customerType;
 
     const previousStatus = customer.status;
@@ -164,6 +168,9 @@ export class CustomerService {
     customer.branchId = null;
 
     if (dto.status !== undefined) {
+      if (dto.status === CustomerStatus.INACTIVE && previousStatus !== CustomerStatus.INACTIVE) {
+        await this.dependencyValidationService.assertCustomerCanInactivate(tenantId, id);
+      }
       customer.status = dto.status;
     }
 
@@ -233,6 +240,8 @@ export class CustomerService {
         previousCustomerType: customerTypeBeforeUpdate,
         currentCustomerType: savedCustomer.customerType,
       },
+      previousValues,
+      newValues: this.buildAuditSnapshot(savedCustomer),
     });
 
     return savedCustomer;
@@ -327,6 +336,26 @@ export class CustomerService {
     }
 
     return normalized;
+  }
+
+  private buildAuditSnapshot(customer: CustomerEntity) {
+    return {
+      customerType: customer.customerType,
+      legalName: customer.legalName,
+      tradeName: customer.tradeName,
+      cpfCnpj: customer.cpfCnpj,
+      email: customer.email,
+      phone: customer.phone,
+      birthDate: customer.birthDate,
+      postalCode: customer.postalCode,
+      street: customer.street,
+      number: customer.number,
+      district: customer.district,
+      city: customer.city,
+      state: customer.state,
+      country: customer.country,
+      status: customer.status,
+    };
   }
 
   private normalizeBirthDate(value?: string | null): string | null {

@@ -29,6 +29,12 @@ export class AuditEventEntity {
   @Column({ name: 'metadata', type: 'jsonb', default: () => "'{}'::jsonb" })
   metadata!: Record<string, unknown>;
 
+  @Column({ name: 'previous_values', type: 'jsonb', nullable: true })
+  previousValues!: Record<string, unknown> | null;
+
+  @Column({ name: 'new_values', type: 'jsonb', nullable: true })
+  newValues!: Record<string, unknown> | null;
+
   @Column({ name: 'occurred_at', type: 'timestamptz' })
   occurredAt!: Date;
 }
