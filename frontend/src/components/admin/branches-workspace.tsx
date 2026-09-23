@@ -111,6 +111,8 @@ export function BranchesWorkspace() {
       if (!showCreateForm && resolvedActiveBranch) {
         setForm(mapBranchToForm(resolvedActiveBranch));
         void loadChildren(resolvedActiveBranch.id);
+      } else {
+        setChildren([]);
       }
       setMessage(null);
       setDependencyValidation(null);

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 import {
   MasterDataDuplicateGuard,
@@ -195,16 +196,16 @@ export function AccessWorkspace() {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
   const [communities, setCommunities] = useState<CommunityRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<AccessTab>("users");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useWorkspaceScopedState<AccessTab>("access.activeTab", "users");
+  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("access.searchQuery", "");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const [activeUserId, setActiveUserId] = useState<string | null>(null);
-  const [activeRoleId, setActiveRoleId] = useState<string | null>(null);
-  const [activePermissionId, setActivePermissionId] = useState<string | null>(null);
-  const [activeCommunityId, setActiveCommunityId] = useState<string | null>(null);
+  const [activeUserId, setActiveUserId] = useWorkspaceScopedState<string | null>("access.activeUserId", null);
+  const [activeRoleId, setActiveRoleId] = useWorkspaceScopedState<string | null>("access.activeRoleId", null);
+  const [activePermissionId, setActivePermissionId] = useWorkspaceScopedState<string | null>("access.activePermissionId", null);
+  const [activeCommunityId, setActiveCommunityId] = useWorkspaceScopedState<string | null>("access.activeCommunityId", null);
   const [userSummary, setUserSummary] = useState<AccessSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -314,6 +315,10 @@ export function AccessWorkspace() {
     activePermissionId,
     activeRoleId,
     activeUserId,
+    setActiveCommunityId,
+    setActivePermissionId,
+    setActiveRoleId,
+    setActiveUserId,
   ]);
 
   const loadUserSummary = useCallback(
@@ -358,7 +363,7 @@ export function AccessWorkspace() {
     setShowCreateUser(false);
     setUserForm(mapUserToForm(user));
     clearUserDuplicate();
-  }, [clearUserDuplicate]);
+  }, [clearUserDuplicate, setActiveUserId]);
 
   const handleUserEmailBlur = useCallback(() => {
     const normalizedEmail = normalizeEmailValue(userForm.email);
