@@ -76,6 +76,29 @@ describe('company list response normalization', () => {
       { id: 'tenant-2', code: 'ANXHQ', legalName: 'ANEXSYS HQ LTDA', displayName: 'ANEXSYS HQ' },
     ]);
 
-    assert.equal(resolveActiveCompanyId(records, 'tenant-2'), 'tenant-2');
+    assert.equal(resolveActiveCompanyId(records, 'tenant-2', 'ANXHQ'), 'tenant-2');
+  });
+
+  it('preserves the active company by code when a later response omits the original id', () => {
+    const records = normalizeCompanyListRecords([
+      { code: 'ANXDEV', legalName: 'ANEXSYS DEV LTDA', displayName: 'ANEXSYS DEV' },
+      { code: 'ANXHQ', legalName: 'ANEXSYS HQ LTDA', displayName: 'ANEXSYS HQ' },
+    ]);
+
+    assert.equal(resolveActiveCompanyId(records, 'tenant-2', 'ANXHQ'), 'ANXHQ');
+  });
+
+  it('uses a provided fallback id when a partial mutation response omits id', () => {
+    const record = normalizeCompanyRecord(
+      {
+        code: 'ANXDEV',
+        legalName: 'ANEXSYS DEV LTDA',
+        displayName: 'ANEXSYS DEV',
+      },
+      0,
+      { fallbackId: 'tenant-1' },
+    );
+
+    assert.equal(record.id, 'tenant-1');
   });
 });

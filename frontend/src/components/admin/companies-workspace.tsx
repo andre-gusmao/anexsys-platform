@@ -80,7 +80,7 @@ export function CompaniesWorkspace() {
     try {
       const response = await apiJson<CompanyApiRecord[]>("/tenants");
       const records = normalizeCompanyListRecords(response);
-      const nextActiveCompanyId = resolveActiveCompanyId(records, activeCompanyId);
+      const nextActiveCompanyId = resolveActiveCompanyId(records, activeCompanyId, activeCompany?.code ?? null);
       const nextActiveCompany = records.find((company) => company.id === nextActiveCompanyId) ?? null;
       setCompanies(records);
       setActiveCompanyId(nextActiveCompanyId);
@@ -93,7 +93,7 @@ export function CompaniesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [activeCompanyId, apiJson, canRead, showCreateForm]);
+  }, [activeCompany?.code, activeCompanyId, apiJson, canRead, showCreateForm]);
 
   const clearCompanyDuplicate = useCallback(() => {
     setCompanyDuplicateStatus("idle");
@@ -184,7 +184,7 @@ export function CompaniesWorkspace() {
           blockDeliveryWithOutstandingBalance: form.blockDeliveryWithOutstandingBalance,
         }),
       });
-      const updated = normalizeCompanyRecord(updatedResponse, 0);
+      const updated = normalizeCompanyRecord(updatedResponse, 0, { fallbackId: activeCompany.id });
       setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
       setForm(mapCompanyToForm(updated));
       setMessage("Empresa atualizada com sucesso.");
@@ -203,7 +203,7 @@ export function CompaniesWorkspace() {
       const updatedResponse = await apiJson<CompanyApiRecord>(`/tenants/${activeCompany.id}/${action}`, {
         method: "POST",
       });
-      const updated = normalizeCompanyRecord(updatedResponse, 0);
+      const updated = normalizeCompanyRecord(updatedResponse, 0, { fallbackId: activeCompany.id });
       setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
       setMessage(action === "activate" ? "Empresa reativada." : "Empresa desativada.");
     } catch (error) {

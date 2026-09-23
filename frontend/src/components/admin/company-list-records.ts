@@ -15,13 +15,17 @@ export type CompanyApiRecord = Partial<CompanyRecord> & {
   displayName?: string;
 };
 
-export function normalizeCompanyRecord(record: CompanyApiRecord, index: number): CompanyRecord {
+export function normalizeCompanyRecord(
+  record: CompanyApiRecord,
+  index: number,
+  options?: { fallbackId?: string },
+): CompanyRecord {
   const code = record.code?.trim() || `TENANT-${index + 1}`;
   const legalName = record.legalName?.trim() || code;
   const displayName = record.displayName?.trim() || legalName;
 
   return {
-    id: record.id?.trim() || code,
+    id: record.id?.trim() || options?.fallbackId || code,
     code,
     legalName,
     displayName,
@@ -36,9 +40,20 @@ export function normalizeCompanyListRecords(records: CompanyApiRecord[]): Compan
   return records.map((record, index) => normalizeCompanyRecord(record, index));
 }
 
-export function resolveActiveCompanyId(companies: CompanyRecord[], activeCompanyId: string | null): string | null {
+export function resolveActiveCompanyId(
+  companies: CompanyRecord[],
+  activeCompanyId: string | null,
+  activeCompanyCode: string | null,
+): string | null {
   if (activeCompanyId && companies.some((company) => company.id === activeCompanyId)) {
     return activeCompanyId;
+  }
+
+  if (activeCompanyCode) {
+    const matchingCompany = companies.find((company) => company.code === activeCompanyCode);
+    if (matchingCompany) {
+      return matchingCompany.id;
+    }
   }
 
   return companies[0]?.id ?? null;
