@@ -75,30 +75,36 @@ export default function SelectBranchPage() {
             <section>
               <div className="eyebrow">Filial</div>
               <h2 style={{ marginTop: 12 }}>{branchTitle}</h2>
-              <div className="branch-grid" style={{ marginTop: 20 }}>
-                {session.branches.map((branch) => (
-                  <button
-                    className="branch-card"
-                    disabled={busy}
-                    key={branch.id}
-                    onClick={async () => {
-                      setPendingBranchId(branch.id);
-                      try {
-                        if (await selectBranch(branch.id)) {
-                          router.push("/dashboard");
+              {session.branches.length > 0 ? (
+                <div className="branch-grid" style={{ marginTop: 20 }}>
+                  {session.branches.map((branch) => (
+                    <button
+                      className="branch-card"
+                      disabled={busy}
+                      key={branch.id}
+                      onClick={async () => {
+                        setPendingBranchId(branch.id);
+                        try {
+                          if (await selectBranch(branch.id)) {
+                            router.push("/dashboard");
+                          }
+                        } finally {
+                          setPendingBranchId(null);
                         }
-                      } finally {
-                        setPendingBranchId(null);
-                      }
-                    }}
-                    type="button"
-                  >
-                    <div className="eyebrow">Filial</div>
-                    <h2 style={{ marginTop: 12 }}>{branch.label}</h2>
-                    <p className="branch-card__meta">{pendingBranchId === branch.id ? "Applying context…" : branch.hint ?? "Abrir filial"}</p>
-                  </button>
-                ))}
-              </div>
+                      }}
+                      type="button"
+                    >
+                      <div className="eyebrow">Filial</div>
+                      <h2 style={{ marginTop: 12 }}>{branch.label}</h2>
+                      <p className="branch-card__meta">{pendingBranchId === branch.id ? "Applying context…" : branch.hint ?? "Abrir filial"}</p>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="mini-card" style={{ marginTop: 20 }}>
+                  <p>No Branch is available for the selected Company yet. Change Company or ask an administrator to grant Branch access.</p>
+                </div>
+              )}
             </section>
           ) : null}
         </div>

@@ -34,7 +34,7 @@ export default function LoginPage() {
       router.replace("/dashboard");
       return;
     }
-    if (status === "branch-selection") {
+    if (status === "company-selection" || status === "branch-selection") {
       router.replace("/select-branch");
     }
   }, [router, status]);

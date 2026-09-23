@@ -41,6 +41,7 @@
 - Active Company and active Branch are displayed in the shell area above the navigation menu.
 - If the authenticated user has access to more than one Company, the Company selector is available in the same header area above the menu.
 - Branch selection remains available in the same header area and respects the currently selected Company context.
+- Session flow now distinguishes `company-selection` from `branch-selection` so the context screen follows the correct progression.
 - Service Orders inherit the active session context automatically and no longer request Company selection in the operational form.
 
 ## 6. Company/Branch inheritance behavior
@@ -48,6 +49,7 @@
   - Company is inherited from `session.tenantId`
   - Branch is inherited from `session.activeBranchId`
 - If there is no active Branch context, the Save action is blocked with a business message directing the user to select the Branch in the header.
+- If a selected Company has no available Branches, the context screen keeps the user out of authenticated workspaces and explains the missing Branch access.
 - When Company or Branch changes, the Service Order workspace reloads using the new active context automatically.
 
 ## 7. Item grid implementation status

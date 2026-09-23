@@ -49,12 +49,26 @@ function buildPayload(row: ServiceOrderItemGridRow): ItemPayload {
   };
 }
 
+function numericFieldEquals(left: string, right: string, allowEmpty: boolean) {
+  const leftValue = parseOptionalNumber(left);
+  const rightValue = parseOptionalNumber(right);
+
+  if (allowEmpty && leftValue === undefined && rightValue === undefined) {
+    return true;
+  }
+  if (leftValue === undefined || rightValue === undefined) {
+    return left.trim() === right.trim();
+  }
+
+  return leftValue === rightValue;
+}
+
 function rowsMatch(left: ServiceOrderItemGridRow, right: ServiceOrderItemGridRow) {
   return left.itemType.trim() === right.itemType.trim()
     && left.description.trim() === right.description.trim()
-    && left.quantity.trim() === right.quantity.trim()
-    && left.unitPrice.trim() === right.unitPrice.trim()
-    && left.discountValue.trim() === right.discountValue.trim();
+    && numericFieldEquals(left.quantity, right.quantity, false)
+    && numericFieldEquals(left.unitPrice, right.unitPrice, true)
+    && numericFieldEquals(left.discountValue, right.discountValue, true);
 }
 
 export function createEmptyServiceOrderItemGridRow(itemNo: number): ServiceOrderItemGridRow {

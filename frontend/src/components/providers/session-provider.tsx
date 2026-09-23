@@ -398,7 +398,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     setStatus(
       me.context.companySelectionRequired
         ? "company-selection"
-        : !activeBranchId && resolved.branchIds.length > 0
+        : !activeBranchId
           ? "branch-selection"
           : "authenticated",
     );
@@ -510,7 +510,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     setSession(baseSession);
 
     const resolved = await hydrateSession(baseSession);
-    return resolved.companySelectionRequired === false && (resolved.activeBranchId !== null || resolved.branchIds.length === 0);
+    return resolved.companySelectionRequired === false && resolved.activeBranchId !== null;
   }, [hydrateSession]);
 
   const selectBranch = useCallback(async (branchId: string) => {

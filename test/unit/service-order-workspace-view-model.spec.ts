@@ -149,3 +149,32 @@ test('marks persisted rows for removal and removes new rows immediately', () => 
     remove: [{ itemId: 'item-1', status: 'cancelled' }],
   });
 });
+
+test('does not emit updates for numerically equivalent values', () => {
+  const originalItems = [
+    {
+      id: 'item-1',
+      itemNo: 1,
+      itemType: 'Jeans',
+      description: 'Original Hem',
+      quantity: '1.0000',
+      unitPrice: '25.00',
+      discountValue: '0.00',
+      status: 'open',
+    },
+  ];
+
+  let rows = mapServiceOrderItemsToGridRows(originalItems);
+  rows = updateServiceOrderItemGridRow(rows, 'item-1', {
+    quantity: '1',
+    unitPrice: '25',
+    discountValue: '0',
+  });
+
+  const plan = buildServiceOrderItemMutationPlan(rows, originalItems);
+  assert.deepEqual(plan, {
+    create: [],
+    update: [],
+    remove: [],
+  });
+});
