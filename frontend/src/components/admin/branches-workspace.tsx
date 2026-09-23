@@ -78,7 +78,7 @@ export function BranchesWorkspace() {
 
   const activeBranch = useMemo(() => branches.find((branch) => branch.id === activeBranchId) ?? null, [activeBranchId, branches]);
   useWorkspaceRegistration({
-    label: activeBranch ? `Filial · ${activeBranch.displayName}` : "Filiais",
+    label: activeBranch ? `Filial: ${activeBranch.displayName}` : "Filiais",
     subtitle: showCreateForm ? "Novo cadastro" : activeBranch?.code ?? null,
   });
 

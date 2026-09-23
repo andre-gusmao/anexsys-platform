@@ -408,8 +408,8 @@ export function CustomerWorkspace() {
 
   const selectedCustomer = profile?.customer ?? null;
   useWorkspaceRegistration({
-    label: selectedCustomer ? `Cliente · ${selectedCustomer.legalName}` : "Clientes",
-    subtitle: showCreateForm ? "Novo cadastro" : selectedCustomer?.cpfCnpj ?? null,
+    label: selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
+    subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
   });
 
   useEffect(() => {

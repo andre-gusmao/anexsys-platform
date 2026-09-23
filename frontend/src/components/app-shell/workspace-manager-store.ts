@@ -28,34 +28,55 @@ export function createWorkspaceTab(input: {
   subtitle?: string | null;
 }): WorkspaceTab {
   return {
-    id: input.id,
-    pathname: input.pathname,
-    label: input.label,
-    subtitle: input.subtitle ?? null,
+    id: input.id.trim(),
+    pathname: input.pathname.trim(),
+    label: input.label.trim(),
+    subtitle: input.subtitle?.trim() || null,
+  };
+}
+
+export function isMeaningfulWorkspaceTab(tab: WorkspaceTab): boolean {
+  return Boolean(tab.id.trim() && tab.pathname.trim() && tab.label.trim());
+}
+
+export function normalizeWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
+  const tabs = store.tabs.map((tab) => createWorkspaceTab(tab)).filter(isMeaningfulWorkspaceTab);
+  const validTabIds = new Set(tabs.map((tab) => tab.id));
+  const stateByTabId = Object.fromEntries(
+    Object.entries(store.stateByTabId).filter(([tabId]) => validTabIds.has(tabId)),
+  );
+
+  return {
+    tabs,
+    stateByTabId,
   };
 }
 
 export function upsertWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): WorkspaceStore {
+  if (!isMeaningfulWorkspaceTab(tab)) {
+    return normalizeWorkspaceStore(store);
+  }
+
   const index = store.tabs.findIndex((candidate) => candidate.id === tab.id);
   if (index >= 0) {
     const nextTabs = [...store.tabs];
     nextTabs[index] = tab;
-    return { ...store, tabs: nextTabs };
+    return normalizeWorkspaceStore({ ...store, tabs: nextTabs });
   }
 
-  return {
+  return normalizeWorkspaceStore({
     ...store,
     tabs: [...store.tabs, tab],
-  };
+  });
 }
 
 export function removeWorkspaceTab(store: WorkspaceStore, tabId: string): WorkspaceStore {
   const remainingState = { ...store.stateByTabId };
   delete remainingState[tabId];
-  return {
+  return normalizeWorkspaceStore({
     tabs: store.tabs.filter((tab) => tab.id !== tabId),
     stateByTabId: remainingState,
-  };
+  });
 }
 
 export function cloneWorkspaceTabState(store: WorkspaceStore, sourceTabId: string, targetTabId: string): WorkspaceStore {

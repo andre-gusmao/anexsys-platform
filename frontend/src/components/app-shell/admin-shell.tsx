@@ -10,7 +10,7 @@ import { useSession } from "@/components/providers/session-provider";
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const { session, logout, errorMessage, clearError, selectCompany, selectBranch } = useSession();
-  const { duplicateCurrentWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow } = useWorkspaceManager();
+  const { currentTab, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow } = useWorkspaceManager();
   const { isDesktop, isMobile } = useWorkspaceViewportMode();
   const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
   const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
@@ -124,13 +124,10 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
             {!isMobile ? (
               <>
-                <button className="button-secondary" onClick={duplicateCurrentWorkspace} type="button">
-                  Duplicar workspace
-                </button>
-                <button className="button-secondary" onClick={() => openWorkspaceInBrowserTab()} type="button">
+                <button className="button-secondary" disabled={!currentTab} onClick={() => openWorkspaceInBrowserTab()} type="button">
                   Nova aba do navegador
                 </button>
-                <button className="button-secondary" onClick={() => openWorkspaceInBrowserWindow()} type="button">
+                <button className="button-secondary" disabled={!currentTab} onClick={() => openWorkspaceInBrowserWindow()} type="button">
                   Nova janela
                 </button>
               </>

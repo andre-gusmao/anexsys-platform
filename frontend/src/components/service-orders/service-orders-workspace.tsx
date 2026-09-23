@@ -159,7 +159,7 @@ export function ServiceOrdersWorkspace() {
   const selectedOrder = details?.serviceOrder ?? null;
   const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
   const { navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow, openWorkspaceInNewTab } = useWorkspaceRegistration({
-    label: selectedOrder ? `Service Order · ${selectedOrder.orderNo}` : "Service Orders",
+    label: selectedOrder ? `OS #${selectedOrder.orderNo}` : "Service Orders",
     subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
   });
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";

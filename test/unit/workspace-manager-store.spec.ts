@@ -7,6 +7,7 @@ import {
   createEmptyWorkspaceStore,
   createWorkspaceTab,
   getWorkspaceScopedState,
+  normalizeWorkspaceStore,
   removeWorkspaceTab,
   setWorkspaceScopedState,
   upsertWorkspaceTab,
@@ -35,4 +36,22 @@ test('creates, updates, clones, and removes workspace tabs', () => {
 test('builds href with workspace query param', () => {
   assert.equal(buildWorkspaceHref('/service-orders', 'tab-10'), '/service-orders?workspaceTab=tab-10');
   assert.equal(buildWorkspaceHref('/customers?mode=detail', 'tab-11'), '/customers?mode=detail&workspaceTab=tab-11');
+});
+
+test('ignores unnamed or empty workspace tabs', () => {
+  let store = createEmptyWorkspaceStore();
+
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-1', pathname: '/customers', label: 'Customers' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-2', pathname: '/customers', label: '   ' }));
+  store = normalizeWorkspaceStore({
+    tabs: [...store.tabs, { id: 'tab-3', pathname: '', label: 'Dashboard', subtitle: null }],
+    stateByTabId: {
+      'tab-1': { valid: true },
+      'tab-2': { invalid: true },
+      'tab-3': { invalid: true },
+    },
+  });
+
+  assert.deepEqual(store.tabs.map((tab) => tab.id), ['tab-1']);
+  assert.deepEqual(Object.keys(store.stateByTabId), ['tab-1']);
 });

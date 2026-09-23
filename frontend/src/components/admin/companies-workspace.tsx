@@ -74,7 +74,7 @@ export function CompaniesWorkspace() {
     [activeCompanyId, companies],
   );
   useWorkspaceRegistration({
-    label: activeCompany ? `Empresa · ${activeCompany.displayName}` : "Empresas",
+    label: activeCompany ? `Empresa: ${activeCompany.displayName}` : "Empresas",
     subtitle: showCreateForm ? "Novo cadastro" : activeCompany?.code ?? null,
   });
 
