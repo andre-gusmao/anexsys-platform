@@ -23,21 +23,85 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           <p>Fast access to your company, filial, and daily administrative work.</p>
         </div>
 
+        <section className="sidebar__context">
+          <div className="eyebrow">Active context</div>
+          <div className="sidebar__context-summary">
+            <div className="sidebar__context-field">
+              <span>Company</span>
+              <strong>{activeCompany?.displayName ?? "Select company"}</strong>
+            </div>
+            <div className="sidebar__context-field">
+              <span>Filial</span>
+              <strong>{activeBranch?.label ?? "Selecione a filial"}</strong>
+            </div>
+          </div>
+
+          {session && session.companies.length > 1 ? (
+            <label className="field sidebar__context-select">
+              <span>Company</span>
+              <select
+                disabled={busy}
+                value={session.tenantId}
+                onChange={async (event) => {
+                  setPendingCompanySwitch(true);
+                  try {
+                    const resolved = await selectCompany(event.target.value);
+                    if (!resolved) {
+                      router.push("/select-branch");
+                    }
+                  } finally {
+                    setPendingCompanySwitch(false);
+                  }
+                }}
+              >
+                {session.companies.map((company) => (
+                  <option key={company.tenantId} value={company.tenantId}>
+                    {company.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {session ? (
+            <label className="field sidebar__context-select">
+              <span>Filial</span>
+              <select
+                disabled={busy}
+                value={session.activeBranchId ?? ""}
+                onChange={async (event) => {
+                  if (!event.target.value) {
+                    router.push("/select-branch");
+                    return;
+                  }
+                  setPendingBranchSwitch(true);
+                  try {
+                    await selectBranch(event.target.value);
+                  } finally {
+                    setPendingBranchSwitch(false);
+                  }
+                }}
+              >
+                {!session.activeBranchId ? <option value="">Selecione a filial</option> : null}
+                {session.branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </section>
+
         <RoleAwareNav />
       </aside>
 
       <div className="workspace">
         <header className="topbar">
           <div>
-            <div className="eyebrow">Active context</div>
+            <div className="eyebrow">Authenticated session</div>
             <h2>{session?.user?.displayName ?? "Authenticated user"}</h2>
             <div className="topbar__meta">
-              <span className="pill">
-                Company <strong>{activeCompany?.displayName ?? "Select company"}</strong>
-              </span>
-              <span className="pill">
-                Filial <strong>{activeBranch?.label ?? "Selecione a filial"}</strong>
-              </span>
               <span className="pill">
                 Permissions <strong>{session?.permissions.length ?? 0}</strong>
               </span>
@@ -45,70 +109,6 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           </div>
 
           <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
-            {session && session.companies.length > 1 ? (
-              <label className="field" style={{ minWidth: 220, marginBottom: 0 }}>
-                <span>Company</span>
-                <select
-                  disabled={busy}
-                  value={session.tenantId}
-                  onChange={async (event) => {
-                    setPendingCompanySwitch(true);
-                    try {
-                      const resolved = await selectCompany(event.target.value);
-                      if (!resolved) {
-                        router.push("/select-branch");
-                      }
-                    } finally {
-                      setPendingCompanySwitch(false);
-                    }
-                  }}
-                >
-                  {session.companies.map((company) => (
-                    <option key={company.tenantId} value={company.tenantId}>
-                      {company.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-
-            {session ? (
-              <label className="field" style={{ minWidth: 220, marginBottom: 0 }}>
-                <span>Filial</span>
-                <select
-                  disabled={busy}
-                  value={session.activeBranchId ?? ""}
-                  onChange={async (event) => {
-                    if (!event.target.value) {
-                      router.push("/select-branch");
-                      return;
-                    }
-                    setPendingBranchSwitch(true);
-                    try {
-                      await selectBranch(event.target.value);
-                    } finally {
-                      setPendingBranchSwitch(false);
-                    }
-                  }}
-                >
-                  {!session.activeBranchId ? <option value="">Selecione a filial</option> : null}
-                  {session.branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-
-            <button
-              className="button-secondary"
-              disabled={busy}
-              onClick={() => router.push("/select-branch")}
-              type="button"
-            >
-              Alterar contexto
-            </button>
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout
             </button>

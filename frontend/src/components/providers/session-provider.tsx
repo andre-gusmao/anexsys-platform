@@ -77,7 +77,7 @@ type RefreshResponse = {
 };
 
 type MeResponse = {
-  user: AuthenticatedUser;
+  user: AuthenticatedUser | null;
   effectiveAccess: {
     branchIds: string[];
     permissions: string[];
@@ -312,12 +312,12 @@ async function authenticatedRequest<T>(
 function resolveActiveBranchId(
   branchIds: string[],
   branches: BranchOption[],
-  user: AuthenticatedUser,
+  user: AuthenticatedUser | null,
   currentBranchId: string | null,
   preferredBranchId: string | null,
 ) {
   const allowed = new Set(branchIds);
-  const branchCandidates = [preferredBranchId, currentBranchId, user.defaultBranchId].filter(
+  const branchCandidates = [preferredBranchId, currentBranchId, user?.defaultBranchId ?? null].filter(
     (value): value is string => Boolean(value),
   );
 

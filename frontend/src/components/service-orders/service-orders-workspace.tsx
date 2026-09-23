@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
-import { buildServiceOrderDetailViewModel } from "@/components/service-orders/service-order-workspace-view-model";
+import {
+  addServiceOrderItemGridRow,
+  buildCreateServiceOrderItemsPayload,
+  buildServiceOrderItemMutationPlan,
+  createEmptyServiceOrderItemGridRow,
+  getVisibleServiceOrderItemGridRows,
+  mapServiceOrderItemsToGridRows,
+  removeServiceOrderItemGridRow,
+  updateServiceOrderItemGridRow,
+  type PersistedServiceOrderItem,
+  type ServiceOrderItemGridRow,
+} from "@/components/service-orders/service-order-workspace-view-model";
 
 type ServiceOrderRecord = {
   id: string;
@@ -34,16 +45,7 @@ type ServiceOrderDetail = {
     phone: string | null;
     email: string | null;
   };
-  items: Array<{
-    id: string;
-    itemNo: number;
-    itemType: string;
-    description: string;
-    quantity: string;
-    unitPrice: string | null;
-    discountValue: string | null;
-    status: string;
-  }>;
+  items: PersistedServiceOrderItem[];
 };
 
 type CustomerLookupRecord = {
@@ -67,19 +69,12 @@ type CreateServiceOrderResponse = {
   }>;
 };
 
-type ServiceOrderForm = {
-  branchId: string;
+type ServiceOrderHeaderForm = {
   customerId: string;
   deliveryType: "Standard" | "Priority" | "Express";
   operationalPriority: string;
-  paymentTermsDays: string;
   commercialNotes: string;
   customerNotes: string;
-  itemType: string;
-  itemDescription: string;
-  itemQuantity: string;
-  itemUnitPrice: string;
-  itemDiscountValue: string;
 };
 
 function formatDate(value: string | null | undefined) {
@@ -89,44 +84,23 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
-function parseOptionalNumber(value: string) {
-  const normalized = value.trim();
-  if (!normalized) return undefined;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function createEmptyForm(branchId: string | null | undefined): ServiceOrderForm {
+function createEmptyHeaderForm(): ServiceOrderHeaderForm {
   return {
-    branchId: branchId ?? "",
     customerId: "",
     deliveryType: "Standard",
     operationalPriority: "",
-    paymentTermsDays: "0",
     commercialNotes: "",
     customerNotes: "",
-    itemType: "",
-    itemDescription: "",
-    itemQuantity: "1",
-    itemUnitPrice: "",
-    itemDiscountValue: "",
   };
 }
 
-function mapDetailsToForm(details: ServiceOrderDetail): ServiceOrderForm {
+function mapDetailsToHeaderForm(details: ServiceOrderDetail): ServiceOrderHeaderForm {
   return {
-    branchId: details.serviceOrder.branchId,
     customerId: details.serviceOrder.customerId,
     deliveryType: details.serviceOrder.deliveryType,
     operationalPriority: details.serviceOrder.operationalPriority ?? "",
-    paymentTermsDays: String(details.serviceOrder.paymentTermsDays ?? 0),
     commercialNotes: details.serviceOrder.commercialNotes ?? "",
     customerNotes: details.serviceOrder.customerNotes ?? "",
-    itemType: details.items[0]?.itemType ?? "",
-    itemDescription: details.items[0]?.description ?? "",
-    itemQuantity: details.items[0]?.quantity ?? "1",
-    itemUnitPrice: details.items[0]?.unitPrice ?? "",
-    itemDiscountValue: details.items[0]?.discountValue ?? "",
   };
 }
 
@@ -160,8 +134,13 @@ export function ServiceOrdersWorkspace() {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [details, setDetails] = useState<ServiceOrderDetail | null>(null);
-  const [form, setForm] = useState<ServiceOrderForm>(createEmptyForm(session?.activeBranchId));
+  const [headerForm, setHeaderForm] = useState<ServiceOrderHeaderForm>(createEmptyHeaderForm());
+  const [itemRows, setItemRows] = useState<ServiceOrderItemGridRow[]>([createEmptyServiceOrderItemGridRow(1)]);
   const latestDetailRequestId = useRef(0);
+
+  const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
+  const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
+  const canPersistInContext = Boolean(session?.tenantId && session?.activeBranchId);
 
   const filteredOrders = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
@@ -174,18 +153,9 @@ export function ServiceOrdersWorkspace() {
     });
   }, [orders, searchQuery, statusFilter]);
 
-  const branchOptions = useMemo(
-    () =>
-      (session?.branches ?? []).map((branch) => ({
-        id: branch.id,
-        label: branch.label,
-        hint: branch.hint,
-      })),
-    [session?.branches],
-  );
-
   const selectedOrder = details?.serviceOrder ?? null;
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
+  const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
   const customerLookupOptions = useMemo<SmartLookupOption[]>(() => {
     const options = customers.map((customer) => ({
@@ -205,17 +175,6 @@ export function ServiceOrdersWorkspace() {
     return options;
   }, [customers, details]);
 
-  const detailView = useMemo(
-    () =>
-      details
-        ? buildServiceOrderDetailViewModel({
-            totalValue: details.serviceOrder.totalValue,
-            items: details.items,
-          })
-        : null,
-    [details],
-  );
-
   const loadDetails = useCallback(
     async (serviceOrderId: string) => {
       const requestId = latestDetailRequestId.current + 1;
@@ -228,7 +187,8 @@ export function ServiceOrdersWorkspace() {
         }
         setDetails(response);
         if (!showCreateForm) {
-          setForm(mapDetailsToForm(response));
+          setHeaderForm(mapDetailsToHeaderForm(response));
+          setItemRows(mapServiceOrderItemsToGridRows(response.items));
         }
         setMessage(null);
       } catch (error) {
@@ -311,37 +271,67 @@ export function ServiceOrdersWorkspace() {
       void loadOrders();
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [loadOrders]);
+  }, [loadOrders, session?.activeBranchId, session?.tenantId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadCustomers();
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [loadCustomers]);
+  }, [loadCustomers, session?.tenantId]);
 
   function openCreateForm() {
     setShowCreateForm(true);
-    setForm(createEmptyForm(session?.activeBranchId));
+    setHeaderForm(createEmptyHeaderForm());
+    setItemRows([createEmptyServiceOrderItemGridRow(1)]);
     setMessage(null);
+  }
+
+  function restoreSelectedOrderForm() {
+    setShowCreateForm(false);
+    if (details) {
+      setHeaderForm(mapDetailsToHeaderForm(details));
+      setItemRows(mapServiceOrderItemsToGridRows(details.items));
+    } else {
+      setHeaderForm(createEmptyHeaderForm());
+      setItemRows([createEmptyServiceOrderItemGridRow(1)]);
+    }
+  }
+
+  function validateItems(requireAtLeastOneItem: boolean) {
+    if (requireAtLeastOneItem && visibleItemRows.length === 0) {
+      return "Add at least one item before saving the Service Order.";
+    }
+
+    for (const row of visibleItemRows) {
+      if (!row.itemType.trim() || !row.description.trim()) {
+        return "Each item must include Product and Service / Notes before saving.";
+      }
+      const quantity = Number(row.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return "Each item quantity must be greater than zero.";
+      }
+    }
+
+    return null;
   }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWrite) return;
 
-    if (!form.branchId || !form.customerId) {
-      setMessage("Select branch and customer before saving the Service Order.");
+    if (!canPersistInContext || !session?.activeBranchId) {
+      setMessage("Select the active Branch in the header before saving the Service Order.");
       return;
     }
-    if (!form.itemType.trim() || !form.itemDescription.trim()) {
-      setMessage("Inform the first item type and description before saving the Service Order.");
+    if (!headerForm.customerId) {
+      setMessage("Select the customer before saving the Service Order.");
       return;
     }
 
-    const quantity = Number(form.itemQuantity);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      setMessage("Item quantity must be greater than zero.");
+    const itemValidation = validateItems(true);
+    if (itemValidation) {
+      setMessage(itemValidation);
       return;
     }
 
@@ -351,34 +341,25 @@ export function ServiceOrdersWorkspace() {
       const created = await apiJson<CreateServiceOrderResponse>("/service-orders", {
         method: "POST",
         body: JSON.stringify({
-          branchId: form.branchId,
-          customerId: form.customerId,
-          deliveryType: form.deliveryType,
-          operationalPriority: form.operationalPriority || undefined,
-          paymentTermsDays: Number(form.paymentTermsDays || 0),
-          commercialNotes: form.commercialNotes || undefined,
-          customerNotes: form.customerNotes || undefined,
-          items: [
-            {
-              itemType: form.itemType,
-              description: form.itemDescription,
-              quantity,
-              unitPrice: parseOptionalNumber(form.itemUnitPrice),
-              discountValue: parseOptionalNumber(form.itemDiscountValue),
-            },
-          ],
+          branchId: session.activeBranchId,
+          customerId: headerForm.customerId,
+          deliveryType: headerForm.deliveryType,
+          operationalPriority: headerForm.operationalPriority || undefined,
+          commercialNotes: headerForm.commercialNotes || undefined,
+          customerNotes: headerForm.customerNotes || undefined,
+          items: buildCreateServiceOrderItemsPayload(itemRows),
         }),
       });
       const createdId = created.serviceOrder.id;
       setShowCreateForm(false);
       setActiveOrderId(createdId);
       await loadOrders(createdId);
-      setMessage("Service Order saved successfully. The new record is already selected and ready for update.");
+      setMessage("Service Order saved. The header and item grid were persisted, the grid was refreshed, and the new record is already selected.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "The Service Order could not be saved. Review customer, branch, and first-item information, then try again.",
+          "The Service Order could not be saved. Review the active context, customer, and item grid, then try again.",
         ),
       );
     } finally {
@@ -389,8 +370,15 @@ export function ServiceOrdersWorkspace() {
   async function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedOrder || !canEditSelectedOrder) return;
-    if (!form.customerId) {
-      setMessage("Select a customer before updating the Service Order.");
+
+    if (!headerForm.customerId) {
+      setMessage("Select the customer before updating the Service Order.");
+      return;
+    }
+
+    const itemValidation = validateItems(false);
+    if (itemValidation) {
+      setMessage(itemValidation);
       return;
     }
 
@@ -400,21 +388,50 @@ export function ServiceOrdersWorkspace() {
       await apiJson<ServiceOrderRecord>(`/service-orders/${selectedOrder.id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          customerId: form.customerId,
-          deliveryType: form.deliveryType,
-          operationalPriority: form.operationalPriority || undefined,
-          paymentTermsDays: Number(form.paymentTermsDays || 0),
-          commercialNotes: form.commercialNotes || null,
-          customerNotes: form.customerNotes || null,
+          customerId: headerForm.customerId,
+          deliveryType: headerForm.deliveryType,
+          operationalPriority: headerForm.operationalPriority || undefined,
+          commercialNotes: headerForm.commercialNotes || null,
+          customerNotes: headerForm.customerNotes || null,
         }),
       });
+
+      const plan = buildServiceOrderItemMutationPlan(itemRows, details?.items ?? []);
+
+      for (const item of plan.update) {
+        await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            itemType: item.itemType,
+            description: item.description,
+            quantity: item.quantity,
+          }),
+        });
+      }
+
+      for (const item of plan.remove) {
+        await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: item.status }),
+        });
+      }
+
+      for (const item of plan.create) {
+        await apiJson(`/service-orders/${selectedOrder.id}/items`, {
+          method: "POST",
+          body: JSON.stringify(item),
+        });
+      }
+
       await loadOrders(selectedOrder.id);
-      setMessage("Service Order updated successfully. The grid and form stayed synchronized on the current screen.");
+      setMessage(
+        `Service Order updated. Header synchronized and item grid applied with ${plan.create.length} addition(s), ${plan.update.length} edit(s), and ${plan.remove.length} removal(s).`,
+      );
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "The Service Order could not be updated. Review the form data and try again.",
+          "The Service Order could not be updated. Review the header data and item grid, then try again.",
         ),
       );
     } finally {
@@ -436,7 +453,7 @@ export function ServiceOrdersWorkspace() {
       <section className="hero-card">
         <div className="eyebrow">Operações</div>
         <h1 className="title">Service Orders</h1>
-        <p>Gerencie Service Orders no padrão obrigatório ANEXSYS com filtro, grade e formulário no mesmo fluxo operacional.</p>
+        <p>Estrutura operacional com contexto herdado de Company/Branch, Order Header e editable Items Grid no mesmo fluxo ANEXSYS.</p>
       </section>
 
       {message ? (
@@ -462,11 +479,7 @@ export function ServiceOrdersWorkspace() {
           <div className="filters-grid">
             <label className="field">
               <span>Search</span>
-              <input
-                placeholder="Number, status or priority"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
+              <input placeholder="Number, status or priority" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
             </label>
             <label className="field">
               <span>Status</span>
@@ -492,7 +505,7 @@ export function ServiceOrdersWorkspace() {
                 {filteredOrders.map((order) => (
                   <tr
                     key={order.id}
-                    className={order.id === activeOrderId ? "data-table__row--active" : undefined}
+                    className={order.id === activeOrderId && !showCreateForm ? "data-table__row--active" : undefined}
                     onClick={() => {
                       setShowCreateForm(false);
                       setActiveOrderId(order.id);
@@ -525,37 +538,57 @@ export function ServiceOrdersWorkspace() {
         </article>
 
         <article className="mini-card">
-          <div className="workspace-toolbar__copy">
-            <h3>{showCreateForm ? "Create Service Order" : selectedOrder ? "View / Edit Service Order" : "Service Order form"}</h3>
-            <p>
-              {showCreateForm
-                ? "Create the Service Order and keep the grid synchronized without leaving the current screen."
-                : selectedOrder
-                  ? "Review, update and keep the selected Service Order aligned with the operational grid."
-                  : "Select a Service Order in the grid or start a new one."}
-            </p>
+          <div className="workspace-toolbar">
+            <div className="workspace-toolbar__copy">
+              <h3>{showCreateForm ? "Create Service Order" : selectedOrder ? "Service Order Header + Items Grid" : "Service Order form"}</h3>
+              <p>
+                {showCreateForm
+                  ? "Company and Branch are inherited automatically from the active header context while you build the order header and items grid."
+                  : selectedOrder
+                    ? "Review the order header and keep multiple items editable without leaving the selected Service Order."
+                    : "Select a Service Order in the grid or start a new one."}
+              </p>
+            </div>
+            {!showCreateForm && selectedOrder && canWrite ? (
+              <button className="button-secondary" onClick={openCreateForm} type="button">
+                New Service Order
+              </button>
+            ) : null}
           </div>
 
           {detailLoading && !showCreateForm ? <div className="empty-state">Loading Service Order details…</div> : null}
 
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
-              <label className="field">
-                <span>Branch</span>
-                <select
-                  disabled={!showCreateForm || saving}
-                  required
-                  value={form.branchId}
-                  onChange={(event) => setForm((current) => ({ ...current, branchId: event.target.value }))}
-                >
-                  <option value="">Select branch</option>
-                  {branchOptions.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="mini-section">
+                <h4>Order Header</h4>
+                <div className="detail-grid">
+                  <div className="detail-field">
+                    <span>Company</span>
+                    <strong>{activeCompany?.displayName ?? "Select Company in the header"}</strong>
+                  </div>
+                  <div className="detail-field">
+                    <span>Branch</span>
+                    <strong>{activeBranch?.label ?? "Select Branch in the header"}</strong>
+                  </div>
+                  <div className="detail-field">
+                    <span>Order Number</span>
+                    <strong>{selectedOrder?.orderNo ?? "Generated after Save"}</strong>
+                  </div>
+                  <div className="detail-field">
+                    <span>Status</span>
+                    <strong>{selectedOrder?.status ?? "draft"}</strong>
+                  </div>
+                  <div className="detail-field">
+                    <span>Opened At</span>
+                    <strong>{selectedOrder ? formatDate(selectedOrder.openedAt) : "Generated after Save"}</strong>
+                  </div>
+                  <div className="detail-field">
+                    <span>Promised Delivery</span>
+                    <strong>{selectedOrder ? formatDate(selectedOrder.promisedDeliveryDate) : "Calculated after Save"}</strong>
+                  </div>
+                </div>
+              </div>
 
               <div className="field">
                 <SmartLookup
@@ -570,10 +603,10 @@ export function ServiceOrdersWorkspace() {
                   }
                   entityType="customers"
                   label="Customer"
-                  onChange={(option) => setForm((current) => ({ ...current, customerId: option?.id ?? "" }))}
+                  onChange={(option) => setHeaderForm((current) => ({ ...current, customerId: option?.id ?? "" }))}
                   options={customerLookupOptions}
                   searchPlaceholder="Search and select customer"
-                  value={form.customerId}
+                  value={headerForm.customerId}
                 />
               </div>
 
@@ -581,11 +614,11 @@ export function ServiceOrdersWorkspace() {
                 <span>Delivery type</span>
                 <select
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  value={form.deliveryType}
+                  value={headerForm.deliveryType}
                   onChange={(event) =>
-                    setForm((current) => ({
+                    setHeaderForm((current) => ({
                       ...current,
-                      deliveryType: event.target.value as ServiceOrderForm["deliveryType"],
+                      deliveryType: event.target.value as ServiceOrderHeaderForm["deliveryType"],
                     }))
                   }
                 >
@@ -596,24 +629,12 @@ export function ServiceOrdersWorkspace() {
               </label>
 
               <label className="field">
-                <span>Operational priority</span>
+                <span>Operational information</span>
                 <input
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  placeholder="Optional operational priority"
-                  value={form.operationalPriority}
-                  onChange={(event) => setForm((current) => ({ ...current, operationalPriority: event.target.value }))}
-                />
-              </label>
-
-              <label className="field">
-                <span>Payment terms (days)</span>
-                <input
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  min="0"
-                  type="number"
-                  inputMode="numeric"
-                  value={form.paymentTermsDays}
-                  onChange={(event) => setForm((current) => ({ ...current, paymentTermsDays: event.target.value }))}
+                  placeholder="Operational priority or short execution context"
+                  value={headerForm.operationalPriority}
+                  onChange={(event) => setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))}
                 />
               </label>
 
@@ -622,8 +643,8 @@ export function ServiceOrdersWorkspace() {
                 <textarea
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
                   rows={3}
-                  value={form.commercialNotes}
-                  onChange={(event) => setForm((current) => ({ ...current, commercialNotes: event.target.value }))}
+                  value={headerForm.commercialNotes}
+                  onChange={(event) => setHeaderForm((current) => ({ ...current, commercialNotes: event.target.value }))}
                 />
               </label>
 
@@ -632,131 +653,142 @@ export function ServiceOrdersWorkspace() {
                 <textarea
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
                   rows={3}
-                  value={form.customerNotes}
-                  onChange={(event) => setForm((current) => ({ ...current, customerNotes: event.target.value }))}
+                  value={headerForm.customerNotes}
+                  onChange={(event) => setHeaderForm((current) => ({ ...current, customerNotes: event.target.value }))}
                 />
               </label>
 
-              {showCreateForm ? (
-                <>
+              <div className="mini-section">
+                <div className="workspace-toolbar">
                   <div className="workspace-toolbar__copy">
-                    <h4>First item</h4>
-                    <p>The first item is mandatory for Service Order creation.</p>
+                    <h4>Items Grid</h4>
+                    <p>Add, edit, and remove multiple items while staying inside the same Service Order.</p>
                   </div>
-
-                  <label className="field">
-                    <span>Item type</span>
-                    <input
-                      required
+                  {(showCreateForm || canEditSelectedOrder) ? (
+                    <button
+                      className="button-secondary"
                       disabled={saving}
-                      value={form.itemType}
-                      onChange={(event) => setForm((current) => ({ ...current, itemType: event.target.value }))}
-                    />
-                  </label>
+                      onClick={() => setItemRows((current) => addServiceOrderItemGridRow(current))}
+                      type="button"
+                    >
+                      Add Item
+                    </button>
+                  ) : null}
+                </div>
 
-                  <label className="field">
-                    <span>Item description</span>
-                    <input
-                      required
-                      disabled={saving}
-                      value={form.itemDescription}
-                      onChange={(event) => setForm((current) => ({ ...current, itemDescription: event.target.value }))}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Quantity</span>
-                    <input
-                      disabled={saving}
-                      inputMode="decimal"
-                      min="0.0001"
-                      required
-                      type="number"
-                      value={form.itemQuantity}
-                      onChange={(event) => setForm((current) => ({ ...current, itemQuantity: event.target.value }))}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Unit price</span>
-                    <input
-                      disabled={saving}
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      type="number"
-                      value={form.itemUnitPrice}
-                      onChange={(event) => setForm((current) => ({ ...current, itemUnitPrice: event.target.value }))}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Item discount</span>
-                    <input
-                      disabled={saving}
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      type="number"
-                      value={form.itemDiscountValue}
-                      onChange={(event) => setForm((current) => ({ ...current, itemDiscountValue: event.target.value }))}
-                    />
-                  </label>
-                </>
-              ) : null}
-
-              {!showCreateForm && details ? (
-                <>
-                  <div className="detail-grid">
-                    <div className="detail-field">
-                      <span>Order number</span>
-                      <strong>{details.serviceOrder.orderNo}</strong>
-                    </div>
-                    <div className="detail-field">
-                      <span>Promised delivery</span>
-                      <strong>{formatDate(details.serviceOrder.promisedDeliveryDate)}</strong>
-                    </div>
-                    <div className="detail-field">
-                      <span>Status</span>
-                      <strong>{details.serviceOrder.status}</strong>
-                    </div>
-                    <div className="detail-field">
-                      <span>Total</span>
-                      <strong>{detailView?.totalValueDisplay ?? "—"}</strong>
-                    </div>
-                  </div>
-
-                  <div className="mini-section">
-                    <h4>Items</h4>
-                    {detailView?.hasItems ? (
-                      <ul className="placeholder-list">
-                        {detailView.itemLines.map((item) => (
-                          <li key={item.id}>{item.line}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="empty-state">No items linked to this Service Order yet.</div>
-                    )}
-                  </div>
-                </>
-              ) : null}
+                <div className="data-table-wrapper">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Product</th>
+                        <th>Service / Notes</th>
+                        <th>Qty</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleItemRows.map((row) => {
+                        const editable = saving ? false : showCreateForm || row.isEditing;
+                        const canMutateRow = showCreateForm || canEditSelectedOrder;
+                        return (
+                          <tr key={row.localId}>
+                            <td>#{row.itemNo}</td>
+                            <td>
+                              <input
+                                disabled={!editable}
+                                placeholder="Jeans, Dress, Shirt"
+                                value={row.itemType}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { itemType: event.target.value }),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                disabled={!editable}
+                                placeholder="Original Hem, Hem 58 cm, Left cuff only"
+                                value={row.description}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { description: event.target.value }),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                disabled={!editable}
+                                inputMode="decimal"
+                                min="0.0001"
+                                step="0.0001"
+                                type="number"
+                                value={row.quantity}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { quantity: event.target.value }),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <span className={`status-chip status-chip--${row.isNew ? "active" : row.status === "cancelled" ? "inactive" : "active"}`}>
+                                {row.isNew ? "new" : row.status}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="button-row">
+                                {canMutateRow ? (
+                                  <button
+                                    className="button-ghost"
+                                    disabled={saving}
+                                    onClick={() =>
+                                      setItemRows((current) =>
+                                        updateServiceOrderItemGridRow(current, row.localId, { isEditing: !row.isEditing }),
+                                      )
+                                    }
+                                    type="button"
+                                  >
+                                    {showCreateForm || row.isEditing ? "Finish Edit" : "Edit Item"}
+                                  </button>
+                                ) : null}
+                                {canMutateRow ? (
+                                  <button
+                                    className="button-ghost"
+                                    disabled={saving}
+                                    onClick={() => setItemRows((current) => removeServiceOrderItemGridRow(current, row.localId))}
+                                    type="button"
+                                  >
+                                    Remove Item
+                                  </button>
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {visibleItemRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={6}>
+                            <div className="empty-state">No active items in the grid. Use Add Item to continue.</div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
               <div className="button-row">
                 {showCreateForm ? (
                   <>
-                    <button className="button" disabled={saving} type="submit">
+                    <button className="button" disabled={saving || !canWrite} type="submit">
                       {saving ? "Saving…" : "Save"}
                     </button>
-                    <button
-                      className="button-secondary"
-                      onClick={() => {
-                        setShowCreateForm(false);
-                        if (selectedOrder) {
-                          setForm(mapDetailsToForm(details!));
-                        }
-                      }}
-                      type="button"
-                    >
+                    <button className="button-secondary" onClick={restoreSelectedOrderForm} type="button">
                       Cancel
                     </button>
                   </>
@@ -768,7 +800,7 @@ export function ServiceOrdersWorkspace() {
               </div>
             </form>
           ) : (
-            <div className="empty-state">Use the grid to select a Service Order or click New Service Order to begin.</div>
+            <div className="empty-state">Use the grid to select a Service Order or click New Service Order to start a new header with an editable items grid.</div>
           )}
         </article>
       </section>
