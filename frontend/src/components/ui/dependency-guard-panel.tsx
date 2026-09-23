@@ -1,5 +1,6 @@
 "use client";
 
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 
 export type DependencyValidationBlocker = {
@@ -22,7 +23,8 @@ type Props = {
 };
 
 export function DependencyGuardPanel({ validation }: Props) {
-  const { openWorkspaceInBrowserTab, openWorkspaceInNewTab } = useWorkspaceManager();
+  const { isMobile } = useWorkspaceViewportMode();
+  const { navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInNewTab } = useWorkspaceManager();
 
   return (
     <section className="dependency-guard-panel">
@@ -46,14 +48,20 @@ export function DependencyGuardPanel({ validation }: Props) {
             <div className="button-row">
               <button
                 className="button-secondary"
-                onClick={() => openWorkspaceInNewTab(blocker.workspacePath, blocker.label, { cloneCurrent: false })}
+                onClick={() =>
+                  isMobile
+                    ? navigateWithinWorkspace(blocker.workspacePath)
+                    : openWorkspaceInNewTab(blocker.workspacePath, blocker.label, { cloneCurrent: false })
+                }
                 type="button"
               >
-                Ver no workspace
+                {isMobile ? "Ver registro" : "Ver no workspace"}
               </button>
-              <button className="button-secondary" onClick={() => openWorkspaceInBrowserTab(blocker.workspacePath, blocker.label, { cloneCurrent: false })} type="button">
-                Abrir no navegador
-              </button>
+              {!isMobile ? (
+                <button className="button-secondary" onClick={() => openWorkspaceInBrowserTab(blocker.workspacePath, blocker.label, { cloneCurrent: false })} type="button">
+                  Abrir no navegador
+                </button>
+              ) : null}
             </div>
           </div>
         ))}

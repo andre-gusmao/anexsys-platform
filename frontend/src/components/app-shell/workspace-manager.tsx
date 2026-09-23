@@ -37,6 +37,9 @@ type WorkspaceManagerContextValue = {
   duplicateCurrentWorkspace: () => void;
   openWorkspaceInNewTab: (pathname: string, label: string, opts?: { subtitle?: string | null; cloneCurrent?: boolean }) => void;
   openWorkspaceInBrowserTab: (pathname?: string, label?: string, opts?: { subtitle?: string | null; cloneCurrent?: boolean }) => void;
+  openWorkspaceInBrowserWindow: (pathname?: string, label?: string, opts?: { subtitle?: string | null; cloneCurrent?: boolean }) => void;
+  getWorkspaceHref: (pathname: string, opts?: { preserveCurrent?: boolean }) => string;
+  navigateWithinWorkspace: (pathname: string) => void;
   buildWorkspaceHref: (pathname: string, tabId: string) => string;
   readScopedState: <T,>(scope: string) => T | null;
   writeScopedState: <T,>(scope: string, value: T) => void;
@@ -209,6 +212,31 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
     [currentTabId, pathname],
   );
 
+  const openWorkspaceInBrowserWindow = useCallback(
+    (nextPathname?: string, label?: string, opts: { subtitle?: string | null; cloneCurrent?: boolean } = {}) => {
+      const pathnameToOpen = nextPathname ?? pathname;
+      const labelToOpen = label ?? storeRef.current.tabs.find((candidate) => candidate.id === currentTabId)?.label ?? "Workspace";
+      const nextTabId = createTabId();
+      let nextStore = upsertWorkspaceTab(
+        storeRef.current,
+        createWorkspaceTab({
+          id: nextTabId,
+          pathname: pathnameToOpen,
+          label: labelToOpen,
+          subtitle: opts.subtitle,
+        }),
+      );
+      if (opts.cloneCurrent !== false && currentTabId) {
+        nextStore = cloneWorkspaceTabState(nextStore, currentTabId, nextTabId);
+      }
+      setStore(nextStore);
+      if (typeof window !== "undefined") {
+        window.open(buildWorkspaceHref(pathnameToOpen, nextTabId), "_blank", "popup=yes,width=1440,height=900,noopener");
+      }
+    },
+    [currentTabId, pathname],
+  );
+
   const duplicateCurrentWorkspace = useCallback(() => {
     const currentTab = currentTabId ? storeRef.current.tabs.find((candidate) => candidate.id === currentTabId) : null;
     if (!currentTab) {
@@ -220,6 +248,24 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       cloneCurrent: true,
     });
   }, [currentTabId, openWorkspaceInNewTab]);
+
+  const getWorkspaceHref = useCallback(
+    (nextPathname: string, opts: { preserveCurrent?: boolean } = {}) => {
+      if (opts.preserveCurrent !== false && currentTabId) {
+        return buildWorkspaceHref(nextPathname, currentTabId);
+      }
+
+      return nextPathname;
+    },
+    [currentTabId],
+  );
+
+  const navigateWithinWorkspace = useCallback(
+    (nextPathname: string) => {
+      router.push(getWorkspaceHref(nextPathname));
+    },
+    [getWorkspaceHref, router],
+  );
 
   const readScopedState = useCallback(
     <T,>(scope: string): T | null => {
@@ -264,6 +310,9 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       duplicateCurrentWorkspace,
       openWorkspaceInNewTab,
       openWorkspaceInBrowserTab,
+      openWorkspaceInBrowserWindow,
+      getWorkspaceHref,
+      navigateWithinWorkspace,
       buildWorkspaceHref,
       readScopedState,
       writeScopedState,
@@ -275,7 +324,10 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       closeWorkspace,
       currentTabId,
       duplicateCurrentWorkspace,
+      getWorkspaceHref,
+      navigateWithinWorkspace,
       ensureWorkspaceTab,
+      openWorkspaceInBrowserWindow,
       openWorkspaceInBrowserTab,
       openWorkspaceInNewTab,
       pathname,
@@ -298,7 +350,14 @@ export function useWorkspaceManager() {
 }
 
 export function useWorkspaceRegistration(input: { label: string; subtitle?: string | null }) {
-  const { currentTabId, openWorkspaceInBrowserTab, openWorkspaceInNewTab, registerCurrentWorkspace } = useWorkspaceManager();
+  const {
+    currentTabId,
+    openWorkspaceInBrowserTab,
+    openWorkspaceInBrowserWindow,
+    openWorkspaceInNewTab,
+    navigateWithinWorkspace,
+    registerCurrentWorkspace,
+  } = useWorkspaceManager();
   const { label, subtitle = null } = input;
 
   useEffect(() => {
@@ -308,7 +367,9 @@ export function useWorkspaceRegistration(input: { label: string; subtitle?: stri
   return {
     currentTabId,
     openWorkspaceInBrowserTab,
+    openWorkspaceInBrowserWindow,
     openWorkspaceInNewTab,
+    navigateWithinWorkspace,
   };
 }
 

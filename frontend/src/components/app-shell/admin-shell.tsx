@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
 import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
@@ -9,16 +10,24 @@ import { useSession } from "@/components/providers/session-provider";
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const { session, logout, errorMessage, clearError, selectCompany, selectBranch } = useSession();
-  const { duplicateCurrentWorkspace, openWorkspaceInBrowserTab } = useWorkspaceManager();
+  const { duplicateCurrentWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow } = useWorkspaceManager();
+  const { isDesktop, isMobile } = useWorkspaceViewportMode();
   const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
   const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const activeCompany = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
   const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const busy = pendingCompanySwitch || pendingBranchSwitch;
 
+  useEffect(() => {
+    if (isDesktop) {
+      setSidebarOpen(false);
+    }
+  }, [isDesktop]);
+
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${sidebarOpen ? " sidebar--open" : ""}`}>
         <div className="sidebar__brand">
           <div className="eyebrow">ANEXSYS</div>
           <h1>Administrative Portal</h1>
@@ -95,12 +104,19 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           ) : null}
         </section>
 
-        <RoleAwareNav />
+        <RoleAwareNav onNavigate={() => setSidebarOpen(false)} />
       </aside>
+
+      {!isDesktop && sidebarOpen ? <button aria-label="Fechar menu" className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} type="button" /> : null}
 
       <div className="workspace">
         <header className="topbar">
           <div>
+            {!isDesktop ? (
+              <button className="button-secondary topbar__menu-button" onClick={() => setSidebarOpen((current) => !current)} type="button">
+                {sidebarOpen ? "Fechar menu" : "Abrir menu"}
+              </button>
+            ) : null}
             <div className="eyebrow">Authenticated session</div>
             <h2>{session?.user?.displayName ?? "Authenticated user"}</h2>
             <div className="topbar__meta">
@@ -111,19 +127,26 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           </div>
 
           <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
-            <button className="button-secondary" onClick={duplicateCurrentWorkspace} type="button">
-              Duplicar workspace
-            </button>
-            <button className="button-secondary" onClick={() => openWorkspaceInBrowserTab()} type="button">
-              Abrir no navegador
-            </button>
+            {!isMobile ? (
+              <>
+                <button className="button-secondary" onClick={duplicateCurrentWorkspace} type="button">
+                  Duplicar workspace
+                </button>
+                <button className="button-secondary" onClick={() => openWorkspaceInBrowserTab()} type="button">
+                  Nova aba do navegador
+                </button>
+                <button className="button-secondary" onClick={() => openWorkspaceInBrowserWindow()} type="button">
+                  Nova janela
+                </button>
+              </>
+            ) : null}
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout
             </button>
           </div>
         </header>
 
-        <WorkspaceTabsBar />
+        {!isMobile ? <WorkspaceTabsBar /> : null}
 
         <main className="workspace__content">
           {errorMessage ? (

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import {
@@ -120,6 +121,7 @@ function formatWorkspaceMessage(error: unknown, fallback: string) {
 
 export function ServiceOrdersWorkspace() {
   const { session, hasAnyPermission, apiJson } = useSession();
+  const { isMobile } = useWorkspaceViewportMode();
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
@@ -155,12 +157,38 @@ export function ServiceOrdersWorkspace() {
   }, [orders, searchQuery, statusFilter]);
 
   const selectedOrder = details?.serviceOrder ?? null;
-  useWorkspaceRegistration({
+  const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
+  const { navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow, openWorkspaceInNewTab } = useWorkspaceRegistration({
     label: selectedOrder ? `Service Order · ${selectedOrder.orderNo}` : "Service Orders",
     subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
   });
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
+
+  const openRelatedCustomerWorkspace = useCallback(
+    (focusSection?: "measurements") => {
+      if (!selectedCustomerId) {
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set("focusCustomerId", selectedCustomerId);
+      if (focusSection) {
+        params.set("focusSection", focusSection);
+      }
+
+      const targetPath = `/customers?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+
+      openWorkspaceInNewTab(targetPath, focusSection === "measurements" ? "Measurements" : "Customer", {
+        cloneCurrent: false,
+      });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab, selectedCustomerId],
+  );
 
   const customerLookupOptions = useMemo<SmartLookupOption[]>(() => {
     const options = customers.map((customer) => ({
@@ -613,6 +641,50 @@ export function ServiceOrdersWorkspace() {
                   searchPlaceholder="Search and select customer"
                   value={headerForm.customerId}
                 />
+                <div className="button-row">
+                  <button
+                    className="button-secondary"
+                    disabled={!selectedCustomerId}
+                    onClick={() => openRelatedCustomerWorkspace()}
+                    type="button"
+                  >
+                    Abrir Customer
+                  </button>
+                  <button
+                    className="button-secondary"
+                    disabled={!selectedCustomerId}
+                    onClick={() => openRelatedCustomerWorkspace("measurements")}
+                    type="button"
+                  >
+                    Abrir Measurements
+                  </button>
+                  {!isMobile && selectedCustomerId ? (
+                    <>
+                      <button
+                        className="button-secondary"
+                        onClick={() =>
+                          openWorkspaceInBrowserTab(`/customers?focusCustomerId=${encodeURIComponent(selectedCustomerId)}`, "Customer", {
+                            cloneCurrent: false,
+                          })
+                        }
+                        type="button"
+                      >
+                        Customer em nova aba
+                      </button>
+                      <button
+                        className="button-secondary"
+                        onClick={() =>
+                          openWorkspaceInBrowserWindow(`/customers?focusCustomerId=${encodeURIComponent(selectedCustomerId)}`, "Customer", {
+                            cloneCurrent: false,
+                          })
+                        }
+                        type="button"
+                      >
+                        Customer em nova janela
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
 
               <label className="field">

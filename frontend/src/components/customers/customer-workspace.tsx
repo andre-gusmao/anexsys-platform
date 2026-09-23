@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
@@ -244,10 +245,13 @@ function formatCustomerSaveError(error: unknown) {
 }
 
 export function CustomerWorkspace() {
+  const searchParams = useSearchParams();
   const { hasAnyPermission, apiJson } = useSession();
   const canWriteCustomers = hasAnyPermission("customers.write");
   const canReadMeasurements = hasAnyPermission("measurements.read");
   const canWriteMeasurements = hasAnyPermission("measurements.write");
+  const focusCustomerId = searchParams.get("focusCustomerId");
+  const focusSection = searchParams.get("focusSection");
 
   const [searchQuery, setSearchQuery] = useWorkspaceScopedState("customers.searchQuery", "");
   const [statusFilter, setStatusFilter] = useWorkspaceScopedState("customers.statusFilter", "");
@@ -390,11 +394,35 @@ export function CustomerWorkspace() {
     }
   }, [activeCustomerId, customers, loadCustomerDetails, showCreateForm]);
 
+  useEffect(() => {
+    if (!focusCustomerId || focusCustomerId === activeCustomerId || showCreateForm) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadCustomerDetails(focusCustomerId);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeCustomerId, focusCustomerId, loadCustomerDetails, showCreateForm]);
+
   const selectedCustomer = profile?.customer ?? null;
   useWorkspaceRegistration({
     label: selectedCustomer ? `Cliente · ${selectedCustomer.legalName}` : "Clientes",
     subtitle: showCreateForm ? "Novo cadastro" : selectedCustomer?.cpfCnpj ?? null,
   });
+
+  useEffect(() => {
+    if (focusSection !== "measurements" || selectedCustomer?.id !== focusCustomerId) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById("customer-measurements-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [focusCustomerId, focusSection, selectedCustomer?.id]);
 
   const customerSuggestions = useMemo(
     () =>
@@ -926,7 +954,7 @@ export function CustomerWorkspace() {
                     </form>
                   ) : null}
 
-                  <section className="mini-section">
+                  <section className="mini-section" id="customer-measurements-section">
                     <h4>Contatos principais</h4>
                     <ul className="placeholder-list">
                       {(profile?.contacts ?? []).map((contact) => (

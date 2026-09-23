@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 
@@ -89,10 +90,11 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function RoleAwareNav() {
+export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const pathname = usePathname();
   const { hasAnyPermission } = useSession();
-  const { openWorkspaceInNewTab } = useWorkspaceManager();
+  const { getWorkspaceHref, openWorkspaceInNewTab } = useWorkspaceManager();
+  const { isMobile } = useWorkspaceViewportMode();
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
   const visibleSections = navSections
@@ -119,18 +121,20 @@ export function RoleAwareNav() {
               return (
                 <li key={item.href}>
                    <div className={`nav-link${active ? " nav-link--active" : ""}`}>
-                     <Link className="nav-link__main" href={item.href}>
+                     <Link className="nav-link__main" href={getWorkspaceHref(item.href)} onClick={onNavigate}>
                        <span>{item.label}</span>
                        <span className="nav-hint">{item.hint}</span>
                      </Link>
-                     <button
-                       aria-label={`Abrir ${item.label} em novo workspace`}
-                       className="nav-link__quick-action"
-                       onClick={() => openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false })}
-                       type="button"
-                     >
-                       +
-                     </button>
+                     {!isMobile ? (
+                       <button
+                         aria-label={`Abrir ${item.label} em novo workspace`}
+                         className="nav-link__quick-action"
+                         onClick={() => openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false })}
+                         type="button"
+                       >
+                         +
+                       </button>
+                     ) : null}
                    </div>
                 </li>
               );
