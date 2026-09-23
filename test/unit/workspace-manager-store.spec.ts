@@ -7,6 +7,7 @@ import {
   createEmptyWorkspaceStore,
   createWorkspaceTab,
   getWorkspaceScopedState,
+  normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
   setWorkspaceScopedState,
@@ -36,6 +37,18 @@ test('creates, updates, clones, and removes workspace tabs', () => {
 test('builds href with workspace query param', () => {
   assert.equal(buildWorkspaceHref('/service-orders', 'tab-10'), '/service-orders?workspaceTab=tab-10');
   assert.equal(buildWorkspaceHref('/customers?mode=detail', 'tab-11'), '/customers?mode=detail&workspaceTab=tab-11');
+});
+
+test('normalizes workspace pathnames and strips workspace query state', () => {
+  assert.equal(normalizeWorkspacePathname('/dashboard?workspaceTab=tab-1'), '/dashboard');
+  assert.equal(
+    normalizeWorkspacePathname('/customers?workspaceMode=new&workspaceTab=tab-2'),
+    '/customers?workspaceMode=new',
+  );
+  assert.equal(
+    createWorkspaceTab({ id: 'tab-3', pathname: '/service-orders?focusServiceOrderId=15&workspaceTab=tab-9', label: 'OS #15' }).pathname,
+    '/service-orders?focusServiceOrderId=15',
+  );
 });
 
 test('ignores unnamed or empty workspace tabs', () => {
