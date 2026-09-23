@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { isMeaningfulWorkspaceTab } from "@/components/app-shell/workspace-manager-store";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
 import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
@@ -19,6 +20,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const busy = pendingCompanySwitch || pendingBranchSwitch;
   const sidebarVisible = isDesktop || sidebarOpen;
+  const canOpenCurrentWorkspaceExternally = currentTab ? isMeaningfulWorkspaceTab(currentTab) : false;
 
   return (
     <div className="app-shell">
@@ -124,10 +126,10 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
             {!isMobile ? (
               <>
-                <button className="button-secondary" disabled={!currentTab} onClick={() => openWorkspaceInBrowserTab()} type="button">
+                <button className="button-secondary" disabled={!canOpenCurrentWorkspaceExternally} onClick={() => openWorkspaceInBrowserTab()} type="button">
                   Nova aba do navegador
                 </button>
-                <button className="button-secondary" disabled={!currentTab} onClick={() => openWorkspaceInBrowserWindow()} type="button">
+                <button className="button-secondary" disabled={!canOpenCurrentWorkspaceExternally} onClick={() => openWorkspaceInBrowserWindow()} type="button">
                   Nova janela
                 </button>
               </>

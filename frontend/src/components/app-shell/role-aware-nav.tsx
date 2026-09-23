@@ -129,7 +129,11 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
                        <button
                          aria-label={`Abrir ${item.label} em novo workspace`}
                          className="nav-link__quick-action"
-                         onClick={() => openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false })}
+                         onClick={(event) => {
+                           event.preventDefault();
+                           event.stopPropagation();
+                           openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false });
+                         }}
                          type="button"
                        >
                          +
