@@ -185,7 +185,8 @@ export function CompaniesWorkspace() {
         }),
       });
       const updated = normalizeCompanyRecord(updatedResponse, 0, { fallbackId: activeCompany.id });
-      setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
+      setCompanies((current) => current.map((company) => (company.id === activeCompany.id ? updated : company)));
+      setActiveCompanyId(activeCompany.id);
       setForm(mapCompanyToForm(updated));
       setMessage("Empresa atualizada com sucesso.");
     } catch (error) {
@@ -204,7 +205,8 @@ export function CompaniesWorkspace() {
         method: "POST",
       });
       const updated = normalizeCompanyRecord(updatedResponse, 0, { fallbackId: activeCompany.id });
-      setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
+      setCompanies((current) => current.map((company) => (company.id === activeCompany.id ? updated : company)));
+      setActiveCompanyId(activeCompany.id);
       setMessage(action === "activate" ? "Empresa reativada." : "Empresa desativada.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "O status da empresa não pôde ser alterado.");
