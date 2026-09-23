@@ -25,6 +25,7 @@ The focus of this delivery was implementation.
 - `frontend/src/components/app-shell/workspace-manager.tsx`
 
 ### Frontend workspaces with preserved state and dependency guard UX
+- `frontend/src/components/admin/access-workspace.tsx`
 - `frontend/src/components/admin/branches-workspace.tsx`
 - `frontend/src/components/admin/companies-workspace.tsx`
 - `frontend/src/components/customers/customer-workspace.tsx`
@@ -68,6 +69,7 @@ The focus of this delivery was implementation.
 - `AuthenticatedApp`
 
 ### Operational/admin workspaces
+- Access workspace
 - Companies workspace
 - Branches workspace
 - Customers workspace

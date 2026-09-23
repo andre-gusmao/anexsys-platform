@@ -102,11 +102,15 @@ export function BranchesWorkspace() {
     setLoading(true);
     try {
       const records = await apiJson<BranchRecord[]>("/branches");
+      const resolvedActiveBranch =
+        records.find((branch) => branch.id === activeBranchId) ??
+        records[0] ??
+        null;
       setBranches(records);
-      setActiveBranchId((current) => current ?? records[0]?.id ?? null);
-      if (!showCreateForm && records[0]) {
-        setForm(mapBranchToForm(records[0]));
-        void loadChildren(records[0].id);
+      setActiveBranchId(resolvedActiveBranch?.id ?? null);
+      if (!showCreateForm && resolvedActiveBranch) {
+        setForm(mapBranchToForm(resolvedActiveBranch));
+        void loadChildren(resolvedActiveBranch.id);
       }
       setMessage(null);
       setDependencyValidation(null);
@@ -115,7 +119,7 @@ export function BranchesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [apiJson, canRead, loadChildren, setActiveBranchId, setForm, showCreateForm]);
+  }, [activeBranchId, apiJson, canRead, loadChildren, setActiveBranchId, setForm, showCreateForm]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

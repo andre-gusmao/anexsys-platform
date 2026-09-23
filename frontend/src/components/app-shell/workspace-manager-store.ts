@@ -113,6 +113,9 @@ export function clearWorkspaceScopedState(store: WorkspaceStore, tabId: string, 
 }
 
 export function buildWorkspaceHref(pathname: string, tabId: string): string {
-  const separator = pathname.includes("?") ? "&" : "?";
-  return `${pathname}${separator}${WORKSPACE_QUERY_PARAM}=${encodeURIComponent(tabId)}`;
+  const [basePath, rawQuery = ""] = pathname.split("?");
+  const params = new URLSearchParams(rawQuery);
+  params.set(WORKSPACE_QUERY_PARAM, tabId);
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
 }

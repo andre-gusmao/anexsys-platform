@@ -266,26 +266,32 @@ export function AccessWorkspace() {
         canReadPermissions ? apiJson<PermissionRecord[]>("/permissions") : Promise.resolve([]),
         canReadCommunities ? apiJson<CommunityRecord[]>("/communities") : Promise.resolve([]),
       ]);
+      const resolvedActiveUser = userRecords.find((record) => record.id === activeUserId) ?? userRecords[0] ?? null;
+      const resolvedActiveRole = roleRecords.find((record) => record.id === activeRoleId) ?? roleRecords[0] ?? null;
+      const resolvedActivePermission =
+        permissionRecords.find((record) => record.id === activePermissionId) ?? permissionRecords[0] ?? null;
+      const resolvedActiveCommunity =
+        communityRecords.find((record) => record.id === activeCommunityId) ?? communityRecords[0] ?? null;
       setBranches(branchRecords);
       setUsers(userRecords);
       setRoles(roleRecords);
       setPermissions(permissionRecords);
       setCommunities(communityRecords);
-      setActiveUserId((current) => current ?? userRecords[0]?.id ?? null);
-      setActiveRoleId((current) => current ?? roleRecords[0]?.id ?? null);
-      setActivePermissionId((current) => current ?? permissionRecords[0]?.id ?? null);
-      setActiveCommunityId((current) => current ?? communityRecords[0]?.id ?? null);
-      if (!showCreateUser && userRecords[0]) {
-        setUserForm(mapUserToForm(userRecords[0]));
+      setActiveUserId(resolvedActiveUser?.id ?? null);
+      setActiveRoleId(resolvedActiveRole?.id ?? null);
+      setActivePermissionId(resolvedActivePermission?.id ?? null);
+      setActiveCommunityId(resolvedActiveCommunity?.id ?? null);
+      if (!showCreateUser && resolvedActiveUser) {
+        setUserForm(mapUserToForm(resolvedActiveUser));
       }
-      if (!showCreateRole && roleRecords[0]) {
-        setRoleForm(mapRoleToForm(roleRecords[0]));
+      if (!showCreateRole && resolvedActiveRole) {
+        setRoleForm(mapRoleToForm(resolvedActiveRole));
       }
-      if (!showCreatePermission && permissionRecords[0]) {
-        setPermissionForm(mapPermissionToForm(permissionRecords[0]));
+      if (!showCreatePermission && resolvedActivePermission) {
+        setPermissionForm(mapPermissionToForm(resolvedActivePermission));
       }
-      if (!showCreateCommunity && communityRecords[0]) {
-        setCommunityForm(mapCommunityToForm(communityRecords[0]));
+      if (!showCreateCommunity && resolvedActiveCommunity) {
+        setCommunityForm(mapCommunityToForm(resolvedActiveCommunity));
       }
       setMessage(null);
     } catch (error) {
@@ -304,6 +310,10 @@ export function AccessWorkspace() {
     showCreatePermission,
     showCreateRole,
     showCreateUser,
+    activeCommunityId,
+    activePermissionId,
+    activeRoleId,
+    activeUserId,
   ]);
 
   const loadUserSummary = useCallback(

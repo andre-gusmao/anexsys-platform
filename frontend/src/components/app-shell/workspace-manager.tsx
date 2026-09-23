@@ -139,6 +139,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
   const closeWorkspace = useCallback(
     (tabId: string) => {
+      const closingTabIndex = storeRef.current.tabs.findIndex((candidate) => candidate.id === tabId);
       const nextStore = removeWorkspaceTab(storeRef.current, tabId);
       setStore(nextStore);
 
@@ -155,7 +156,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         return;
       }
 
-      const fallbackTab = remainingTabs[Math.max(remainingTabs.findIndex((candidate) => candidate.id === tabId) - 1, 0)] ?? remainingTabs[0];
+      const fallbackTab = remainingTabs[Math.max(Math.min(closingTabIndex, remainingTabs.length - 1), 0)] ?? remainingTabs[0];
       router.push(buildWorkspaceHref(fallbackTab.pathname, fallbackTab.id));
     },
     [currentTabId, router],
