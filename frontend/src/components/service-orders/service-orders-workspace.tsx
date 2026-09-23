@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
@@ -160,6 +160,7 @@ export function ServiceOrdersWorkspace() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [details, setDetails] = useState<ServiceOrderDetail | null>(null);
   const [form, setForm] = useState<ServiceOrderForm>(createEmptyForm(session?.activeBranchId));
+  const latestDetailRequestId = useRef(0);
 
   const filteredOrders = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
@@ -205,20 +206,30 @@ export function ServiceOrdersWorkspace() {
 
   const loadDetails = useCallback(
     async (serviceOrderId: string) => {
+      const requestId = latestDetailRequestId.current + 1;
+      latestDetailRequestId.current = requestId;
       setDetailLoading(true);
       try {
         const response = await apiJson<ServiceOrderDetail>(`/service-orders/${serviceOrderId}`);
+        if (latestDetailRequestId.current !== requestId) {
+          return;
+        }
         setDetails(response);
         if (!showCreateForm) {
           setForm(mapDetailsToForm(response));
         }
         setMessage(null);
       } catch (error) {
+        if (latestDetailRequestId.current !== requestId) {
+          return;
+        }
         setMessage(
           formatWorkspaceMessage(error, "The Service Order details could not be loaded. Review your access and try again."),
         );
       } finally {
-        setDetailLoading(false);
+        if (latestDetailRequestId.current === requestId) {
+          setDetailLoading(false);
+        }
       }
     },
     [apiJson, showCreateForm],
@@ -243,7 +254,7 @@ export function ServiceOrdersWorkspace() {
               : response[0]?.id ?? null;
         setActiveOrderId(nextActiveId);
         if (nextActiveId) {
-          void loadDetails(nextActiveId);
+          await loadDetails(nextActiveId);
         } else {
           setDetails(null);
         }
