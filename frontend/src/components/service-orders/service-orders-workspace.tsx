@@ -183,7 +183,7 @@ export function ServiceOrdersWorkspace() {
   );
 
   const selectedOrder = details?.serviceOrder ?? null;
-  const canEditSelectedOrder = canWrite && selectedOrder?.status !== "cancelled";
+  const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
 
   const customerLookupOptions = useMemo<SmartLookupOption[]>(() => {
     const options = customers.map((customer) => ({
@@ -209,6 +209,9 @@ export function ServiceOrdersWorkspace() {
       try {
         const response = await apiJson<ServiceOrderDetail>(`/service-orders/${serviceOrderId}`);
         setDetails(response);
+        if (!showCreateForm) {
+          setForm(mapDetailsToForm(response));
+        }
         setMessage(null);
       } catch (error) {
         setMessage(
@@ -218,7 +221,7 @@ export function ServiceOrdersWorkspace() {
         setDetailLoading(false);
       }
     },
-    [apiJson],
+    [apiJson, showCreateForm],
   );
 
   const loadOrders = useCallback(
@@ -295,16 +298,8 @@ export function ServiceOrdersWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [loadCustomers]);
 
-  useEffect(() => {
-    if (details && !showCreateForm) {
-      setForm(mapDetailsToForm(details));
-    }
-  }, [details, showCreateForm]);
-
   function openCreateForm() {
     setShowCreateForm(true);
-    setActiveOrderId(null);
-    setDetails(null);
     setForm(createEmptyForm(session?.activeBranchId));
     setMessage(null);
   }
@@ -355,8 +350,8 @@ export function ServiceOrdersWorkspace() {
       const createdId = created.serviceOrder.id;
       setShowCreateForm(false);
       setActiveOrderId(createdId);
-      setMessage("Service Order saved successfully. The new record is already selected and ready for update.");
       await loadOrders(createdId);
+      setMessage("Service Order saved successfully. The new record is already selected and ready for update.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
@@ -391,8 +386,8 @@ export function ServiceOrdersWorkspace() {
           customerNotes: form.customerNotes || null,
         }),
       });
-      setMessage("Service Order updated successfully. The grid and form stayed synchronized on the current screen.");
       await loadOrders(selectedOrder.id);
+      setMessage("Service Order updated successfully. The grid and form stayed synchronized on the current screen.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
@@ -592,6 +587,8 @@ export function ServiceOrdersWorkspace() {
                 <span>Payment terms (days)</span>
                 <input
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                  min="0"
+                  type="number"
                   inputMode="numeric"
                   value={form.paymentTermsDays}
                   onChange={(event) => setForm((current) => ({ ...current, paymentTermsDays: event.target.value }))}
@@ -650,7 +647,9 @@ export function ServiceOrdersWorkspace() {
                     <input
                       disabled={saving}
                       inputMode="decimal"
+                      min="0.0001"
                       required
+                      type="number"
                       value={form.itemQuantity}
                       onChange={(event) => setForm((current) => ({ ...current, itemQuantity: event.target.value }))}
                     />
@@ -661,6 +660,9 @@ export function ServiceOrdersWorkspace() {
                     <input
                       disabled={saving}
                       inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      type="number"
                       value={form.itemUnitPrice}
                       onChange={(event) => setForm((current) => ({ ...current, itemUnitPrice: event.target.value }))}
                     />
@@ -671,6 +673,9 @@ export function ServiceOrdersWorkspace() {
                     <input
                       disabled={saving}
                       inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      type="number"
                       value={form.itemDiscountValue}
                       onChange={(event) => setForm((current) => ({ ...current, itemDiscountValue: event.target.value }))}
                     />
