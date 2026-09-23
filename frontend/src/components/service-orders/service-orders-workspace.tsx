@@ -243,8 +243,7 @@ export function ServiceOrdersWorkspace() {
       }
       setLoading(true);
       try {
-        const suffix = searchQuery.trim() ? `?q=${encodeURIComponent(searchQuery.trim())}` : "";
-        const response = await apiJson<ServiceOrderRecord[]>(`/service-orders${suffix}`);
+        const response = await apiJson<ServiceOrderRecord[]>("/service-orders");
         setOrders(response);
         const nextActiveId =
           preferredActiveId !== undefined
@@ -270,7 +269,7 @@ export function ServiceOrdersWorkspace() {
         setLoading(false);
       }
     },
-    [activeOrderId, apiJson, canRead, loadDetails, searchQuery],
+    [activeOrderId, apiJson, canRead, loadDetails],
   );
 
   const loadCustomers = useCallback(async () => {
