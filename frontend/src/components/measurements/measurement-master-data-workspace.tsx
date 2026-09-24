@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import {
@@ -42,6 +42,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [records, setRecords] = useState<Array<BodyPartRecord | UnitRecord>>([]);
+  const [searchQuery, setSearchQuery] = useWorkspaceScopedState(`measurement-master.${mode}.searchQuery`, "");
   const [newDisplayName, setNewDisplayName] = useWorkspaceScopedState(`measurement-master.${mode}.newDisplayName`, "");
   const [newCode, setNewCode] = useWorkspaceScopedState(`measurement-master.${mode}.newCode`, "");
   const [newSortOrder, setNewSortOrder] = useWorkspaceScopedState(`measurement-master.${mode}.newSortOrder`, "0");
@@ -70,9 +71,21 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
     [mode],
   );
   const basePath = mode === "body-parts" ? "/body-parts" : "/measurement-units";
-  const { navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+  const { closeWorkspace } = useWorkspaceManager();
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
     label: workspaceMode === "new" ? (mode === "body-parts" ? "Body Part: New" : "Measurement Unit: New") : config.title,
   });
+  const isFormWorkspace = workspaceMode === "new";
+  const filteredRecords = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return records;
+    }
+
+    return records.filter((record) =>
+      [record.displayName, "code" in record ? record.code : ""].some((value) => value.toLowerCase().includes(normalizedQuery)),
+    );
+  }, [records, searchQuery]);
 
   const loadRecords = useCallback(async () => {
     if (!canRead) {
@@ -152,6 +165,19 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
     openWorkspaceInNewTab(targetPath, label, { cloneCurrent: false });
   }, [basePath, isMobile, mode, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
+  const closeCreateWorkspace = useCallback(() => {
+    if (!currentTabId || isMobile) {
+      navigateWithinWorkspace(basePath);
+      return;
+    }
+
+    const closingTabId = currentTabId;
+    openWorkspaceInNewTab(basePath, config.title, { cloneCurrent: false });
+    window.setTimeout(() => {
+      closeWorkspace(closingTabId);
+    }, 0);
+  }, [basePath, closeWorkspace, config.title, currentTabId, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
+
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWrite) return;
@@ -176,9 +202,6 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
       clearDuplicate();
       setMessage(`${config.title} updated successfully.`);
       await loadRecords();
-      if (workspaceMode === "new") {
-        navigateWithinWorkspace(basePath);
-      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `The ${config.title.toLowerCase()} record could not be saved.`);
     } finally {
@@ -238,99 +261,108 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
       ) : null}
 
       <section className="workspace-split">
-        <article className="mini-card">
-          <div className="workspace-toolbar">
-            <div className="workspace-toolbar__copy">
-              <h3>Cadastros ativos</h3>
-              <p>{loading ? "Carregando…" : `${records.length} registro(s) disponível(is)`}</p>
+        {!isFormWorkspace ? (
+          <article className="mini-card">
+            <div className="workspace-toolbar">
+              <div className="workspace-toolbar__copy">
+                <h3>Cadastros ativos</h3>
+                <p>{loading ? "Carregando…" : `${filteredRecords.length} registro(s) disponível(is)`}</p>
+              </div>
+              {canWrite ? (
+                <button className="button" onClick={openCreateWorkspace} type="button">
+                  Add
+                </button>
+              ) : null}
             </div>
-            {canWrite ? (
-              <button className="button" onClick={openCreateWorkspace} type="button">
-                Novo cadastro
-              </button>
-            ) : null}
-          </div>
 
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  {mode === "units" ? <th>Código</th> : null}
-                  <th>Nome</th>
-                  <th>Ordem</th>
-                  {canWrite ? <th>Ações</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    {mode === "units" ? (
+            <div className="filters-grid">
+              <label className="field">
+                <span>Filtro</span>
+                <input placeholder={mode === "body-parts" ? "Buscar parte do corpo" : "Buscar código ou nome"} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+              </label>
+            </div>
+
+            <div className="data-table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    {mode === "units" ? <th>Código</th> : null}
+                    <th>Nome</th>
+                    <th>Ordem</th>
+                    {canWrite ? <th>Ações</th> : null}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecords.map((record) => (
+                    <tr key={record.id}>
+                      {mode === "units" ? (
+                        <td>
+                          <input
+                            disabled={!canWrite}
+                            value={editing[record.id]?.code ?? ""}
+                            onChange={(event) =>
+                              setEditing((current) => ({
+                                ...current,
+                                [record.id]: { ...current[record.id], code: event.target.value },
+                              }))
+                            }
+                          />
+                        </td>
+                      ) : null}
                       <td>
                         <input
                           disabled={!canWrite}
-                          value={editing[record.id]?.code ?? ""}
+                          value={editing[record.id]?.displayName ?? ""}
                           onChange={(event) =>
                             setEditing((current) => ({
                               ...current,
-                              [record.id]: { ...current[record.id], code: event.target.value },
+                              [record.id]: { ...current[record.id], displayName: event.target.value },
                             }))
                           }
                         />
                       </td>
-                    ) : null}
-                    <td>
-                      <input
-                        disabled={!canWrite}
-                        value={editing[record.id]?.displayName ?? ""}
-                        onChange={(event) =>
-                          setEditing((current) => ({
-                            ...current,
-                            [record.id]: { ...current[record.id], displayName: event.target.value },
-                          }))
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        disabled={!canWrite}
-                        inputMode="numeric"
-                        value={editing[record.id]?.sortOrder ?? "0"}
-                        onChange={(event) =>
-                          setEditing((current) => ({
-                            ...current,
-                            [record.id]: { ...current[record.id], sortOrder: event.target.value },
-                          }))
-                        }
-                      />
-                    </td>
-                    {canWrite ? (
                       <td>
-                        <button
-                          aria-label={`Salvar ${mode === "units" ? `unidade ${editing[record.id]?.code ?? record.id}` : `parte do corpo ${editing[record.id]?.displayName ?? record.id}`}`}
-                          className="button-secondary"
-                          disabled={saving}
-                          onClick={() => void handleUpdate(record.id)}
-                          type="button"
-                        >
-                          Salvar
-                        </button>
+                        <input
+                          disabled={!canWrite}
+                          inputMode="numeric"
+                          value={editing[record.id]?.sortOrder ?? "0"}
+                          onChange={(event) =>
+                            setEditing((current) => ({
+                              ...current,
+                              [record.id]: { ...current[record.id], sortOrder: event.target.value },
+                            }))
+                          }
+                        />
                       </td>
-                    ) : null}
-                  </tr>
-                ))}
-                {!loading && records.length === 0 ? (
-                  <tr>
-                    <td colSpan={mode === "units" ? 4 : 3}>
-                      <div className="empty-state">Nenhum registro disponível.</div>
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </article>
+                      {canWrite ? (
+                        <td>
+                          <button
+                            aria-label={`Salvar ${mode === "units" ? `unidade ${editing[record.id]?.code ?? record.id}` : `parte do corpo ${editing[record.id]?.displayName ?? record.id}`}`}
+                            className="button-secondary"
+                            disabled={saving}
+                            onClick={() => void handleUpdate(record.id)}
+                            type="button"
+                          >
+                            Salvar
+                          </button>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                  {!loading && filteredRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={mode === "units" ? 4 : 3}>
+                        <div className="empty-state">Nenhum registro disponível.</div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        ) : null}
 
-        {canWrite ? (
+        {canWrite && isFormWorkspace ? (
           <article className="mini-card" id="measurement-master-create-form">
             <h3>Novo cadastro</h3>
             <form className="form-grid" onSubmit={handleCreate}>
@@ -390,7 +422,10 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
               </label>
               <div className="button-row">
                 <button className="button" disabled={saving || duplicateStatus !== "idle"} type="submit">
-                  {saving ? "Salvando…" : config.createButton}
+                  {saving ? "Salvando…" : "Save"}
+                </button>
+                <button className="button-secondary" onClick={closeCreateWorkspace} type="button">
+                  Close
                 </button>
               </div>
             </form>

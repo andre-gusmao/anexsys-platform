@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
@@ -162,10 +162,13 @@ export function ServiceOrdersWorkspace() {
 
   const selectedOrder = details?.serviceOrder ?? null;
   const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
-  const { navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow, openWorkspaceInNewTab } = useWorkspaceRegistration({
+  const { closeWorkspace } = useWorkspaceManager();
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow, openWorkspaceInNewTab } = useWorkspaceRegistration({
     label: showCreateForm ? "OS: New" : selectedOrder ? `OS #${selectedOrder.orderNo}` : "Service Orders",
     subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
   });
+  const isFormWorkspace = workspaceMode === "new" || Boolean(focusServiceOrderId);
+  const isListWorkspace = !isFormWorkspace;
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
@@ -334,16 +337,14 @@ export function ServiceOrdersWorkspace() {
   }, [activeOrderId, focusServiceOrderId, loadDetails, setActiveOrderId, showCreateForm]);
 
   useEffect(() => {
-    if (!activeOrderId || showCreateForm || selectedOrder?.id === activeOrderId || focusServiceOrderId) {
+    if (!isListWorkspace) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      void loadDetails(activeOrderId);
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [activeOrderId, focusServiceOrderId, loadDetails, selectedOrder?.id, showCreateForm]);
+    setShowCreateForm(false);
+    setActiveOrderId(null);
+    setDetails(null);
+  }, [isListWorkspace, setActiveOrderId, setShowCreateForm]);
 
   const openCreateForm = useCallback(() => {
     setShowCreateForm(true);
@@ -364,6 +365,38 @@ export function ServiceOrdersWorkspace() {
     openWorkspaceInNewTab(targetPath, "OS: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
   }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
+  const openServiceOrderWorkspace = useCallback(
+    (order: ServiceOrderRecord) => {
+      const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+
+      openWorkspaceInNewTab(targetPath, `OS #${order.orderNo}`, {
+        cloneCurrent: false,
+        subtitle: order.deliveryType,
+      });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const closeServiceOrderWorkspace = useCallback(() => {
+    if (!currentTabId || isMobile) {
+      setShowCreateForm(false);
+      setActiveOrderId(null);
+      setDetails(null);
+      navigateWithinWorkspace("/service-orders");
+      return;
+    }
+
+    const closingTabId = currentTabId;
+    openWorkspaceInNewTab("/service-orders", "Service Orders", { cloneCurrent: false });
+    window.setTimeout(() => {
+      closeWorkspace(closingTabId);
+    }, 0);
+  }, [closeWorkspace, currentTabId, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab, setActiveOrderId, setShowCreateForm]);
+
   useEffect(() => {
     if (workspaceMode !== "new") {
       return;
@@ -375,20 +408,6 @@ export function ServiceOrdersWorkspace() {
 
     return () => window.clearTimeout(timeoutId);
   }, [openCreateForm, workspaceMode]);
-
-  function restoreSelectedOrderForm() {
-    setShowCreateForm(false);
-    if (workspaceMode === "new") {
-      navigateWithinWorkspace("/service-orders");
-    }
-    if (details) {
-      setHeaderForm(mapDetailsToHeaderForm(details));
-      setItemRows(mapServiceOrderItemsToGridRows(details.items));
-    } else {
-      setHeaderForm(createEmptyHeaderForm());
-      setItemRows([createEmptyServiceOrderItemGridRow(1)]);
-    }
-  }
 
   function validateItems(requireAtLeastOneItem: boolean) {
     if (requireAtLeastOneItem && visibleItemRows.length === 0) {
@@ -556,81 +575,75 @@ export function ServiceOrdersWorkspace() {
       ) : null}
 
       <section className="workspace-split">
-        <article className="mini-card">
-          <div className="workspace-toolbar">
-            <div className="workspace-toolbar__copy">
-              <h3>Operational grid</h3>
-              <p>{loading ? "Loading…" : `${filteredOrders.length} Service Order(s) visible`}</p>
+        {isListWorkspace ? (
+          <article className="mini-card">
+            <div className="workspace-toolbar">
+              <div className="workspace-toolbar__copy">
+                <h3>Operational grid</h3>
+                <p>{loading ? "Loading…" : `${filteredOrders.length} Service Order(s) visible`}</p>
+              </div>
+              {canWrite ? (
+                <button className="button" onClick={openCreateWorkspace} type="button">
+                  Add
+                </button>
+              ) : null}
             </div>
-            {canWrite ? (
-              <button className="button" onClick={openCreateWorkspace} type="button">
-                New Service Order
-              </button>
-            ) : null}
-          </div>
 
-          <div className="filters-grid">
-            <label className="field">
-              <span>Search</span>
-              <input placeholder="Number, status or priority" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
-            </label>
-            <label className="field">
-              <span>Status</span>
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="">All</option>
-                <option value="open">Open</option>
-                <option value="approved">Approved</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </label>
-          </div>
+            <div className="filters-grid">
+              <label className="field">
+                <span>Search</span>
+                <input placeholder="Number, status or priority" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+              </label>
+              <label className="field">
+                <span>Status</span>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                  <option value="">All</option>
+                  <option value="open">Open</option>
+                  <option value="approved">Approved</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </label>
+            </div>
 
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Service Order</th>
-                  <th>Delivery</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className={order.id === activeOrderId && !showCreateForm ? "data-table__row--active" : undefined}
-                    onClick={() => {
-                      setShowCreateForm(false);
-                      setActiveOrderId(order.id);
-                      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}`);
-                      void loadDetails(order.id);
-                    }}
-                  >
-                    <td>
-                      <strong>{order.orderNo}</strong>
-                      <div className="table-subtle">
-                        {order.deliveryType}
-                        {order.operationalPriority ? ` · ${order.operationalPriority}` : ""}
-                      </div>
-                    </td>
-                    <td>{formatDate(order.promisedDeliveryDate)}</td>
-                    <td>
-                      <span className={`status-chip status-chip--${order.status === "cancelled" ? "inactive" : "active"}`}>{order.status}</span>
-                    </td>
-                  </tr>
-                ))}
-                {!loading && filteredOrders.length === 0 ? (
+            <div className="data-table-wrapper">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={3}>
-                      <div className="empty-state">No Service Orders found for the current filters.</div>
-                    </td>
+                    <th>Service Order</th>
+                    <th>Delivery</th>
+                    <th>Status</th>
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </article>
+                </thead>
+                <tbody>
+                  {filteredOrders.map((order) => (
+                    <tr key={order.id} onClick={() => openServiceOrderWorkspace(order)}>
+                      <td>
+                        <strong>{order.orderNo}</strong>
+                        <div className="table-subtle">
+                          {order.deliveryType}
+                          {order.operationalPriority ? ` · ${order.operationalPriority}` : ""}
+                        </div>
+                      </td>
+                      <td>{formatDate(order.promisedDeliveryDate)}</td>
+                      <td>
+                        <span className={`status-chip status-chip--${order.status === "cancelled" ? "inactive" : "active"}`}>{order.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {!loading && filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={3}>
+                        <div className="empty-state">No Service Orders found for the current filters.</div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        ) : null}
 
+        {!isListWorkspace ? (
         <article className="mini-card">
           <div className="workspace-toolbar">
             <div className="workspace-toolbar__copy">
@@ -926,14 +939,19 @@ export function ServiceOrdersWorkspace() {
                     <button className="button" disabled={saving || !canWrite} type="submit">
                       {saving ? "Saving…" : "Save"}
                     </button>
-                    <button className="button-secondary" onClick={restoreSelectedOrderForm} type="button">
-                      Cancel
+                    <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                      Close
                     </button>
                   </>
                 ) : selectedOrder ? (
-                  <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
-                    {saving ? "Updating…" : "Update"}
-                  </button>
+                  <>
+                    <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
+                      {saving ? "Updating…" : "Save"}
+                    </button>
+                    <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                      Close
+                    </button>
+                  </>
                 ) : null}
               </div>
             </form>
@@ -941,6 +959,7 @@ export function ServiceOrdersWorkspace() {
             <div className="empty-state">Use the grid to select a Service Order or click New Service Order to start a new header with an editable items grid.</div>
           )}
         </article>
+        ) : null}
       </section>
     </>
   );

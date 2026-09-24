@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
-import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import {
@@ -321,10 +321,13 @@ export function CustomerWorkspace() {
   }, []);
 
   const selectedCustomer = profile?.customer ?? null;
-  const { navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+  const { closeWorkspace } = useWorkspaceManager();
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
     label: showCreateForm ? "Customer: New" : selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
     subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
   });
+  const isFormWorkspace = workspaceMode === "new" || Boolean(focusCustomerId);
+  const isListWorkspace = !isFormWorkspace;
 
   const loadCatalog = useCallback(async () => {
     if (!canReadMeasurements) return;
@@ -421,16 +424,16 @@ export function CustomerWorkspace() {
   }, [activeCustomerId, focusCustomerId, loadCustomerDetails, showCreateForm]);
 
   useEffect(() => {
-    if (!activeCustomerId || showCreateForm || selectedCustomer?.id === activeCustomerId || focusCustomerId) {
+    if (!isListWorkspace) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      void loadCustomerDetails(activeCustomerId);
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [activeCustomerId, focusCustomerId, loadCustomerDetails, selectedCustomer?.id, showCreateForm]);
+    setShowCreateForm(false);
+    setActiveCustomerId(null);
+    setProfile(null);
+    setMeasurements(null);
+    setDetailError(null);
+  }, [isListWorkspace, setActiveCustomerId, setMeasurements, setProfile, setShowCreateForm]);
 
   const openCreateCustomerForm = useCallback(() => {
     setShowCreateForm(true);
@@ -463,6 +466,50 @@ export function CustomerWorkspace() {
 
     openWorkspaceInNewTab(targetPath, "Customer: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
   }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
+
+  const openCustomerWorkspace = useCallback(
+    (customer: CustomerRecord) => {
+      const targetPath = `/customers?focusCustomerId=${encodeURIComponent(customer.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+
+      openWorkspaceInNewTab(targetPath, `Customer: ${customer.legalName}`, {
+        cloneCurrent: false,
+        subtitle: customer.cpfCnpj ?? undefined,
+      });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const closeCustomerWorkspace = useCallback(() => {
+    if (!currentTabId || isMobile) {
+      setShowCreateForm(false);
+      setActiveCustomerId(null);
+      setProfile(null);
+      setMeasurements(null);
+      setDetailError(null);
+      navigateWithinWorkspace("/customers");
+      return;
+    }
+
+    const closingTabId = currentTabId;
+    openWorkspaceInNewTab("/customers", "Customers", { cloneCurrent: false });
+    window.setTimeout(() => {
+      closeWorkspace(closingTabId);
+    }, 0);
+  }, [
+    closeWorkspace,
+    currentTabId,
+    isMobile,
+    navigateWithinWorkspace,
+    openWorkspaceInNewTab,
+    setActiveCustomerId,
+    setMeasurements,
+    setProfile,
+    setShowCreateForm,
+  ]);
 
   useEffect(() => {
     if (focusSection !== "measurements" || selectedCustomer?.id !== focusCustomerId) {
@@ -718,108 +765,109 @@ export function CustomerWorkspace() {
         </div>
       ) : null}
 
-      <section className="mini-card">
-        <div className="workspace-toolbar">
-          <div className="workspace-toolbar__copy">
-            <h3>Pesquisa de clientes</h3>
-            <p>O autocomplete ajuda a localizar clientes rapidamente sem sair do fluxo operacional.</p>
-          </div>
-          {canWriteCustomers ? (
-            <button
-              className="button"
-              onClick={openCreateCustomerWorkspace}
-              type="button"
-            >
-              Novo cliente
-            </button>
-          ) : null}
-        </div>
-
-        <div className="filters-grid">
-          <label className="field">
-            <span>Busca</span>
-            <input list="customer-suggestions" placeholder="Nome, telefone, CPF/CNPJ ou email" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
-            <datalist id="customer-suggestions">
-              {customerSuggestions.map((customer) => (
-                <option key={customer.id} value={customer.label} />
-              ))}
-            </datalist>
-          </label>
-
-          <label className="field">
-            <span>Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="">Todos</option>
-              <option value="active">Ativo</option>
-              <option value="inactive">Inativo</option>
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Tipo de cliente</span>
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-              <option value="">Todos</option>
-              <option value="person">Pessoa</option>
-              <option value="company">Empresa</option>
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section className="workspace-split">
-        <article className="mini-card">
+      {isListWorkspace ? (
+        <section className="mini-card">
           <div className="workspace-toolbar">
             <div className="workspace-toolbar__copy">
-              <h3>Grade de clientes</h3>
-              <p>{loadingCustomers ? "Carregando clientes…" : `${customers.length} cliente(s) encontrado(s)`}</p>
+              <h3>Pesquisa de clientes</h3>
+              <p>O autocomplete ajuda a localizar clientes rapidamente sem sair do fluxo operacional.</p>
             </div>
+            {canWriteCustomers ? (
+              <button className="button" onClick={openCreateCustomerWorkspace} type="button">
+                Novo cliente
+              </button>
+            ) : null}
           </div>
 
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Tipo</th>
-                  <th>Documento</th>
-                  <th>Status</th>
-                  <th>Telefone</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer) => (
-                  <tr className={customer.id === activeCustomerId ? "data-table__row--active" : ""} key={customer.id}>
-                    <td>
-                      <button
-                        className="button-ghost"
-                        onClick={() => void loadCustomerDetails(customer.id)}
-                        style={{ alignItems: "start", display: "grid", justifyItems: "start", textAlign: "left" }}
-                        type="button"
-                      >
-                        <strong>{customer.legalName}</strong>
-                        <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
-                      </button>
-                    </td>
-                    <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
-                    <td>{customer.cpfCnpj ?? "—"}</td>
-                    <td>
-                      <span className={`status-chip status-chip--${customer.status}`}>{customer.status}</span>
-                    </td>
-                    <td>{formatPhone(customer.phone)}</td>
-                  </tr>
+          <div className="filters-grid">
+            <label className="field">
+              <span>Busca</span>
+              <input list="customer-suggestions" placeholder="Nome, telefone, CPF/CNPJ ou email" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+              <datalist id="customer-suggestions">
+                {customerSuggestions.map((customer) => (
+                  <option key={customer.id} value={customer.label} />
                 ))}
-                {!loadingCustomers && customers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>
-                      <div className="empty-state">Nenhum cliente encontrado para os filtros informados.</div>
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </article>
+              </datalist>
+            </label>
 
+            <label className="field">
+              <span>Status</span>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                <option value="">Todos</option>
+                <option value="active">Ativo</option>
+                <option value="inactive">Inativo</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Tipo de cliente</span>
+              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+                <option value="">Todos</option>
+                <option value="person">Pessoa</option>
+                <option value="company">Empresa</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="workspace-split">
+        {isListWorkspace ? (
+          <article className="mini-card">
+            <div className="workspace-toolbar">
+              <div className="workspace-toolbar__copy">
+                <h3>Grade de clientes</h3>
+                <p>{loadingCustomers ? "Carregando clientes…" : `${customers.length} cliente(s) encontrado(s)`}</p>
+              </div>
+            </div>
+
+            <div className="data-table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Tipo</th>
+                    <th>Documento</th>
+                    <th>Status</th>
+                    <th>Telefone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customers.map((customer) => (
+                    <tr key={customer.id}>
+                      <td>
+                        <button
+                          className="button-ghost"
+                          onClick={() => openCustomerWorkspace(customer)}
+                          style={{ alignItems: "start", display: "grid", justifyItems: "start", textAlign: "left" }}
+                          type="button"
+                        >
+                          <strong>{customer.legalName}</strong>
+                          <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
+                        </button>
+                      </td>
+                      <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
+                      <td>{customer.cpfCnpj ?? "—"}</td>
+                      <td>
+                        <span className={`status-chip status-chip--${customer.status}`}>{customer.status}</span>
+                      </td>
+                      <td>{formatPhone(customer.phone)}</td>
+                    </tr>
+                  ))}
+                  {!loadingCustomers && customers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>
+                        <div className="empty-state">Nenhum cliente encontrado para os filtros informados.</div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        ) : null}
+
+        {!isListWorkspace ? (
         <div className="workspace-stack">
           {showCreateForm ? (
             <article className="mini-card">
@@ -872,18 +920,10 @@ export function CustomerWorkspace() {
                 />
                 <div className="button-row">
                   <button className="button" disabled={savingCustomer || customerDuplicateStatus !== "idle"} type="submit">
-                    {savingCustomer ? "Salvando…" : "Cadastrar cliente"}
+                    {savingCustomer ? "Salvando…" : "Salvar"}
                   </button>
-                  <button
-                    className="button-secondary"
-                    onClick={() => {
-                      setShowCreateForm(false);
-                      setCustomerForm(defaultCustomerForm());
-                      void navigateWithinWorkspace("/customers");
-                    }}
-                    type="button"
-                  >
-                    Cancelar
+                  <button className="button-secondary" onClick={closeCustomerWorkspace} type="button">
+                    Close
                   </button>
                 </div>
               </form>
@@ -989,6 +1029,9 @@ export function CustomerWorkspace() {
                       <div className="button-row">
                         <button className="button" disabled={savingCustomer || customerDuplicateStatus !== "idle"} type="submit">
                           {savingCustomer ? "Salvando…" : "Salvar alterações"}
+                        </button>
+                        <button className="button-secondary" onClick={closeCustomerWorkspace} type="button">
+                          Close
                         </button>
                       </div>
                     </form>
@@ -1226,6 +1269,7 @@ export function CustomerWorkspace() {
             </article>
           ) : null}
         </div>
+        ) : null}
       </section>
     </>
   );

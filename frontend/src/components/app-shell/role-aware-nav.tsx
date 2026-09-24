@@ -93,7 +93,7 @@ const navSections: NavSection[] = [
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const pathname = usePathname();
   const { hasAnyPermission } = useSession();
-  const { getWorkspaceHref, openWorkspaceInNewTab } = useWorkspaceManager();
+  const { openWorkspaceInNewTab } = useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
@@ -121,7 +121,7 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
               return (
                 <li key={item.href}>
                    <div className={`nav-link${active ? " nav-link--active" : ""}`}>
-                     <Link className="nav-link__main" href={getWorkspaceHref(item.href)} onClick={onNavigate}>
+                     <Link className="nav-link__main" href={item.href} onClick={onNavigate}>
                        <span>{item.label}</span>
                        <span className="nav-hint">{item.hint}</span>
                      </Link>
