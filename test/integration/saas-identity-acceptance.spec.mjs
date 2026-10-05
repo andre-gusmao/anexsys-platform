@@ -111,7 +111,7 @@ before(async () => {
   const tenantTwo = await tenantService.create({
     code: 'FIL',
     legalName: 'Filial Ltda',
-    displayName: 'Filial',
+    displayName: 'Unidade Filial',
     actorUserId: bootstrapActorId,
   });
   tenantTwoId = tenantTwo.id;

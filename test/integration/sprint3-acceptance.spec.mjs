@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { createRequire } from 'node:module';
 import { Client } from 'pg';
+import { withCustomerAddress } from './helpers/customer-fixture.mjs';
 
 const require = createRequire(import.meta.url);
 const { ValidationPipe } = require('@nestjs/common');
@@ -111,9 +112,9 @@ before(async () => {
   await authorizationService.assignRole({ tenantId, userId: adminUser.id, roleId: role.id, assignedBranchId: branchOneId, actorUserId: adminUser.id });
   await authorizationService.assignBranchScope({ tenantId, userId: adminUser.id, branchId: branchOneId, scopeType: 'admin', actorUserId: adminUser.id });
 
-  const customer = await customerService.create({ tenantId, branchId: branchOneId, fullName: 'Service Order Customer', mobilePhone: '(11) 94444-2233', actorUserId: bootstrapActorId });
+  const customer = await customerService.create(withCustomerAddress({ tenantId, branchId: branchOneId, fullName: 'Service Order Customer', mobilePhone: '(11) 94444-2233', actorUserId: bootstrapActorId }));
   customerId = customer.id;
-  const branchTwoCustomer = await customerService.create({ tenantId, branchId: branchTwoId, fullName: 'Service Order Hidden Customer', mobilePhone: '(11) 93333-1122', actorUserId: bootstrapActorId });
+  const branchTwoCustomer = await customerService.create(withCustomerAddress({ tenantId, branchId: branchTwoId, fullName: 'Service Order Hidden Customer', mobilePhone: '(11) 93333-1122', actorUserId: bootstrapActorId }));
 
   const data = app.get(DataSource);
   const calendarRepo = data.getRepository(BusinessCalendarDayEntity);

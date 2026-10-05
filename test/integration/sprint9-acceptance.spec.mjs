@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { createRequire } from 'node:module';
 import { Client } from 'pg';
+import { withCustomerAddress } from './helpers/customer-fixture.mjs';
 
 const require = createRequire(import.meta.url);
 const { ValidationPipe } = require('@nestjs/common');
@@ -105,7 +106,7 @@ before(async () => {
   await authorizationService.assignRole({ tenantId, userId: adminUser.id, roleId: role.id, assignedBranchId: branchId, actorUserId: adminUser.id });
   await authorizationService.assignBranchScope({ tenantId, userId: adminUser.id, branchId, scopeType: 'admin', actorUserId: adminUser.id });
 
-  const customer = await customerService.create({ tenantId, branchId, fullName: 'Sprint 9 Customer', mobilePhone: '(11) 98888-1111', actorUserId: bootstrapActorId });
+  const customer = await customerService.create(withCustomerAddress({ tenantId, branchId, fullName: 'Sprint 9 Customer', mobilePhone: '(11) 98888-1111', actorUserId: bootstrapActorId }));
   customerId = customer.id;
 
   const created = await serviceOrderService.create({

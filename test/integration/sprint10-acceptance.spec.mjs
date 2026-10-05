@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { createRequire } from 'node:module';
 import { Client } from 'pg';
+import { TEST_CUSTOMER_CPF, withCustomerAddress } from './helpers/customer-fixture.mjs';
 
 const require = createRequire(import.meta.url);
 const { ValidationPipe } = require('@nestjs/common');
@@ -120,7 +121,7 @@ before(async () => {
   await authorizationService.assignBranchScope({ tenantId, userId: adminUser.id, branchId, scopeType: 'admin', actorUserId: adminUser.id });
   await authorizationService.assignBranchScope({ tenantId, userId: portalUser.id, branchId, scopeType: 'member', actorUserId: adminUser.id });
 
-  const customer = await customerService.create({ tenantId, branchId, fullName: 'Portal Customer', email: 'customer@tenantcx.test', mobilePhone: '(11) 99999-0000', cpf: '12345678901', actorUserId: adminUser.id });
+  const customer = await customerService.create(withCustomerAddress({ tenantId, branchId, fullName: 'Portal Customer', email: 'customer@tenantcx.test', mobilePhone: '(11) 99999-0000', cpf: TEST_CUSTOMER_CPF, actorUserId: adminUser.id }));
   customerId = customer.id;
 
   const created = await serviceOrderService.create({
@@ -128,8 +129,8 @@ before(async () => {
     branchId,
     customerId,
     actorUserId: adminUser.id,
-    deliveryCommitmentSourceAt: '2026-09-20T10:00:00.000Z',
-    actualPickupDate: '2026-09-20',
+    deliveryCommitmentSourceAt: new Date().toISOString(),
+    actualPickupDate: new Date().toISOString().slice(0, 10),
     items: [{ itemType: 'dress', description: 'Sprint 10 Dress', quantity: 1, unitPrice: 150 }],
   });
   serviceOrderId = created.serviceOrder.id;

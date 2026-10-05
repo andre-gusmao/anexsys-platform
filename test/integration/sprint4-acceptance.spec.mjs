@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { createRequire } from 'node:module';
 import { Client } from 'pg';
+import { withCustomerAddress } from './helpers/customer-fixture.mjs';
 
 const require = createRequire(import.meta.url);
 const { ValidationPipe } = require('@nestjs/common');
@@ -170,13 +171,13 @@ before(async () => {
     actorUserId: adminUser.id,
   });
 
-  const customer = await customerService.create({
+  const customer = await customerService.create(withCustomerAddress({
     tenantId,
     branchId: branchOneId,
     fullName: 'Production Customer',
     mobilePhone: '(11) 95555-1111',
     actorUserId: bootstrapActorId,
-  });
+  }));
   customerId = customer.id;
 
   const serviceOrder = await serviceOrderService.create({

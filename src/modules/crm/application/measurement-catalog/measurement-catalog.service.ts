@@ -222,8 +222,9 @@ export class MeasurementCatalogService {
 
   async resolveBodyParts(tenantId: string, bodyPartIds: string[], actorUserId: string) {
     await this.ensureTenantDefaults(tenantId, actorUserId);
-    const bodyParts = await this.bodyPartRepository.findByIds(tenantId, bodyPartIds);
-    if (bodyParts.length !== bodyPartIds.length) {
+    const uniqueIds = [...new Set(bodyPartIds)];
+    const bodyParts = await this.bodyPartRepository.findByIds(tenantId, uniqueIds);
+    if (bodyParts.length !== uniqueIds.length) {
       throw new DomainValidationError('One or more body parts are invalid for the tenant context.');
     }
     return bodyParts;
@@ -231,8 +232,9 @@ export class MeasurementCatalogService {
 
   async resolveUnits(tenantId: string, unitIds: string[], actorUserId: string) {
     await this.ensureTenantDefaults(tenantId, actorUserId);
-    const units = await this.unitRepository.findByIds(tenantId, unitIds);
-    if (units.length !== unitIds.length) {
+    const uniqueIds = [...new Set(unitIds)];
+    const units = await this.unitRepository.findByIds(tenantId, uniqueIds);
+    if (units.length !== uniqueIds.length) {
       throw new DomainValidationError('One or more measurement units are invalid for the tenant context.');
     }
     return units;

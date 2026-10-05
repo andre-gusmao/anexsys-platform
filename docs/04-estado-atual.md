@@ -9,12 +9,12 @@
 
 | Área | Servidor | Tela | Testes | Observação |
 |---|---|---|---|---|
-| Login e acesso (Conta, Filial, usuários, papéis, permissões) | Existe | Existe: login, escolha de Empresa (na verdade, Conta) e Filial, administração | Unitários passam; integração com falhas (ver seção 3) | Criação de Conta **fechada ao público neste ciclo**. Limite de tentativas de login **adicionado** |
-| Clientes e medidas | Existe | Existe | Unitários passam | WhatsApp obrigatório; sem consentimento ainda |
-| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários passam | Itens ainda são texto livre. Faltam aprovar, cancelar, recalcular prazo e gerar produção na tela |
+| Login e acesso (Conta, Filial, usuários, papéis, permissões) | Existe | Existe: login, escolha de Empresa (na verdade, Conta) e Filial, administração | Unitários passam; **integração 39/39** | Criação de Conta **fechada ao público neste ciclo**. Limite de tentativas de login **adicionado** |
+| Clientes e medidas | Existe | Existe | Unitários e integração passam | WhatsApp obrigatório; endereço (incluindo CEP) obrigatório no cadastro; sem consentimento ainda |
+| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Itens ainda são texto livre. Faltam aprovar, cancelar, recalcular prazo e gerar produção na tela |
 | Motor de data de entrega | Existe (domingo fechado por padrão) | Parcial | Unitários passam | Falta Normal/Expresso/Urgente |
-| Ordem de Produção, QR por ordem, diário | Existe | **Não existe** | Unitários passam; integração com falhas | Só 6 estados fixos. QR com código previsível em parte |
-| Qualidade, retrabalho, garantia | Existe | **Não existe** | Unitários passam; integração com falhas | |
+| Ordem de Produção, QR por ordem, diário | Existe | **Não existe** | Unitários e integração passam | Só 6 estados fixos. QR com código previsível em parte |
+| Qualidade, retrabalho, garantia | Existe | **Não existe** | Unitários e integração passam | |
 | Financeiro | Existe | **Não existe** | Idem | Maquininha só como interface, sem integração real |
 | Fiscal | Só esqueleto | **Não existe** | Idem | Nenhum adaptador real |
 | Retirada por terceiros e custódia | Existe | **Não existe** | Idem | Aviso "enviado" é só um registro, não envio |
@@ -24,21 +24,21 @@
 | LGPD (consentimento, retenção) | **Não existe** | **Não existe** | n/a | |
 | Cobrança do ANEXSYS | **Não existe** | **Não existe** | n/a | |
 
-## 2. Números verificados em 05/10/2026
+## 2. Números verificados em 05/10/2026 (noite, fechamento do Ciclo 0)
 
 - **19 módulos** no servidor e **17 migrações** de banco.
-- **Testes unitários:** **104 passam, 0 falham.** (Eram 94 antes deste ciclo; foram acrescentados 10 sobre o limite de tentativas de login e a proteção da criação de Conta.)
-- **Compilação do servidor e do frontend:** sem erros.
+- **Testes unitários:** **104 passam, 0 falham.**
+- **Testes de integração com PostgreSQL:** **39 passam, 0 falham.**
+- **Compilação do servidor:** `tsc` + `tsc-alias` (o `nest build` quebra neste Node; o atalho `npm run build` usa o caminho que funciona).
 - **Verificação de qualidade do frontend (lint):** **2 erros que já existiam** antes deste ciclo, em `customer-workspace.tsx` e `service-orders-workspace.tsx` (aviso de boa prática de programação; não impedem o uso).
 
 ## 3. Testes de integração com banco de dados
 
-Estes testes sobem o servidor com um banco PostgreSQL real. Foram executados pela primeira vez de ponta a ponta neste ciclo.
+Estes testes sobem o servidor com um banco PostgreSQL real.
 
-- **Resultado:** **15 dos 39 casos passam.** As suítes das sprints 2, 3, 4, 5, 6, 7, 8, 9 e 10 e a de identidade SaaS têm falhas. Só a suíte da Sprint 1 passa por inteiro.
-- **O resultado é idêntico antes e depois das mudanças deste ciclo**, ou seja, as falhas **já existiam**.
-- **Causa provável (conferida em uma suíte):** o cadastro de cliente passou a exigir mais campos (por exemplo, CEP) depois das refatorações de 22 e 23 de setembro, e os testes antigos montam os dados de preparação sem esses campos. É um problema dos **testes desatualizados**, não necessariamente do sistema. Precisa ser confirmado e corrigido.
-- **Consequência:** as afirmações "testes de integração passaram" dos relatórios de sprint antigos **não valem mais** para o código atual. Corrigir essas suítes é tarefa do próximo trabalho, antes de qualquer afirmação de "pronto".
+- **Resultado:** **39 dos 39 casos passam.**
+- **O que estava quebrado:** o cadastro de cliente passou a exigir endereço completo (incluindo CEP) e o preparo dos testes antigos não enviava esses campos. A suíte da Sprint 2 também recusava duas medidas na mesma unidade (CM) por um erro de conferência de IDs repetidos — a regra ("unidade tem que existir na Conta") foi mantida; a conferência agora trata IDs repetidos. A suíte da Sprint 10 usava data de retirada de setembro, fora da janela de 7 dias da garantia em outubro; o teste passou a usar a data de hoje, **sem** alargar os 7 dias. A suíte de identidade escolhia a Conta errada porque o login, sem preferência, ordena pelo nome: o nome de exibição da segunda Conta foi ajustado no teste para "Unidade Filial", para a "Matriz" continuar sendo a primeira.
+- **Como rodar:** PostgreSQL no ar (`DB_PASSWORD=postgres` por padrão nos testes) e `npm run test:integration`. O `README.md` descreve o ambiente local. **A conta na nuvem continua com o André.**
 
 ## 4. Falhas de segurança conhecidas
 
@@ -55,4 +55,4 @@ Estes testes sobem o servidor com um banco PostgreSQL real. Foram executados pel
 
 ## 5. O que muda neste ciclo (Ciclo 0)
 
-Este documento e os de `00` a `03` são resultado do Ciclo 0. Ver `05-plano-de-continuidade.md` para os próximos ciclos.
+Este documento e os de `00` a `03` são resultado do Ciclo 0. **Fechado neste ciclo (sem depender do André):** documentação única, segurança rápida, testes de integração corrigidos, scripts e README de como rodar na máquina. **Continua com o André:** conta na nuvem (até R$ 150/mês), DNS de `atelierizagusmao.com.br`, Meta e Cielo. Ver `05-plano-de-continuidade.md` para os próximos ciclos.
