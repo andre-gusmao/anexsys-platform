@@ -10,7 +10,18 @@ const { IdentityService } = require('./dist/modules/identity/application/identit
 const { AuthorizationService } = require('./dist/modules/authorization/application/authorization/authorization.service.js');
 const { BranchScopeType } = require('./dist/shared/domain/enums.js');
 
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value || !value.trim()) {
+    throw new Error(`Defina a variavel de ambiente ${name} antes de executar este script.`);
+  }
+  return value.trim();
+}
+
 (async () => {
+  const adminEmail = requireEnv('BOOTSTRAP_ADMIN_EMAIL').toLowerCase();
+  const adminPassword = requireEnv('BOOTSTRAP_ADMIN_PASSWORD');
+
   const app = await NestFactory.createApplicationContext(
     AppModule,
     { logger: false }
@@ -43,9 +54,9 @@ const { BranchScopeType } = require('./dist/shared/domain/enums.js');
     const adminUser = await identityService.createUser({
       tenantId: tenant.id,
       defaultBranchId: branch.id,
-      email: 'andre@anexsys.local',
-      displayName: 'Andre Local Admin',
-      password: 'AnexsysLocal123!',
+      email: adminEmail,
+      displayName: process.env.BOOTSTRAP_ADMIN_DISPLAY_NAME ?? 'Administrador Local',
+      password: adminPassword,
       actorUserId: bootstrapActorId,
     });
 
@@ -55,8 +66,7 @@ const { BranchScopeType } = require('./dist/shared/domain/enums.js');
         {
           tenantId: tenant.id,
           branchId: branch.id,
-          adminEmail: 'andre@anexsys.local',
-          adminPassword: 'AnexsysLocal123!',
+          adminEmail,
         },
         null,
         2

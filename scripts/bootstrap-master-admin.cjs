@@ -42,6 +42,7 @@ const ALL_PERMISSION_CODES = [
   'permissions.write',
   'pickup.read',
   'pickup.write',
+  'platform.tenants.create',
   'production_orders.read',
   'production_orders.write',
   'quality.read',
@@ -62,6 +63,14 @@ const ALL_PERMISSION_CODES = [
   'warranty.write',
 ];
 
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value || !value.trim()) {
+    throw new Error(`Defina a variavel de ambiente ${name} antes de executar este script.`);
+  }
+  return value.trim();
+}
+
 const bootstrapValues = {
   tenant: {
     code: process.env.BOOTSTRAP_TENANT_CODE ?? 'ANXDEV',
@@ -75,8 +84,8 @@ const bootstrapValues = {
     businessCalendarName: process.env.BOOTSTRAP_BRANCH_CALENDAR_NAME ?? 'Calendario Local',
   },
   admin: {
-    email: (process.env.BOOTSTRAP_ADMIN_EMAIL ?? 'andre@anexsys.local').trim().toLowerCase(),
-    displayName: process.env.BOOTSTRAP_ADMIN_DISPLAY_NAME ?? 'Andre Local Admin',
+    email: requiredEnv('BOOTSTRAP_ADMIN_EMAIL').toLowerCase(),
+    displayName: process.env.BOOTSTRAP_ADMIN_DISPLAY_NAME ?? 'Administrador Local',
     password: process.env.BOOTSTRAP_ADMIN_PASSWORD ?? null,
   },
   community: {

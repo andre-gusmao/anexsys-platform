@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   Body,
@@ -13,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
-import { Public } from 'src/platform/auth/public.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -96,10 +94,14 @@ export class TenantsController {
     return [await this.tenantService.getById(tenantId)];
   }
 
-  @Public()
+  @Permissions('platform.tenants.create')
   @Post()
   async create(@Body() body: CreateTenantBody, @CurrentRequest() request: PlatformRequest) {
-    const actorUserId = request.requestContext.authenticatedPrincipal?.userId ?? randomUUID();
+    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
     return this.tenantService.create({ ...body, actorUserId });
   }
 

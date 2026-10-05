@@ -49,6 +49,7 @@ export function CompaniesWorkspace() {
   const { session, hasAnyPermission, apiJson } = useSession();
   const canRead = hasAnyPermission("tenants.read");
   const canWrite = hasAnyPermission("tenants.write");
+  const canCreate = hasAnyPermission("platform.tenants.create");
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
   const [searchQuery, setSearchQuery] = useWorkspaceScopedState("companies.searchQuery", "");
   const [loading, setLoading] = useState(true);
@@ -139,7 +140,7 @@ export function CompaniesWorkspace() {
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canWrite) return;
+    if (!canCreate) return;
     if (companyDuplicateStatus !== "idle") {
       setMessage("Revise a duplicidade detectada antes de salvar a empresa.");
       return;
@@ -265,7 +266,7 @@ export function CompaniesWorkspace() {
               <h3>Grade operacional</h3>
               <p>{loading ? "Carregando…" : `${filteredCompanies.length} empresa(s) no contexto visível`}</p>
             </div>
-            {canWrite ? (
+            {canCreate ? (
               <button
                 className="button"
                 onClick={() => {

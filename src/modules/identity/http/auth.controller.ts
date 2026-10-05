@@ -11,6 +11,8 @@ import { Public } from 'src/platform/auth/public.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { IdentityService } from '../application/identity/identity.service';
 import { AuthService } from '../application/auth/auth.service';
+import { LoginAttemptLimiterService } from '../application/auth/login-attempt-limiter.service';
+import { AuthenticationFailedError } from 'src/shared/errors/authentication-failed.error';
 import { LoginPasswordDto } from '../contracts/dto/login-password.dto';
 
 class RefreshTokenBody {
@@ -47,12 +49,25 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly identityService: IdentityService,
+    private readonly loginAttemptLimiter: LoginAttemptLimiterService,
   ) {}
 
   @Public()
   @Post('login/password')
-  async loginWithPassword(@Body() body: LoginPasswordDto) {
-    return this.authService.loginWithPassword(body);
+  async loginWithPassword(@Body() body: LoginPasswordDto, @CurrentRequest() request: PlatformRequest) {
+    const address = request.ip ?? null;
+    this.loginAttemptLimiter.assertAllowed(body.email, address);
+
+    try {
+      const result = await this.authService.loginWithPassword(body);
+      this.loginAttemptLimiter.recordSuccess(body.email, address);
+      return result;
+    } catch (error) {
+      if (error instanceof AuthenticationFailedError) {
+        this.loginAttemptLimiter.recordFailure(body.email, address);
+      }
+      throw error;
+    }
   }
 
   @Public()

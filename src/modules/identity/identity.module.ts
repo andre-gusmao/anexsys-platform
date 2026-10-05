@@ -11,6 +11,7 @@ import { TokenFactoryService } from 'src/platform/auth/token-factory.service';
 import { AuthController } from './http/auth.controller';
 import { UsersController } from './http/users.controller';
 import { AuthService } from './application/auth/auth.service';
+import { LoginAttemptLimiterService } from './application/auth/login-attempt-limiter.service';
 import { IdentityService } from './application/identity/identity.service';
 import { FirstAccessTokenEntity } from './infrastructure/persistence/entities/first-access-token.entity';
 import { UserContextPreferenceEntity } from './infrastructure/persistence/entities/user-context-preference.entity';
@@ -53,6 +54,7 @@ import { UserSessionRepository } from './infrastructure/persistence/repositories
   providers: [
     IdentityService,
     AuthService,
+    LoginAttemptLimiterService,
     UserIdentityRepository,
     UserCredentialRepository,
     UserSessionRepository,
