@@ -3,12 +3,34 @@ import { describe, it } from 'node:test';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 
+function extraDeps() {
+  return {
+    companyService: {
+      async getOrCreateDefault() {
+        return { id: 'company-1' };
+      },
+      async getById() {
+        return { id: 'company-1', tenantId: 'tenant-a' };
+      },
+    },
+    hoursService: {
+      async seedDefaults() {
+        return [];
+      },
+    },
+  };
+}
+
 describe('BranchService', () => {
   it('normalizes branch codes on create', async () => {
     const createdPayloads: Array<Record<string, unknown>> = [];
+    const extras = extraDeps();
     const branchRepository = {
       async findByTenantAndCode() {
         return null;
+      },
+      async findByCompany() {
+        return [];
       },
       create(payload: Record<string, unknown>) {
         createdPayloads.push(payload);
@@ -28,6 +50,8 @@ describe('BranchService', () => {
       tenantService as never,
       auditService as never,
       { async assertBranchCanDeactivate() {} } as never,
+      extras.companyService as never,
+      extras.hoursService as never,
     );
 
     const branch = await service.create({
@@ -40,9 +64,12 @@ describe('BranchService', () => {
 
     assert.equal(branch.code, 'BR-01');
     assert.equal(createdPayloads[0]?.code, 'BR-01');
+    assert.equal(createdPayloads[0]?.companyId, 'company-1');
+    assert.equal(createdPayloads[0]?.isDefault, true);
   });
 
   it('rejects duplicate branch code on update', async () => {
+    const extras = extraDeps();
     const branchRepository = {
       async findById(id: string) {
         if (id === 'branch-1') {
@@ -54,7 +81,14 @@ describe('BranchService', () => {
         return { id: 'branch-2', tenantId: 'tenant-a', code: 'BR-02' };
       },
     };
-    const service = new BranchService(branchRepository as never, {} as never, {} as never, {} as never);
+    const service = new BranchService(
+      branchRepository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      extras.companyService as never,
+      extras.hoursService as never,
+    );
 
     await assert.rejects(
       () => service.update('branch-1', { code: 'br-02', actorUserId: 'actor-1' }),
@@ -63,6 +97,7 @@ describe('BranchService', () => {
   });
 
   it('rejects setting a branch as its own parent during update', async () => {
+    const extras = extraDeps();
     const branchRepository = {
       async findById(id: string) {
         if (id === 'branch-1') {
@@ -74,7 +109,14 @@ describe('BranchService', () => {
         return null;
       },
     };
-    const service = new BranchService(branchRepository as never, {} as never, {} as never, {} as never);
+    const service = new BranchService(
+      branchRepository as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      extras.companyService as never,
+      extras.hoursService as never,
+    );
 
     await assert.rejects(
       () => service.update('branch-1', { parentBranchId: 'branch-1', actorUserId: 'actor-1' }),
@@ -83,6 +125,7 @@ describe('BranchService', () => {
   });
 
   it('rejects a parent branch from a different tenant', async () => {
+    const extras = extraDeps();
     const branchRepository = {
       async findByTenantAndCode() {
         return null;
@@ -98,6 +141,8 @@ describe('BranchService', () => {
       tenantService as never,
       auditService as never,
       { async assertBranchCanDeactivate() {} } as never,
+      extras.companyService as never,
+      extras.hoursService as never,
     );
 
     await assert.rejects(
@@ -115,6 +160,7 @@ describe('BranchService', () => {
   });
 
   it('blocks branch deactivation when dependency validation fails', async () => {
+    const extras = extraDeps();
     const service = new BranchService(
       {
         async findById() {
@@ -140,6 +186,8 @@ describe('BranchService', () => {
           throw new DomainValidationError('Filial vinculada a service orders.');
         },
       } as never,
+      extras.companyService as never,
+      extras.hoursService as never,
     );
 
     await assert.rejects(() => service.deactivate('branch-1', 'actor-1'), DomainValidationError);

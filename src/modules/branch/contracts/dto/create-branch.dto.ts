@@ -19,6 +19,17 @@ export class CreateBranchDto {
   parentBranchId?: string;
 
   @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
+  @IsOptional()
+  isDefault?: boolean;
+
+  @IsOptional()
   @IsString()
   businessCalendarName?: string;
 

@@ -75,7 +75,7 @@ export function CompaniesWorkspace() {
     [activeCompanyId, companies],
   );
   useWorkspaceRegistration({
-    label: activeCompany ? `Empresa: ${activeCompany.displayName}` : "Empresas",
+    label: activeCompany ? `Conta: ${activeCompany.displayName}` : "Contas",
     subtitle: showCreateForm ? "Novo cadastro" : activeCompany?.code ?? null,
   });
 
@@ -165,7 +165,7 @@ export function CompaniesWorkspace() {
       setActiveCompanyId(created.id);
       setShowCreateForm(false);
       setForm(mapCompanyToForm(created));
-      setMessage("Empresa criada com sucesso. A edição detalhada permanece restrita ao contexto ativo.");
+      setMessage("Conta criada. Empresa e Filial padrão nasceram juntas, com horário de funcionamento.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "A empresa não pôde ser criada.");
     } finally {
@@ -237,7 +237,7 @@ export function CompaniesWorkspace() {
   if (!canRead) {
     return (
       <section className="mini-card">
-        <h3>Empresas indisponíveis</h3>
+        <h3>Contas indisponíveis</h3>
         <p>Você não possui acesso ao cadastro de empresas no contexto atual.</p>
       </section>
     );
@@ -247,8 +247,8 @@ export function CompaniesWorkspace() {
     <>
       <section className="hero-card">
         <div className="eyebrow">Administração</div>
-        <h1 className="title">Empresas</h1>
-        <p>Gerencie o contexto de empresa atual sem sair do fluxo administrativo.</p>
+        <h1 className="title">Contas</h1>
+        <p>Só o André cria Contas. Cada Conta nasce com Empresa e Filial padrão.</p>
       </section>
 
       {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}

@@ -10,18 +10,17 @@ const { IdentityService } = require('../dist/modules/identity/application/identi
 const { AuthorizationService } = require('../dist/modules/authorization/application/authorization/authorization.service.js');
 const { RoleRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/role.repository.js');
 const { PermissionRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/permission.repository.js');
-const { CommunityRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/community.repository.js');
 const { RolePermissionRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/role-permission.repository.js');
-const { CommunityPermissionRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/community-permission.repository.js');
 const { UserRoleAssignmentRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/user-role-assignment.repository.js');
 const { UserBranchScopeRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/user-branch-scope.repository.js');
-const { UserCommunityRepository } = require('../dist/modules/authorization/infrastructure/persistence/repositories/user-community.repository.js');
 const { BranchScopeType } = require('../dist/shared/domain/enums.js');
 
 const ALL_PERMISSION_CODES = [
   'branches.read',
   'branches.write',
   'communities.read',
+  'companies.read',
+  'companies.write',
   'communities.write',
   'custody.read',
   'custody.write',
@@ -108,12 +107,9 @@ async function main() {
     const authorizationService = app.get(AuthorizationService);
     const roleRepository = app.get(RoleRepository);
     const permissionRepository = app.get(PermissionRepository);
-    const communityRepository = app.get(CommunityRepository);
     const rolePermissionRepository = app.get(RolePermissionRepository);
-    const communityPermissionRepository = app.get(CommunityPermissionRepository);
     const userRoleAssignmentRepository = app.get(UserRoleAssignmentRepository);
     const userBranchScopeRepository = app.get(UserBranchScopeRepository);
-    const userCommunityRepository = app.get(UserCommunityRepository);
 
     const bootstrapActorId = randomUUID();
 
@@ -121,7 +117,6 @@ async function main() {
     const branch = await ensureBranch(branchService, tenant.id, bootstrapActorId);
     const adminUser = await ensureAdminUser(identityService, tenant.id, branch.id, bootstrapActorId);
     const role = await ensureRole(roleRepository, authorizationService, tenant.id, adminUser.id);
-    const community = await ensureCommunity(communityRepository, authorizationService, tenant.id, adminUser.id);
     const permissions = await ensurePermissions(permissionRepository, authorizationService, tenant.id, adminUser.id);
 
     for (const permission of permissions) {
@@ -134,16 +129,6 @@ async function main() {
           actorUserId: adminUser.id,
         });
       }
-
-      const communityLink = await communityPermissionRepository.findByCommunityAndPermission(tenant.id, community.id, permission.id);
-      if (!communityLink) {
-        await authorizationService.assignPermissionToCommunity({
-          tenantId: tenant.id,
-          communityId: community.id,
-          permissionId: permission.id,
-          actorUserId: adminUser.id,
-        });
-      }
     }
 
     const tenantWideRole = await userRoleAssignmentRepository.findActiveAssignment(tenant.id, adminUser.id, role.id, null);
@@ -152,7 +137,7 @@ async function main() {
         tenantId: tenant.id,
         userId: adminUser.id,
         roleId: role.id,
-        assignedBranchId: undefined,
+        grantsAllBranches: true,
         actorUserId: adminUser.id,
       });
     }
@@ -164,16 +149,6 @@ async function main() {
         userId: adminUser.id,
         branchId: branch.id,
         scopeType: BranchScopeType.ADMIN,
-        actorUserId: adminUser.id,
-      });
-    }
-
-    const membership = await userCommunityRepository.findByUserAndCommunity(tenant.id, adminUser.id, community.id);
-    if (!membership) {
-      await authorizationService.assignUserToCommunity({
-        tenantId: tenant.id,
-        userId: adminUser.id,
-        communityId: community.id,
         actorUserId: adminUser.id,
       });
     }
@@ -196,8 +171,6 @@ async function main() {
           branchDisplayName: branch.displayName,
           adminUserId: adminUser.id,
           adminEmail: adminUser.email,
-          communityId: community.id,
-          communityCode: community.code,
           roleId: role.id,
           roleCode: role.code,
           permissionCount: permissions.length,
@@ -285,21 +258,6 @@ async function ensureRole(roleRepository, authorizationService, tenantId, actorU
     displayName: bootstrapValues.role.displayName,
     description: 'Global master administration role for the tenant bootstrap owner.',
     isSystemManaged: true,
-    actorUserId,
-  });
-}
-
-async function ensureCommunity(communityRepository, authorizationService, tenantId, actorUserId) {
-  const existing = await communityRepository.findByTenantAndCode(tenantId, bootstrapValues.community.code);
-  if (existing) {
-    return existing;
-  }
-
-  return authorizationService.createCommunity({
-    tenantId,
-    code: bootstrapValues.community.code,
-    displayName: bootstrapValues.community.displayName,
-    description: 'Global administrators community for the tenant bootstrap owner.',
     actorUserId,
   });
 }

@@ -58,9 +58,15 @@ const navSections: NavSection[] = [
     items: [
       {
         href: "/admin/tenants",
-        label: "Empresas",
-        hint: "Administração de empresas",
+        label: "Contas",
+        hint: "Quem assina o ANEXSYS",
         requiredPermissions: ["tenants.read"],
+      },
+      {
+        href: "/admin/companies",
+        label: "Empresas",
+        hint: "CNPJ dentro da Conta",
+        requiredPermissions: ["companies.read"],
       },
       {
         href: "/admin/branches",

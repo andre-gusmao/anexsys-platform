@@ -10,7 +10,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | Termo | Significado | No código |
 |---|---|---|
 | **Conta** | Quem assina o ANEXSYS. É a dona dos dados. Exemplo: "Grupo Ateliê Silva". Os dados de uma Conta **nunca** se misturam com os de outra | `tenant` |
-| **Empresa** | A pessoa jurídica (CNPJ) dentro de uma Conta. Uma Conta pode ter várias Empresas. **Decidido, ainda não construído** (hoje a tela chama de "Empresa" o que é a Conta) | ainda não existe |
+| **Empresa** | A pessoa jurídica (CNPJ) dentro de uma Conta. Uma Conta pode ter várias Empresas. **No Ciclo 1 a tela existe**; a Filial padrão nasce junto | `company` |
 | **Filial** | A unidade física onde se atende e produz. Cada Empresa pode ter várias Filiais | `branch` |
 | **Usuário** | Pessoa que entra no sistema com e-mail e senha | `user` |
 | **Papel** | Conjunto de permissões. Papéis iniciais: recepção, atendente/medidor, produção, qualidade e gerente | `role` |

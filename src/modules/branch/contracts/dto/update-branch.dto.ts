@@ -22,6 +22,14 @@ export class UpdateBranchDto {
   @IsString()
   businessCalendarName?: string | null;
 
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
   @IsUUID()
   actorUserId!: string;
 }

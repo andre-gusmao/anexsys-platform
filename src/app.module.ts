@@ -1,10 +1,11 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { BranchModule } from './modules/branch/branch.module';
+import { CompanyModule } from './modules/company/company.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { OperationalResourcesModule } from './modules/operational-resources/operational-resources.module';
@@ -24,6 +25,8 @@ import { buildTypeOrmOptions } from './platform/database/typeorm/typeorm.config'
 import { PickupModule } from './modules/pickup/pickup.module';
 import { CustomerPortalModule } from './modules/customer-portal/customer-portal.module';
 import { SmartConciergeModule } from './modules/smart-concierge/smart-concierge.module';
+import { TenantRlsInterceptor } from './platform/tenancy/tenant-rls.interceptor';
+import { patchPostgresQueryRunnerForRls } from './platform/tenancy/tenant-rls.patch';
 
 @Module({
   imports: [
@@ -33,6 +36,7 @@ import { SmartConciergeModule } from './modules/smart-concierge/smart-concierge.
     }),
     AuditModule,
     TenantModule,
+    CompanyModule,
     BranchModule,
     CrmModule,
     ServiceOrdersModule,
@@ -59,9 +63,17 @@ import { SmartConciergeModule } from './modules/smart-concierge/smart-concierge.
       provide: APP_GUARD,
       useClass: PermissionsGuard,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantRlsInterceptor,
+    },
   ],
 })
-export class AppModule implements NestModule {
+export class AppModule implements NestModule, OnModuleInit {
+  onModuleInit(): void {
+    patchPostgresQueryRunnerForRls();
+  }
+
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestContextMiddleware).forRoutes('*');
   }

@@ -9,7 +9,7 @@
 
 | Área | Servidor | Tela | Testes | Observação |
 |---|---|---|---|---|
-| Login e acesso (Conta, Filial, usuários, papéis, permissões) | Existe | Existe: login, escolha de Empresa (na verdade, Conta) e Filial, administração | Unitários passam; **integração 39/39** | Criação de Conta **fechada ao público neste ciclo**. Limite de tentativas de login **adicionado** |
+| Login e acesso (Conta, Empresa, Filial, usuários, papéis, permissões) | Existe | Existe: login, escolha de Conta e Filial, **Contas / Empresas / Filiais**, horário da Filial, comunidades congeladas | Unitários passam; integração 39/39 no Ciclo 0; **Ciclo 1 acrescenta o teste do espelho** | Só o André cria Contas. Usuário novo sem Filial. Isolamento no banco (D2) |
 | Clientes e medidas | Existe | Existe | Unitários e integração passam | WhatsApp obrigatório; endereço (incluindo CEP) obrigatório no cadastro; sem consentimento ainda |
 | Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Itens ainda são texto livre. Faltam aprovar, cancelar, recalcular prazo e gerar produção na tela |
 | Motor de data de entrega | Existe (domingo fechado por padrão) | Parcial | Unitários passam | Falta Normal/Expresso/Urgente |
@@ -27,7 +27,7 @@
 ## 2. Números verificados em 05/10/2026 (noite, fechamento do Ciclo 0)
 
 - **19 módulos** no servidor e **17 migrações** de banco.
-- **Testes unitários:** **104 passam, 0 falham.**
+- **Testes unitários:** **110 passam, 0 falham.**
 - **Testes de integração com PostgreSQL:** **39 passam, 0 falham.**
 - **Compilação do servidor:** `tsc` + `tsc-alias` (o `nest build` quebra neste Node; o atalho `npm run build` usa o caminho que funciona).
 - **Verificação de qualidade do frontend (lint):** **2 erros que já existiam** antes deste ciclo, em `customer-workspace.tsx` e `service-orders-workspace.tsx` (aviso de boa prática de programação; não impedem o uso).
@@ -49,7 +49,7 @@ Estes testes sobem o servidor com um banco PostgreSQL real.
 | Sem limite de tentativas de login | **Corrigido neste ciclo**, em memória (vale por instância do servidor) |
 | Sessão guardada em `localStorage` do navegador | Aberta. Será trocada por cookie seguro |
 | Sem recuperação de senha; convite devolve o token em vez de enviar por e-mail | Aberta. Depende do provedor de e-mail |
-| Isolamento entre Contas só por filtro no código | Aberta. Será reforçado no banco (Ciclo 1) |
+| Isolamento entre Contas só por filtro no código | **Reforçado no Ciclo 1**: porteiro no banco (RLS) + relatório de isolamento |
 | QR com código previsível em parte e guardado em texto claro | Aberta. Será assinado (Ciclo 3) |
 | Registro "enviado" sem envio | Aberta. Será resolvido com o WhatsApp real (Ciclo 5) |
 

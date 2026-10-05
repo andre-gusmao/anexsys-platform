@@ -8,6 +8,9 @@ import { UserCommunityEntity } from 'src/modules/authorization/infrastructure/pe
 import { UserBranchScopeEntity } from 'src/modules/authorization/infrastructure/persistence/entities/user-branch-scope.entity';
 import { UserRoleAssignmentEntity } from 'src/modules/authorization/infrastructure/persistence/entities/user-role-assignment.entity';
 import { BranchEntity } from 'src/modules/branch/infrastructure/persistence/entities/branch.entity';
+import { CompanyEntity } from 'src/modules/company/infrastructure/persistence/entities/company.entity';
+import { BranchOperatingHoursEntity } from 'src/modules/company/infrastructure/persistence/entities/branch-operating-hours.entity';
+import { TenantModuleEntity } from 'src/modules/company/infrastructure/persistence/entities/tenant-module.entity';
 import { CustomerEntity } from 'src/modules/crm/infrastructure/persistence/entities/customer.entity';
 import { CustomerPortalProfileEntity } from 'src/modules/customer-portal/infrastructure/persistence/entities/customer-portal-profile.entity';
 import { StatusVisibilityMappingEntity } from 'src/modules/customer-portal/infrastructure/persistence/entities/status-visibility-mapping.entity';
@@ -61,7 +64,10 @@ import { TenantEntity } from 'src/modules/tenant/infrastructure/persistence/enti
 
 export const typeOrmEntities = [
   TenantEntity,
+  CompanyEntity,
+  TenantModuleEntity,
   BranchEntity,
+  BranchOperatingHoursEntity,
   CustomerEntity,
   CustomerPortalProfileEntity,
   CustomerContactEntity,
