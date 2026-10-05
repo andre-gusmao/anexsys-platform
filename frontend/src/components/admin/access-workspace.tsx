@@ -189,7 +189,7 @@ export function AccessWorkspace() {
   const canReadPermissions = hasAnyPermission("permissions.read");
   const canWritePermissions = hasAnyPermission("permissions.write");
   const canReadCommunities = hasAnyPermission("communities.read");
-  const canWriteCommunities = hasAnyPermission("communities.write");
+  const canWriteCommunities = false;
 
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -223,6 +223,7 @@ export function AccessWorkspace() {
 
   const [assignRoleId, setAssignRoleId] = useState("");
   const [assignRoleBranchId, setAssignRoleBranchId] = useState("");
+  const [assignRoleAllBranches, setAssignRoleAllBranches] = useState(false);
   const [assignPermissionToRoleId, setAssignPermissionToRoleId] = useState("");
   const [assignPermissionToCommunityId, setAssignPermissionToCommunityId] = useState("");
   const [assignCommunityId, setAssignCommunityId] = useState("");
@@ -574,11 +575,16 @@ export function AccessWorkspace() {
     try {
       await apiJson(`/users/${activeUser.id}/roles`, {
         method: "POST",
-        body: JSON.stringify({ roleId: assignRoleId, assignedBranchId: assignRoleBranchId || undefined }),
+        body: JSON.stringify({
+          roleId: assignRoleId,
+          assignedBranchId: assignRoleBranchId || undefined,
+          grantsAllBranches: assignRoleAllBranches,
+        }),
       });
       setAssignRoleId("");
       setAssignRoleBranchId("");
-      setMessage("Role vinculada ao usuário.");
+      setAssignRoleAllBranches(false);
+      setMessage("Papel vinculado ao usuário.");
       await loadUserSummary(activeUser.id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "A role não pôde ser vinculada.");
@@ -881,13 +887,23 @@ export function AccessWorkspace() {
                       ))}
                     </select>
                     <select value={assignRoleBranchId} onChange={(event) => setAssignRoleBranchId(event.target.value)}>
-                      <option value="">Sem filial específica</option>
+                      <option value="">Sem filial (usuário não vê nenhuma até marcar)</option>
                       {branches.map((branch) => (
                         <option key={branch.id} value={branch.id}>
                           {branch.displayName}
                         </option>
                       ))}
                     </select>
+                    <label className="field">
+                      <span>
+                        <input
+                          checked={assignRoleAllBranches}
+                          onChange={(event) => setAssignRoleAllBranches(event.target.checked)}
+                          type="checkbox"
+                        />{" "}
+                        Todas as Filiais
+                      </span>
+                    </label>
                     <button className="button-secondary" disabled={saving || !canWriteUsers} type="submit">
                       Vincular
                     </button>
@@ -1142,8 +1158,8 @@ export function AccessWorkspace() {
           <article className="mini-card">
             <div className="workspace-toolbar">
               <div className="workspace-toolbar__copy">
-                <h3>Communities</h3>
-                <p>{loading ? "Carregando…" : `${filteredCommunities.length} registro(s)`}</p>
+                <h3>Comunidades</h3>
+                <p>Congeladas: não concedem permissão. A permissão vem só do papel e do escopo.</p>
               </div>
               {canWriteCommunities ? (
                 <button

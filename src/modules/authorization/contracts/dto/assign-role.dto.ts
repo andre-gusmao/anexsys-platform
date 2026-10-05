@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
 
 export class AssignRoleDto {
   @IsUUID()
@@ -13,6 +13,10 @@ export class AssignRoleDto {
   @IsOptional()
   @IsUUID()
   assignedBranchId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  grantsAllBranches?: boolean;
 
   @IsUUID()
   actorUserId!: string;

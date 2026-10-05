@@ -30,6 +30,14 @@ export class BranchRepository {
     return this.repository.findOne({ where: { tenantId, code, isDeleted: false } });
   }
 
+  async findByCompany(tenantId: string, companyId: string): Promise<BranchEntity[]> {
+    return this.repository.find({ where: { tenantId, companyId, isDeleted: false }, order: { displayName: 'ASC' } });
+  }
+
+  async findDefaultByCompany(tenantId: string, companyId: string): Promise<BranchEntity | null> {
+    return this.repository.findOne({ where: { tenantId, companyId, isDefault: true, isDeleted: false } });
+  }
+
   async findChildren(parentBranchId: string): Promise<BranchEntity[]> {
     return this.repository.find({ where: { parentBranchId, isDeleted: false }, order: { displayName: 'ASC' } });
   }

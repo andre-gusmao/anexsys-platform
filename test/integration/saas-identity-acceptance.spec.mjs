@@ -210,35 +210,29 @@ before(async () => {
     actorUserId: admin.id,
   });
 
-  const communityPermissionTenantOne = await authorizationService.createPermission({
+  const dashboardRoleOne = await authorizationService.createRole({
+    tenantId: tenantOneId,
+    code: 'DASHBOARD',
+    displayName: 'Dashboard',
+    actorUserId: admin.id,
+  });
+  const dashboardPermissionOne = await authorizationService.createPermission({
     tenantId: tenantOneId,
     code: 'dashboard.read',
     displayName: 'dashboard.read',
     actorUserId: admin.id,
   });
-  const communityPermissionTenantTwo = await authorizationService.createPermission({
-    tenantId: tenantTwoId,
-    code: 'dashboard.read',
-    displayName: 'dashboard.read',
-    actorUserId: bootstrapActorId,
-  });
-
-  const communityOne = await authorizationService.createCommunity({
+  await authorizationService.assignPermissionToRole({
     tenantId: tenantOneId,
-    code: 'CUSTOMER_SERVICE',
-    displayName: 'Customer Service',
+    roleId: dashboardRoleOne.id,
+    permissionId: dashboardPermissionOne.id,
     actorUserId: admin.id,
   });
-  await authorizationService.assignPermissionToCommunity({
-    tenantId: tenantOneId,
-    communityId: communityOne.id,
-    permissionId: communityPermissionTenantOne.id,
-    actorUserId: admin.id,
-  });
-  await authorizationService.assignUserToCommunity({
+  await authorizationService.assignRole({
     tenantId: tenantOneId,
     userId: sharedTenantOne.id,
-    communityId: communityOne.id,
+    roleId: dashboardRoleOne.id,
+    assignedBranchId: branchOneId,
     actorUserId: admin.id,
   });
   await authorizationService.assignBranchScope({
@@ -249,22 +243,29 @@ before(async () => {
     actorUserId: admin.id,
   });
 
-  const communityTwo = await authorizationService.createCommunity({
+  const dashboardRoleTwo = await authorizationService.createRole({
     tenantId: tenantTwoId,
-    code: 'EXECUTIVES',
-    displayName: 'Executives',
+    code: 'DASHBOARD',
+    displayName: 'Dashboard',
     actorUserId: bootstrapActorId,
   });
-  await authorizationService.assignPermissionToCommunity({
+  const dashboardPermissionTwo = await authorizationService.createPermission({
     tenantId: tenantTwoId,
-    communityId: communityTwo.id,
-    permissionId: communityPermissionTenantTwo.id,
+    code: 'dashboard.read',
+    displayName: 'dashboard.read',
     actorUserId: bootstrapActorId,
   });
-  await authorizationService.assignUserToCommunity({
+  await authorizationService.assignPermissionToRole({
+    tenantId: tenantTwoId,
+    roleId: dashboardRoleTwo.id,
+    permissionId: dashboardPermissionTwo.id,
+    actorUserId: bootstrapActorId,
+  });
+  await authorizationService.assignRole({
     tenantId: tenantTwoId,
     userId: sharedTenantTwo.id,
-    communityId: communityTwo.id,
+    roleId: dashboardRoleTwo.id,
+    assignedBranchId: branchTenantTwoId,
     actorUserId: bootstrapActorId,
   });
   await authorizationService.assignBranchScope({
@@ -303,7 +304,7 @@ after(async () => {
 });
 
 describe('SaaS identity acceptance', () => {
-  it('authenticates with email/password only and exposes the company selector plus community-based permissions', async () => {
+  it('authenticates with email/password only and exposes the company selector plus role-based permissions', async () => {
     assert.equal(sharedLogin.status, 201);
     assert.equal(sharedLogin.json.tenantId, tenantOneId);
 
@@ -319,8 +320,8 @@ describe('SaaS identity acceptance', () => {
     assert.equal(me.json.user.email, 'shared@identity.test');
     assert.equal(me.json.context.companySelectionRequired, true);
     assert.equal(me.json.context.availableCompanies.length, 2);
-    assert.ok(me.json.effectiveAccess.communities.includes('CUSTOMER_SERVICE'));
     assert.ok(me.json.effectiveAccess.permissions.includes('dashboard.read'));
+    assert.deepEqual(me.json.effectiveAccess.communities, []);
   });
 
   it('switches company without reauthentication and remembers the last valid company and branch context', async () => {
@@ -358,7 +359,8 @@ describe('SaaS identity acceptance', () => {
     assert.equal(me.status, 200);
     assert.equal(me.json.context.tenantId, tenantTwoId);
     assert.equal(me.json.context.branchId, branchTenantTwoId);
-    assert.ok(me.json.effectiveAccess.communities.includes('EXECUTIVES'));
+    assert.ok(me.json.effectiveAccess.permissions.includes('dashboard.read'));
+    assert.deepEqual(me.json.effectiveAccess.communities, []);
 
     const relogin = await http('/auth/login/password', {
       method: 'POST',

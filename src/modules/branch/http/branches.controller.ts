@@ -7,14 +7,17 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Put,
   Post,
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsOptional, IsString, IsUUID, Length, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMinSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, IsUUID, Length, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
+import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
 import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { BranchService } from '../application/branch/branch.service';
 
@@ -36,6 +39,14 @@ class CreateBranchBody {
   @IsOptional()
   @IsString()
   businessCalendarName?: string;
+
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
 }
 
 class UpdateBranchBody {
@@ -60,6 +71,49 @@ class UpdateBranchBody {
   @IsOptional()
   @IsString()
   businessCalendarName?: string;
+
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+}
+
+class OperatingHoursDayBody {
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  weekday!: number;
+
+  @IsBoolean()
+  isOpen!: boolean;
+
+  @IsOptional()
+  @IsString()
+  opensAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  closesAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  cutoffAt?: string | null;
+}
+
+class ReplaceOperatingHoursBody {
+  @IsArray()
+  @ArrayMinSize(7)
+  @ValidateNested({ each: true })
+  @Type(() => OperatingHoursDayBody)
+  days!: OperatingHoursDayBody[];
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
 }
 
 @Controller('branches')
@@ -67,6 +121,7 @@ export class BranchesController {
   constructor(
     private readonly branchService: BranchService,
     private readonly dependencyValidationService: DependencyValidationService,
+    private readonly branchHoursService: BranchHoursService,
   ) {}
 
   @Permissions('branches.read')
@@ -170,6 +225,52 @@ export class BranchesController {
     }
 
     return this.branchService.deactivate(branchId, actorUserId);
+  }
+
+  @Permissions('branches.read')
+  @Get(':branchId/operating-hours')
+  async getOperatingHours(
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    await this.getScopedBranch(branchId, tenantId, request);
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    return this.branchHoursService.list(tenantId, branchId);
+  }
+
+  @Permissions('branches.write')
+  @Put(':branchId/operating-hours')
+  async replaceOperatingHours(
+    @Param('branchId', new ParseUUIDPipe()) branchId: string,
+    @Body() body: ReplaceOperatingHoursBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    await this.getScopedBranch(branchId, tenantId, request);
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+    const days = await this.branchHoursService.replaceHours(
+      tenantId,
+      branchId,
+      body.days.map((day) => ({
+        weekday: day.weekday,
+        isOpen: day.isOpen,
+        opensAt: day.opensAt ?? null,
+        closesAt: day.closesAt ?? null,
+        cutoffAt: day.cutoffAt ?? null,
+      })),
+      actorUserId,
+      body.timezone,
+    );
+    return { timezone: body.timezone, days };
   }
 
   @Permissions('branches.read')

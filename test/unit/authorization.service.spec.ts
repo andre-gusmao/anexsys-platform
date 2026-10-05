@@ -128,16 +128,17 @@ function createService(overrides: Record<string, unknown> = {}) {
 }
 
 describe('AuthorizationService', () => {
-  it('combines role permissions, community permissions, and branch scopes into effective access', async () => {
+  it('combines role permissions and explicit branch scopes, ignoring frozen community permissions', async () => {
     const service = createService({
       permissionRepository: {
-        async findByIds(tenantId: string) {
+        async findByIds(tenantId: string, ids: string[]) {
           assert.equal(tenantId, 'tenant-1');
-          return [
+          const catalog = [
             { id: 'permission-1', code: 'tenant.manage' },
             { id: 'permission-2', code: 'branch.manage' },
             { id: 'permission-3', code: 'finance.export' },
           ];
+          return catalog.filter((permission) => ids.includes(permission.id));
         },
       },
       rolePermissionRepository: {
@@ -202,7 +203,7 @@ describe('AuthorizationService', () => {
 
     assert.deepEqual(effectiveAccess, {
       branchIds: ['branch-2', 'branch-1'],
-      permissions: ['branch.manage', 'finance.export', 'tenant.manage'],
+      permissions: ['branch.manage', 'tenant.manage'],
       communities: ['FINANCE'],
     });
   });
@@ -241,11 +242,11 @@ describe('AuthorizationService', () => {
     assert.deepEqual(access, { branchIds: [], permissions: [], communities: [] });
   });
 
-  it('treats tenant-wide role assignments as access to all tenant branches', async () => {
+  it('grants all tenant branches only when grantsAllBranches is explicit', async () => {
     const service = createService({
       userRoleAssignmentRepository: {
         async findActiveByUserId() {
-          return [{ roleId: 'role-1', assignedBranchId: null }];
+          return [{ roleId: 'role-1', assignedBranchId: null, grantsAllBranches: true }];
         },
       },
       branchService: {
@@ -258,6 +259,24 @@ describe('AuthorizationService', () => {
 
     const access = await service.getEffectiveAccessForUser('tenant-1', 'user-1');
     assert.deepEqual(access.branchIds, ['branch-a', 'branch-b']);
+  });
+
+  it('leaves a new user without Filial until the administrator assigns one', async () => {
+    const service = createService({
+      userRoleAssignmentRepository: {
+        async findActiveByUserId() {
+          return [{ roleId: 'role-1', assignedBranchId: null, grantsAllBranches: false }];
+        },
+      },
+      branchService: {
+        async listByTenant() {
+          return [{ id: 'branch-a' }, { id: 'branch-b' }];
+        },
+      },
+    });
+
+    const access = await service.getEffectiveAccessForUser('tenant-1', 'user-1');
+    assert.deepEqual(access.branchIds, []);
   });
 
   it('rejects duplicate role creation per tenant code', async () => {
@@ -313,12 +332,8 @@ describe('AuthorizationService', () => {
     );
   });
 
-  it('rejects duplicate community permission assignment', async () => {
-    const service = createService({
-      communityRepository: { async findById() { return { id: 'community-1', tenantId: 'tenant-1' }; } },
-      permissionRepository: { async findById() { return { id: 'permission-1', tenantId: 'tenant-1' }; } },
-      communityPermissionRepository: { async findByCommunityAndPermission() { return { id: 'existing-link' }; } },
-    });
+  it('rejects community writes because communities are frozen', async () => {
+    const service = createService();
 
     await assert.rejects(
       () =>
@@ -351,12 +366,8 @@ describe('AuthorizationService', () => {
     );
   });
 
-  it('rejects duplicate community memberships', async () => {
-    const service = createService({
-      communityRepository: { async findById() { return { id: 'community-1', tenantId: 'tenant-a' }; } },
-      userCommunityRepository: { async findByUserAndCommunity() { return { id: 'membership-1' }; } },
-      identityService: { async getById() { return { id: 'user-1', tenantId: 'tenant-a' }; } },
-    });
+  it('rejects community membership writes because communities are frozen', async () => {
+    const service = createService();
 
     await assert.rejects(
       () =>

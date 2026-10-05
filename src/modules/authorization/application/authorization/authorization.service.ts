@@ -23,10 +23,24 @@ import { UserBranchScopeRepository } from '../../infrastructure/persistence/repo
 import { UserCommunityRepository } from '../../infrastructure/persistence/repositories/user-community.repository';
 import { UserRoleAssignmentRepository } from '../../infrastructure/persistence/repositories/user-role-assignment.repository';
 
+const COMMUNITY_FROZEN_MESSAGE =
+  'Comunidades estão congeladas. A permissão vem só do papel e do escopo (Empresa/Filial).';
+
 export interface EffectiveAccessResult {
   branchIds: string[];
   permissions: string[];
   communities: string[];
+}
+
+export interface AccessImpactReport {
+  userId: string;
+  displayName?: string;
+  email?: string;
+  communities: string[];
+  permissionsLostFromCommunities: string[];
+  hasAllBranchesGrant: boolean;
+  assignedBranchIds: string[];
+  effectiveBranchIds: string[];
 }
 
 export interface UserAccessSummary {
@@ -37,6 +51,7 @@ export interface UserAccessSummary {
     displayName: string;
     assignedBranchId: string | null;
     assignedBranchLabel: string | null;
+    grantsAllBranches: boolean;
   }>;
   communities: Array<{
     membershipId: string;
@@ -140,6 +155,7 @@ export class AuthorizationService {
     description?: string;
     actorUserId: string;
   }): Promise<CommunityEntity> {
+    this.assertCommunitiesWritable();
     const normalizedCode = dto.code.trim().toUpperCase();
     const existing = await this.communityRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
     if (existing) {
@@ -280,6 +296,7 @@ export class AuthorizationService {
     status?: RoleStatus;
     actorUserId: string;
   }): Promise<CommunityEntity> {
+    this.assertCommunitiesWritable();
     const community = await this.getCommunity(dto.communityId);
     if (community.tenantId !== dto.tenantId) {
       throw new DomainValidationError('Community is outside the tenant scope.');
@@ -364,6 +381,7 @@ export class AuthorizationService {
     permissionId: string;
     actorUserId: string;
   }): Promise<void> {
+    this.assertCommunitiesWritable();
     const community = await this.getCommunity(dto.communityId);
     const permission = await this.getPermission(dto.permissionId);
     if (community.tenantId !== dto.tenantId || permission.tenantId !== dto.tenantId) {
@@ -430,6 +448,7 @@ export class AuthorizationService {
       userId: dto.userId,
       roleId: dto.roleId,
       assignedBranchId: dto.assignedBranchId ?? null,
+      grantsAllBranches: dto.grantsAllBranches === true,
       assignedAt: new Date(),
       revokedAt: null,
       createdBy: dto.actorUserId,
@@ -455,6 +474,7 @@ export class AuthorizationService {
     communityId: string;
     actorUserId: string;
   }): Promise<void> {
+    this.assertCommunitiesWritable();
     const user = await this.identityService.getById(dto.userId);
     const community = await this.getCommunity(dto.communityId);
     if (user.tenantId !== dto.tenantId || community.tenantId !== dto.tenantId) {
@@ -588,6 +608,7 @@ export class AuthorizationService {
           displayName: role?.displayName ?? assignment.roleId,
           assignedBranchId: assignment.assignedBranchId,
           assignedBranchLabel: assignment.assignedBranchId ? branchMap.get(assignment.assignedBranchId) ?? assignment.assignedBranchId : null,
+          grantsAllBranches: assignment.grantsAllBranches === true,
         };
       }),
       communities: memberships.map((membership) => {
@@ -622,13 +643,7 @@ export class AuthorizationService {
     const memberships = await this.userCommunityRepository.findByUserId(tenantId, userId);
     const communityIds = memberships.map((membership) => membership.communityId);
     const communities = await this.communityRepository.findByIds(tenantId, communityIds);
-    const communityPermissions = await this.communityPermissionRepository.findByCommunityIds(tenantId, communityIds);
-    const permissionIds = [
-      ...new Set([
-        ...rolePermissions.map((rolePermission) => rolePermission.permissionId),
-        ...communityPermissions.map((communityPermission) => communityPermission.permissionId),
-      ]),
-    ];
+    const permissionIds = [...new Set(rolePermissions.map((rolePermission) => rolePermission.permissionId))];
     const permissions = await this.permissionRepository.findByIds(tenantId, permissionIds);
     if (permissions.length !== permissionIds.length) {
       throw new DomainValidationError('Permission assignments reference missing permissions.');
@@ -641,7 +656,7 @@ export class AuthorizationService {
         .filter((branchId): branchId is string => Boolean(branchId)),
     ];
 
-    if (assignments.some((assignment) => assignment.assignedBranchId === null)) {
+    if (assignments.some((assignment) => assignment.grantsAllBranches === true)) {
       const tenantBranches = await this.branchService.listByTenant(tenantId);
       branchIds.push(...tenantBranches.filter((branch) => branch.status !== BranchStatus.INACTIVE).map((branch) => branch.id));
     }
@@ -651,6 +666,56 @@ export class AuthorizationService {
       permissions: [...new Set(permissions.map((permission) => permission.code))].sort(),
       communities: [...new Set(communities.map((community) => community.code))].sort(),
     };
+  }
+
+  async getUserAccessImpact(tenantId: string, userId: string): Promise<AccessImpactReport> {
+    const user = await this.identityService.getById(userId);
+    if (user.tenantId !== tenantId) {
+      throw new DomainValidationError('User is outside the tenant scope.');
+    }
+    const assignments = await this.userRoleAssignmentRepository.findActiveByUserId(tenantId, userId);
+    const memberships = await this.userCommunityRepository.findByUserId(tenantId, userId);
+    const communityIds = memberships.map((membership) => membership.communityId);
+    const communities = await this.communityRepository.findByIds(tenantId, communityIds);
+    const communityPermissions = await this.communityPermissionRepository.findByCommunityIds(tenantId, communityIds);
+    const rolePermissions = await this.rolePermissionRepository.findByRoleIds(
+      tenantId,
+      assignments.map((assignment) => assignment.roleId),
+    );
+    const rolePermissionIds = new Set(rolePermissions.map((item) => item.permissionId));
+    const lostPermissionIds = [
+      ...new Set(
+        communityPermissions
+          .map((item) => item.permissionId)
+          .filter((permissionId) => !rolePermissionIds.has(permissionId)),
+      ),
+    ];
+    const lostPermissions = lostPermissionIds.length
+      ? await this.permissionRepository.findByIds(tenantId, lostPermissionIds)
+      : [];
+    const effectiveAccess = await this.getEffectiveAccessForUser(tenantId, userId);
+
+    return {
+      userId,
+      displayName: user.displayName,
+      email: user.email,
+      communities: communities.map((community) => community.code).sort(),
+      permissionsLostFromCommunities: lostPermissions.map((permission) => permission.code).sort(),
+      hasAllBranchesGrant: assignments.some((assignment) => assignment.grantsAllBranches === true),
+      assignedBranchIds: assignments
+        .map((assignment) => assignment.assignedBranchId)
+        .filter((branchId): branchId is string => Boolean(branchId)),
+      effectiveBranchIds: effectiveAccess.branchIds,
+    };
+  }
+
+  async getTenantAccessImpact(tenantId: string): Promise<AccessImpactReport[]> {
+    const users = await this.identityService.listByTenant(tenantId);
+    const reports: AccessImpactReport[] = [];
+    for (const user of users) {
+      reports.push(await this.getUserAccessImpact(tenantId, user.id));
+    }
+    return reports;
   }
 
   async userHasBranchScope(tenantId: string, userId: string, branchId: string, scopeType?: BranchScopeType): Promise<boolean> {
@@ -683,5 +748,9 @@ export class AuthorizationService {
     }
 
     return community;
+  }
+
+  private assertCommunitiesWritable(): void {
+    throw new DomainValidationError(COMMUNITY_FROZEN_MESSAGE);
   }
 }

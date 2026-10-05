@@ -14,6 +14,17 @@ type BranchRecord = {
   status: "active" | "inactive";
   parentBranchId: string | null;
   businessCalendarName: string | null;
+  companyId?: string;
+  timezone?: string;
+  isDefault?: boolean;
+};
+
+type HoursDay = {
+  weekday: number;
+  isOpen: boolean;
+  opensAt: string | null;
+  closesAt: string | null;
+  cutoffAt: string | null;
 };
 
 type BranchForm = {
@@ -64,6 +75,8 @@ export function BranchesWorkspace() {
   const [showCreateForm, setShowCreateForm] = useWorkspaceScopedState("branches.showCreateForm", false);
   const [form, setForm] = useWorkspaceScopedState<BranchForm>("branches.form", emptyForm());
   const [dependencyValidation, setDependencyValidation] = useState<DependencyValidationResult | null>(null);
+  const [hours, setHours] = useState<{ timezone: string; days: HoursDay[] } | null>(null);
+  const [hoursSaving, setHoursSaving] = useState(false);
 
   const filteredBranches = useMemo(() => {
     const normalized = searchQuery.trim().toLowerCase();
@@ -81,6 +94,23 @@ export function BranchesWorkspace() {
     label: activeBranch ? `Filial: ${activeBranch.displayName}` : "Filiais",
     subtitle: showCreateForm ? "Novo cadastro" : activeBranch?.code ?? null,
   });
+
+  const loadHours = useCallback(async (branchId: string) => {
+    try {
+      const record = await apiJson<{ timezone: string; days: HoursDay[] }>(`/branches/${branchId}/operating-hours`);
+      setHours({
+        timezone: record.timezone,
+        days: record.days.map((day) => ({
+          ...day,
+          opensAt: day.opensAt?.slice(0, 5) ?? null,
+          closesAt: day.closesAt?.slice(0, 5) ?? null,
+          cutoffAt: day.cutoffAt?.slice(0, 5) ?? null,
+        })),
+      });
+    } catch {
+      setHours(null);
+    }
+  }, [apiJson]);
 
   const loadChildren = useCallback(async (branchId: string) => {
     setDetailLoading(true);
@@ -111,6 +141,7 @@ export function BranchesWorkspace() {
       if (!showCreateForm && resolvedActiveBranch) {
         setForm(mapBranchToForm(resolvedActiveBranch));
         void loadChildren(resolvedActiveBranch.id);
+        void loadHours(resolvedActiveBranch.id);
       } else {
         setChildren([]);
       }
@@ -121,7 +152,7 @@ export function BranchesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [activeBranchId, apiJson, canRead, loadChildren, setActiveBranchId, setForm, showCreateForm]);
+  }, [activeBranchId, apiJson, canRead, loadChildren, loadHours, setActiveBranchId, setForm, showCreateForm]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -393,6 +424,38 @@ export function BranchesWorkspace() {
                 </div>
               </form>
 
+              <BranchHoursEditor
+                canWrite={canWrite}
+                hours={hours}
+                saving={hoursSaving}
+                onChange={setHours}
+                onSave={async () => {
+                  if (!activeBranch || !hours) return;
+                  setHoursSaving(true);
+                  setMessage(null);
+                  try {
+                    const saved = await apiJson<{ timezone: string; days: HoursDay[] }>(`/branches/${activeBranch.id}/operating-hours`, {
+                      method: "PUT",
+                      body: JSON.stringify(hours),
+                    });
+                    setHours({
+                      timezone: saved.timezone || hours.timezone,
+                      days: saved.days.map((day) => ({
+                        ...day,
+                        opensAt: day.opensAt?.slice(0, 5) ?? null,
+                        closesAt: day.closesAt?.slice(0, 5) ?? null,
+                        cutoffAt: day.cutoffAt?.slice(0, 5) ?? null,
+                      })),
+                    });
+                    setMessage("Horário e hora de corte da Filial atualizados.");
+                  } catch (error) {
+                    setMessage(error instanceof Error ? error.message : "O horário não pôde ser salvo.");
+                  } finally {
+                    setHoursSaving(false);
+                  }
+                }}
+              />
+
               <div className="mini-section">
                 <h4>Subfiliais</h4>
                 {children.length > 0 ? (
@@ -553,3 +616,111 @@ function BranchFormFields({
     );
   }
 }
+
+const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+function BranchHoursEditor({
+  hours,
+  canWrite,
+  saving,
+  onChange,
+  onSave,
+}: {
+  hours: { timezone: string; days: HoursDay[] } | null;
+  canWrite: boolean;
+  saving: boolean;
+  onChange: (value: { timezone: string; days: HoursDay[] }) => void;
+  onSave: () => void;
+}) {
+  if (!hours) {
+    return (
+      <div className="mini-section">
+        <h4>Horário de funcionamento</h4>
+        <p>Carregando horário…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mini-section">
+      <h4>Horário de funcionamento e hora de corte</h4>
+      <p>Fuso: {hours.timezone}. A hora de corte é o fechamento, salvo se você alterar.</p>
+      {hours.days
+        .slice()
+        .sort((left, right) => left.weekday - right.weekday)
+        .map((day) => (
+          <div className="filters-grid" key={day.weekday}>
+            <label className="field">
+              <span>{WEEKDAY_LABELS[day.weekday]}</span>
+              <select
+                disabled={!canWrite}
+                value={day.isOpen ? "open" : "closed"}
+                onChange={(event) => {
+                  const isOpen = event.target.value === "open";
+                  onChange({
+                    ...hours,
+                    days: hours.days.map((item) =>
+                      item.weekday === day.weekday
+                        ? {
+                            ...item,
+                            isOpen,
+                            opensAt: isOpen ? item.opensAt ?? "09:30" : null,
+                            closesAt: isOpen ? item.closesAt ?? "18:00" : null,
+                            cutoffAt: isOpen ? item.cutoffAt ?? item.closesAt ?? "18:00" : null,
+                          }
+                        : item,
+                    ),
+                  });
+                }}
+              >
+                <option value="open">Aberta</option>
+                <option value="closed">Fechada</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Abre</span>
+              <input
+                disabled={!canWrite || !day.isOpen}
+                type="time"
+                value={day.opensAt ?? ""}
+                onChange={(event) =>
+                  onChange({
+                    ...hours,
+                    days: hours.days.map((item) =>
+                      item.weekday === day.weekday ? { ...item, opensAt: event.target.value } : item,
+                    ),
+                  })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Fecha / corte</span>
+              <input
+                disabled={!canWrite || !day.isOpen}
+                type="time"
+                value={day.closesAt ?? ""}
+                onChange={(event) =>
+                  onChange({
+                    ...hours,
+                    days: hours.days.map((item) =>
+                      item.weekday === day.weekday
+                        ? { ...item, closesAt: event.target.value, cutoffAt: event.target.value }
+                        : item,
+                    ),
+                  })
+                }
+              />
+            </label>
+          </div>
+        ))}
+      {canWrite ? (
+        <div className="button-row">
+          <button className="button-secondary" disabled={saving} onClick={() => void onSave()} type="button">
+            {saving ? "Salvando…" : "Salvar horário"}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+

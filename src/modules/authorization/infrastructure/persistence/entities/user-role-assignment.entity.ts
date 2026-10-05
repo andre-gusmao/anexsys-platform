@@ -15,6 +15,9 @@ export class UserRoleAssignmentEntity extends MutableBusinessEntity {
   @Column({ name: 'assigned_branch_id', type: 'uuid', nullable: true })
   assignedBranchId!: string | null;
 
+  @Column({ name: 'grants_all_branches', type: 'boolean', default: false })
+  grantsAllBranches!: boolean;
+
   @Column({ name: 'assigned_at', type: 'timestamptz' })
   assignedAt!: Date;
 

@@ -10,7 +10,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, MinLength, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, IsUUID, MinLength, ValidateIf } from 'class-validator';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
 import { BranchScopeType, UserStatus } from 'src/shared/domain/enums';
 import { CurrentRequest, CurrentTenantId, CurrentUserId } from 'src/platform/http/request-context.decorators';
@@ -54,6 +54,10 @@ class AssignRoleBody {
   @IsOptional()
   @IsUUID()
   assignedBranchId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  grantsAllBranches?: boolean;
 }
 
 class AssignBranchScopeBody {
@@ -188,6 +192,21 @@ export class UsersController {
     return this.authorizationService.getUserAccessSummary(tenantId, userId);
   }
 
+  @Permissions('users.read')
+  @Get(':userId/access-impact')
+  async getAccessImpact(@Param('userId', new ParseUUIDPipe()) userId: string, @CurrentTenantId() tenantId: string | null) {
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+
+    const user = await this.identityService.getById(userId);
+    if (user.tenantId !== tenantId) {
+      throw new ForbiddenException('Requested user is outside the authenticated tenant scope.');
+    }
+
+    return this.authorizationService.getUserAccessImpact(tenantId, userId);
+  }
+
   @Permissions('users.write')
   @Patch(':userId')
   async update(
@@ -242,6 +261,7 @@ export class UsersController {
       userId,
       roleId: body.roleId,
       assignedBranchId: body.assignedBranchId,
+      grantsAllBranches: body.grantsAllBranches,
       actorUserId,
     });
 

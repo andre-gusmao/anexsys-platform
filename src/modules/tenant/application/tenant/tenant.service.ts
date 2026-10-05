@@ -4,6 +4,7 @@ import { AuditService } from 'src/modules/audit/application/audit/audit.service'
 import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { CreateTenantDto } from 'src/modules/tenant/contracts/dto/create-tenant.dto';
 import { UpdateTenantDto } from 'src/modules/tenant/contracts/dto/update-tenant.dto';
+import { TenantContext } from 'src/platform/tenancy/tenant-context';
 import { TenantStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
@@ -19,41 +20,43 @@ export class TenantService {
   ) {}
 
   async create(dto: CreateTenantDto): Promise<TenantEntity> {
-    const normalizedCode = dto.code.trim().toUpperCase();
-    const existing = await this.tenantRepository.findByCode(normalizedCode);
-    if (existing) {
-      throw new DomainValidationError(`Tenant code '${dto.code}' already exists.`);
-    }
+    return TenantContext.run({ tenantId: null, bypass: true }, async () => {
+      const normalizedCode = dto.code.trim().toUpperCase();
+      const existing = await this.tenantRepository.findByCode(normalizedCode);
+      if (existing) {
+        throw new DomainValidationError(`Tenant code '${dto.code}' already exists.`);
+      }
 
-    const tenant = this.tenantRepository.create({
-      id: randomUUID(),
-      code: normalizedCode,
-      legalName: dto.legalName.trim(),
-      displayName: dto.displayName.trim(),
-      status: TenantStatus.ACTIVE,
-      warrantyAdjustmentPeriodDays: dto.warrantyAdjustmentPeriodDays ?? 7,
-      warrantyExecutionPeriodDays: dto.warrantyExecutionPeriodDays ?? 7,
-      blockDeliveryWithOutstandingBalance: dto.blockDeliveryWithOutstandingBalance ?? false,
-      isDeleted: false,
-      deletedAt: null,
-      deletedBy: null,
-      createdBy: dto.actorUserId,
-      updatedBy: dto.actorUserId,
+      const tenant = this.tenantRepository.create({
+        id: randomUUID(),
+        code: normalizedCode,
+        legalName: dto.legalName.trim(),
+        displayName: dto.displayName.trim(),
+        status: TenantStatus.ACTIVE,
+        warrantyAdjustmentPeriodDays: dto.warrantyAdjustmentPeriodDays ?? 7,
+        warrantyExecutionPeriodDays: dto.warrantyExecutionPeriodDays ?? 7,
+        blockDeliveryWithOutstandingBalance: dto.blockDeliveryWithOutstandingBalance ?? false,
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        createdBy: dto.actorUserId,
+        updatedBy: dto.actorUserId,
+      });
+
+      const saved = await this.tenantRepository.save(tenant);
+      await this.auditService.record({
+        tenantId: saved.id,
+        actorUserId: dto.actorUserId,
+        entityType: 'tenant',
+        entityId: saved.id,
+        action: 'tenant.created',
+        eventType: 'governance.write',
+        metadata: { code: saved.code },
+        newValues: this.buildAuditSnapshot(saved),
+      });
+
+      return saved;
     });
-
-    const saved = await this.tenantRepository.save(tenant);
-    await this.auditService.record({
-      tenantId: saved.id,
-      actorUserId: dto.actorUserId,
-      entityType: 'tenant',
-      entityId: saved.id,
-      action: 'tenant.created',
-      eventType: 'governance.write',
-      metadata: { code: saved.code },
-      newValues: this.buildAuditSnapshot(saved),
-    });
-
-    return saved;
   }
 
   async list(): Promise<TenantEntity[]> {

@@ -17,6 +17,7 @@ import { UserSessionEntity } from '../../infrastructure/persistence/entities/use
 import { FirstAccessTokenRepository } from '../../infrastructure/persistence/repositories/first-access-token.repository';
 import { UserCredentialRepository } from '../../infrastructure/persistence/repositories/user-credential.repository';
 import { UserSessionRepository } from '../../infrastructure/persistence/repositories/user-session.repository';
+import { TenantContext } from 'src/platform/tenancy/tenant-context';
 import { IdentityService } from '../identity/identity.service';
 
 type AvailableCompany = {
@@ -314,6 +315,7 @@ export class AuthService {
     actorUserId: string;
     tenantId: string;
   }): Promise<{ accessToken: string; refreshToken: string; sessionId: string; tenantId: string; branchIds: string[]; permissions: string[] }> {
+    return TenantContext.run({ tenantId: null, bypass: true }, async () => {
     const session = await this.userSessionRepository.findActiveById(params.sessionId);
     if (!session || session.userId !== params.actorUserId) {
       throw new AuthenticationFailedError('Session revocation is not allowed.');
@@ -381,6 +383,7 @@ export class AuthService {
       branchIds: effectiveAccess.branchIds,
       permissions: effectiveAccess.permissions,
     };
+    });
   }
 
   async selectBranch(params: { sessionId: string; actorUserId: string; branchId: string }): Promise<void> {

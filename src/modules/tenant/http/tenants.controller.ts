@@ -15,6 +15,8 @@ import { IsBoolean, IsInt, IsOptional, IsString, Length, Min } from 'class-valid
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
+import { TenantProvisioningService } from 'src/modules/company/application/company/tenant-provisioning.service';
+import { TenantContext } from 'src/platform/tenancy/tenant-context';
 import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from '../application/tenant/tenant.service';
 
@@ -44,6 +46,11 @@ class CreateTenantBody {
   @IsOptional()
   @IsBoolean()
   blockDeliveryWithOutstandingBalance?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Length(14, 18)
+  cnpj?: string;
 }
 
 class UpdateTenantBody {
@@ -82,11 +89,16 @@ export class TenantsController {
   constructor(
     private readonly tenantService: TenantService,
     private readonly dependencyValidationService: DependencyValidationService,
+    private readonly tenantProvisioningService: TenantProvisioningService,
   ) {}
 
   @Permissions('tenants.read')
   @Get()
-  async list(@CurrentTenantId() tenantId: string | null) {
+  async list(@CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
+    const permissions = request.requestContext.authenticatedPrincipal?.effectivePermissions ?? [];
+    if (permissions.includes('platform.tenants.create')) {
+      return TenantContext.run({ tenantId: null, bypass: true }, () => this.tenantService.list());
+    }
     if (!tenantId) {
       throw new BadRequestException('Tenant context is required.');
     }
@@ -102,7 +114,14 @@ export class TenantsController {
       throw new UnauthorizedException('Authenticated user is required.');
     }
 
-    return this.tenantService.create({ ...body, actorUserId });
+    const provisioned = await this.tenantProvisioningService.provisionNewAccount({
+      code: body.code,
+      legalName: body.legalName,
+      displayName: body.displayName,
+      cnpj: body.cnpj,
+      actorUserId,
+    });
+    return provisioned.tenant;
   }
 
   @Permissions('tenants.read')

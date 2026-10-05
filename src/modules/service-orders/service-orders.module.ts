@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from 'src/modules/audit/audit.module';
 import { BranchModule } from 'src/modules/branch/branch.module';
+import { CompanyModule } from 'src/modules/company/company.module';
 import { CrmModule } from 'src/modules/crm/crm.module';
 import { IdentityModule } from 'src/modules/identity/identity.module';
 import { TenantModule } from 'src/modules/tenant/tenant.module';
@@ -23,6 +24,7 @@ import { ServiceOrderRepository } from './infrastructure/persistence/repositorie
     BranchModule,
     CrmModule,
     IdentityModule,
+    CompanyModule,
   ],
   controllers: [ServiceOrdersController],
   providers: [
