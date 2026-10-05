@@ -60,6 +60,14 @@ A tela abre em `http://127.0.0.1:3001`. O servidor responde em `http://127.0.0.1
 
 Ajuste `frontend/.env.local` a partir de `frontend/.env.example` (`BACKEND_ORIGIN=http://127.0.0.1:3000`).
 
+## Homologação gratuita (Render + Neon)
+
+Não usa `atelierizagusmao.com.br` nem `anexsys.com.br`. Um serviço web gratuito no Render e um PostgreSQL gratuito no Neon.
+
+Arquivos: `render.yaml`, `Dockerfile`, `scripts/start-web.cjs`. A branch a publicar é `cursor/homologacao-gratuita-a1bd` (inclui o Ciclo 1 / PR #9).
+
+No Render, escolha o plano **Free**, cole a `DATABASE_URL` **direta** do Neon (host **sem** `-pooler`) e as variáveis `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`. O primeiro acesso pode demorar cerca de um minuto (o site dorme após ~15 min sem uso).
+
 ### 4. Testes
 
 ```bash

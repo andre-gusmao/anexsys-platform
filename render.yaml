@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: anexsys-homologacao
+    runtime: node
+    plan: free
+    region: oregon
+    branch: cursor/homologacao-gratuita-a1bd
+    buildCommand: npm ci --include=dev && npm --prefix frontend ci --include=dev && npm run build && BACKEND_ORIGIN=http://127.0.0.1:3000 npm --prefix frontend run build
+    startCommand: node scripts/start-web.cjs
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: BACKEND_ORIGIN
+        value: http://127.0.0.1:3000
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SSL_REJECT_UNAUTHORIZED
+        value: "false"
+      - key: BOOTSTRAP_ON_START
+        value: "true"
+      - key: BOOTSTRAP_TENANT_CODE
+        value: ANXHOMOLOG
+      - key: BOOTSTRAP_TENANT_LEGAL_NAME
+        value: Homologacao ANEXSYS
+      - key: BOOTSTRAP_TENANT_DISPLAY_NAME
+        value: Homologacao ANEXSYS
+      - key: BOOTSTRAP_ADMIN_DISPLAY_NAME
+        value: Administrador Homologacao
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false

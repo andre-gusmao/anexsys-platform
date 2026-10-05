@@ -1,0 +1,13 @@
+node_modules
+frontend/node_modules
+frontend/.next
+dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+coverage
+**/*.tsbuildinfo
+test
+docs/arquivo

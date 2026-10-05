@@ -22,6 +22,8 @@
     "migration:show": "node -r ts-node/register -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/platform/database/typeorm/data-source.ts migration:show",
     "dev:setup": "bash scripts/dev-setup.sh",
     "db:wait": "node scripts/wait-for-postgres.cjs",
+    "start:web": "node scripts/start-web.cjs",
+    "migration:run:prod": "node ./node_modules/typeorm/cli.js -d dist/platform/database/typeorm/data-source.js migration:run",
     "test:unit": "tsx --test test/unit/**/*.spec.ts",
     "test:integration": "npm run build && node --test test/integration/**/*.spec.mjs"
   },
@@ -38,6 +40,9 @@
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.1",
     "typeorm": "0.3.31"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "devDependencies": {
     "@nestjs/cli": "12.0.0",

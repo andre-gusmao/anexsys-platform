@@ -20,6 +20,7 @@ import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { CustodyModule } from './modules/custody/custody.module';
 import { JwtAuthGuard } from './platform/auth/jwt-auth.guard';
 import { PermissionsGuard } from './platform/auth/permissions.guard';
+import { HealthController } from './platform/http/health.controller';
 import { RequestContextMiddleware } from './platform/http/request-context.middleware';
 import { buildTypeOrmOptions } from './platform/database/typeorm/typeorm.config';
 import { PickupModule } from './modules/pickup/pickup.module';
@@ -54,6 +55,7 @@ import { patchPostgresQueryRunnerForRls } from './platform/tenancy/tenant-rls.pa
     IdentityModule,
     AuthorizationModule,
   ],
+  controllers: [HealthController],
   providers: [
     {
       provide: APP_GUARD,
