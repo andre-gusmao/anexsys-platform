@@ -14,6 +14,7 @@ Comece por [`docs/00-leia-primeiro.md`](docs/00-leia-primeiro.md).
 | [`docs/04-estado-atual.md`](docs/04-estado-atual.md) | O que funciona hoje |
 | [`docs/05-plano-de-continuidade.md`](docs/05-plano-de-continuidade.md) | Plano em ciclos até o piloto de março de 2027 |
 | [`docs/06-parecer-token-lgpd-entrega.md`](docs/06-parecer-token-lgpd-entrega.md) | Avaliação do token de retirada, da LGPD e da entrega em domicílio |
+| [`docs/07-parecer-integracao-maquininha.md`](docs/07-parecer-integracao-maquininha.md) | Integração com a maquininha: pesquisa, recomendação, passo a passo e e-mails prontos |
 | [`docs/arquivo/`](docs/arquivo/LEIAME.md) | Documentação antiga, somente leitura |
 
 ## Para quem desenvolve

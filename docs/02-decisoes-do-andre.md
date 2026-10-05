@@ -1,10 +1,10 @@
 # Decisões do André
 
-**Atualizado em:** 05/10/2026 (tarde)
+**Atualizado em:** 05/10/2026 (noite)
 **Substitui:** as regras de negócio da documentação antiga (`docs/arquivo/`) nos pontos em que elas divergem deste documento.
 **Valor:** este é o documento **oficial** das regras de negócio. Quando outro documento discordar, vale este.
 
-Fonte: respostas do André ao questionário e às perguntas complementares, em 05/10/2026. Onde a resposta é "?" ou ausente vale a opção recomendada, marcada como "assumido, a confirmar". Os itens marcados com **[EM ABERTO]** contradiziam outra resposta ou o plano; os conflitos foram **resolvidos na seção 10**.
+Fonte: respostas do André ao questionário e às perguntas complementares (rodadas 1 a 3), em 05/10/2026. Onde a resposta é "?" ou ausente vale a opção recomendada, marcada como "assumido, a confirmar". Os itens marcados com **[EM ABERTO]** contradiziam outra resposta ou o plano; os conflitos foram **resolvidos nas seções 10 e 11**.
 
 Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário respondido em 05/10/2026, que não faz parte deste conjunto.
 
@@ -135,7 +135,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 
 ## 10. Respostas complementares (05/10/2026, tarde)
 
-Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[ASSUMIDO]** são deduções que o André ainda não confirmou. Itens **[AVALIAR]** são pontos em que o André pediu uma avaliação (ver `docs/06-parecer-token-lgpd-entrega.md`).
+Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[ASSUMIDO]** são deduções que o André ainda não confirmou. Itens **[AVALIAR]** são pontos em que o André pediu uma avaliação (ver o parecer sobre token, LGPD e entrega em domicílio).
 
 ### 10.1 Como cada conflito da seção 9 foi resolvido
 
@@ -144,13 +144,15 @@ Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[AS
 | 1 | QR por OS ou por peça | **QR por OS**, na Ordem de Produção impressa (já decidido). Quantidade de peças e dificuldade ficam como dados da OS |
 | 2 | Modo estação ou avanço automático | **Avanço automático pelo papel de quem lê.** O objetivo é garantir o fluxo completo sem pular etapas. A técnica **só abre outra sacola depois de terminar a anterior** |
 | 3 | API oficial ou WhatsApp Web | **API oficial contratada direto.** O André reconhece que confundiu o uso atual (WhatsApp Web) com o que o sistema precisa |
-| 4 | Piloto completo e maquininha | **Cielo por conciliação** (importar as vendas no fechamento do dia e baixar as OS em lote), **não** integração em tempo real. Isso reduz o risco do prazo |
+| 4 | Piloto completo e maquininha | **(Substituído na seção 11: integração online.)** Cielo por conciliação (importar as vendas no fechamento do dia e baixar as OS em lote), **não** integração em tempo real. Isso reduz o risco do prazo |
 | 5 | Garantia: 7 ou 90 dias; úteis ou corridos | **Dois prazos diferentes**, ambos contados **da retirada pelo cliente** (ver 10.2). Substitui a resposta anterior que contava a garantia da conclusão da peça |
 | 6 | Status públicos e só duas mensagens | Mantido: o link público mostra o resto |
 | 7 | Reprovação como único retorno | Mantido, com um status interno próprio **"Em refação"** |
 | 8 | Sequência de status | **Lista confirmada**, com a inclusão de "Em refação" |
 
 ### 10.2 Novas decisões
+
+> **Atualização (rodada 3, seção 11):** os itens de **maquininha e pagamento** (conciliação e Pix), **retirada** (token) e **aprovação pendente** abaixo foram **substituídos** pela seção 11. O restante continua valendo.
 
 **WhatsApp**
 - **API oficial contratada direto.**
@@ -217,6 +219,72 @@ Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[AS
 - **Nenhum concierge nem fila de chegada.**
 - **Portal = o link público** de acompanhamento e aprovação.
 
-### 10.3 O que ainda está em aberto
+### 10.3 O que estava em aberto (resolvido na seção 11)
 
-Hora de corte; valor máximo mensal da nuvem e onde o domínio está registrado; modelo da maquininha e forma de ligar a venda à OS; prazo do alerta de aprovação pendente; decisão final sobre token versus assinatura; regras da entrega em domicílio (se entra e quando); tempos médios por dificuldade. Todos estão nas perguntas complementares da segunda rodada (fora do repositório).
+Hora de corte; valor máximo mensal da nuvem e onde o domínio está registrado; modelo da maquininha e forma de ligar a venda à OS; prazo do alerta de aprovação pendente; decisão final sobre token versus assinatura; regras da entrega em domicílio (se entra e quando); tempos médios por dificuldade. Todos estão nas perguntas complementares da segunda rodada (fora do repositório), resolvidas na seção 11.
+
+## 11. Respostas da rodada 3 (05/10/2026, noite)
+
+Fonte: respostas do André às perguntas complementares da segunda rodada. Esta seção **resolve** os pontos da 10.3 e **substitui** o que a seção 10 dizia sobre maquininha, retirada e aprovação pendente.
+
+### 11.1 Mudança radical: pagamento integrado online (a conciliação e o Pix saíram)
+
+- **A conciliação saiu.** O André pediu para **esquecer a conciliação** (importar vendas no fechamento do dia e baixar as OS em lote) e o **relatório "quem deixou de cobrar" por conciliação**.
+- **O QR Pix na tela saiu.**
+- **O que ele quer:** **integração online.** A partir da OS, o sistema **aciona a maquininha já com o valor da OS**, para **não digitar valor errado nem cobrar errado**, e **recebe o resultado online**. É o **maior trunfo da operação**: "mesmo que demore mais", e **é a razão de estar fazendo um sistema próprio**.
+- **Conexão:** **prefere Bluetooth** (**aceita cabo USB**). **Resposta técnica (ver `docs/07-parecer-integracao-maquininha.md`):** integrações de **sistema web com vários atendentes** funcionam **de nuvem a nuvem**, pela internet, **sem Bluetooth nem cabo no computador**; Bluetooth e USB só existem com **programa instalado em cada computador** (TEF, PlugPag), o que **não serve** a um sistema web. A preferência foi traduzida em **"sem cabo, sem digitar valor"**.
+- **Maquininha atual:** **Cielo LIO.** **Aceita trocar de maquininha ou de operadora** se outra integrar melhor com o sistema.
+- **Pedido do André:** que se diga o que ele precisa fazer para **contatar a Cielo ou outra operadora, se credenciar e obter autorização** para integrar. **Respondido** em `docs/07-parecer-integracao-maquininha.md`, com passo a passo e e-mails prontos.
+- **Cartão online com cadastro de cartão pelo cliente:** **não vê como boa saída.** Fica fora.
+- **Plano de contingência (proposto):** **baixa manual** como plano B, e **ponto de decisão em dezembro de 2026** se a operadora não liberar a produção.
+
+### 11.2 Retirada
+
+- **Só assinatura no papel nesta primeira fase.** O cliente assina a **Ordem de Produção em papel**, o atendente **anexa a foto na OS** e clica **"entregue assinado"**.
+- **Sem token e sem janela de confirmação por ora.** (O parecer sobre token permanece como análise para uma versão futura.)
+
+### 11.3 Entrega em domicílio
+
+- **Depois do piloto**, só o **marcador** e o **endereço opcional**. O André **ainda não trabalha com entrega**.
+
+### 11.4 Aprovação pendente
+
+- **Avisar todos os dias** até o cliente assinar, **para o atendente e para o gerente**, com **lista sempre visível na tela** para monitoramento. **Não é por prazo.**
+
+### 11.5 Ambiente, domínio, prazo e estrutura
+
+- **Nuvem:** **até R$ 150 por mês.**
+- **Domínio:** **ATELIERIZAGUSMAO.COM.BR** (Registro.br), **usado só para homologação e uso próprio**. **Para comercializar, usará outro.** O **anexsys.com.br fica para depois.** Quem tem a senha do painel: **o André.** Ele **autorizou seguir assim sem perguntar de novo.**
+- **Hora de corte:** **o próprio fechamento** (18h de segunda a sexta; 14h no sábado).
+
+### 11.6 Suposições confirmadas
+
+Todas as cinco foram **confirmadas**:
+
+1. **Sábado é dia útil.**
+2. **OS dividida forma um grupo** (um link, um aviso de OS aberta e um pagamento).
+3. **Reconserto e garantia são a mesma coisa** (nova OS sem valor, vinculada, com o técnico original), **com prazos de 7 dias corridos e 90 dias**, ambos da retirada.
+4. **Fuso de Brasília e moeda em reais.**
+5. **O link mostra só o primeiro nome** do cliente.
+
+### 11.7 Tempos médios por dificuldade
+
+- **Grau 1 = 30 minutos, grau 2 = 60, grau 3 = 90, grau 4 = 180.**
+
+### 11.8 Princípio transversal: tela de parâmetros
+
+- **Para todas as regras deve existir uma tela de parâmetros**, **administrável pelo André**: graus e tempos (inclusive **aumentar ou diminuir graus**), **parâmetros de logística de produção**, prazos, cortes, sobretaxas, status e demais regras.
+- **Regra de pronto (proposta):** **nenhum ciclo fecha com uma regra nova sem a sua tela de parâmetros.**
+
+### 11.9 O que ainda precisa de resposta (não trava os ciclos 0 e 1)
+
+- Ponto de decisão e contingência da maquininha (data limite; baixa manual ou troca de operadora).
+- Quantos atendentes cobram e quantas maquininhas há ou haverá.
+- Quem escolhe a forma de pagamento (sistema ou cliente na maquininha).
+- Limite de custo da maquininha e da integração; se aceita comprar uma Point Smart 2 como plano B de teste.
+
+Estão nas perguntas complementares da terceira rodada (fora do repositório).
+
+### 11.10 O que o André precisa verificar com a operadora (da pesquisa)
+
+Modelo exato da LIO e compatibilidade com a integração remota; se o pedido aparece sozinho na maquininha; se o resultado volta por aviso automático ou só por consulta; custos (aluguel, taxas, integração); prazo do token de produção; modelo de parceria para vender o ANEXSYS a outros ateliês. Lista completa em `docs/07-parecer-integracao-maquininha.md`, seção 9.

@@ -1,6 +1,6 @@
 # Glossário
 
-**Atualizado em:** 05/10/2026 (tarde)
+**Atualizado em:** 05/10/2026 (noite)
 **Substitui:** os termos espalhados pela documentação antiga (`docs/arquivo/`).
 
 Este glossário vale para as conversas, os documentos e as telas. A coluna "No código" ajuda quem abrir o programa, que usa nomes em inglês.
@@ -59,14 +59,15 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Link público** | Endereço seguro que o cliente recebe por WhatsApp. Sem login. Mostra os status públicos com datas e permite aprovar o serviço |
 | **Aprovação do cliente** | **Assinatura eletrônica** de "concordo com o serviço e o preço", feita no link. **Não é status** |
 | **Assinatura eletrônica** | Registro de aceite com data, hora, texto aceito e aparelho. É **evidência de aceite**, não substitui um certificado digital |
-| **Retirada** | O cliente retira a peça. Informa o número da OS ou o nome, o atendente confere, lê o QR e o cliente assina eletronicamente |
+| **Retirada** | O cliente retira a peça. Informa o número da OS ou o nome, o atendente confere, lê o QR e o cliente assina a Ordem de Produção em papel; a foto é anexada à OS e o atendente clica "entregue assinado" |
 | **Tipo de entrega** | **Normal**: mesmo dia da semana da semana seguinte. **Expresso**: até 2 horas por peça, só no horário de funcionamento. **Urgente**: 2 ou 3 dias úteis (sugestão 3). Cada tipo tem **sobretaxa percentual** configurável. O sistema **sugere** a data e o atendente **pode alterar** |
 | **Reconserto** | O cliente volta em até **7 dias corridos** da retirada reclamando de ajuste (curto ou largo). Cria-se **nova OS sem valor**, **vinculada à original**, mostrando o **técnico que fez a primeira vez**. Depois do prazo, a OS nova é cobrada (o gerente pode liberar sem valor, com motivo) |
 | **Garantia de serviço** | **90 dias**, contados **da retirada**, para defeito de execução (descosturou, a barra se desfez), negociável no balcão |
 | **Grupo de OS** | OS ligadas pela divisão automática (mais de 5 peças): um só link, um só aviso e um só pagamento **[assumido]** |
 | **Divisão automática** | Quando a OS passa de 5 peças, o sistema cria uma segunda OS ligada à primeira |
-| **Conciliação** | No fechamento do dia, o sistema importa as vendas da maquininha (Cielo), casa com as OS e baixa tudo de uma vez; lista as divergências |
-| **Janela de confirmação** | Na retirada, o atendente inicia e, por alguns minutos, o cliente confirma no link já enviado. Recomendada pelo parecer; decisão em aberto |
+| **Tela de parâmetros** | Tela onde o administrador altera as regras do sistema (graus e tempos, prazos, cortes, sobretaxas, status etc.), com histórico de quem mudou e quando |
+| **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |
+| **Aprovação pendente** | OS cujo cliente ainda não assinou. Lista sempre visível e aviso diário ao atendente e ao gerente |
 | **Filial padrão** | Filial criada automaticamente quando a Empresa não tem nenhuma. Pode ser renomeada |
 | **Entrega em domicílio** | Funcionalidade nova, **fora do piloto**, com preço por distância ou geolocalização |
 | **Feriado** | Dia fechado, cadastrado por Filial. A regra de adiar ou antecipar a data está em aberto |
@@ -92,6 +93,6 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 |---|---|
 | **Ciclo** | Etapa curta de trabalho que termina em algo que o André consegue ver e testar |
 | **Ambiente de testes (homologação)** | Endereço na nuvem onde o André valida cada ciclo, com dados de demonstração |
-| **Piloto completo** | Entrada em produção só com financeiro, portal e concierge prontos, prevista para março de 2027, com o sistema antigo em paralelo até o André ter confiança |
+| **Piloto completo** | Entrada em produção só com financeiro (pagamento integrado na maquininha) e portal (o link público) prontos, prevista para março de 2027, **sem concierge nem fila de chegada**, com o sistema antigo em paralelo até o André ter confiança |
 | **Homologar** | Testar e aprovar. O André é o homologador de tudo |
 | **MVP** | Primeira versão utilizável. Aqui, equivale ao piloto completo |
