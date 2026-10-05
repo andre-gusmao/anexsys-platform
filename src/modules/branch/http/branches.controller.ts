@@ -260,7 +260,13 @@ export class BranchesController {
     const days = await this.branchHoursService.replaceHours(
       tenantId,
       branchId,
-      body.days,
+      body.days.map((day) => ({
+        weekday: day.weekday,
+        isOpen: day.isOpen,
+        opensAt: day.opensAt ?? null,
+        closesAt: day.closesAt ?? null,
+        cutoffAt: day.cutoffAt ?? null,
+      })),
       actorUserId,
       body.timezone,
     );

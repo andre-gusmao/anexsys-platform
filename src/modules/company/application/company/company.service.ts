@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
@@ -23,6 +23,7 @@ export class CompanyService {
   constructor(
     private readonly companyRepository: CompanyRepository,
     private readonly tenantService: TenantService,
+    @Inject(forwardRef(() => BranchService))
     private readonly branchService: BranchService,
     private readonly auditService: AuditService,
   ) {}

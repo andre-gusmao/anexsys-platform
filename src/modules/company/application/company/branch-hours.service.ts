@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
@@ -12,6 +12,7 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
 export class BranchHoursService {
   constructor(
     private readonly hoursRepository: BranchOperatingHoursRepository,
+    @Inject(forwardRef(() => BranchService))
     private readonly branchService: BranchService,
   ) {}
 
