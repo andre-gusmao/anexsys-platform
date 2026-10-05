@@ -1,12 +1,12 @@
 # Decisões do André
 
-**Atualizado em:** 05/10/2026
+**Atualizado em:** 05/10/2026 (tarde)
 **Substitui:** as regras de negócio da documentação antiga (`docs/arquivo/`) nos pontos em que elas divergem deste documento.
 **Valor:** este é o documento **oficial** das regras de negócio. Quando outro documento discordar, vale este.
 
-Fonte: respostas do André ao questionário, em 05/10/2026. Onde a resposta é "?" ou ausente vale a opção recomendada, marcada como "assumido, a confirmar". Os itens marcados com **[EM ABERTO]** contradizem outra resposta ou o plano e aguardam as perguntas complementares.
+Fonte: respostas do André ao questionário e às perguntas complementares, em 05/10/2026. Onde a resposta é "?" ou ausente vale a opção recomendada, marcada como "assumido, a confirmar". Os itens marcados com **[EM ABERTO]** contradiziam outra resposta ou o plano; os conflitos foram **resolvidos na seção 10**.
 
-Os números citados em "resposta N" ou "pergunta N" nas seções 1 a 8 referem-se ao questionário respondido em 05/10/2026, que não faz parte deste conjunto. Já os números da seção 9 em diante ("perguntas complementares") referem-se ao documento de perguntas complementares do mesmo dia.
+Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário respondido em 05/10/2026, que não faz parte deste conjunto.
 
 ## 1. Decisões gerais
 
@@ -120,7 +120,9 @@ Os números citados em "resposta N" ou "pergunta N" nas seções 1 a 8 referem-s
 - Retirada: ele assina a OS na caneta; sem exemplo.
 - Demais prints ainda não enviados.
 
-## 9. Pontos em aberto (aguardam as perguntas complementares)
+## 9. Conflitos que foram levantados (histórico)
+
+> **Atualização de 05/10/2026 (tarde):** os oito conflitos abaixo foram **resolvidos na seção 10**. Esta seção fica como histórico.
 
 1. **QR por OS versus plano por peça**: o plano propunha QR assinado por peça; o André escolheu QR por OS (Ordem de Produção na sacola), mantendo a quantidade de peças e o grau de dificuldade como dado.
 2. **Modo estação (34 B) versus fluxo de status automático**: no fluxo descrito, cada leitura avança o status sozinha conforme o papel; no modo estação o funcionário escolhe a fase.
@@ -131,17 +133,90 @@ Os números citados em "resposta N" ou "pergunta N" nas seções 1 a 8 referem-s
 7. **Reprovação**: único retorno de fase permitido; precisa ficar explícito, pois a resposta 32 é "fluxo rígido".
 8. **Sobre a sequência de status**: o André numerou as etapas pulando a 5 e juntando acabamento e passadoria com a produção.
 
-### Correspondência com as perguntas complementares
+## 10. Respostas complementares (05/10/2026, tarde)
 
-| Ponto em aberto | Pergunta complementar |
-|---|---|
-| 1. QR por OS versus por peça (a decisão do André vale: QR por OS) | Resolvido; só falta a regra do limite de 5 peças (pergunta 7) e da dificuldade (pergunta 8) |
-| 2. Modo estação versus avanço automático | Pergunta 6 |
-| 3. API oficial versus WhatsApp Web | Perguntas 1 e 2 |
-| 4. Piloto completo e maquininha | Pergunta 11 (modelo de integração com a Cielo) |
-| 5. Garantia: 7 dias, 90 dias, úteis ou corridos | Pergunta 10 |
-| 6. Status públicos e só duas mensagens | Resolvido: o link público mostra o resto |
-| 7. Reprovação como único retorno | Pergunta 5 (se volta para "Em produção" ou para um status "Em refação") |
-| 8. Sequência de status (etapa 5 inexistente) | Pergunta 5 |
+Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[ASSUMIDO]** são deduções que o André ainda não confirmou. Itens **[AVALIAR]** são pontos em que o André pediu uma avaliação (ver `docs/06-parecer-token-lgpd-entrega.md`).
 
-Outros pontos que ainda dependem de resposta: concierge e portal no piloto completo (pergunta 15), aprovação e assinatura (perguntas 12 e 13), dados a apagar (pergunta 14), nuvem e domínio (pergunta 3), estrutura real do ateliê (pergunta 4), regras de prazo (pergunta 9).
+### 10.1 Como cada conflito da seção 9 foi resolvido
+
+| # | Conflito | Resolução |
+|---|---|---|
+| 1 | QR por OS ou por peça | **QR por OS**, na Ordem de Produção impressa (já decidido). Quantidade de peças e dificuldade ficam como dados da OS |
+| 2 | Modo estação ou avanço automático | **Avanço automático pelo papel de quem lê.** O objetivo é garantir o fluxo completo sem pular etapas. A técnica **só abre outra sacola depois de terminar a anterior** |
+| 3 | API oficial ou WhatsApp Web | **API oficial contratada direto.** O André reconhece que confundiu o uso atual (WhatsApp Web) com o que o sistema precisa |
+| 4 | Piloto completo e maquininha | **Cielo por conciliação** (importar as vendas no fechamento do dia e baixar as OS em lote), **não** integração em tempo real. Isso reduz o risco do prazo |
+| 5 | Garantia: 7 ou 90 dias; úteis ou corridos | **Dois prazos diferentes**, ambos contados **da retirada pelo cliente** (ver 10.2). Substitui a resposta anterior que contava a garantia da conclusão da peça |
+| 6 | Status públicos e só duas mensagens | Mantido: o link público mostra o resto |
+| 7 | Reprovação como único retorno | Mantido, com um status interno próprio **"Em refação"** |
+| 8 | Sequência de status | **Lista confirmada**, com a inclusão de "Em refação" |
+
+### 10.2 Novas decisões
+
+**WhatsApp**
+- **API oficial contratada direto.**
+- **Número:** começa com o **número atual da Vivo**, usando o recurso de uso simultâneo, **se a Meta permitir**. Depois, **compra outro número**. O sistema precisa ter **um lugar para reconfigurar o número**.
+- **Custo das mensagens:** o **ateliê absorve**. Ao comercializar, entra no **preço do plano**.
+
+**Ambiente**
+- O André **cria a conta na nuvem** e dá acesso a quem for operar. O domínio **anexsys.com.br** está no nome dele, e ele libera o acesso. **Não informou** valor máximo mensal nem onde o domínio está registrado.
+
+**Estrutura do ateliê**
+- **1 CNPJ e nenhuma Filial.** O sistema exige ao menos uma: será criada a **Filial padrão**.
+- **Horário de funcionamento:** segunda a sexta, 9h30 às 18h; sábado, 9h30 às 14h; domingo fechado.
+- **Hora de corte: não informada.**
+- **[ASSUMIDO]** Fuso horário de Brasília. **[ASSUMIDO]** "Dia útil" no ateliê significa **dia em que a Filial funciona** (segunda a sábado, exceto feriados fechados).
+
+**Status e produção**
+- **Lista de status confirmada**, com o status **interno** **"Em refação"**: quando a técnica lê o QR de uma OS reprovada, o status vira **Em refação**; ao terminar e ler de novo, vai para **Aguardando controle de qualidade**.
+- **Regra de uma sacola por vez:** a técnica só abre outra sacola (lê o QR de outra OS) depois de terminar a anterior.
+
+**Divisão automática de OS**
+- Mais de **5 peças**: o sistema **divide automaticamente em uma segunda OS ligada à primeira**.
+- **[ASSUMIDO]** As OS ligadas formam um **grupo**: o cliente recebe **um só link** que lista as OS do grupo, **um só aviso** de OS aberta, e o pagamento pode ser único. Cada OS tem sua sacola, sua Ordem de Produção e seu QR.
+
+**Dificuldade**
+- **Por serviço**, com **valor padrão no catálogo**. A **OS mostra a maior** dificuldade entre seus serviços. O **atendente pode ajustar**.
+- **Tempos médios por grau: não informados.**
+
+**Prazos**
+- **Feriado:** o **sistema sugere o próximo dia útil** e o **atendente decide** caso a caso.
+- **Expresso:** conta **só no horário de funcionamento**; o que não couber **passa para a abertura do dia seguinte**.
+- **Urgente:** o atendente escolhe **2 ou 3 dias úteis**, com **sugestão de 3**.
+- **Sobretaxa:** **percentual configurável por tipo** de entrega.
+
+**Garantia e reconserto**
+- **Dois prazos diferentes:** **7 dias** para reclamar de **ajuste** (curto, largo) e **90 dias** de **garantia de defeito de execução** (descosturou, barra se desfez).
+- Os **7 dias são corridos.**
+- **Os dois prazos contam da retirada pelo cliente.**
+- **Depois do prazo, a OS nova é cobrada.** O **gerente pode liberar sem valor, com motivo.**
+- Dentro do prazo, a nova OS é **sem valor, vinculada à original**, com o **técnico que fez a primeira vez** **[ASSUMIDO]** (vale para os dois tipos).
+
+**Maquininha e pagamento**
+- **Cielo por conciliação.** Hoje o atendente dá baixa nas OS uma a uma. Ele quer, **no fechamento do dia, importar as vendas e baixar todas as OS de uma vez**, e **acompanhar se algum atendente deixou de cobrar**.
+- **QR Pix na tela** para o cliente escanear: desejável, **opcional**.
+- **Cartão online com cadastro de cartão pelo cliente:** o André **não vê como boa saída**. Fica fora.
+- **Modelo da maquininha:** "segue o modelo". **Não informado.**
+
+**Aprovação do cliente**
+- Pode ser **pelo link**, **na tela do balcão** ou **no papel**: o atendente imprime a OS, o cliente assina, o atendente **anexa a foto** e clica **"assinado no papel"**.
+- A **produção pode começar sem assinatura**, com **liberação e motivo**.
+- Se o cliente **não aprovar**, **nada acontece automaticamente**, mas **o atendente precisa ser avisado** (alerta). **Prazo em dias: não informado.**
+
+**Retirada** **[AVALIAR]**
+- **Preferência do André: token.** O cliente (ou outra pessoa que retire) recebe um **token ou link**, toca ou digita, e isso **confirma o recebimento**, autenticando data e hora.
+- **Segunda opção:** o cliente **assina a Ordem de Produção em papel**, o atendente **guarda a foto na OS** e clica **"entregue assinado"**.
+- O André pediu que se **avalie** se há problema de regra ou compliance. A avaliação está em `docs/06-parecer-token-lgpd-entrega.md`.
+- **Decisão final aguardando** a resposta às perguntas complementares (segunda rodada).
+
+**Dados no link público e LGPD** **[AVALIAR]**
+- O André **repensou** a regra de "dados sensíveis apagados": a **OS que vai ao cliente (link)** só terá **nome, número da OS, data de entrada, previsão de entrega, status, serviços combinados e situação do pagamento** (a conciliação atualiza o valor recebido). Isso **substitui** a regra anterior de apagar o endereço quando o cliente não concorda em compartilhá-lo.
+- **Entrega em domicílio** é uma **funcionalidade nova, fora do escopo atual**, com **preço por geolocalização**. A **Ordem de Produção** teria o **endereço de entrega**.
+- O André perguntou se, assim, a LGPD fica "livre". A avaliação (com ressalvas) está em `docs/06-parecer-token-lgpd-entrega.md`. **Resposta curta: não fica livre.**
+
+**Piloto**
+- **Nenhum concierge nem fila de chegada.**
+- **Portal = o link público** de acompanhamento e aprovação.
+
+### 10.3 O que ainda está em aberto
+
+Hora de corte; valor máximo mensal da nuvem e onde o domínio está registrado; modelo da maquininha e forma de ligar a venda à OS; prazo do alerta de aprovação pendente; decisão final sobre token versus assinatura; regras da entrega em domicílio (se entra e quando); tempos médios por dificuldade. Todos estão nas perguntas complementares da segunda rodada (fora do repositório).

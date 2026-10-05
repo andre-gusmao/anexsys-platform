@@ -1,6 +1,6 @@
 # Leia primeiro
 
-**Atualizado em:** 05/10/2026
+**Atualizado em:** 05/10/2026 (tarde)
 **Substitui:** o conjunto de documentos antigo, agora em `docs/arquivo/`.
 
 ## O que é o ANEXSYS
@@ -19,6 +19,7 @@ O sistema cobre: atendimento e **ordem de serviço (OS)**, **ordem de produção
 | `03-fluxo-de-status.md` | O caminho da OS do balcão à retirada, com os status e as regras |
 | `04-estado-atual.md` | O que funciona hoje, com data e evidência |
 | `05-plano-de-continuidade.md` | O plano em ciclos curtos até o piloto em março de 2027 |
+| `06-parecer-token-lgpd-entrega.md` | Avaliação do token de retirada, da LGPD e da entrega em domicílio (não substitui aconselhamento jurídico) |
 | `arquivo/` | Documentação antiga, **somente leitura**. Veja `arquivo/LEIAME.md` |
 
 ## Regras para manter este conjunto confiável

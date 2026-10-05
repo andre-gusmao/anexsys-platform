@@ -1,6 +1,6 @@
 # Glossário
 
-**Atualizado em:** 05/10/2026
+**Atualizado em:** 05/10/2026 (tarde)
 **Substitui:** os termos espalhados pela documentação antiga (`docs/arquivo/`).
 
 Este glossário vale para as conversas, os documentos e as telas. A coluna "No código" ajuda quem abrir o programa, que usa nomes em inglês.
@@ -30,7 +30,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Sacola** | Embalagem física com as peças da OS e a Ordem de Produção num bolso transparente. **Não é controlada pelo sistema** | `bag` (apenas apoio físico) |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
 | **QR code** | Código impresso na Ordem de Produção. **Um por OS** (não por peça). O funcionário lê com o celular para mudar o status | `qr code` |
-| **Grau de dificuldade** | Nota de 1 a 4 que indica a complexidade do trabalho, usada para estimar tempo médio e dimensionar a equipe | ainda não existe |
+| **Grau de dificuldade** | Nota de 1 a 4 definida **por serviço** (valor padrão no catálogo). A OS mostra a **maior**, e o atendente pode ajustar. Usada para estimar tempo médio e dimensionar a equipe | ainda não existe |
 | **Técnico / técnica** | Quem produz (costureira, diarista, terceiro). Tem **login próprio** | `operational resource` / `user` |
 | **Revisor** | Quem faz o controle de qualidade (hoje papel de atendente) | `user` |
 | **Diário de bordo** | Registro do que cada técnico produziu: OS, descrição do serviço, hora de início e fim, quantidade de peças e dificuldade. Substitui o caderno | ainda não existe |
@@ -45,7 +45,10 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Catálogo de status** | Cadastro **configurável** de status, com parâmetros, para o sistema não ficar engessado |
 | **Parâmetros de um status** | Nome interno e público; público ou interno; ordem; papel que pode atribuí-lo; exige leitura de QR; grava técnico e hora; dispara WhatsApp; tempo esperado e limite de alerta; é inicial; é final |
 | **Sequência rígida** | Cada status só vai para o próximo. Não pula e não volta. A **reprovação** é a única exceção |
-| **Reprovação** | O revisor reprova a OS no controle de qualidade. Status interno. A sacola volta à esteira e a técnica que lê o QR **assume a refação** |
+| **Reprovação** | O revisor reprova a OS no controle de qualidade. Status interno **Reprovado pela qualidade**. A sacola volta à esteira e a técnica que lê o QR **assume a refação** |
+| **Em refação** | Status interno da OS reprovada, enquanto a técnica a refaz. Ao terminar, vai para Aguardando controle de qualidade |
+| **Uma sacola por vez** | A técnica só abre outra sacola depois de terminar a anterior |
+| **Avanço automático** | Ao ler o QR, a OS vai para o próximo status permitido ao papel de quem leu |
 | **Refação** | Refazer o trabalho de uma OS reprovada, antes de entregar ao cliente |
 | **Aviso "Falta pagamento"** | Alerta na tela quando há saldo em aberto. **Não é status** |
 
@@ -57,9 +60,15 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Aprovação do cliente** | **Assinatura eletrônica** de "concordo com o serviço e o preço", feita no link. **Não é status** |
 | **Assinatura eletrônica** | Registro de aceite com data, hora, texto aceito e aparelho. É **evidência de aceite**, não substitui um certificado digital |
 | **Retirada** | O cliente retira a peça. Informa o número da OS ou o nome, o atendente confere, lê o QR e o cliente assina eletronicamente |
-| **Tipo de entrega** | **Normal**: mesmo dia da semana da semana seguinte. **Expresso**: até 2 horas por peça. **Urgente**: 2 a 3 dias depois. O sistema **sugere** a data e o atendente **pode alterar** |
-| **Reconserto** | O cliente volta em até 7 dias reclamando (ficou curto ou largo). Cria-se **nova OS sem valor**, **vinculada à original**, mostrando o **técnico que fez a primeira vez** |
-| **Garantia de serviço** | 90 dias por peça (descosturou, a barra se desfez), negociável no balcão, contados da conclusão da peça. **Regras exatas em aberto** |
+| **Tipo de entrega** | **Normal**: mesmo dia da semana da semana seguinte. **Expresso**: até 2 horas por peça, só no horário de funcionamento. **Urgente**: 2 ou 3 dias úteis (sugestão 3). Cada tipo tem **sobretaxa percentual** configurável. O sistema **sugere** a data e o atendente **pode alterar** |
+| **Reconserto** | O cliente volta em até **7 dias corridos** da retirada reclamando de ajuste (curto ou largo). Cria-se **nova OS sem valor**, **vinculada à original**, mostrando o **técnico que fez a primeira vez**. Depois do prazo, a OS nova é cobrada (o gerente pode liberar sem valor, com motivo) |
+| **Garantia de serviço** | **90 dias**, contados **da retirada**, para defeito de execução (descosturou, a barra se desfez), negociável no balcão |
+| **Grupo de OS** | OS ligadas pela divisão automática (mais de 5 peças): um só link, um só aviso e um só pagamento **[assumido]** |
+| **Divisão automática** | Quando a OS passa de 5 peças, o sistema cria uma segunda OS ligada à primeira |
+| **Conciliação** | No fechamento do dia, o sistema importa as vendas da maquininha (Cielo), casa com as OS e baixa tudo de uma vez; lista as divergências |
+| **Janela de confirmação** | Na retirada, o atendente inicia e, por alguns minutos, o cliente confirma no link já enviado. Recomendada pelo parecer; decisão em aberto |
+| **Filial padrão** | Filial criada automaticamente quando a Empresa não tem nenhuma. Pode ser renomeada |
+| **Entrega em domicílio** | Funcionalidade nova, **fora do piloto**, com preço por distância ou geolocalização |
 | **Feriado** | Dia fechado, cadastrado por Filial. A regra de adiar ou antecipar a data está em aberto |
 
 ## Mensagens, privacidade e segurança
@@ -73,7 +82,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Fila de mensagens** | As mensagens esperam numa fila e um "carteiro" as envia, com nova tentativa se falhar. Falhas vão para uma **lista de falhas** |
 | **Consentimento** | Autorização do cliente, registrada com data e responsável. Sem ele, não se envia mensagem |
 | **Controlador / operador (LGPD)** | O **ateliê** é o controlador dos dados dos clientes. O **ANEXSYS** é o operador |
-| **Dado sensível** | Dado que deve ser apagado da OS quando o cliente não concorda em compartilhar o endereço. A lista exata está em aberto |
+| **Dado mínimo no link** | O link público mostra só nome (sugestão: primeiro nome), número da OS, datas, status, serviços e situação do pagamento. Endereço só existe quando há entrega em domicílio |
 | **Isolamento por Conta** | Garantia de que uma Conta nunca vê dados de outra. Será reforçado no próprio banco de dados |
 | **Responsável (menor de idade)** | Roupa infantil só com responsável cadastrado. Fotos só da peça, nunca da criança |
 

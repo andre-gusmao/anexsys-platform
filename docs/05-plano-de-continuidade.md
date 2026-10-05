@@ -1,57 +1,62 @@
-# Plano de continuidade do ANEXSYS (versão 2)
+# Plano de continuidade do ANEXSYS (versão 3)
 
-> Cópia da versão 2 de 05/10/2026 para manter o conjunto de documentos completo. Os documentos de apoio citados (perguntas complementares, parecer) estão fora do repositório. As decisões em vigor estão em `02-decisoes-do-andre.md`.
+> Cópia da versão 3 de 05/10/2026 para manter o conjunto de documentos completo. Os documentos de apoio que não estão no repositório são o diagnóstico original e as perguntas complementares. As decisões em vigor estão em `02-decisoes-do-andre.md`.
 
 **Para:** André
-**Versão:** 2, de 05/10/2026. Substitui a versão 1, do mesmo dia, que previa piloto fino, QR por peça, fluxo de fases livre e WhatsApp em todas as fases públicas. A versão 1 deixou de valer nos pontos em que as suas respostas decidiram outra coisa.
+**Versão:** 3, de 05/10/2026 (tarde). Substitui a versão 2 (manhã). Incorpora as suas respostas às perguntas complementares.
 **Bases:**
-- Suas decisões, em `docs/02-decisoes-do-andre.md`.
-- O diagnóstico do parecer e as perguntas complementares, que ficam fora do repositório.
+- Suas decisões, em `02-decisoes-do-andre.md` (seções 1 a 10).
+- O parecer sobre token, LGPD e entrega em domicílio, em `06-parecer-token-lgpd-entrega.md`.
+- O que ainda trava o trabalho, nas perguntas complementares da segunda rodada (fora do repositório).
+- O diagnóstico original, fora do repositório.
 
 **Regra deste documento:** linguagem de negócio. Termo técnico vem explicado em uma frase.
 
-**Sobre prazos:** a única data firme é a sua: **produção em março de 2027**. Não estimo esforço em horas ou semanas. Os "marcos" da seção 7 são uma **proposta de sequência** montada de trás para frente a partir de março/2027, para você confirmar.
+**Sobre prazos:** a única data firme é a sua: **produção em março de 2027**. Não estimo esforço em horas ou semanas. Os "marcos" da seção 7 são uma **proposta de sequência** montada de trás para frente, para você confirmar.
+
+**O que mudou da v2 para a v3 (resumo):** conflitos resolvidos (avanço automático, API oficial, conciliação Cielo, prazos de garantia), novo status interno **Em refação**, **divisão automática de OS**, **dificuldade por serviço**, **sobretaxa por tipo de entrega**, **conciliação em lote**, **assinatura por link, balcão ou papel**, **número de WhatsApp reconfigurável**, **Filial padrão**, e a **entrega em domicílio** posicionada **fora de março** (por recomendação do parecer). **Concierge e fila de chegada saíram do piloto**, e o **portal passou a ser o link público**. Isso **alivia o prazo**.
 
 ---
 
 ## 1. Resumo executivo
 
-### O que mudou da versão 1 para a versão 2
+### O que mudou da versão 2 para a versão 3
 
-| Assunto | Versão 1 | Versão 2 (suas decisões) |
+| Assunto | Versão 2 | Versão 3 (suas respostas) |
 |---|---|---|
-| Piloto | Fino, com pagamento manual | **Completo**: só entra em produção com financeiro, portal e concierge prontos, em **março de 2027**. Você homologa tudo, sem pressa de ajustes |
-| Controle do QR | Etiqueta adesiva com QR **por peça** | **QR por OS**, impresso grande na **Ordem de Produção** que vai no bolso da sacola. **Sem etiqueta adesiva** |
-| Dados de produção | Peça com fase própria | A OS guarda a **quantidade de peças** (até 5) e o **grau de dificuldade de 1 a 4** |
-| Fases | Fluxo de fases editável com avanço livre | **Catálogo de status configurável, com parâmetros** (público ou interno etc.). Sequência **rígida: sem pular e sem voltar**. O único retorno é a **reprovação** pela qualidade |
-| WhatsApp | Mensagem em cada fase pública | **Só 2 mensagens**: OS aberta e Pronto para retirada. O resto o cliente acompanha por um **link público** |
-| Aprovação do cliente | Status "aguardando aprovação" | **Não é status.** É uma **assinatura** ("concordo com o serviço e o preço") no link público |
-| Retirada | Confirmação simples | **Assinatura eletrônica** do cliente na retirada |
-| Pagamento pendente | Bloqueio | **Aviso** na tela ("Falta pagamento"), não status. Bloqueia a entrega, e o **gerente libera com motivo** |
-| Retorno do cliente | Voltar fase com motivo | **Reconserto = nova OS vinculada, sem valor**, registrando o **técnico que fez a primeira vez** |
-| Técnico | Não tratado | **Diário de bordo** e **produtividade** por técnico (inclusive diaristas, com login próprio), com **dashboard** e **alertas de atraso** |
-| Prazo | Um prazo padrão | **Normal, Expresso e Urgente**, com **sugestão de data editável** |
-| Maquininha | Fora do MVP | **Dentro do piloto completo**: Cielo primeiro; Stone e Rede preparadas |
-| Cobrança do ANEXSYS | Depois | Painel de planos, preços configuráveis, cartão/Pix/boleto, contrato de um ano. Entra **antes do segundo cliente**, não bloqueia março |
-| Ambiente de testes | A decidir | **Nuvem simples e barata**, montada por nós |
-| Multiempresa | Proposta | **Confirmado: Conta / Empresa / Filial**, cliente da Conta, comunidades congeladas |
+| Leitura do QR | Automático ou estação (em aberto) | **Avanço automático pelo papel de quem lê.** A técnica só abre outra sacola depois de terminar a anterior |
+| Reprovação | Volta para Em produção (ou "Em refação", em aberto) | **Status interno próprio "Em refação"** |
+| WhatsApp | API oficial ou Web (em aberto) | **API oficial contratada direto.** Número da Vivo primeiro (uso simultâneo, se a Meta permitir), depois outro número, com **tela para reconfigurar o número** |
+| Custo das mensagens | Em aberto | **O ateliê absorve**; ao comercializar, entra no preço do plano |
+| Mais de 5 peças | Em aberto | **Divisão automática em segunda OS ligada à primeira** |
+| Dificuldade | Por OS ou por serviço (em aberto) | **Por serviço**, com valor padrão no catálogo; a OS mostra a **maior**; o atendente ajusta |
+| Prazos | Regras em aberto | Feriado: **sistema sugere, atendente decide**. Expresso: só no horário de funcionamento. Urgente: **2 ou 3 dias úteis, sugestão 3**. **Sobretaxa em percentual por tipo** |
+| Garantia | 7 x 90 dias, úteis x corridos (em aberto) | **7 dias corridos** (ajuste) e **90 dias** (defeito de execução), **ambos contados da retirada.** Depois do prazo, a OS nova é cobrada; o gerente libera sem valor, com motivo |
+| Maquininha | Integração com a Cielo | **Conciliação**: importar as vendas no fechamento do dia, **baixar as OS em lote** e mostrar **quem deixou de cobrar**. **QR Pix na tela**: opcional |
+| Aprovação do cliente | Link | **Link, tela do balcão ou papel** (foto + "assinado no papel"). Produção pode começar sem assinatura, com liberação e motivo. Se não aprovar, **alerta ao atendente** |
+| Retirada | Em aberto | **Preferência: token.** O parecer recomenda a **janela de confirmação controlada pelo atendente**. **Decisão final aguarda você** |
+| Dados no link | Apagar endereço se o cliente não concordar | **Link mínimo**: nome, número da OS, entrada, previsão, status, serviços e situação do pagamento. Endereço só quando há entrega em domicílio |
+| Entrega em domicílio | Não existia | **Nova.** Recomendação: **depois do piloto**, deixando só um marcador e o endereço opcional |
+| Concierge e fila de chegada | Em aberto | **Fora do piloto** |
+| Portal | Em aberto | **O link público é o portal** |
+| Estrutura do ateliê | Em aberto | **1 CNPJ, nenhuma Filial** (será criada a **Filial padrão**), seg a sex 9h30-18h, sábado 9h30-14h. **Hora de corte: em aberto** |
 
 ### Ordem dos ciclos (visão rápida)
 
 | Ciclo | Nome | Tamanho | O que você vê no final |
 |---|---|---|---|
-| **0** | Casa arrumada | P | Documentação única em português; falhas de segurança fechadas; ambiente de testes em nuvem; contratos iniciados |
-| **1** | Multiempresa correto | M | Duas Contas de teste lado a lado, isoladas; usuários por Empresa e Filial |
-| **2** | Cadastros e catálogo de status | G | Clientes completos, serviços com preço, **status configuráveis**, feriados, ficha de medidas |
-| **3** | OS completa e Ordem de Produção impressa | G | OS com peças, dificuldade e prazo (Normal, Expresso, Urgente); link público com aprovação assinada; Ordem de Produção impressa com QR |
-| **4** | Produção por QR, diário de bordo e qualidade | G | Leitura no celular muda o status; reprovação e refação; diário de bordo; produtividade |
-| **5** | WhatsApp e acompanhamento público | M | As 2 mensagens chegam no seu celular com o link; falhas na lista |
-| **6** | Entrega, assinatura e reconserto | M | Retirada com assinatura; aviso de pagamento; liberação pelo gerente; reconserto como nova OS vinculada |
-| **7** | Financeiro e maquininha | G | Recebimentos, saldo, Cielo integrada, conciliação |
-| **8** | Dashboard e alertas | M | Painel de produção e produtividade; alertas de atraso configuráveis |
-| **9** | Portal do cliente e concierge do piloto | M | Escopo a confirmar com você (ver perguntas complementares) |
-| **10** | LGPD mínima, importação e virada | M | Consentimento, retenção, apagar dado sensível; importação do histórico após validação; homologação em paralelo |
-| **Depois** | Cobrança do ANEXSYS, retirada por terceiros, concierge com câmera, segundo tipo de negócio | n/a | Seção 10 |
+| **0** | Casa arrumada | P | Documentação única; falhas de segurança fechadas; ambiente de testes em nuvem; testes de integração corrigidos; cadastros externos iniciados (Meta, Cielo, nuvem) |
+| **1** | Multiempresa correto | M | Duas Contas de teste isoladas; Empresa; **Filial padrão**; horário de funcionamento; usuários por escopo |
+| **2** | Cadastros e catálogo de status | G | Clientes, serviços (com **dificuldade padrão**), feriados, ficha de medidas e o **catálogo de status** com **Em refação** |
+| **3** | OS completa e Ordem de Produção impressa | G | OS com peças, **divisão automática**, dificuldade, **tipos de entrega com sobretaxa**, **aprovação por link, balcão ou papel**, link público seguro, Ordem de Produção impressa com QR |
+| **4** | Produção por QR, diário de bordo e qualidade | G | **Avanço automático**, **uma sacola por vez**, reprovação e **Em refação**, diário de bordo |
+| **5** | WhatsApp (API oficial) e acompanhamento | M | As 2 mensagens chegam com o link; **tela para trocar o número**; falhas na lista |
+| **6** | Retirada, reconserto e garantia | M | Retirada com **confirmação controlada**, comprovante, plano B no papel; **reconserto e garantia** com os prazos decididos |
+| **7** | Financeiro e conciliação da Cielo | G | Baixa em lote no fechamento do dia, divergências, **relatório de quem deixou de cobrar**; Pix QR se entrar |
+| **8** | Dashboard e alertas | M | Painel de produção e produtividade; alertas de atraso e de **aprovação pendente** |
+| **9** | Homologação em paralelo e ajustes | M | Uso paralelo com o sistema antigo; ajustes sem pressa (o portal é o link; sem concierge) |
+| **10** | LGPD mínima, importação e virada | M | Consentimento, aviso de privacidade, retenção, canal do titular; importação do histórico após a validação |
+| **Depois** | Entrega em domicílio, retirada por terceiros, cobrança do ANEXSYS, Pix QR (se não entrar), concierge com câmera, segundo tipo de negócio | n/a | Seção 10 |
 
 ---
 
@@ -60,93 +65,102 @@
 ### 2.1 O fluxo da OS, do balcão à retirada
 
 ```
-ATENDIMENTO            APROVAÇÃO               SACOLA + OP IMPRESSA       PRODUÇÃO               QUALIDADE             RETIRADA
-Cliente chega,    ->   Cliente assina   ->    Peças vão numa sacola  ->  Técnico lê o QR   ->   Revisor lê o QR  ->  Cliente retira,
-mede, OS é aberta      no link "concordo      (até 5 peças) com a OP     ao pegar e ao          ao pegar; aprova      assina na tela e
-e vai por WhatsApp     com serviço e preço"   impressa no bolso          terminar               ou reprova            lê-se o QR
-(Em aberto)                                   (QR grande)
+ATENDIMENTO            APROVAÇÃO                  SACOLA + OP IMPRESSA       PRODUÇÃO               QUALIDADE             RETIRADA
+Cliente chega,    ->   Link, balcão ou papel ->   Peças vão numa sacola  ->  Técnica lê o QR   ->   Revisor lê o QR  ->  Cliente retira;
+mede, OS é aberta      ("concordo com serviço     (até 5 peças) com a OP     ao pegar e ao          ao pegar; aprova      atendente inicia,
+e vai por WhatsApp     e preço"). Produção pode   impressa no bolso          terminar. Uma          ou reprova            cliente confirma
+(Em aberto)            começar sem assinatura,    (QR grande)                sacola por vez
+                       com liberação e motivo
 ```
 
 ### 2.2 Os status (modelo inicial, editável)
 
 | # | Status | Público? | Quem lê o QR | Muda para | Observação |
 |---|---|---|---|---|---|
-| 1 | **Em aberto** | Público | Ninguém (nasce na criação da OS) | Em produção | WhatsApp sai aqui. Aprovação do cliente **não** muda o status |
-| 2 | **Em produção** | Público | Técnico, ao pegar a sacola | Aguardando controle de qualidade | Grava data, hora e técnico (produtividade) |
-| 3 | **Aguardando controle de qualidade** | Público | Técnico, ao terminar e levar à esteira de finalizadas | Controle de qualidade | |
+| 1 | **Em aberto** | Público | Ninguém (nasce na criação da OS) | Em produção | WhatsApp sai aqui. A aprovação do cliente **não** muda o status |
+| 2 | **Em produção** | Público | Técnica, ao pegar a sacola | Aguardando controle de qualidade | Grava data, hora e técnica. **Só uma sacola por vez** |
+| 3 | **Aguardando controle de qualidade** | Público | Técnica, ao terminar e levar à esteira de finalizadas | Controle de qualidade | |
 | 4 | **Controle de qualidade** | Público | Revisor, ao tirar a sacola da esteira | Pronto para retirada (aprova) ou Reprovado pela qualidade (reprova) | |
 | 5 | **Pronto para retirada** | Público | Ninguém | Retirado pelo cliente | WhatsApp sai aqui |
-| 6 | **Retirado pelo cliente** | Público | Atendente, na retirada | Final | Cliente assina eletronicamente |
-| X | **Reprovado pela qualidade** | **Interno** | Técnica que fará a refação | Em produção | **Único retorno permitido.** O cliente nunca sabe |
+| 6 | **Retirado pelo cliente** | Público | Atendente, na retirada | Final | Confirmação de retirada (seção 4.4) |
+| X1 | **Reprovado pela qualidade** | **Interno** | Técnica que fará a refação | Em refação | O cliente nunca sabe. **Único retorno permitido** |
+| X2 | **Em refação** | **Interno** | Técnica, ao terminar | Aguardando controle de qualidade | Grava quem refez. **Só uma sacola por vez** |
 
 **Regras do catálogo de status (os "parâmetros"):**
 
-- Cada status tem: **nome interno**, **nome para o cliente**, **público ou interno**, **ordem**, **papel que pode atribuí-lo**, **exige leitura de QR**, **grava técnico e hora** (produtividade), **dispara mensagem de WhatsApp**, **tempo esperado e limite de alerta**, **é inicial**, **é final**.
-- A sequência é **rígida**: cada status só vai para o **próximo** definido. **Não pula, não volta.** A **reprovação** é uma exceção explícita do catálogo, marcada como "retorno permitido".
-- O cliente vê **a última fase pública atingida**, com as datas de cada uma, no link público. Em "Reprovado pela qualidade", o cliente continua vendo "Controle de qualidade".
-- **Papel responsável:** quem produz (técnicas) avança "Em produção" e "Aguardando controle de qualidade". Quem revisa (atendentes) avança "Controle de qualidade". Cada status aponta o papel.
-- **Refação:** a técnica original, se estiver escalada no dia, ou outra, lê o QR e **assume a refação** (fica registrado quem refez).
+- Cada status tem: **nome interno**, **nome para o cliente**, **público ou interno**, **ordem**, **papel que pode atribuí-lo**, **exige leitura de QR**, **grava técnica e hora** (produtividade), **dispara WhatsApp**, **tempo esperado e limite de alerta**, **é inicial**, **é final**.
+- **Sequência rígida:** cada status só vai para o **próximo**. **Não pula, não volta.** A **reprovação** é a única exceção, marcada como "retorno permitido".
+- **Avanço automático:** ao ler o QR, o sistema **leva a OS ao próximo status permitido ao papel de quem leu**. Se o papel não puder (por exemplo, uma técnica lendo uma OS em "Controle de qualidade"), o sistema **recusa e explica**. Isso garante o fluxo completo sem pular etapas.
+- **Uma sacola por vez:** a técnica **não consegue abrir outra OS** (ler o QR de outra) enquanto tiver uma em "Em produção" ou "Em refação". O limite é **configurável por papel** (hoje 1).
+- O cliente vê **a última fase pública atingida**, com as datas, no link público. Em "Reprovado pela qualidade" e em "Em refação", continua vendo "Controle de qualidade".
 - **Aviso de falta de pagamento** não é status: aparece na OS e na retirada quando o saldo é maior que zero.
 
 ### 2.3 Regras de prazo
 
-- **Normal:** o mesmo dia da semana da semana seguinte (segunda para segunda; vale para sábado). **Feriado** antecipa ou adia (a regra exata está nas perguntas complementares). O sistema **sugere** a data e o atendente **pode alterar**.
-- **Expresso:** até **2 horas por peça**.
-- **Urgente:** **2 a 3 dias** depois da abertura, fora da regra do mesmo dia da semana.
-- Feriados são **cadastrados por Filial**. Há **horário de corte** (a hora ainda não foi informada).
+- **Dia útil** = dia em que a Filial funciona: segunda a sábado, exceto feriados fechados. **[ASSUMIDO, a confirmar]**
+- **Horário de funcionamento (Filial padrão):** segunda a sexta, 9h30 às 18h; sábado, 9h30 às 14h; domingo fechado.
+- **Normal:** mesmo dia da semana da semana seguinte (segunda para segunda; vale sábado). **Feriado:** o sistema **sugere o próximo dia útil** e o **atendente decide** caso a caso.
+- **Expresso:** até **2 horas por peça**, contadas **só no horário de funcionamento**. O que não couber **passa para a abertura do dia seguinte**.
+- **Urgente:** o atendente escolhe **2 ou 3 dias úteis**, com **sugestão de 3**.
+- **Sobretaxa:** **percentual configurável por tipo** de entrega (Normal, Expresso, Urgente).
+- O sistema **sugere** a data e o atendente **pode alterar** (fica registrado quem alterou e por quê).
+- **Hora de corte:** em aberto (você respondeu que existe, sem informar a hora).
 
-### 2.4 Regras de garantia e reconserto
+### 2.4 Garantia e reconserto
 
-- **Reconserto:** o cliente volta em até **7 dias** reclamando (curto, largo, algo que não provou). Cria-se uma **nova OS, sem valor financeiro**, **vinculada à OS original**, mostrando **qual técnico fez a primeira vez**.
-- **Garantia de serviço por peça:** **90 dias** (descosturou, barra se desfez), negociável no balcão, contada **da conclusão da peça**.
-- **Em aberto:** os 7 dias contam em dias úteis ou corridos? Os 90 dias e os 7 dias são regras diferentes ou a mesma garantia? Está nas perguntas complementares.
+- **Dois prazos diferentes**, ambos contados **da retirada pelo cliente**:
+  - **7 dias corridos** para reclamar de **ajuste** (curto, largo);
+  - **90 dias** de **garantia de defeito de execução** (descosturou, a barra se desfez), negociável no balcão.
+- **Dentro do prazo:** o atendente analisa e cria uma **nova OS sem valor, vinculada à OS original**, mostrando o **técnico que fez a primeira vez**. **[ASSUMIDO]** Vale para os dois tipos.
+- **Depois do prazo:** a OS nova é **cobrada**. O **gerente pode liberar sem valor, com motivo**.
 
-### 2.5 Técnico e produtividade
+### 2.5 Técnica e produtividade
 
-- Cada técnico (inclusive **diaristas e terceiros**) tem **login próprio** e lê o QR no celular. Isso vira o **diário de bordo**: o que cada um produziu, em quanto tempo, com a **descrição do serviço** de cada peça (no lugar do caderno).
-- O sistema usa a **quantidade de peças** e o **grau de dificuldade (1 a 4)** da OS para calcular o **tempo médio**, dimensionar a **grade de costureiras** (quanto contratar) e alimentar o **bônus por produtividade**.
-- **Dashboard** por técnico e por quantidade de peças. **Alertas de atraso** antes de vencer o prazo, com parâmetros configuráveis.
+- Cada técnica (inclusive **diaristas e terceiros**) tem **login próprio** e lê o QR no celular. Isso vira o **diário de bordo**: o que cada uma produziu, em quanto tempo, com a **descrição do serviço** de cada peça.
+- A **dificuldade** (1 a 4) é definida **por serviço**, com valor padrão no catálogo. A **OS mostra a maior** entre seus serviços, e o **atendente pode ajustar**. Com a **quantidade de peças**, isso estima o **tempo médio**, dimensiona a **grade de costureiras** e alimenta o **bônus por produtividade**.
+- **Dashboard** por técnica e por quantidade de peças. **Alertas de atraso** antes de vencer, com parâmetros configuráveis. **Tempos médios por grau: não informados**; o sistema os **mede** durante a homologação em paralelo, se você preferir.
 
 ### 2.6 O que o cliente recebe e faz
 
 - **WhatsApp 1 (OS aberta):** mensagem configurável pela plataforma, com **link**. Modelo seu: "Olá, [nome do cliente], aqui é do [nome do estabelecimento], você está recebendo a sua ordem de serviço digital, acompanhe o status de produção, mas fique tranquila que por este canal avisaremos quando estiver pronto, entre agora para aprovar o que ficou combinado."
-- **Link público (sem login):** mostra os status públicos e as datas, e permite **assinar a aprovação**. O link é **assinado e não adivinhável**, pode **expirar** e ser **revogado**.
+- **Link público (sem login):** mostra **só**: nome (sugestão: **primeiro nome**), número da OS, data de entrada, previsão de entrega, status, serviços combinados e situação do pagamento (a conciliação atualiza o recebido). Permite **assinar a aprovação**. É o **portal** do piloto.
 - **WhatsApp 2 (Pronto para retirada):** avisa que a peça está pronta, com o mesmo link.
 - **Nenhuma outra mensagem automática.** Não há registro de conversas no sistema; aprovações ficam na OS.
+- **Se o cliente não aprovar:** nada automático, mas o **atendente é avisado** (alerta). O prazo em dias **está em aberto** (a recomendação é 2 dias).
+- **Mais de 5 peças:** o sistema **divide em uma segunda OS ligada à primeira**. **[ASSUMIDO]** As OS ligadas formam um **grupo**: o cliente recebe **um só link** com as duas OS, **um só aviso** de OS aberta e **um só pagamento**; cada OS tem sua sacola, sua Ordem de Produção e seu QR.
 
-### 2.7 O que o consentimento e a LGPD pedem
+### 2.7 Privacidade e LGPD, em resumo
 
 - Só envia mensagem com **consentimento registrado**.
-- Se o cliente **não concordar em compartilhar o endereço**, ele marca isso, e os **dados sensíveis são apagados da OS**.
 - **Roupa infantil só com responsável cadastrado**; **fotos só da peça**, nunca da criança.
 - Controlador: o **ateliê**; operador: o **ANEXSYS**. Guarda de inativos: **5 anos**.
-- Você marcou o controle de LGPD como "mais adiante, mas importante". Por isso o plano o coloca **antes da produção** (Ciclo 10), com o mínimo legal.
+- **Endereço só é coletado quando a OS for para entrega em domicílio.** A regra anterior ("apagar o endereço se o cliente não concordar") foi **substituída** por essa minimização.
+- **A LGPD não fica "livre"** com o link mínimo. O parecer lista o que continua necessário (contrato com o ateliê, aviso de privacidade, canal do titular, retenção, segurança, incidente, fornecedores) e vira **escopo do Ciclo 10**.
 
 ---
 
 ## 3. O piloto completo: o que significa
 
-**Definição (a sua):** o ateliê só entra em produção em **março de 2027**, com **financeiro, portal e concierge** prontos. Você é o homologador de tudo, **não tem pressa de ajustes**, e o **sistema antigo roda em paralelo até você ter confiança**.
+**Definição (a sua):** o ateliê só entra em produção em **março de 2027**, com **financeiro, portal e concierge** prontos. **Atualização de 05/10:** **nenhum concierge nem fila de chegada**; o **portal é o link público**. Você é o homologador de tudo, **não tem pressa de ajustes**, e o **sistema antigo roda em paralelo até você ter confiança**.
 
 **O que entra (em ordem de ciclo):**
 
-1. Multiempresa (Conta, Empresa, Filial) e acesso por papel e escopo.
-2. Clientes completos (WhatsApp obrigatório, CEP, busca multicritério, consentimento, responsável por menor).
-3. Catálogo de serviços com preço fixo e ajuste manual com permissão; ficha de medidas em lista; feriados por Filial.
-4. **Catálogo de status configurável** com parâmetros.
-5. OS completa: peças (até 5), serviços, dificuldade, prazo (Normal, Expresso, Urgente), fotos opcionais (máximo 3 por peça).
-6. Link público de acompanhamento e aprovação assinada.
-7. Ordem de Produção impressa com QR grande.
-8. Produção por QR, diário de bordo, refação.
-9. WhatsApp real (2 mensagens).
-10. Retirada com assinatura eletrônica, aviso e liberação.
-11. Reconserto como nova OS vinculada.
-12. **Financeiro** com recebimentos e **maquininha Cielo** (Stone e Rede preparadas).
+1. Multiempresa (Conta, Empresa, Filial padrão) e acesso por papel e escopo.
+2. Clientes completos (WhatsApp obrigatório, CEP, busca multicritério, consentimento, responsável por menor; endereço opcional).
+3. Catálogo de serviços com preço fixo, **dificuldade padrão** e ajuste manual com permissão; ficha de medidas em lista; feriados e **horário de funcionamento** por Filial.
+4. **Catálogo de status configurável** (com **Em refação**).
+5. OS completa: peças (até 5, com **divisão automática**), serviços, dificuldade, **Normal, Expresso e Urgente com sobretaxa**, fotos opcionais (máximo 3 por peça).
+6. **Aprovação por link, balcão ou papel.**
+7. Ordem de Produção impressa com QR grande (**sem endereço**).
+8. Produção por QR com **avanço automático**, **uma sacola por vez**, diário de bordo, reprovação e refação.
+9. **WhatsApp pela API oficial** (2 mensagens), com **tela de número**.
+10. **Retirada** com confirmação controlada, comprovante e plano B no papel.
+11. **Reconserto e garantia** como nova OS vinculada.
+12. **Financeiro com conciliação da Cielo** (baixa em lote, divergências, quem deixou de cobrar).
 13. Dashboard e alertas.
-14. **Portal** e **concierge** nos termos que forem fechados (ver seção 12).
-15. LGPD mínima, importação do histórico, homologação em paralelo.
+14. LGPD mínima, importação do histórico (após validação), homologação em paralelo.
 
-**O que fica de fora do piloto (decidido):** retirada por terceiros com token por WhatsApp ("próxima versão"), fila de chegada, concierge com câmera e reconhecimento facial, segundo tipo de negócio, aprovação por resposta de WhatsApp, registro de conversas.
+**O que fica de fora (decidido):** concierge e fila de chegada, retirada por terceiros (próxima versão), concierge com câmera e reconhecimento facial, entrega em domicílio (recomendado para depois), cartão online com cartão cadastrado pelo cliente, segundo tipo de negócio, registro de conversas, aprovação por resposta de WhatsApp.
 
 ---
 
@@ -158,356 +172,308 @@ e vai por WhatsApp     com serviço e preço"   impressa no bolso          termi
 |---|---|---|---|
 | 1 | **Conta** (no código: "tenant") | Quem assina o ANEXSYS; dona dos dados | "Grupo Ateliê Silva" |
 | 2 | **Empresa** | Pessoa jurídica (CNPJ) | "Silva Costuras ME" |
-| 3 | **Filial** | Unidade física | "Loja Centro" |
+| 3 | **Filial** | Unidade física | "Matriz" |
 
+- **Seu ateliê hoje: 1 CNPJ e nenhuma Filial.** O sistema **exige ao menos uma Filial**, então a **Filial padrão** é criada automaticamente junto com a Empresa, com o **horário de funcionamento** informado (seg a sex 9h30 às 18h; sábado 9h30 às 14h). Você pode **renomeá-la** e **acrescentar outras** depois.
 - **Cliente é da Conta** e pode ser atendido em qualquer Empresa ou Filial dela. **Entre Contas nunca há compartilhamento.**
 - **CNPJ, numeração de OS e dados de pagamento pertencem à Empresa.** OS, produção e entrega acontecem **numa Filial**.
 - **Usuário novo nasce sem nenhuma Filial** até o administrador marcar. **Comunidades ficam congeladas**: permissão vem do **papel** e do **escopo**.
 - **Só você cria Contas**, por enquanto.
-- **Isolamento no banco:** hoje o isolamento depende de cada consulta lembrar de filtrar pela Conta. A proposta é colocar um **porteiro no próprio banco** (recurso chamado *Row Level Security*): mesmo que o programa erre, o banco só entrega as linhas da Conta logada. Um **teste automático de vazamento** falha a construção se alguma tabela ficar sem o porteiro.
+- **Isolamento no banco:** hoje o isolamento depende de cada consulta lembrar de filtrar pela Conta. A proposta é colocar um **porteiro no próprio banco** (*Row Level Security*): mesmo que o programa erre, o banco só entrega as linhas da Conta logada. Um **teste automático de vazamento** falha a construção se alguma tabela ficar sem o porteiro.
 
 ### 4.2 QR por OS, assinado, na Ordem de Produção impressa
 
-- O QR **identifica a OS** (e sua Ordem de Produção). Está **impresso grande** na **Ordem de Produção**, que vai no bolso transparente da sacola. **Não há etiqueta adesiva e não precisa de impressora de etiqueta**: basta impressão comum.
-- A Ordem de Produção impressa traz: número da OS, **QR grande**, **quantidade de peças**, **grau de dificuldade**, **descrição de cada peça e serviço**, **tipo e data de entrega**. **Nunca traz preço** (regra antiga mantida: a produção não vê dinheiro).
-- O QR guarda **só um código longo e aleatório**, sem dado pessoal. O sistema o **assina** (lacre digital): QR inventado ou alterado é **recusado e registrado**.
+- O QR **identifica a OS** (e sua Ordem de Produção). Está **impresso grande** na **Ordem de Produção**, no bolso transparente da sacola. **Sem etiqueta adesiva e sem impressora de etiqueta**: impressão comum.
+- A Ordem de Produção traz: número da OS, **QR grande**, **quantidade de peças**, **dificuldade (a maior)**, **descrição de cada peça e serviço**, **tipo e data de entrega**. **Nunca traz preço** e, por recomendação do parecer, **não traz o endereço de entrega** (só um indicador "entrega em domicílio", quando existir).
+- O QR guarda **só um código longo e aleatório**, sem dado pessoal, **assinado** pelo sistema: QR inventado ou alterado é **recusado e registrado**.
 - **Reimpressão** só pelo **gerente**, com motivo; a versão anterior **deixa de funcionar**.
-- **Quem lê:** funcionário com **login no celular** (alguns têm celular próprio, outros usam o da loja; Android e iPhone). **Leitura exige internet**; o Wi-Fi do ateliê é bom, então **modo offline não é prioridade**.
-- **Quem não está logado** (por exemplo o cliente) lendo o QR **não avança nada**.
-- O QR **por OS** (e não por peça) traduz a sua regra: a costureira não divide a sacola; abre e termina.
+- **Quem lê:** funcionária com **login no celular** (alguns celulares são pessoais, outros da loja; Android e iPhone). **Leitura exige internet**; o Wi-Fi é bom, então **modo offline não é prioridade**.
+- **Duas leituras seguidas** não duplicam a mudança. **Quem não está logado** lendo o QR **não avança nada**.
 
-### 4.3 WhatsApp (2 mensagens) e link público
+### 4.3 WhatsApp (API oficial direta, 2 mensagens) e link público
 
-- **API oficial:** é a única forma de **envio automático** estável. Para **só 2 mensagens por OS**, o custo costuma ser baixo, mas existe e precisa de **cadastro da Empresa**. Detalhes e a diferença para o WhatsApp Web estão no documento de perguntas complementares.
-- **Fila e falha:** a mensagem entra numa **fila**, um "carteiro" envia, tenta de novo se falhar, e depois de algumas tentativas vai para a **lista de falhas** (decidido) com o motivo, para o atendente reenviar ou ligar. O sistema **só marca "enviada" quando o provedor confirma**.
-- **Consentimento:** só envia com consentimento registrado.
-- **Um número por Conta**, com cadastro da Empresa com as configurações necessárias.
-- **Texto da mensagem configurável** na plataforma, com variáveis (nome do cliente, nome do estabelecimento, link).
-- **Sem registro de conversas** no sistema. Respostas do cliente ficam no celular do ateliê.
+- **API oficial contratada direto** com a Meta (decidido). Cadastro da **Empresa** (CNPJ) na Meta, **modelos aprovados**, **pago por mensagem**; **o ateliê absorve** o custo (ao comercializar, entra no plano).
+- **Número:** **começa com o número atual da Vivo**, usando o **uso simultâneo** (aplicativo e API no mesmo número) **se a Meta permitir** para ele. Se não permitir, usa-se **outro número** desde o início. Depois **compra outro número**.
+- **Tela para reconfigurar o número:** o administrador vê a **conta do WhatsApp Business** e o **número ativo**, **troca de número**, **testa o envio** e consulta o **histórico de números**. **Os modelos de mensagem pertencem à conta, não ao número**, então **trocar o número não exige nova aprovação dos textos** (**confirmar com a Meta no cadastro**).
+- **Fila e falha:** a mensagem entra numa **fila**, um "carteiro" envia, tenta de novo se falhar, e depois de algumas tentativas vai para a **lista de falhas** (decidido) com o motivo, para o atendente reenviar ou ligar. O sistema **só marca "enviada" quando a Meta confirma**.
+- **Consentimento:** só envia com consentimento registrado. **Um número por Conta.**
+- **Texto configurável** na plataforma, com variáveis (nome do cliente, nome do estabelecimento, link). **Sem registro de conversas.**
+- **Link público seguro** (recomendações do parecer): código **longo e aleatório (pelo menos 128 bits)**, **sem relação com o número da OS**; **expira** (retirada + período de garantia, com margem); **revogável**; **limite de tentativas**; **bloqueado para buscadores**; **só os campos mínimos**; aprovação com **confirmação**; **registro** de acessos.
 
-### 4.4 Assinatura eletrônica
+### 4.4 Aprovação e retirada (assinaturas e confirmações)
 
-- **Duas assinaturas:** (1) **aprovação** ("concordo com o serviço e preço"), no link público; (2) **retirada** ("retirei"), na tela do atendente.
-- Cada assinatura guarda: **quem**, **data e hora**, **o texto exato aceito**, **o valor e os serviços na hora**, **aparelho e endereço de rede**, e, na retirada, o **traço da assinatura na tela** (opcional). Não substitui contrato com certificado digital; é **evidência de aceite**.
+**Aprovação do cliente ("concordo com o serviço e o preço")** — três formas, todas registradas na OS:
+
+1. **Pelo link**, no celular do cliente.
+2. **Na tela do balcão**, o atendente passa o aparelho.
+3. **No papel:** o atendente imprime a OS, o cliente assina, o atendente **anexa a foto** e clica **"assinado no papel"** (fica registrado quem clicou e quando).
+
+- Cada registro guarda: **quem**, **data e hora**, **o texto exato aceito**, **valor e serviços na hora**, **aparelho e rede** (para link e balcão), e a **foto** (no papel). A **medida usada fica travada** na aprovação.
+- **A produção pode começar sem assinatura**, com **liberação e motivo** (quem libera e por quê ficam registrados). Se o cliente **não aprovar**, **nada acontece automaticamente**, mas o **atendente é avisado**.
+- **Cláusula de aceite** nos termos que o cliente assina: aceita a **confirmação eletrônica de retirada** como comprovante (ver o parecer).
+
+**Retirada** — **decisão final aguardando você** (pergunta 4 da segunda rodada). Sua preferência é o **token**; o parecer concluiu que ele **sozinho não basta** e recomenda a **janela de confirmação controlada pelo atendente**:
+
+- O **atendente inicia a retirada** na tela. Por **10 minutos** (configurável), o **link do cliente** mostra o botão **"Confirmo que retirei"** (uso único) ou um **código de 6 dígitos**. **Não gera terceira mensagem de WhatsApp.**
+- O atendente registra **quem retirou** (se não for o cliente: **nome e documento**). O link mostra o **comprovante** ("Retirado em [data e hora] por [nome]").
+- **Plano B:** **assinatura na Ordem de Produção em papel**, **foto anexada** e **"entregue assinado"**.
+- **Saldo em aberto:** aviso "Falta pagamento"; **bloqueia a entrega, e o gerente libera com motivo.**
+- Para **terceiros** (próxima versão): o cliente **autoriza antes**, pelo link, **indicando o nome**; o terceiro mostra documento e o atendente registra.
 
 ---
 
-## 5. Mudanças propostas no banco de dados (revisadas)
+## 5. Mudanças propostas no banco de dados (revisadas pela v3)
 
-**Como ler:** o banco é onde o sistema guarda tudo. Cada mudança traz o que muda, por quê, e o que acontece com o que existe. Como **não há dado real a preservar** (decisão 4), todo o conteúdo atual é tratado como teste e pode ser recriado; mesmo assim, cada migração é feita em passos reversíveis, com cópia e conferência.
+**Como ler:** o banco é onde o sistema guarda tudo. Cada mudança traz o que muda, por quê, e o que acontece com o que existe. Como **não há dado real a preservar** (decisão 4), todo o conteúdo atual é teste e pode ser recriado; mesmo assim, cada migração é feita em passos reversíveis, com cópia e conferência.
 
-### 5.1 Quadro resumo (D1 a D16 revisadas e D17 em diante novas)
+### 5.1 Quadro resumo
 
-Legenda de situação: **Mantida**, **Alterada**, **Reduzida**, **Nova**.
+Legenda: **Mantida**, **Alterada**, **Reduzida**, **Nova**. As colunas "v3" mostram o que mudou nesta versão.
 
-| # | Mudança | Situação | Ciclo | Risco |
-|---|---|---|---|---|
-| D1 | Nível **Empresa** entre Conta e Filial | Mantida | 1 | Médio |
-| D2 | **Porteiro no banco** (isolamento por Conta) | Mantida | 1 | Alto |
-| D3 | **Catálogo de status** com parâmetros, regras de passagem e histórico por OS | **Alterada** (era "fluxos e fases livres") | 2 | Médio |
-| D4 | **Peças da OS** (descrição, tipo, fotos), quantidade (até 5) e **grau de dificuldade** na OS | **Alterada** (peça deixa de ter QR e fase próprios) | 3 | Médio |
-| D5 | **Catálogos**: serviços (preço, dificuldade padrão, tempo médio), tipos de peça, formas de pagamento, **feriados por Filial** | Alterada | 2 | Baixo |
-| D6 | **Cliente completo**: WhatsApp obrigatório, CEP, consentimento, responsável por menor, "não concorda em compartilhar endereço" | Alterada | 2 | Baixo |
-| D7 | **Anexos e fotos** (opcionais, até 3 por peça) | Alterada | 3 | Baixo |
-| D8 | **Medida travada** na aprovação; ficha de medidas em lista | Mantida | 3 | Baixo |
-| D9 | **QR por OS assinado** (fortalece o QR já existente por Ordem de Produção) | **Reduzida** (antes: etiquetas novas por peça) | 3 | Baixo |
-| D10 | **WhatsApp**: conta do provedor, **2 modelos**, consentimento, fila e recibos | **Reduzida** (antes: modelos por fase e eventos de conversa) | 5 | Médio |
-| D11 | **Acesso**: escopo explícito, 5 papéis prontos, comunidades congeladas | Mantida | 1 | Médio |
-| D12 | **Módulos ativos** por Conta | Mantida | 1 | Baixo |
-| D13 | **Numeração por Empresa**, **fuso e horário de corte** por Filial | Mantida | 2 | Baixo |
-| D14 | **Segurança de login**: tentativas, recuperação de senha, convite por e-mail | Mantida (parte já no Ciclo 0) | 0 e 1 | Baixo |
-| D15 | **Auditoria antes/depois** em todos os cadastros | Mantida | 2 a 4 | Baixo |
-| D16 | **Plano/assinatura**: de um simples estado da Conta para o **módulo de cobrança do ANEXSYS** | **Alterada** (detalhada em D24) | Depois | Médio |
-| D17 | **Link público e assinaturas eletrônicas** | **Nova** | 3 e 6 | Médio |
-| D18 | **Diário de bordo e produtividade**: técnicos, vínculo (funcionário, diarista, terceiro), registros por OS | **Nova** | 4 | Médio |
-| D19 | **Reconserto**: OS vinculada, sem valor, técnico original; **regras de garantia** configuráveis | **Nova** | 6 | Médio |
-| D20 | **Tipos de entrega** configuráveis (Normal, Expresso, Urgente) e **data sugerida x data final** | **Nova** | 3 | Médio |
-| D21 | **Alertas e indicadores**: regras de alerta, alertas gerados, leituras para o dashboard | **Nova** | 8 | Baixo |
-| D22 | **Financeiro e maquininha**: contas do adquirente por Empresa, terminais, transações, conciliação | **Nova** (parte já existe no servidor) | 7 | Alto |
-| D23 | **Liberação de entrega com saldo em aberto** (gerente, motivo) | **Nova** | 6 | Baixo |
-| D24 | **Cobrança do ANEXSYS**: planos, preços, contratos de um ano, faturas, tentativas de cobrança | **Nova** | Depois | Médio |
-| D25 | **LGPD operacional**: pedidos do titular, retenção de 5 anos, apagamento de dado sensível | **Nova** | 10 | Médio |
-| D26 | **Importação do histórico** (áreas temporárias de validação) | **Nova** | 10 | Médio |
+| # | Mudança | Situação | O que a v3 acrescentou | Ciclo | Risco |
+|---|---|---|---|---|---|
+| D1 | Nível **Empresa** entre Conta e Filial | Mantida | **Filial padrão** criada junto | 1 | Médio |
+| D2 | **Porteiro no banco** (isolamento por Conta) | Mantida | | 1 | Alto |
+| D3 | **Catálogo de status** com parâmetros, regras de passagem e histórico por OS | Alterada | Status **Em refação**; **limite de sacolas por técnica**; avanço automático por papel | 2 | Médio |
+| D4 | **Peças da OS**, quantidade (até 5) e **dificuldade** | Alterada | **Dificuldade por serviço**, **maior na OS**, ajuste pelo atendente | 3 | Médio |
+| D5 | **Catálogos**: serviços (preço, **dificuldade padrão**, tempo médio), tipos de peça, formas de pagamento, feriados | Alterada | Dificuldade padrão no serviço | 2 | Baixo |
+| D6 | **Cliente completo** | Alterada | **Endereço opcional**; regra "apagar endereço" substituída por minimização | 2 | Baixo |
+| D7 | **Anexos e fotos** (até 3 por peça) | Alterada | Foto da **assinatura em papel** | 3 | Baixo |
+| D8 | **Medida travada** na aprovação | Mantida | | 3 | Baixo |
+| D9 | **QR por OS assinado** | Reduzida | **Sem endereço na Ordem de Produção** | 3 | Baixo |
+| D10 | **WhatsApp**: conta, **números reconfiguráveis**, 2 modelos, consentimento, fila, recibos | Alterada | **Tela e histórico de números**; API oficial direta | 5 | Médio |
+| D11 | **Acesso** (escopo explícito, papéis, comunidades congeladas) | Mantida | | 1 | Médio |
+| D12 | **Módulos ativos** por Conta | Mantida | | 1 | Baixo |
+| D13 | **Numeração**, fuso, **horário de funcionamento por dia da semana**, **hora de corte**, feriados | Alterada | **Horário por dia da semana** (seg a sex, sábado, domingo fechado) | 1 e 2 | Baixo |
+| D14 | **Segurança de login** | Mantida | Parte no Ciclo 0 (PR #8) | 0 e 1 | Baixo |
+| D15 | **Auditoria antes/depois** | Mantida | | 2 a 4 | Baixo |
+| D16 | **Plano e assinatura** (estado da Conta) | Alterada | Detalhado em D24 | Depois | Médio |
+| D17 | **Link público e assinaturas/confirmações** | Alterada | **Três formas de aprovação**, liberação sem assinatura, **confirmação de retirada** (janela, código, papel), **link seguro** | 3, 5 e 6 | Médio |
+| D18 | **Diário de bordo e produtividade** | Nova | | 4 | Médio |
+| D19 | **Reconserto e garantia** | Alterada | **7 dias corridos e 90 dias, da retirada**; depois do prazo cobra; liberação do gerente | 6 | Médio |
+| D20 | **Tipos de entrega** e **data sugerida x final** | Alterada | **Sobretaxa percentual por tipo**; regras de feriado, Expresso e Urgente | 3 | Médio |
+| D21 | **Alertas e indicadores** | Nova | **Alerta de aprovação pendente** | 8 | Baixo |
+| D22 | **Financeiro e conciliação da Cielo** | Alterada | **Importação de vendas, baixa em lote, divergências, fechamento do dia, relatório por atendente**; **Pix QR opcional** | 7 | Médio |
+| D23 | **Liberação de entrega com saldo** | Nova | | 6 | Baixo |
+| D24 | **Cobrança do ANEXSYS** | Nova | | Depois | Médio |
+| D25 | **LGPD operacional** | Alterada | Retenção por tipo; registro das operações; expiração do link | 10 | Médio |
+| D26 | **Importação do histórico** | Nova | | 10 | Médio |
+| D27 | **Divisão automática de OS e grupo de OS** | **Nova** | OS ligadas, um link, um pagamento | 3 | Médio |
+| D28 | **Entrega em domicílio** | **Nova (depois do piloto)** | Agora entra **só o marcador e o endereço opcional**; o restante vem depois | Depois | Alto |
 
-### 5.2 Detalhe das mudanças
+### 5.2 Detalhe das mudanças alteradas ou novas na v3
 
-#### D1. Empresa entre Conta e Filial (mantida)
+#### D1 e D13. Empresa, Filial padrão e horários (alteradas)
 
-- **O que muda:** nova tabela **Empresas** (CNPJ, razão social, nome fantasia, endereço fiscal). Cada **Filial** aponta para uma **Empresa**. A **OS** guarda também a Empresa (herdada da Filial).
-- **Por quê:** hoje a tela chama de "Empresa" o que é, no banco, a Conta.
-- **Impacto no que existe:** para cada Conta existente, o sistema cria **1 Empresa** e liga todas as Filiais a ela. CNPJ fica pendente até ser preenchido. As telas que dizem "Empresas" (que são Contas) passam a dizer **"Contas"**, visíveis só a você como administrador da plataforma.
-- **Risco:** o fluxo de login (escolher Conta, Empresa, Filial) muda e será refeito com testes.
+- **O que muda:** nova tabela **Empresas** (CNPJ, razão social, nome fantasia, endereço fiscal). Cada **Filial** aponta para uma **Empresa**. A **Filial padrão** é criada automaticamente. Nova tabela de **horário de funcionamento por dia da semana** (abertura e fechamento; domingo fechado) e **hora de corte** (quando informada). **Feriados por Filial.**
+- **Por quê:** hoje o seu ateliê tem 1 CNPJ e nenhuma Filial; o sistema exige ao menos uma. O horário de funcionamento alimenta o Expresso e o prazo.
+- **Impacto no que existe:** para cada Conta existente, o sistema cria **1 Empresa** e liga as Filiais atuais; se não houver Filial, cria a **Filial padrão** (nome "Matriz", editável). CNPJ pendente até ser preenchido. Telas "Empresas" (que são Contas) passam a "Contas".
+- **Risco:** o login (Conta, Empresa, Filial) muda e será refeito com testes.
 
-#### D2. Porteiro no banco (mantida)
+#### D3. Catálogo de status (alterada)
 
-- **O que muda:** cada tabela com Conta passa a **recusar** linhas de outra Conta mesmo que o programa peça. O programa informa ao banco, no começo de cada requisição, "estou atendendo a Conta X". Vínculos entre registros de Contas diferentes ficam **travados**.
-- **Impacto:** nenhuma mudança nos dados; muda **como o programa fala com o banco** (usuário de banco sem poderes de dono, requisições dentro de "transações" que carregam a Conta). Operações de plataforma usam um caminho especial e auditado.
-- **Redução de risco:** primeiro nas tabelas do núcleo; **modo de observação** antes de bloquear; **teste automático de vazamento**.
+- **O que muda:** **Status** (nome interno, nome para o cliente, público ou interno, ordem, papel responsável, exige QR, grava técnica e hora, dispara mensagem, tempo esperado, é inicial, é final), **Regras de passagem** (de qual para qual; **retorno permitido** só na reprovação), **Histórico de status da OS** (imutável) e **limite de OS simultâneas por papel** (hoje 1 para técnica).
+- **Novo na v3:** o status interno **Em refação** e a regra do **avanço automático** (o próximo status permitido ao papel de quem leu).
+- **Impacto:** a tabela `status_visibility_mappings` é substituída. Os estados atuais da OS são convertidos. Os 6 estados da Ordem de Produção ficam como **estado técnico interno**.
 
-#### D3. Catálogo de status com parâmetros (alterada)
+#### D4. Peças, quantidade e dificuldade (alterada)
 
-- **O que muda:** novas tabelas **Status** (nome interno, nome para o cliente, público ou interno, ordem, papel responsável, exige QR, grava técnico e hora, dispara mensagem, tempo esperado, é inicial, é final), **Regras de passagem** (de qual status para qual; marca o tipo "retorno permitido" para a reprovação) e **Histórico de status da OS** (cada passagem: quem, quando, por qual leitura de QR; **imutável**).
-- **Por quê:** é o centro do negócio e hoje o status da OS é fixo no código (Em aberto, Aprovada, Cancelada).
-- **Impacto no que existe:** a tabela `status_visibility_mappings` (mapa de nomes públicos em inglês) é **substituída**. Os estados atuais da OS são **convertidos** para o catálogo; os 6 estados da Ordem de Produção continuam como **estado técnico interno**. Cada Conta nova recebe o **modelo da seção 2.2** para editar.
-- **Risco:** mudar a regra "OS aprovada" (hoje um status) para "OS com assinatura de aprovação" (um fato registrado). Será mapeado antes de aplicar.
+- **O que muda:** nova tabela **Peças da OS** (descrição, tipo, observação). A **OS** ganha **quantidade de peças (até 5)** e **dificuldade** (a **maior** entre os serviços, **ajustável** pelo atendente). Cada **serviço** do catálogo tem **dificuldade padrão**.
+- **Impacto no que existe:** cada **item existente** vira **uma peça com um serviço**; a dificuldade assume o padrão do serviço (2, até você definir).
 
-#### D4. Peças e dificuldade (alterada)
+#### D17. Link público, aprovação e retirada (alterada)
 
-- **O que muda:** nova tabela **Peças da OS** (descrição, tipo de peça, observação). A **OS** ganha **quantidade de peças** (calculada, **até 5**) e **grau de dificuldade 1 a 4**. Os **itens** atuais viram **serviços dentro de uma peça**.
-- **Por quê:** a produção controla a OS inteira, mas precisa saber quantas peças e quão difícil é, para dimensionar a equipe e o tempo médio. A descrição de cada peça alimenta o diário de bordo.
-- **Impacto no que existe:** cada **item existente** vira **uma peça com um serviço**. A dificuldade assume o valor padrão do serviço do catálogo (2, até você definir).
-- **Risco:** o **limite de 5 peças** é uma regra rígida ou um alerta? E a dificuldade é por OS ou por serviço? Está nas perguntas complementares.
+- **O que muda:** **Links públicos** (código **longo e aleatório**, **validade**, **revogação**, **limite de tentativas**, ações: acompanhar, aprovar, confirmar retirada) e **Assinaturas e confirmações** com **método** (link, balcão, papel, janela de retirada, código, papel na retirada), **quem registrou**, **texto aceito**, **valor e serviços no momento**, **data e hora**, **aparelho e rede**, **anexo (foto do papel)**, **nome e documento de quem retirou** (terceiros) e **motivo da liberação** (produção sem assinatura).
+- **Aproveitamento:** o servidor já tem tabelas de **credenciais e códigos temporários de retirada** (das sprints antigas). Serão **reaproveitadas** sempre que servirem.
+- **Impacto:** nada existente em produção.
 
-#### D5. Catálogos (alterada)
+#### D19. Reconserto e garantia (alterada)
 
-- **O que muda:** **Serviços** (nome, preço, **dificuldade padrão**, tempo médio), **Tipos de peça**, **Formas de pagamento** e **Feriados por Filial**.
-- **Impacto:** itens antigos continuam em texto; o vínculo com o catálogo fica vazio neles. Novos itens exigem catálogo.
+- **O que muda:** a OS ganha **tipo** (normal, reconserto de ajuste, garantia de defeito), **OS original vinculada**, **técnica original** e marca **sem valor**. **Regras configuráveis por Conta:** 7 dias corridos e 90 dias, **contados da retirada**; **depois do prazo**, a OS nova é **cobrada**, com **liberação do gerente com motivo**.
+- **Impacto:** os campos de garantia atuais (7 dias por Conta, contados de datas da OS) são **ajustados**.
 
-#### D6. Cliente completo (alterada)
+#### D20. Tipos de entrega e sobretaxa (alterada)
 
-- **O que muda:** **WhatsApp** (obrigatório, formato internacional), **CEP com endereço**, **consentimentos** (finalidade, autorizou ou recusou, quando, como, quem registrou), **responsável** para menores e a marca **"não concorda em compartilhar endereço"**, que aciona o **apagamento de dados sensíveis da OS**.
-- **Impacto:** o campo "celular/WhatsApp" atual é copiado para o novo WhatsApp quando válido; consentimentos nascem como **"não informado"** (sem envio automático até registrar). CPF/CNPJ continua **opcional**.
+- **O que muda:** **tipos de entrega configuráveis** (Normal, Expresso, Urgente) com **sobretaxa percentual** por tipo e a regra de data de cada um (Normal: mesmo dia da semana seguinte; Expresso: até 2 horas por peça no horário de funcionamento; Urgente: 2 ou 3 dias úteis, sugestão de 3). A OS guarda **data sugerida**, **data final** e **quem alterou**, com motivo.
+- **Impacto:** valores atuais **Standard, Priority, Express** são convertidos para **Normal, Urgente, Expresso**. O motor de data atual (domingo fechado) é ampliado.
 
-#### D7. Anexos e fotos (alterada)
+#### D22. Financeiro e conciliação da Cielo (alterada)
 
-- **O que muda:** tabela **Anexos** (a quem pertence, tipo, tamanho, local de armazenamento, quem enviou, quando). Fotos **opcionais**, **máximo 3 por peça**, **só da peça**.
-- **Impacto:** exige definir **onde guardar os arquivos** (a hospedagem em nuvem resolve).
+- **O que muda:** reaproveita pagamentos e pagamentos parciais já existentes. Acrescenta: **lotes de importação** de vendas da Cielo; **vendas do adquirente** (número de autorização, valor, bandeira, parcelas, data e hora); **casamentos** (venda x pagamento da OS: automático, manual ou sem OS); **fechamento do dia por Filial** (quem fechou, diferenças); **baixa em lote**; e leitura para o **relatório "quem deixou de cobrar"** (OS retiradas sem pagamento conciliado, por atendente). **Pix QR** (cobrança com valor, situação) **se entrar**.
+- **Como a venda se liga à OS:** **depende do modelo da maquininha e da regra escolhida** (pergunta 3 da segunda rodada). A recomendação é o atendente **registrar o pagamento na OS** e o sistema **conferir com a Cielo**.
+- **Impacto:** o servidor hoje só tem **contratos** para Stone, Cielo e PagBank, sem integração real. A conciliação por arquivo ou consulta **é bem menos trabalhosa** que a integração em tempo real.
+- **Risco:** o formato de arquivo ou a consulta da Cielo dependem do **modelo e do contrato**.
 
-#### D8. Medida travada (mantida)
+#### D27. Divisão automática de OS (nova)
 
-- **O que muda:** a OS guarda **qual conjunto de medidas** foi usado e o **trava na assinatura de aprovação**.
-- **Impacto:** OS antigas ficam sem vínculo; só valem para as novas.
-
-#### D9. QR por OS assinado (reduzida)
-
-- **O que muda:** o QR que **já existe por Ordem de Produção** é fortalecido: código **longo e aleatório**, guardado de forma protegida, com **assinatura**, **estado** (ativo, revogado, substituído), motivo e **quantas vezes foi impresso**. Os **eventos de leitura** ganham resultado (aceita, recusada por assinatura, recusada por revogação, duplicada) e **chave de repetição** (duas leituras seguidas não duplicam a mudança).
-- **Impacto no que existe:** os QR atuais têm código **previsível em parte** e guardado em texto claro. Como **não há impressão real em circulação**, eles são **reemitidos** com o novo formato. Menor impacto que na versão 1.
-
-#### D10. WhatsApp (reduzida)
-
-- **O que muda:** **Conta do provedor** (número, provedor, credenciais protegidas), **2 modelos** (OS aberta e pronto), **consentimento**, **fila de mensagens** (pendente, enviando, enviada, entregue, lida, falhou, cancelada; tentativas; motivo do erro) e **recibos**. **Não** guarda conversas.
-- **Impacto no que existe:** os registros atuais de comunicação marcados como "enviado" são **reclassificados como "registro interno, não enviado"**.
-- **Risco:** depende da decisão entre API oficial e WhatsApp Web (perguntas complementares).
-
-#### D11. Acesso e permissões (mantida)
-
-- **O que muda:** o escopo do usuário passa a ser **explícito** (Empresas e Filiais permitidas; "todas" é marca visível). **5 papéis prontos**. **Comunidades deixam de conceder permissão**.
-- **Impacto:** quem hoje depende de "sem Filial = todas" ganha a marca **"todas as Filiais da Conta"** (preserva o comportamento) com aviso. Permissões vindas só de comunidades são **convertidas em papel**, com **relatório "quem perde o quê"** que você aprova antes.
-
-#### D12. Módulos ativos por Conta (mantida)
-
-- **O que muda:** tabela dos **módulos que cada Conta usa** (OS, produção, WhatsApp, financeiro, qualidade etc.).
-- **Impacto:** o que não faz parte do piloto (retirada por terceiros, fila de chegada, concierge com câmera, fiscal) fica **desligado**.
-
-#### D13. Numeração, fuso e corte (mantida)
-
-- **O que muda:** **sequência de numeração por Empresa** e **fuso e horário de corte por Filial**.
-- **Impacto:** números antigos permanecem.
-
-#### D14. Segurança de login (mantida)
-
-- **O que muda:** **limite de tentativas** (já começa no Ciclo 0), **recuperação de senha**, **convite por e-mail**, sessão em **cookie seguro** em vez de `localStorage`, **criação de Conta fechada ao público** (Ciclo 0).
-- **Impacto:** usuários entram de novo uma vez. Exige o provedor de e-mail (**anexsys.com.br**, domínio já registrado).
-
-#### D15. Auditoria antes/depois (mantida)
-
-- **O que muda:** o registro de auditoria guarda **o que mudou** (valor antigo e novo) nos cadastros e na OS.
-
-#### D16. Plano e assinatura (alterada)
-
-- Passa a ser o módulo completo de cobrança do ANEXSYS (D24). No Ciclo 1 basta o **estado da Conta** (ativa, em teste, suspensa).
-
-#### D17. Link público e assinaturas eletrônicas (nova)
-
-- **O que muda:** tabela de **Links públicos** (OS, código assinado e não adivinhável, ações permitidas: acompanhar e aprovar; validade; revogação) e tabela de **Assinaturas** (tipo: aprovação ou retirada; OS; nome de quem assinou; **texto aceito**; **valor e serviços no momento**; data e hora; aparelho; endereço de rede; traço da assinatura quando houver).
-- **Por quê:** o cliente aprova sem login, e a retirada precisa de evidência.
+- **O que muda:** um **grupo de OS** liga as OS irmãs (a primeira e a(s) criada(s) pela divisão). A divisão acontece quando a OS passa de 5 peças: as peças excedentes vão para **uma nova OS** do mesmo cliente, mesmo tipo de entrega e mesma data sugerida. O grupo tem **um link**, **um aviso de OS aberta** e **um pagamento** (**assumido, a confirmar**). Cada OS mantém sacola, Ordem de Produção e QR.
 - **Impacto:** nada existente.
+- **Risco:** regras de preço, desconto e cancelamento dentro do grupo (a OS cancelada afeta o grupo?). Serão definidas no Ciclo 3.
 
-#### D18. Diário de bordo e produtividade (nova)
+#### D28. Entrega em domicílio (nova, depois do piloto)
 
-- **O que muda:** **vínculo do usuário** (funcionário, diarista, terceiro), **responsável técnico por OS** (original e refação) e **registros de trabalho** (técnico, OS, status, início, fim, quantidade de peças, dificuldade, descrição), alimentados **automaticamente pelas leituras de QR**. Base para o **bônus por produtividade**.
-- **Por quê:** substitui o caderno e mede eficiência por técnico.
-- **Impacto:** nada existente.
+- **O que muda (agora):** apenas o **marcador** "entrega em domicílio" na OS e o **endereço opcional** do cliente.
+- **O que muda (depois):** **solicitações de entrega** (OS, endereço, coordenadas, distância, valor calculado, situação), **regras e faixas de preço**, **comprovante de entrega**. O **endereço não é impresso na Ordem de Produção**; usa-se uma **Guia de entrega separada**.
+- **Por quê:** o parecer recomenda deixar para depois por prazo, privacidade (geolocalização é dado pessoal), responsabilidade e prova de entrega.
+- **Risco:** alto (novo fornecedor de mapas, contrato, transporte).
 
-#### D19. Reconserto e garantia (nova)
+#### Mudanças mantidas das versões anteriores (resumo)
 
-- **O que muda:** a OS ganha **tipo** (normal ou reconserto), **OS original vinculada**, **técnico original** (vindo do diário de bordo) e marca **sem valor**. **Regras de garantia configuráveis** por Conta (prazo do reconserto, prazo da garantia de serviço, tipo de contagem).
-- **Impacto:** nada existente. Os campos de garantia já existentes no servidor (7 dias por Conta) são reaproveitados e ajustados depois das respostas.
-
-#### D20. Tipos de entrega (nova)
-
-- **O que muda:** **Tipos de entrega** configuráveis (Normal, Expresso, Urgente), cada um com sua regra de data. A OS guarda a **data sugerida**, a **data final** (editável) e quem alterou, com motivo.
-- **Impacto:** os valores atuais **Standard, Priority, Express** são convertidos para **Normal, Urgente, Expresso** (mapeamento a confirmar). O motor de data de entrega atual (domingo fechado por padrão) é aproveitado e ampliado.
-
-#### D21. Alertas e indicadores (nova)
-
-- **O que muda:** **Regras de alerta** (por exemplo, avisar quando faltar X horas para o prazo), **Alertas gerados** e leituras prontas para o dashboard.
-- **Impacto:** nada existente.
-
-#### D22. Financeiro e maquininha (nova, apoiada no que já existe)
-
-- **O que muda:** reaproveita pagamentos, pagamentos parciais e exceções financeiras já existentes no servidor. Acrescenta **conta do adquirente por Empresa** (Cielo primeiro; Stone e Rede), **terminais**, **transações** (código do adquirente, situação) e **conciliação**. **Aviso de falta de pagamento** é calculado (saldo maior que zero), **não é status**.
-- **Impacto:** o servidor hoje só tem **contratos** para Stone, Cielo e PagBank, sem integração real.
-- **Risco:** o mais dependente de **contrato** externo (seção 8).
-
-#### D23. Liberação de entrega com saldo (nova)
-
-- **O que muda:** tabela de **liberações** (OS, gerente, motivo, data). Reaproveita a opção atual "bloquear entrega com saldo", que passa a admitir exceção.
-
-#### D24. Cobrança do ANEXSYS (nova)
-
-- **O que muda:** **Planos**, **Preços** (configuráveis, à vista ou parcelado), **Contratos de 1 ano**, **Faturas**, **Tentativas de cobrança** (cartão online, Pix, boleto).
-- **Quando:** **antes do segundo cliente**, não bloqueia março.
-
-#### D25. LGPD operacional (nova)
-
-- **O que muda:** **Pedidos do titular** (acesso, correção, exclusão), **política de retenção** (5 anos de inativos) e **rotina de apagamento** de dado sensível da OS quando o cliente não concorda em compartilhar o endereço.
-
-#### D26. Importação do histórico (nova)
-
-- **O que muda:** áreas temporárias para **receber as planilhas do sistema atual** (você disse que o sistema gera tudo em Excel), **validar** e só então **efetivar**, com **desfazer**.
-- **Quando:** **depois da sua validação**, nas semanas de homologação em paralelo.
+- **D2 Porteiro no banco:** o banco recusa linhas de outra Conta mesmo que o programa peça; vínculos entre Contas diferentes ficam travados; **modo de observação** antes de bloquear; **teste automático de vazamento**. Nenhuma mudança nos dados; muda como o programa fala com o banco.
+- **D5 Catálogos:** serviços (preço, **dificuldade padrão**, tempo médio), tipos de peça, formas de pagamento e feriados por Filial. Itens antigos ficam em texto; novos itens exigem catálogo.
+- **D6 Cliente completo:** WhatsApp obrigatório (formato internacional), CEP com endereço **opcional**, consentimentos (finalidade, autorizou ou recusou, quando, como, quem registrou), responsável para menores. O campo atual "celular/WhatsApp" é copiado; consentimentos nascem "não informado" (sem envio automático até registrar).
+- **D7 Anexos e fotos:** fotos opcionais, até 3 por peça, só da peça; arquivos fora do banco.
+- **D8 Medida travada:** a OS guarda o conjunto de medidas usado e o trava na aprovação.
+- **D9 QR por OS assinado:** o QR que já existe por Ordem de Produção ganha código longo e aleatório, assinatura, estado (ativo, revogado, substituído), motivo, contagem de impressões e eventos de leitura com resultado e chave de repetição. Como não há impressão real em circulação, os atuais são reemitidos.
+- **D10 WhatsApp:** tabela da **conta do WhatsApp Business** e tabela de **números** (ativo, desde quando, até quando), **2 modelos** (OS aberta e Pronto), **consentimento**, **fila** (pendente, enviando, enviada, entregue, lida, falhou, cancelada; tentativas; motivo do erro) e **recibos**. Registros antigos "enviado" são reclassificados como "registro interno, não enviado".
+- **D11 Acesso:** escopo explícito (Empresas e Filiais permitidas; "todas" é marca visível), 5 papéis prontos, comunidades congeladas, relatório "quem perde o quê" aprovado por você antes de aplicar.
+- **D12 Módulos ativos por Conta:** liga e desliga OS, produção, WhatsApp, financeiro etc. O que está fora do piloto fica desligado.
+- **D14 Segurança de login:** limite de tentativas (**já no PR #8**), recuperação de senha, convite por e-mail, cookie seguro no lugar de `localStorage`.
+- **D15 Auditoria antes/depois:** o registro guarda o valor antigo e o novo nos cadastros e na OS.
+- **D16 Plano e assinatura:** no começo, só o estado da Conta (ativa, em teste, suspensa). O módulo de cobrança é a D24.
+- **D18 Diário de bordo:** vínculo do usuário (funcionária, diarista, terceiro), responsável técnica por OS (original e refação) e registros de trabalho alimentados pelas leituras de QR.
+- **D21 Alertas e indicadores:** regras de alerta (por exemplo, faltam X horas), alertas gerados e **alerta de aprovação pendente**; leituras para o dashboard.
+- **D23 Liberação de entrega com saldo:** registro de liberações (OS, gerente, motivo, data).
+- **D24 Cobrança do ANEXSYS:** planos, preços configuráveis (à vista ou parcelado), contratos de 1 ano, faturas e tentativas de cobrança (cartão online, Pix, boleto). Antes do segundo cliente.
+- **D25 LGPD operacional:** pedidos do titular, retenção (5 anos para inativos; prazos menores para endereço de entrega e coordenadas), registro das operações de tratamento, expiração do link.
+- **D26 Importação do histórico:** áreas temporárias para receber as planilhas do sistema atual, validar e só então efetivar, com desfazer; depois da sua validação.
 
 ### 5.3 Garantias para a migração
 
 - **Cópia de segurança antes** de cada mudança e **ensaio numa cópia**.
 - **Passos:** adicionar o novo sem tirar o antigo; copiar; mudar o programa; só no fim remover o antigo.
 - **Cada migração com "desfazer"** testado.
-- **Relatório de conferência** em português ("X Contas, Y Empresas criadas, Z peças geradas, nenhum registro perdido").
+- **Relatório de conferência** em português depois de cada migração.
 - Como **não há dado real**, os dados de teste podem ser **recriados** por um script de demonstração.
 
 ---
 
-## 6. Ciclos de evolução (reordenados)
+## 6. Ciclos de evolução (reordenados na v3)
 
 Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você vê**, **como valida**, **aprovado se**, **fora do ciclo**, **decisões antes**.
 
 ### Ciclo 0. Casa arrumada (tamanho P)
 
-**Objetivo:** terreno confiável: documentação única, ambiente de testes em nuvem, falhas gritantes de segurança fechadas e contratos iniciados.
+**Objetivo:** terreno confiável: documentação única, falhas gritantes de segurança fechadas, ambiente de testes em nuvem e cadastros externos iniciados.
 
 **O que será feito**
 
-1. **Documentação consolidada** em português (seção 9): glossário, suas decisões, fluxo de status, estado atual; antigos para `docs/arquivo/` somente leitura.
-2. **Segurança rápida:** criar Conta deixa de ser público; senhas e e-mail de exemplo saem dos guias e dos scripts; **limite de tentativas de login**.
-3. **Ambiente de testes em nuvem** (simples e barato) com **dados de demonstração**.
-4. **Contratos e cadastros em paralelo** (seção 8): WhatsApp (provedor e cadastro da Empresa), e-mail (domínio anexsys.com.br), escolha do adquirente.
-5. **Testes de integração com banco** rodados e publicados em português.
+1. **Documentação consolidada em português** (PR #8): glossário, decisões, fluxo de status, estado atual; antigos em `docs/arquivo/`.
+2. **Segurança rápida** (PR #8): criar Conta fechado ao público; senhas de exemplo removidas; limite de tentativas de login.
+3. **Ambiente de testes em nuvem** (você cria a conta; nós montamos), com **dados de demonstração**.
+4. **Cadastros externos em paralelo** (seção 8): **Meta/WhatsApp (API oficial, número da Vivo)**, **Cielo (modelo e formato de conciliação)**, **e-mail (anexsys.com.br)**.
+5. **Corrigir os testes de integração** (hoje 15 de 39 passam, **antes e depois do PR**): atualizar a preparação das suítes para o cadastro de cliente atual e republicar o resultado em português.
 6. Reclassificação das mensagens "enviadas" sem envio.
 
-**Banco:** parte de D14; reclassificação de D10. **Sem mudar o esquema** no trecho de repositório já aberto.
+**Banco:** parte de D14; reclassificação de D10. **Sem mudar o esquema** no PR #8.
 
-**Como valida:** abre o link de testes; tenta criar Conta sem estar logado (recusado); erra a senha seis vezes (bloqueia por um tempo); abre o documento oficial e confere o glossário.
+**Como valida:** abre o link de testes; tenta criar Conta sem estar logado (recusado); erra a senha seis vezes (bloqueia); abre o documento oficial e confere o glossário; vê o relatório de testes de integração.
 
-**Aprovado se:** os 3 testes passam e você lê o documento oficial sem precisar de outro.
+**Aprovado se:** os testes acima passam e você lê o documento oficial sem precisar de outro.
 
-**Decisões antes:** perguntas complementares 1, 2 e 3 (cadastros externos e nuvem) e 5 e 6 (para fechar o documento do fluxo de status).
+**Decisões antes:** **perguntas 1 e 3 da segunda rodada** (valor da nuvem e domínio; modelo da Cielo).
 
 ---
 
 ### Ciclo 1. Multiempresa correto (tamanho M)
 
-**Objetivo:** Conta, Empresa e Filial separados, com isolamento garantido no banco.
+**Objetivo:** Conta, Empresa e Filial separados, com a **Filial padrão** e o isolamento garantido no banco.
 
-**Feito:** D1, D2, D11, D12; telas de **Contas** (só você), **Empresas, Filiais e Usuários** (por Conta); **5 papéis** do ateliê; relatório **"quem perde o quê"**; **teste automático de vazamento**.
+**Feito:** D1, D2, D11, D12, D13 (parte). **Telas:** **Contas** (só você), **Empresas, Filiais e Usuários** (por Conta); **Filial padrão** com **horário de funcionamento**; **5 papéis** do ateliê; relatório **"quem perde o quê"**; **teste automático de vazamento**.
 
-**Você vê:** duas Contas de teste ("Ateliê A" e "Ateliê B") com suas Empresas, Filiais e usuários; relatório de isolamento.
+**Você vê:** duas Contas de teste ("Ateliê A" e "Ateliê B"), cada uma com Empresa e **Filial padrão**; o seu ateliê configurado com o **horário de funcionamento** (seg a sex 9h30 às 18h; sábado 9h30 às 14h); relatório de isolamento.
 
-**Valida ("teste do espelho"):** cria "Maria Teste A" na Conta A; entra na Conta B e busca "Maria": não aparece; tenta abrir uma tela da Conta A com o usuário de B: nega; cria usuário de recepção só na Filial Centro e confere que não vê a Filial Zona Sul; lê o relatório automático de isolamento.
+**Valida ("teste do espelho"):** cria "Maria Teste A" na Conta A; entra na B e busca "Maria": não aparece; tenta abrir uma tela da A com o usuário de B: nega; cria um usuário de recepção só na Filial padrão e confere que **não vê** outra Filial; lê o relatório automático de isolamento.
 
 **Aprovado se:** nenhum dado de A aparece em B e o relatório mostra todas as tabelas do núcleo protegidas.
 
-**Decisões antes:** pergunta complementar 4 (estrutura real do ateliê: CNPJs, Filiais, horários).
+**Decisões antes:** **pergunta 2 da segunda rodada** (hora de corte).
 
 ---
 
 ### Ciclo 2. Cadastros e catálogo de status (tamanho G)
 
-**Objetivo:** cadastros completos e o **catálogo de status configurável**, que é o coração do negócio.
+**Objetivo:** cadastros completos e o **catálogo de status configurável**, o coração do negócio.
 
-**Feito:** D3, D5, D6, D13, D15. **Telas:** Cliente (busca multicritério por nome, telefone, CPF/CNPJ numa tela; CEP; WhatsApp obrigatório; consentimento; responsável por menor); **Serviços** (preço fixo, dificuldade padrão, tempo médio); **Tipos de peça**; **Formas de pagamento**; **Feriados por Filial**; **Ficha de medidas em lista**; **Catálogo de status** (tela para editar status e parâmetros, com o **modelo da seção 2.2 já carregado**).
+**Feito:** D3, D5, D6, D13, D15. **Telas:** Cliente (busca multicritério; CEP; **WhatsApp obrigatório**; consentimento; responsável por menor; **endereço opcional**); **Serviços** (preço fixo, **dificuldade padrão**, tempo médio); **Tipos de peça**; **Formas de pagamento**; **Feriados por Filial**; **Ficha de medidas em lista**; **Catálogo de status** com o **modelo da seção 2.2 já carregado**, incluindo **Em refação**.
 
-**Você vê:** a tela de status mostrando os 6 status públicos mais o interno "Reprovado pela qualidade".
+**Você vê:** a tela de status com os 6 status públicos mais os 2 internos.
 
-**Valida:** edita um nome público; tenta tornar "Reprovado pela qualidade" público (permitido, mas com aviso); tenta criar uma regra que **pula** um status (o sistema recusa); cadastra cliente **menor sem responsável** (recusa) e cliente sem WhatsApp (recusa); cadastra 3 serviços.
+**Valida:** edita um nome público; tenta criar uma regra que **pula** um status (recusa); confere que a **reprovação** é o único retorno; cadastra cliente **menor sem responsável** (recusa) e sem WhatsApp (recusa); cadastra 3 serviços com **dificuldades diferentes**.
 
 **Aprovado se:** você reproduz o fluxo real do ateliê na tela de status sem pedir ajuda.
-
-**Decisões antes:** perguntas complementares 5, 6 e 14.
 
 ---
 
 ### Ciclo 3. OS completa e Ordem de Produção impressa (tamanho G)
 
-**Objetivo:** abrir uma OS de verdade, aprovada por assinatura, com a Ordem de Produção impressa e o QR.
+**Objetivo:** abrir uma OS de verdade, aprovada, com a Ordem de Produção impressa e o QR.
 
-**Feito:** D4, D7, D8, D9, D17 (parte da aprovação), D20. **Formulário de OS** (cliente, Filial, atendente, **peças até 5**, **serviços por peça do catálogo**, **dificuldade 1 a 4**, fotos opcionais até 3 por peça, **tipo de entrega com data sugerida editável**, resumo financeiro). **Link público** com **aprovação assinada**. **Medida travada** na aprovação. **Ordem de Produção impressa** (QR grande, quantidade de peças, dificuldade, descrição, data de entrega, sem preço). Botões de **aprovar, cancelar, recalcular prazo** na tela de OS.
+**Feito:** D4, D7, D8, D9, D17 (aprovação e link), D20, D27. **Formulário de OS** (cliente, Filial, atendente, **peças até 5**, **serviços do catálogo**, **dificuldade (a maior, ajustável)**, fotos opcionais até 3 por peça, **tipo de entrega (Normal, Expresso, Urgente) com sobretaxa e data sugerida editável**, resumo financeiro). **Divisão automática** em segunda OS ligada. **Aprovação por link, balcão ou papel** (com foto e "assinado no papel"). **Produção sem assinatura com liberação e motivo.** **Link público seguro** (campos mínimos, expira, revogável). **Medida travada.** **Ordem de Produção impressa** (QR grande, quantidade de peças, dificuldade, descrição, data de entrega; **sem preço e sem endereço**). Botões de **aprovar, cancelar, recalcular prazo**.
 
 **Você vê:** a Ordem de Produção em papel comum, com QR grande.
 
-**Valida:** abre uma OS com 3 peças (uma com 2 serviços); abre o link público no celular como cliente e **assina**; confere que a medida ficou travada (muda a medida do cliente e a OS não muda); troca o tipo para Expresso e confere a data sugerida; **altera a data** e confere que o sistema guardou a sugestão e a alteração; tenta abrir OS com 6 peças (conforme a regra decidida); imprime a Ordem de Produção e confere o conteúdo (**sem preço**).
+**Valida:** abre uma OS com 3 peças; assina pelo link no celular; faz outra OS e **assina na tela do balcão**; faz outra e **imprime, assina no papel, anexa a foto e clica "assinado no papel"**; abre uma OS com **7 peças** e confere que o sistema **divide em duas OS ligadas**; confere que o cliente recebe **um só link** com as duas; troca o tipo para **Expresso** e **Urgente** e confere data sugerida e sobretaxa; **altera a data** e confere o registro; tenta iniciar a produção **sem assinatura** (exige liberação e motivo); abre o link com um código errado (recusa); imprime a Ordem de Produção e confere o conteúdo.
 
 **Aprovado se:** você abre uma OS real, o prazo faz sentido e a Ordem de Produção impressa substitui a atual.
 
-**Decisões antes:** perguntas complementares 7, 8, 9 e 12.
+**Decisões antes:** **perguntas 2, 6 e 7 da segunda rodada** (hora de corte, alerta de aprovação, suposições de grupo, dia útil e primeiro nome).
 
 ---
 
 ### Ciclo 4. Produção por QR, diário de bordo e qualidade (tamanho G)
 
-**Objetivo:** produção controlada pelo celular, com técnicos identificados.
+**Objetivo:** produção controlada pelo celular, com técnicas identificadas.
 
-**Feito:** D18 e parte de D9 e D3. **Tela de leitura no celular** (câmera, mostra a OS, confirma). **Mudança de status** conforme o catálogo e o papel. **Reprovação** e **refação** (técnica assume ao ler). **Diário de bordo** do técnico (o que produziu, descrição do serviço, tempo). **Painel de produção** (quantas OS em cada status; esteira "a fazer", "finalizadas"). **Login próprio** para técnicos, inclusive diaristas.
+**Feito:** D18 e parte de D3 e D9. **Tela de leitura** (câmera, mostra a OS, confirma). **Avanço automático** pelo papel de quem leu. **Uma sacola por vez.** **Reprovação**, **Reprovado pela qualidade** e **Em refação**. **Diário de bordo** (o que produziu, descrição, tempo). **Painel de produção** (OS por status; esteira "a fazer" e "finalizadas"). **Login próprio** para técnicas, inclusive diaristas.
 
 **Você vê:** o celular lendo a Ordem de Produção e o painel se atualizando.
 
-**Valida:** com técnico de teste, lê o QR ao pegar a sacola (status Em produção, com hora e nome); lê ao terminar (Aguardando controle de qualidade); com revisor, lê (Controle de qualidade) e **reprova**; confere que o cliente (link público) continua vendo "Controle de qualidade"; técnica lê e **assume a refação**; **lê duas vezes seguidas** e confere que só uma mudança foi registrada; usuário **sem papel** tenta avançar e é negado; QR **alterado** é recusado e registrado.
+**Valida:** com técnica de teste, lê ao pegar (**Em produção**, com hora e nome); tenta **abrir outra sacola** sem terminar a primeira (recusa); lê ao terminar (**Aguardando controle de qualidade**); com revisor, lê (**Controle de qualidade**) e **reprova**; confere que o link público continua mostrando "Controle de qualidade"; uma técnica lê e a OS vai para **Em refação**; ela termina e lê, indo para **Aguardando controle de qualidade**; **lê duas vezes seguidas** (uma só mudança); usuário **sem papel** tenta avançar (nega); QR **alterado** é recusado e registrado.
 
 **Aprovado se:** a leitura é rápida o bastante para o ritmo da oficina (você cronometra) e o diário de bordo substitui o caderno.
 
-**Decisões antes:** pergunta complementar 6.
-
 ---
 
-### Ciclo 5. WhatsApp e acompanhamento público (tamanho M)
+### Ciclo 5. WhatsApp (API oficial) e acompanhamento (tamanho M)
 
 **Objetivo:** as 2 mensagens chegam ao cliente com o link, com fila e tratamento de falha.
 
-**Feito:** D10 e D17 (link público completo). **Conta do provedor** (começa com número de teste), **2 modelos** (editáveis), **consentimento** (registrar e respeitar), **fila e tentativas**, **lista de falhas**, **recibos**. **Depende de contrato** (seção 8).
+**Feito:** D10, D17 (link completo). **Conta do WhatsApp Business**, **tela para reconfigurar o número** (com histórico e teste de envio), **2 modelos** editáveis, **consentimento**, **fila e tentativas**, **lista de falhas**, **recibos**. **Depende de contrato e aprovação** (seção 8).
 
-**Valida:** cadastra um cliente com **o seu número** e consentimento; abre uma OS: chega a **mensagem 1** com o link; leva a OS até **Pronto para retirada**: chega a **mensagem 2**; passa por "Em produção" e "Controle de qualidade": **nenhuma mensagem**; cliente **sem consentimento**: não envia e mostra o motivo; **simula falha**: aparece na lista de falhas e pode reenviar; o sistema **nunca mostra "enviada"** sem confirmação.
+**Valida:** cadastra um cliente com **o seu número** e consentimento; abre uma OS: chega a **mensagem 1** com o link; leva a OS até **Pronto para retirada**: chega a **mensagem 2**; passa por "Em produção" e "Controle de qualidade": **nenhuma mensagem**; cliente **sem consentimento**: não envia e mostra o motivo; **simula falha**: aparece na lista de falhas e pode reenviar; **na tela de número**, troca para o número de teste e confere que os modelos continuam valendo e que o envio sai pelo novo número; o sistema **nunca mostra "enviada"** sem confirmação.
 
 **Aprovado se:** os testes passam e o texto das mensagens está do jeito que você quer falar com seus clientes.
 
-**Decisões antes:** perguntas complementares 1 e 2 (WhatsApp). **Os cadastros começam no Ciclo 0.**
+**Decisões antes:** a **elegibilidade do número da Vivo** (a Meta confirma no cadastro, no Ciclo 0).
 
 ---
 
-### Ciclo 6. Entrega, assinatura e reconserto (tamanho M)
+### Ciclo 6. Retirada, reconserto e garantia (tamanho M)
 
-**Objetivo:** fechar a OS com retirada assinada e tratar o retorno do cliente.
+**Objetivo:** fechar a OS com retirada comprovada e tratar o retorno do cliente.
 
-**Feito:** D17 (assinatura de retirada), D19, D23. **Retirada** (cliente informa número ou nome, atendente confere, lê o QR). **Assinatura eletrônica** na tela. **Aviso "Falta pagamento"** (não é status). **Bloqueio de entrega com saldo**, com **liberação pelo gerente e motivo**. **Reconserto:** cria **nova OS sem valor**, **vinculada**, mostrando o **técnico original**.
+**Feito:** D17 (confirmação de retirada), D19, D23. **Retirada** (atendente inicia, cliente confirma pela **janela de confirmação** ou **código**, comprovante no link, **registro de quem retirou**; **plano B** no papel com foto e "entregue assinado"). **Aviso "Falta pagamento"** (não é status). **Bloqueio de entrega com saldo**, **liberação pelo gerente com motivo**. **Reconserto e garantia:** nova **OS sem valor, vinculada**, com a **técnica original**; **7 dias corridos** (ajuste) e **90 dias** (defeito), **da retirada**; **depois do prazo**, OS cobrada, com liberação do gerente.
 
-**Valida:** tenta retirar com saldo em aberto (aviso e bloqueio); gerente libera com motivo e a entrega segue; cliente **assina na tela**; abre um reconserto da OS entregue e confere o vínculo, o valor zero e o nome do técnico que fez a primeira vez.
+**Valida:** tenta retirar com saldo em aberto (aviso e bloqueio); gerente libera com motivo; atendente **inicia a retirada**; confere que o botão do link **não funciona antes** da retirada ser iniciada e **expira em 10 minutos** (uso único); confirma e confere o **comprovante** com data, hora e nome; retira por **outra pessoa** (nome e documento obrigatórios); faz uma retirada pelo **plano B**; abre um reconserto no **dia 7** (sem valor) e outro no **dia 8** (cobrado), com liberação do gerente; abre uma garantia no **dia 60** (sem valor) e confere o vínculo e a **técnica original**.
 
-**Aprovado se:** o fluxo da OS fecha sem papel e o reconserto mostra o técnico original.
+**Aprovado se:** o fluxo da OS fecha sem papel (exceto no plano B) e o reconserto mostra a técnica original.
 
-**Decisões antes:** perguntas complementares 10 e 13.
+**Decisões antes:** **pergunta 4 da segunda rodada** (token ou assinatura).
 
 ---
 
-### Ciclo 7. Financeiro e maquininha (tamanho G)
+### Ciclo 7. Financeiro e conciliação da Cielo (tamanho G)
 
-**Objetivo:** o dinheiro do ateliê controlado e a **Cielo integrada**.
+**Objetivo:** controlar o dinheiro do ateliê, baixar as OS em lote no fechamento do dia e saber **quem deixou de cobrar**.
 
-**Feito:** D22. **Recebimentos** (sinal e saldo), **formas de pagamento**, **contas a receber**, **fluxo de caixa**, **conciliação**. **Integração com a Cielo** (Stone e Rede preparadas por uma camada comum). **Depende de contrato** (seção 8).
+**Feito:** D22. **Recebimentos** (sinal e saldo), **formas de pagamento**, **contas a receber**, **fluxo de caixa**. **Conciliação da Cielo:** **importar as vendas**, **casar com os pagamentos das OS**, **baixar em lote**, **lista de divergências**, **fechamento do dia por Filial**, **relatório "quem deixou de cobrar"** por atendente. **Pix QR** só se você decidir que entra. **Depende de contrato e do modelo** (seção 8).
 
-**Valida:** registra recebimento em dinheiro; faz uma **venda de teste pela maquininha** e confere que aparece **sozinha** na OS; **estorna** e confere; abre o **relatório de caixa** do dia e confere com a maquininha.
+**Valida:** registra recebimentos em 3 OS (dinheiro e cartão); no fechamento, **importa as vendas** de teste e confere que **baixou as OS casadas**; **deixa uma OS entregue sem cobrar** e confere que aparece em **"quem deixou de cobrar"**, com o nome do atendente; cria uma **divergência** (venda sem OS) e confere a lista; fecha o dia e confere os totais com o relatório da Cielo.
 
-**Aprovado se:** o caixa do dia fecha com a maquininha e com a OS.
+**Aprovado se:** o caixa do dia fecha com a Cielo e com as OS, e a lista de divergências é compreensível.
 
-**Decisões antes:** pergunta complementar 11.
+**Decisões antes:** **pergunta 3 da segunda rodada.**
 
 ---
 
@@ -515,19 +481,25 @@ Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você v
 
 **Objetivo:** acompanhar produção e produtividade pelo próprio sistema.
 
-**Feito:** D21. **Dashboard** por técnico e por quantidade de peças e dificuldade; **tempo médio** por grau; **dimensionamento de grade**; **alertas de atraso** antes de vencer, com parâmetros configuráveis; base do **bônus por produtividade** (regra de cálculo a definir).
+**Feito:** D21. **Dashboard** por técnica, por quantidade de peças e dificuldade; **tempo médio** por grau (medido ou informado); **dimensionamento de grade**; **alertas de atraso** antes de vencer; **alerta de aprovação pendente** ao atendente; base do **bônus por produtividade** (regra de cálculo a definir).
 
-**Valida:** configura alerta de "2 horas antes do prazo"; deixa uma OS atrasar e confere que o alerta apareceu; compara o dashboard com o diário de bordo de um dia.
+**Valida:** configura o alerta de "2 horas antes do prazo"; deixa uma OS atrasar e confere o alerta; deixa uma OS **sem aprovação** e confere o alerta ao atendente que a abriu; compara o dashboard com o diário de bordo de um dia.
 
 **Aprovado se:** o painel responde, sem planilha, "quem produziu quanto" e "o que vai atrasar".
 
+**Decisões antes:** **perguntas 6 e 8 da segunda rodada** (prazo do alerta; tempos médios).
+
 ---
 
-### Ciclo 9. Portal do cliente e concierge do piloto (tamanho M)
+### Ciclo 9. Homologação em paralelo e ajustes (tamanho M)
 
-**Objetivo:** cumprir "piloto completo com portal e concierge".
+**Objetivo:** usar o sistema ao lado do sistema antigo, sem pressa, e ajustar o que aparecer.
 
-**Situação:** há **uma contradição** nas suas respostas: o piloto completo inclui portal e concierge, mas concierge e reconhecimento facial estão marcados como "versão futura" (e a fila de chegada, "depois"). Este ciclo só tem escopo depois da resposta às perguntas complementares (pergunta complementar 15). **Hipótese de trabalho:** "portal" = o **link público** (já feito nos ciclos 3 e 5) mais, se você quiser, uma área com **histórico de OS** do cliente; "concierge" = **fila de chegada** e atendimento de balcão **sem câmera**.
+**Situação:** **não há concierge nem fila de chegada** no piloto e **o portal é o link público** (já construído nos ciclos 3, 5 e 6). Este ciclo é de **uso real e ajuste**: você e a equipe usam o novo com OS reais, **em paralelo** com o sistema atual, **até ter confiança**.
+
+**Valida:** lista diária de diferenças entre o novo e o antigo; erros de leitura de QR; mensagens que falharam; tempo por OS no balcão.
+
+**Aprovado se:** você diz por escrito "posso virar" (ou "preciso de mais um ajuste").
 
 ---
 
@@ -535,38 +507,62 @@ Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você v
 
 **Objetivo:** entrar em produção com segurança jurídica mínima e dados migrados.
 
-**Feito:** D25, D26. **Termo de consentimento** no balcão e no WhatsApp, **política de privacidade em português**, **retenção de 5 anos**, **apagamento de dado sensível**, **pedido do titular**. **Importação do histórico** (planilhas do sistema atual) **depois da sua validação**. **Backup diário com restauração testada**, **monitoramento** com alerta simples. **Treinamento** (roteiro de 1 página por papel). **Homologação em paralelo** com o sistema antigo até a sua confiança.
+**Feito:** D25, D26. **Termos** (inclusive a **cláusula de aceite eletrônico**), **aviso de privacidade em português**, **canal do titular**, **retenção** (5 anos para inativos; prazos menores para endereço de entrega), **registro das operações de tratamento**, **plano de incidente**, **contrato do ANEXSYS como operador**. **Importação do histórico** (planilhas do sistema atual) **depois da sua validação**. **Backup diário com restauração testada**, **monitoramento** com alerta simples. **Treinamento** (1 página por papel). **Revisão por advogado** (recomendada pelo parecer).
 
-**Valida:** importa uma amostra, confere totais com o sistema antigo; marca "não concorda em compartilhar endereço" e confere o apagamento; restaura um backup numa cópia e confere os dados.
+**Valida:** importa uma amostra, confere totais; restaura um backup numa cópia; pede a um colega para **exercer o direito de acesso** de um cliente de teste; lê o aviso de privacidade como se fosse cliente.
 
 **Aprovado se:** nenhum dado se perde, nenhuma informação vaza, e você diz por escrito "pode virar".
 
 ---
 
+### Depois do piloto (Ciclo 11 em diante)
+
+Entrega em domicílio completa (com a Guia de entrega, preço por faixa ou geolocalização, comprovante), retirada por terceiros, cobrança do ANEXSYS (D24), Pix QR (se não entrou), concierge com câmera e reconhecimento facial, segundo tipo de negócio, Stone e Rede.
+
+---
+
 ## 7. Proposta de marcos até março de 2027 (a confirmar)
 
-Montado de trás para frente. **Não é estimativa de esforço.** É a ordem em que as coisas precisam estar prontas para março caber.
+**Não é estimativa de esforço.** É a ordem em que as coisas precisam estar prontas para março caber.
 
 | Marco | O que precisa estar pronto |
 |---|---|
-| **Outubro de 2026** | Ciclos 0 e 1. **Todos os contratos e cadastros iniciados** (WhatsApp, adquirente, e-mail, nuvem) |
-| **Novembro de 2026** | Ciclos 2 e 3 (cadastros, catálogo de status, OS completa, Ordem de Produção impressa) |
-| **Dezembro de 2026** | Ciclos 4 e 5 (produção por QR e WhatsApp com link público) |
-| **Janeiro de 2027** | Ciclos 6 e 7 (entrega, assinatura, reconserto, financeiro e Cielo). **Congelamento de funcionalidades do piloto** |
-| **Fevereiro de 2027** | Ciclos 8, 9 e 10: dashboard, portal/concierge, LGPD, importação; **homologação em paralelo com o sistema antigo** |
-| **Março de 2027** | **Produção**, com sua autorização escrita |
+| **Outubro de 2026** | Ciclos 0 e 1. **Todos os cadastros externos iniciados** (Meta, Cielo, nuvem, e-mail) |
+| **Novembro de 2026** | Ciclos 2 e 3 (cadastros, catálogo de status, OS completa, divisão, aprovação, Ordem de Produção impressa) |
+| **Dezembro de 2026** | Ciclos 4 e 5 (produção por QR, WhatsApp e link público) |
+| **Janeiro de 2027** | Ciclos 6 e 7 (retirada, reconserto, financeiro e conciliação). **Congelamento de funcionalidades do piloto** |
+| **Fevereiro de 2027** | Ciclos 8, 9 e 10: dashboard, homologação em paralelo, LGPD, importação |
+| **Março de 2027** | **Produção**, com a sua autorização escrita |
 
-**Honestidade sobre o prazo:** é **apertado** para um piloto completo. O que mais pode atrasar **não é a programação**: é **contrato e aprovação externa** (provedor de WhatsApp, adquirente) e a **sua disponibilidade** para validar (você indicou 4 a 8 horas por dia, o que ajuda muito).
+### Impacto das respostas de hoje no prazo
+
+| O que muda | Efeito no prazo |
+|---|---|
+| **Cielo por conciliação** (em vez de integração em tempo real) | **Alivia.** É menos trabalhoso e menos dependente de contrato |
+| **Sem concierge e sem fila de chegada**; **portal = link** | **Alivia bastante** (o Ciclo 9 deixa de ser construção) |
+| **Avanço automático** (sem modo estação) | **Alivia** (uma regra só) |
+| **API oficial decidida** | **Reduz incerteza**, mas **a aprovação da Meta e a elegibilidade do número** continuam sendo o risco externo |
+| **Divisão automática de OS** | **Acrescenta** trabalho no Ciclo 3 (regras do grupo) |
+| **Em refação**, **sobretaxa**, **aprovação por três formas**, **uma sacola por vez**, **tela de número** | **Acrescentam** pouco cada um |
+| **Conciliação em lote com "quem deixou de cobrar"** | **Acrescenta** no Ciclo 7, mas é o que você mais quer ver |
+| **Pix QR** | **Acrescenta** se entrar (contrato com banco ou serviço de Pix). **Recomendo deixar fora** do piloto |
+| **Entrega em domicílio** | **Ameaça março se entrar.** **Recomendo depois do piloto**, deixando só o marcador e o endereço opcional |
+| **Retirada com token** | **Acrescenta pouco** se for a janela de confirmação. Se for token novo por WhatsApp, acrescenta uma mensagem |
+
+**Saldo:** **neutro a levemente positivo**, **desde que a entrega em domicílio e o Pix QR fiquem fora do piloto**. Se a entrega em domicílio entrar, o prazo de março **deixa de ser seguro** e algo precisa sair (ver plano de corte).
+
+**O que mais pode atrasar** continua **não sendo a programação**: é **aprovação externa** (Meta, Cielo) e a **sua disponibilidade para validar** (você indicou 4 a 8 horas por dia, o que ajuda muito). Mais dois cuidados: **as respostas pendentes da segunda rodada** (principalmente nuvem, hora de corte e modelo da Cielo) **precisam chegar logo**, e **os testes de integração** precisam ser corrigidos antes do Ciclo 1.
 
 **Plano de corte, se estiver atrasado no congelamento de janeiro** (o que sai do piloto, em ordem):
 
-1. **Importação do histórico completo** (entra só clientes e medidas; o resto vem depois).
-2. **Portal além do link público** e **concierge** (ficam só o link e o atendimento de balcão).
+1. **Importação do histórico completo** (entram só clientes e medidas).
+2. **Pix QR** (se tiver entrado).
 3. **Dashboard avançado** (ficam o painel de produção e os alertas de atraso).
-4. **Stone e Rede** (fica só a Cielo, que você já usa).
-5. **Bônus de produtividade** (fica o diário de bordo; o cálculo vem depois).
+4. **Bônus de produtividade** (fica o diário de bordo).
+5. **Stone e Rede** (fica só a Cielo).
+6. **Divisão automática de OS** (volta a ser um bloqueio com orientação para abrir outra OS).
 
-**O que não sai de jeito nenhum:** isolamento por Conta, catálogo de status, QR assinado, 2 mensagens de WhatsApp, assinatura de aprovação e de retirada, aviso e bloqueio de pagamento, LGPD mínima, backup testado.
+**O que não sai de jeito nenhum:** isolamento por Conta, catálogo de status, QR assinado, avanço automático, 2 mensagens de WhatsApp, aprovação, retirada comprovada, aviso e bloqueio de pagamento, conciliação da Cielo com baixa em lote, LGPD mínima, backup testado.
 
 ---
 
@@ -574,30 +570,22 @@ Montado de trás para frente. **Não é estimativa de esforço.** É a ordem em 
 
 | Item | O que é preciso | Quem faz | Quando começar |
 |---|---|---|---|
-| **WhatsApp (API oficial)** | Cadastro da **Empresa** na Meta (CNPJ, verificação), **número exclusivo**, aprovação dos **2 modelos**, escolha entre provedor direto ou intermediário (ver perguntas complementares) | Você (dono da Empresa) com apoio nosso | **Já, no Ciclo 0** (a aprovação demora e pode recusar) |
-| **Maquininha (Cielo)** | Credenciais de desenvolvedor e **ambiente de teste**; **modelo de integração** (maquininha integrada ao sistema, link de pagamento ou API); contrato do ateliê com a Cielo | Você, com a Cielo | **Ciclo 0** (para sabermos o modelo) |
+| **WhatsApp (API oficial direta)** | Cadastro da **Empresa** (CNPJ) na Meta e **verificação**; **número da Vivo** com **uso simultâneo** (**a Meta confirma a elegibilidade no cadastro**); **aprovação dos 2 modelos**. Se o número não for elegível, **comprar outro** | Você (titular do CNPJ), com apoio nosso | **Já, no Ciclo 0** |
+| **Maquininha Cielo (conciliação)** | **Modelo da maquininha** (pergunta 3); **forma de obter as vendas** (arquivo, portal ou consulta) no seu contrato; **regra de ligação venda e OS**; **QR Pix** (se entrar) com banco ou serviço de Pix | Você, com a Cielo | **Ciclo 0** |
+| **Nuvem** | Você cria a conta e dá acesso a quem operar; **valor máximo** (pergunta 1) | Você | **Ciclo 0** |
+| **Domínio anexsys.com.br** | **Onde está registrado** e **acesso ao painel** (pergunta 1) | Você | **Ciclo 0** |
+| **E-mail** | Serviço de e-mail transacional ligado ao domínio | Nós, com acesso ao domínio | Ciclo 0 |
 | **Stone e Rede** | Mesmos itens, em segundo plano | Você | Depois da Cielo funcionar |
-| **Cobrança do ANEXSYS** | Conta em um **gateway** que cobre cartão recorrente, Pix e boleto; regras de contrato de 1 ano | Você | Antes do segundo cliente |
-| **E-mail** | Serviço de e-mail transacional ligado ao domínio **anexsys.com.br** | Nós, com acesso ao seu domínio | Ciclo 0 |
-| **Hospedagem em nuvem** | Conta em um provedor, cartão para a cobrança mensal, domínio apontado | Você cria a conta, nós montamos | Ciclo 0 |
-| **Fiscal (nota)** | Você **não mencionou nota fiscal** nas respostas; hoje só existe o esqueleto no servidor | Decisão sua | Quando decidir; fora do piloto até lá |
+| **Cobrança do ANEXSYS** | Conta em um **gateway** com cartão recorrente, Pix e boleto; contrato de 1 ano | Você | Antes do segundo cliente |
+| **Mapas (entrega em domicílio)** | Fornecedor de cálculo de distância e contrato | Decisão sua | Só se a entrega entrar |
+| **Advogado** | Revisão do aviso de privacidade, termos, cláusula de aceite eletrônico e contrato de operador | Você | Antes do Ciclo 10 |
+| **Fiscal (nota)** | Você **não mencionou nota fiscal** | Decisão sua | Quando decidir |
 
 ---
 
 ## 9. Consolidação da documentação
 
-**Estrutura nova, em português, em `docs/`:**
-
-```
-docs/
-  00-leia-primeiro.md      Como ler, estado resumido, onde está cada coisa
-  01-glossario.md          Conta, Empresa, Filial, OS, Ordem de Produção, status etc.
-  02-decisoes-do-andre.md  O que você decidiu, com pontos ainda em aberto
-  03-fluxo-de-status.md    O fluxo da OS, status, QR e mensagens
-  04-estado-atual.md       O que existe hoje, com data
-  05-plano-de-continuidade.md  Este plano
-  arquivo/                 Tudo o que é histórico, somente leitura
-```
+**Estrutura em `docs/` (PR #8, em rascunho):** `00-leia-primeiro`, `01-glossario`, `02-decisoes-do-andre`, `03-fluxo-de-status`, `04-estado-atual`, `05-plano-de-continuidade` e `arquivo/` (somente leitura).
 
 **Cada ciclo termina atualizando** `02`, `03` e `04`. **Sem percentual de prontidão sem critério**: só "demonstrado? testado com banco? aceito pelo André?". **Todo documento tem data e "substitui/substituído por".**
 
@@ -607,14 +595,16 @@ docs/
 
 | Item | Quando |
 |---|---|
-| **Retirada por terceiros** (token por WhatsApp; portador informa número da OS e token) | "Próxima versão", após o piloto |
-| **Fila de chegada** | Depois |
-| **Concierge com câmera e reconhecimento facial** (identifica o cliente, monta fila, abre a porta; foto apagada após cadastro ou guardada fora do sistema) | Versão futura, com análise de privacidade |
-| **Segundo tipo de negócio** | Só depois do piloto do ateliê |
-| **Cobrança do ANEXSYS** (painel de planos, preços configuráveis, contrato de um ano) | Antes do segundo cliente |
-| **Registro de conversas de WhatsApp e resposta de aprovação por mensagem** | Não previsto |
-| **Modo offline de leitura** | Não necessário (Wi-Fi bom) |
-| **Qualidade, retrabalho e garantia como módulos completos do servidor** | Ficam guardados; o piloto usa reprovação, refação e reconserto |
+| **Entrega em domicílio** (com preço por geolocalização) | **Depois do piloto**, com a Guia de entrega separada e análise de privacidade |
+| **Retirada por terceiros** (token por WhatsApp; portador informa número da OS e token) | "Próxima versão" |
+| **Concierge e fila de chegada** | Fora do piloto |
+| **Concierge com câmera e reconhecimento facial** | Versão futura, com análise de privacidade |
+| **Cartão online com cartão cadastrado pelo cliente** | Não previsto (você não vê como boa saída) |
+| **Pix QR** | Opcional; recomendação: depois do piloto |
+| **Cobrança do ANEXSYS** | Antes do segundo cliente |
+| **Segundo tipo de negócio** | Depois do piloto do ateliê |
+| **Registro de conversas de WhatsApp e aprovação por resposta de mensagem** | Não previsto |
+| **Modo offline de leitura** | Não necessário |
 | **Fiscal (notas)** | A decidir |
 
 ---
@@ -623,34 +613,36 @@ docs/
 
 | # | Risco | Impacto | Como reduzimos |
 |---|---|---|---|
-| 1 | **Prazo de março** com escopo de piloto completo | Alto | Marcos da seção 7, congelamento em janeiro e plano de corte |
-| 2 | **Aprovação do WhatsApp demora ou recusa** os modelos | Alto | Cadastro já no Ciclo 0; texto sóbrio; número de teste |
-| 3 | **Contrato e modelo de integração da Cielo** indefinidos | Alto | Perguntar à Cielo no Ciclo 0; camada comum para trocar de adquirente |
-| 4 | **Isolamento no banco (D2) quebra telas** | Alto | Modo de observação, teste automático de vazamento, ciclo próprio |
-| 5 | **Regras ainda em conflito** (modo de leitura, garantia, WhatsApp Web) | Alto | Perguntas complementares antes dos Ciclos 2 a 5 |
-| 6 | **QR por OS** não mostra a peça atrasada numa OS de várias peças | Médio | Aceitação explícita sua; quantidade e dificuldade ajudam a medir; revisão após o piloto |
-| 7 | **Funcionários resistem a ler QR** | Alto | Tempo de leitura medido; treinamento curto; login simples; ouvir no paralelo |
-| 8 | **Limite de 5 peças** conflita com a realidade (OS maiores) | Médio | Decidir entre bloqueio, alerta ou duas OS (pergunta complementar) |
-| 9 | **LGPD deixada para mais adiante** | Alto | Mínimo legal no Ciclo 10; consentimento já no Ciclo 2 |
-| 10 | **Fotos e dados de menores** | Alto | Responsável obrigatório; fotos só da peça; apagamento de dado sensível |
-| 11 | **Permissões removidas por engano** | Médio | Relatório "quem perde o quê" antes |
-| 12 | **Dependência da sua disponibilidade** como único homologador | Médio | Roteiros curtos; vídeo; reunião ao vivo opcional |
-| 13 | **Documentação nova também envelhece** | Médio | Ciclo só fecha com documentação atualizada |
-| 14 | **Dados de produtividade e bônus** geram atrito com a equipe | Médio | Transparência das regras; começar só como diário de bordo |
-| 15 | **Hospedagem e custos** não definidos | Médio | Decidir no Ciclo 0 e começar simples |
+| 1 | **Prazo de março** com escopo de piloto completo | Alto | Marcos, congelamento em janeiro e plano de corte (seção 7) |
+| 2 | **Meta não aprova o número da Vivo para uso simultâneo** ou recusa modelos | Alto | Cadastro já no Ciclo 0; plano B com **outro número**; texto sóbrio |
+| 3 | **Formato da Cielo** indefinido (modelo da maquininha) | Médio | Perguntar à Cielo no Ciclo 0; camada comum para Stone e Rede |
+| 4 | **Casar venda com OS** na conciliação gera divergências | Médio | Atendente registra o pagamento na OS; lista de divergências; fechamento do dia |
+| 5 | **Isolamento no banco (D2) quebra telas** | Alto | Modo de observação, teste de vazamento, ciclo próprio |
+| 6 | **Testes de integração quebrados** escondem regressões | Alto | **Corrigir no Ciclo 0** (hoje 15 de 39) |
+| 7 | **QR por OS** não mostra a peça atrasada numa OS de várias peças | Médio | Aceito por você; quantidade e dificuldade medem; revisão após o piloto |
+| 8 | **Retirada com token** vira disputa com o cliente | Alto | **Janela controlada pelo atendente**, registro de quem retirou, comprovante, plano B no papel, cláusula de aceite, revisão por advogado |
+| 9 | **Link público** vaza ou é adivinhado | Alto | Código longo e aleatório, expiração, revogação, limite de tentativas, campos mínimos |
+| 10 | **LGPD tratada como "livre"** | Alto | Parecer; escopo do Ciclo 10; aviso, canal do titular, retenção, incidente, advogado |
+| 11 | **Entrega em domicílio entra no piloto** | Alto | Recomendação: depois do piloto; marcador e endereço opcional agora |
+| 12 | **Endereço impresso na Ordem de Produção** | Médio | **Não imprimir**; Guia de entrega separada |
+| 13 | **Divisão automática** causa confusão de preço ou de cancelamento no grupo | Médio | Regras do grupo no Ciclo 3; teste dedicado |
+| 14 | **Uma sacola por vez** trava a produção em casos reais | Médio | Limite configurável por papel; ouvir no paralelo |
+| 15 | **Funcionários resistem a ler QR** | Alto | Medir tempo; treinamento curto; login simples; ouvir no paralelo |
+| 16 | **Hora de corte e tempos médios** não informados | Baixo a médio | Perguntas da segunda rodada; o sistema **mede** os tempos |
+| 17 | **Dependência da sua disponibilidade** como único homologador | Médio | Roteiros curtos; vídeo; reunião opcional |
+| 18 | **Documentação nova também envelhece** | Médio | Ciclo só fecha com documentação atualizada |
 
 ---
 
 ## 12. Pontos que ainda dependem de você
 
-Todos estão no documento de perguntas complementares (fora do repositório), da mais bloqueante para a menos:
+Todos estão nas perguntas complementares da segunda rodada (fora do repositório), do mais bloqueante para o menos:
 
-1. **WhatsApp:** API oficial ou WhatsApp Web (pergunta 1) e qual número usar, com o cadastro da Empresa (pergunta 2). **Bloqueiam o Ciclo 0 e o Ciclo 5.**
-2. **Nuvem e domínio:** quem cria a conta e controla o domínio (pergunta 3). **Bloqueia o Ciclo 0.**
-3. **Estrutura real do ateliê:** CNPJs, Filiais, horários e corte (pergunta 4). **Bloqueia o Ciclo 1.**
-4. **Lista final de status e o retorno da reprovação** (pergunta 5) e **modo de leitura do QR** (pergunta 6). **Bloqueiam o catálogo de status do Ciclo 2.**
-5. **Limite de 5 peças** (pergunta 7), **dificuldade por OS ou por serviço** (pergunta 8) e **regras de prazo** (pergunta 9). **Bloqueiam o Ciclo 3.**
-6. **Garantia e reconserto** (pergunta 10). **Bloqueia o Ciclo 6.**
-7. **Cielo:** modelo de integração (pergunta 11). **Bloqueia o Ciclo 7**, mas a consulta à Cielo começa no Ciclo 0.
-8. **Aprovação e assinatura de retirada** (perguntas 12 e 13) e **dados a apagar** (pergunta 14).
-9. **Concierge e portal no piloto completo** (pergunta 15). **Define o escopo do Ciclo 9.**
+1. **Valor máximo da nuvem e onde o domínio está registrado** (pergunta 1). **Bloqueia o Ciclo 0.**
+2. **Hora de corte** (pergunta 2). **Bloqueia o prazo da OS (Ciclo 3) e a configuração do Ciclo 1.**
+3. **Modelo da maquininha Cielo e como ligar a venda à OS**, mais **Pix QR agora ou depois** (pergunta 3). **Bloqueia a consulta à Cielo no Ciclo 0 e o Ciclo 7.**
+4. **Retirada: token ou assinatura** (pergunta 4). **Bloqueia o Ciclo 6** e o texto da cláusula de aceite.
+5. **Entrega em domicílio** (pergunta 5): fora de março (recomendado) ou com quais regras.
+6. **Prazo do alerta de aprovação pendente** (pergunta 6).
+7. **Cinco suposições** a confirmar (pergunta 7).
+8. **Tempos médios por dificuldade** (pergunta 8). Não bloqueia o início.
