@@ -78,8 +78,8 @@ Use these exact local values:
 
 ### Administrator
 
-- Admin email: `andre@anexsys.local`
-- Admin password: `AnexsysLocal123!`
+- Admin email: `<email-do-administrador>`
+- Admin password: `<senha-do-administrador>`
 - Display name: `Andre Local Admin`
 
 ### Role
@@ -175,9 +175,9 @@ const bootstrapValues = {
     businessCalendarName: 'Calendario Local',
   },
   admin: {
-    email: 'andre@anexsys.local',
+    email: '<email-do-administrador>',
     displayName: 'Andre Local Admin',
-    password: 'AnexsysLocal123!',
+    password: '<senha-do-administrador>',
   },
   role: {
     code: 'TENANT_ADMIN',
@@ -310,8 +310,8 @@ The command prints JSON similar to this:
   "adminUserId": "GENERATED_USER_UUID",
   "roleId": "GENERATED_ROLE_UUID",
   "permissionCount": 10,
-  "adminEmail": "andre@anexsys.local",
-  "adminPassword": "AnexsysLocal123!"
+  "adminEmail": "<email-do-administrador>",
+  "adminPassword": "<senha-do-administrador>"
 }
 ```
 
@@ -319,8 +319,8 @@ At this point, record:
 
 - Tenant UUID = value returned as `tenantId`
 - Branch UUID = value returned as `branchId`
-- Admin Email = `andre@anexsys.local`
-- Admin Password = `AnexsysLocal123!`
+- Admin Email = `<email-do-administrador>`
+- Admin Password = `<senha-do-administrador>`
 
 ## Step 4 - Optional SQL verification
 
@@ -347,7 +347,7 @@ WHERE code = 'HQ';
 ```sql
 SELECT id, tenant_id, default_branch_id, email, display_name, status
 FROM user_identities
-WHERE email = 'andre@anexsys.local';
+WHERE email = '<email-do-administrador>';
 ```
 
 ### Verify role and assigned permissions
@@ -391,8 +391,8 @@ curl -s \
   -H 'content-type: application/json' \
   -d '{
     "tenantId": "GENERATED_TENANT_UUID",
-    "email": "andre@anexsys.local",
-    "password": "AnexsysLocal123!"
+    "email": "<email-do-administrador>",
+    "password": "<senha-do-administrador>"
   }'
 ```
 
@@ -448,8 +448,8 @@ If the frontend is already running, restart it after changing `.env.local`.
 1. Open `http://localhost:3001/login`
 2. In `Known tenant`, select `ANEXSYS DEV` if it appears
 3. If needed, paste `GENERATED_TENANT_UUID` into the `Tenant ID` field
-4. Enter email: `andre@anexsys.local`
-5. Enter password: `AnexsysLocal123!`
+4. Enter email: `<email-do-administrador>`
+5. Enter password: `<senha-do-administrador>`
 6. Submit the form
 
 Expected frontend behavior:
@@ -497,5 +497,5 @@ Use:
 
 - Tenant UUID: the exact `tenantId` printed by the Step 2 bootstrap command
 - Branch UUID: the exact `branchId` printed by the Step 2 bootstrap command
-- Admin Email: `andre@anexsys.local`
-- Admin Password: `AnexsysLocal123!`
+- Admin Email: `<email-do-administrador>`
+- Admin Password: `<senha-do-administrador>`

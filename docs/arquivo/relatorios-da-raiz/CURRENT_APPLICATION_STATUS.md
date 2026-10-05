@@ -597,11 +597,11 @@ From `/home/runner/work/anexsys-platform/anexsys-platform`:
    - `export DB_HOST=127.0.0.1`
    - `export DB_PORT=5432`
    - `export DB_USERNAME=postgres`
-   - `export DB_PASSWORD=postgres`
+   - `export DB_PASSWORD=<senha-do-banco>`
    - `export DB_NAME=anexsys`
    - `export DB_SCHEMA=public`
    - `export DB_LOGGING=false`
-   - `export JWT_SECRET=anexsys-local-dev-secret`
+   - `export JWT_SECRET=<segredo-jwt-local>`
 3. Run database migrations:
    - `npm run migration:run`
 4. Start the backend:
@@ -632,7 +632,7 @@ From `/home/runner/work/anexsys-platform/anexsys-platform`:
 Reproducible local Docker procedure:
 
 1. Start PostgreSQL:
-   - `docker run --name anexsys-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=anexsys -p 5432:5432 -d postgres:16`
+   - `docker run --name anexsys-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=<senha-do-banco> -e POSTGRES_DB=anexsys -p 5432:5432 -d postgres:16`
 2. Wait until PostgreSQL is ready.
 3. Run:
    - `npm run migration:run`

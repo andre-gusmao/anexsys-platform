@@ -210,9 +210,9 @@ Use these exact local values:
 
 ### Administrator
 
-- email: `andre@anexsys.local`
+- email: `<email-do-administrador>`
 - display name: `Andre Local Admin`
-- password: `AnexsysLocal123!`
+- password: `<senha-do-administrador>`
 
 ### Role
 
@@ -290,9 +290,9 @@ const { BranchScopeType } = require('./dist/shared/domain/enums.js');
     const adminUser = await identityService.createUser({
       tenantId: tenant.id,
       defaultBranchId: branch.id,
-      email: 'andre@anexsys.local',
+      email: '<email-do-administrador>',
       displayName: 'Andre Local Admin',
-      password: 'AnexsysLocal123!',
+      password: '<senha-do-administrador>',
       actorUserId: bootstrapActorId,
     });
 
@@ -349,8 +349,8 @@ const { BranchScopeType } = require('./dist/shared/domain/enums.js');
     console.log(JSON.stringify({
       tenantId: tenant.id,
       branchId: branch.id,
-      adminEmail: 'andre@anexsys.local',
-      adminPassword: 'AnexsysLocal123!',
+      adminEmail: '<email-do-administrador>',
+      adminPassword: '<senha-do-administrador>',
     }, null, 2));
   } finally {
     await app.close();
@@ -398,8 +398,8 @@ curl -s \
   -H 'content-type: application/json' \
   -d '{
     "tenantId": "GENERATED_TENANT_UUID",
-    "email": "andre@anexsys.local",
-    "password": "AnexsysLocal123!"
+    "email": "<email-do-administrador>",
+    "password": "<senha-do-administrador>"
   }'
 ```
 
@@ -454,8 +454,8 @@ Then log in at:
 
 with:
 
-- email: `andre@anexsys.local`
-- password: `AnexsysLocal123!`
+- email: `<email-do-administrador>`
+- password: `<senha-do-administrador>`
 
 ## 9. Fastest path to a working login
 
@@ -466,7 +466,7 @@ The fastest path is:
 3. run migrations with `ts-node` + `tsconfig-paths`
 4. run the one-off Nest-service bootstrap command
 5. put the generated tenant UUID in `frontend/.env.local`
-6. log in with `andre@anexsys.local` / `AnexsysLocal123!`
+6. log in with `<email-do-administrador>` / `<senha-do-administrador>`
 
 ## Final answer
 
@@ -487,5 +487,5 @@ Then run the bootstrap command from Section 7, capture the generated `tenantId`,
 
 and log in with:
 
-- email: `andre@anexsys.local`
-- password: `AnexsysLocal123!`
+- email: `<email-do-administrador>`
+- password: `<senha-do-administrador>`

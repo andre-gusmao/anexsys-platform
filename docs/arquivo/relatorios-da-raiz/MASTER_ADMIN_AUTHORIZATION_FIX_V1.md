@@ -103,7 +103,7 @@ For the bootstrap admin user, the missing records are the authorization/context 
 - `user_branch_scopes` linking the bootstrap admin user to branch `Matriz` with `admin` scope
 
 ### Required context record
-- `user_context_preferences` row for `andre@anexsys.local` with:
+- `user_context_preferences` row for `<email-do-administrador>` with:
   - `last_tenant_id = ANEXSYS DEV tenant id`
   - `last_branch_id = Matriz branch id`
 
@@ -125,7 +125,7 @@ This script now ensures:
 
 - tenant `ANEXSYS DEV`
 - branch `Matriz`
-- admin user `andre@anexsys.local`
+- admin user `<email-do-administrador>`
 - community `Global Administrators`
 - role `Master Administrator`
 - all current permission records

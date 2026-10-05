@@ -84,11 +84,11 @@ export PORT=3000
 export DB_HOST=127.0.0.1
 export DB_PORT=5432
 export DB_USERNAME=postgres
-export DB_PASSWORD=postgres
+export DB_PASSWORD=<senha-do-banco>
 export DB_NAME=anexsys
 export DB_SCHEMA=public
 export DB_LOGGING=false
-export JWT_SECRET=anexsys-local-dev-secret
+export JWT_SECRET=<segredo-jwt-local>
 ```
 
 ### 2.3 Start PostgreSQL
@@ -104,7 +104,7 @@ If using Docker for PostgreSQL only:
 ```bash
 docker run --name anexsys-postgres \
   -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_PASSWORD=<senha-do-banco> \
   -e POSTGRES_DB=anexsys \
   -p 5432:5432 \
   -d postgres:16
@@ -202,11 +202,11 @@ export PORT=3000
 export DB_HOST=127.0.0.1
 export DB_PORT=5432
 export DB_USERNAME=postgres
-export DB_PASSWORD=postgres
+export DB_PASSWORD=<senha-do-banco>
 export DB_NAME=anexsys
 export DB_SCHEMA=public
 export DB_LOGGING=false
-export JWT_SECRET=anexsys-local-dev-secret
+export JWT_SECRET=<segredo-jwt-local>
 npm run migration:run
 npm run start:dev
 ```

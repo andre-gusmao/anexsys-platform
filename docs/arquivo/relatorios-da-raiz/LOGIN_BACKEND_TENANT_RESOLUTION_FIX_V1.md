@@ -38,7 +38,7 @@ The remaining gap was closing compatibility around the login contract and regres
 
 ### Integration coverage
 - Updated Sprint 1 integration coverage to validate email/password-only login using:
-  - `andre@anexsys.local`
+  - `<email-do-administrador>`
 
 ## 4. Endpoint Contract Change
 
@@ -78,7 +78,7 @@ Validation target:
 - login must work with email and password only
 
 Validated user:
-- `andre@anexsys.local`
+- `<email-do-administrador>`
 
 Validation performed:
 - backend build
