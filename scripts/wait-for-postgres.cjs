@@ -1,14 +1,17 @@
 const { Client } = require('pg');
+const { applyDatabaseUrlSsl } = require('./postgres-url.cjs');
+
+applyDatabaseUrlSsl();
 
 function wantsSsl(connectionString) {
   const explicit = (process.env.DB_SSL ?? '').toLowerCase();
   if (explicit === 'false' || explicit === '0' || explicit === 'off') {
     return false;
   }
-  if (explicit === 'true' || explicit === '1' || explicit === 'on') {
+  if (explicit === 'true' || explicit === '1' || explicit === 'on' || connectionString) {
     return true;
   }
-  return /sslmode=(require|verify-ca|verify-full)/i.test(connectionString) || /neon\.tech/i.test(connectionString);
+  return false;
 }
 
 function clientConfig() {

@@ -5,6 +5,7 @@
  */
 const { spawn } = require('node:child_process');
 const path = require('node:path');
+const { applyDatabaseUrlSsl } = require('./postgres-url.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const API_PORT = String(process.env.API_PORT ?? '3000');
@@ -56,6 +57,7 @@ function warnIfPooledNeonUrl() {
 }
 
 async function main() {
+  applyDatabaseUrlSsl();
   warnIfPooledNeonUrl();
 
   if (!process.env.JWT_SECRET) {
