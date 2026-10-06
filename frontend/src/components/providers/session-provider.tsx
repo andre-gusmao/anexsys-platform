@@ -1,12 +1,12 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-
-type BranchOption = {
-  id: string;
-  label: string;
-  hint?: string;
-};
+import {
+  branchesOfEmpresa,
+  resolveActiveEmpresaId,
+  type BranchOption,
+  type EmpresaOption,
+} from "@/components/providers/session-context";
 
 type CompanyOption = {
   tenantId: string;
@@ -37,6 +37,8 @@ type SessionRecord = {
   user: AuthenticatedUser | null;
   branches: BranchOption[];
   companies: CompanyOption[];
+  empresas: EmpresaOption[];
+  activeEmpresaId: string | null;
   companySelectionRequired: boolean;
 };
 
@@ -54,7 +56,9 @@ type SessionContextValue = {
   login: (input: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
   selectCompany: (tenantId: string) => Promise<boolean>;
+  selectEmpresa: (empresaId: string) => Promise<boolean>;
   selectBranch: (branchId: string) => Promise<boolean>;
+  reloadEmpresas: (preferredEmpresaId?: string | null) => Promise<void>;
   clearError: () => void;
   hasAnyPermission: (...permissions: string[]) => boolean;
   apiJson: <T>(path: string, init?: RequestInit, opts?: { allowRefresh?: boolean; branchId?: string | null }) => Promise<T>;
@@ -97,6 +101,14 @@ type BranchResponse = {
   displayName?: string;
   legalName?: string;
   status?: string;
+  companyId?: string | null;
+};
+
+type EmpresaResponse = {
+  id?: string;
+  legalName?: string;
+  tradeName?: string | null;
+  isDefault?: boolean;
 };
 
 const STORAGE_KEY = "anexsys.frontend.session.v2";
@@ -111,13 +123,7 @@ class HttpError extends Error {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-function getInitialState(): { status: SessionStatus; session: SessionRecord | null } {
-  const session = readStoredSession();
-  return {
-    status: session ? "loading" : "anonymous",
-    session,
-  };
-}
+export { createIdleSessionState } from "@/components/providers/session-context";
 
 function getErrorMessage(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") return fallback;
@@ -174,7 +180,12 @@ function readStoredSession(): SessionRecord | null {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as SessionRecord;
+    const parsed = JSON.parse(raw) as SessionRecord;
+    return {
+      ...parsed,
+      empresas: parsed.empresas ?? [],
+      activeEmpresaId: parsed.activeEmpresaId ?? null,
+    };
   } catch {
     window.localStorage.removeItem(STORAGE_KEY);
     return null;
@@ -212,10 +223,26 @@ function broadcastSessionExpired(message: string) {
   }
 }
 
+const SESSION_EXPIRED_MESSAGE = "A sessão expirou. Entre de novo.";
+const SESSION_RESTORE_FAILED_MESSAGE = "Não foi possível restaurar a sessão. Entre de novo.";
+
+function resolveSessionTenantId(session: SessionRecord): string | null {
+  for (const candidate of [session.tenantId, session.user?.tenantId]) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    const lowered = trimmed.toLowerCase();
+    if (lowered === "undefined" || lowered === "null") continue;
+    return trimmed;
+  }
+  return null;
+}
+
 function buildHeaders(session: SessionRecord, branchId?: string | null): HeadersInit {
+  const tenantId = resolveSessionTenantId(session);
   return {
     authorization: ["Bearer", session.accessToken].join(" "),
-    "x-tenant-id": session.tenantId,
+    ...(tenantId ? { "x-tenant-id": tenantId } : {}),
     ...(branchId ? { "x-branch-id": branchId } : {}),
   };
 }
@@ -235,6 +262,21 @@ function mapBranches(input: BranchResponse[] | null, fallbackIds: string[]): Bra
       id: branch.id,
       label: branch.displayName ?? branch.code ?? branch.legalName ?? branch.id,
       hint: [branch.code, branch.status].filter(Boolean).join(" · ") || undefined,
+      companyId: branch.companyId ?? null,
+    }));
+}
+
+function mapEmpresas(input: EmpresaResponse[] | null): EmpresaOption[] {
+  if (!input) return [];
+  return input
+    .filter((empresa): empresa is Required<Pick<EmpresaResponse, "id" | "legalName">> & EmpresaResponse => {
+      return typeof empresa.id === "string" && typeof empresa.legalName === "string";
+    })
+    .map((empresa) => ({
+      id: empresa.id,
+      legalName: empresa.legalName,
+      tradeName: empresa.tradeName ?? null,
+      isDefault: Boolean(empresa.isDefault),
     }));
 }
 
@@ -250,6 +292,8 @@ function createPendingHydrationSession(input: {
   user?: AuthenticatedUser | null;
   branches?: BranchOption[];
   companies?: CompanyOption[];
+  empresas?: EmpresaOption[];
+  activeEmpresaId?: string | null;
   companySelectionRequired?: boolean;
 }): SessionRecord {
   return {
@@ -264,6 +308,8 @@ function createPendingHydrationSession(input: {
     user: input.user ?? null,
     branches: input.branches ?? [],
     companies: input.companies ?? [],
+    empresas: input.empresas ?? [],
+    activeEmpresaId: input.activeEmpresaId ?? null,
     companySelectionRequired: input.companySelectionRequired ?? false,
   };
 }
@@ -297,8 +343,8 @@ async function authenticatedRequest<T>(
       try {
         workingSession = await refreshSession(workingSession);
       } catch {
-        broadcastSessionExpired("Session expired. Please sign in again.");
-        throw new HttpError(401, "Session expired. Please sign in again.");
+        broadcastSessionExpired(SESSION_EXPIRED_MESSAGE);
+        throw new HttpError(401, SESSION_EXPIRED_MESSAGE);
       }
       continue;
     }
@@ -306,7 +352,7 @@ async function authenticatedRequest<T>(
     throw new HttpError(response.status, getErrorMessage(payload, "Authenticated request failed."));
   }
 
-  throw new HttpError(401, "Session refresh failed.");
+  throw new HttpError(401, SESSION_EXPIRED_MESSAGE);
 }
 
 function resolveActiveBranchId(
@@ -331,15 +377,19 @@ function resolveActiveBranchId(
 }
 
 export function SessionProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const initialState = useMemo(() => getInitialState(), []);
-  const [status, setStatus] = useState<SessionStatus>(initialState.status);
-  const [session, setSession] = useState<SessionRecord | null>(initialState.session);
+  const [status, setStatus] = useState<SessionStatus>("loading");
+  const [session, setSession] = useState<SessionRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const sessionRef = useRef<SessionRecord | null>(null);
+  const restoreAttemptedRef = useRef(false);
 
   const clearError = useCallback(() => setErrorMessage(null), []);
 
-  const hydrateSession = useCallback(async (candidate: SessionRecord, preferredBranchId?: string | null) => {
+  const hydrateSession = useCallback(async (
+    candidate: SessionRecord,
+    preferredBranchId?: string | null,
+    preferredEmpresaId?: string | null,
+  ) => {
     const meResult = await authenticatedRequest<MeResponse>(candidate, "/auth/me", { method: "GET" });
     const me = meResult.data;
     let workingSession = {
@@ -378,11 +428,42 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       branches = mapBranches(null, me.effectiveAccess.branchIds);
     }
 
+    let empresas: EmpresaOption[] = candidate.empresas ?? [];
+    try {
+      const empresaResult = await authenticatedRequest<EmpresaResponse[]>(
+        workingSession,
+        "/companies",
+        { method: "GET" },
+        { branchId: null },
+      );
+      workingSession = {
+        ...workingSession,
+        accessToken: empresaResult.session.accessToken,
+        refreshToken: empresaResult.session.refreshToken,
+        sessionId: empresaResult.session.sessionId,
+      };
+      empresas = mapEmpresas(empresaResult.data);
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 401) {
+        throw error;
+      }
+    }
+
+    const activeEmpresaId = me.context.companySelectionRequired
+      ? null
+      : resolveActiveEmpresaId(
+          empresas,
+          branches,
+          preferredBranchId ?? candidate.activeBranchId,
+          preferredEmpresaId ?? candidate.activeEmpresaId,
+        );
+    const scopedBranches = branchesOfEmpresa(branches, activeEmpresaId);
+
     const activeBranchId = me.context.companySelectionRequired
       ? null
       : resolveActiveBranchId(
           me.effectiveAccess.branchIds,
-          branches,
+          scopedBranches.length > 0 ? scopedBranches : branches,
           me.user,
           me.context.branchId,
           preferredBranchId ?? candidate.activeBranchId,
@@ -391,7 +472,11 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     const resolved = {
       ...workingSession,
       activeBranchId,
+      activeEmpresaId:
+        activeEmpresaId ??
+        resolveActiveEmpresaId(empresas, branches, activeBranchId, preferredEmpresaId ?? candidate.activeEmpresaId),
       branches,
+      empresas,
     };
 
     setSession(resolved);
@@ -408,8 +493,11 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
 
   useEffect(() => {
     sessionRef.current = session;
+    if (status === "loading" && !restoreAttemptedRef.current) {
+      return;
+    }
     writeStoredSession(session);
-  }, [session]);
+  }, [session, status]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -419,7 +507,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       sessionRef.current = null;
       setSession(null);
       setStatus("anonymous");
-      setErrorMessage(detail?.message ?? "Session expired. Please sign in again.");
+      setErrorMessage(detail?.message ?? SESSION_EXPIRED_MESSAGE);
     };
 
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired as EventListener);
@@ -427,21 +515,26 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   }, []);
 
   useEffect(() => {
-    const existing = initialState.session;
+    const existing = readStoredSession();
+    restoreAttemptedRef.current = true;
     if (!existing) {
+      // First paint is always "loading" so SSR and the client match; settle after mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSession(null);
+      setStatus("anonymous");
       return;
     }
 
-    // Session restoration intentionally rehydrates client state from persisted local storage on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    sessionRef.current = existing;
+    setSession(existing);
     hydrateSession(existing).catch((error: unknown) => {
       writeStoredSession(null);
       sessionRef.current = null;
       setSession(null);
       setStatus("anonymous");
-      setErrorMessage(error instanceof Error ? error.message : "Session could not be restored.");
+      setErrorMessage(error instanceof Error ? error.message : SESSION_RESTORE_FAILED_MESSAGE);
     });
-  }, [hydrateSession, initialState.session]);
+  }, [hydrateSession]);
 
   const login = useCallback(
     async ({ email, password }: LoginInput) => {
@@ -543,18 +636,73 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       user: currentSession.user,
       branches: currentSession.branches,
       companies: currentSession.companies,
+      empresas: currentSession.empresas,
+      activeEmpresaId: currentSession.activeEmpresaId,
     });
 
     sessionRef.current = baseSession;
     setSession(baseSession);
 
-    const nextSession = await hydrateSession(baseSession, branchId);
+    const nextSession = await hydrateSession(baseSession, branchId, currentSession.activeEmpresaId);
     sessionRef.current = nextSession;
     setSession(nextSession);
     setStatus("authenticated");
     setErrorMessage(null);
     return true;
   }, [hydrateSession]);
+
+  const selectEmpresa = useCallback(async (empresaId: string) => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) return false;
+    if (!currentSession.empresas.some((empresa) => empresa.id === empresaId)) {
+      setErrorMessage("A Empresa selecionada está fora da Conta ativa.");
+      return false;
+    }
+
+    const scoped = branchesOfEmpresa(currentSession.branches, empresaId);
+    const keepCurrent = scoped.some((branch) => branch.id === currentSession.activeBranchId);
+    const nextSession = {
+      ...currentSession,
+      activeEmpresaId: empresaId,
+    };
+    sessionRef.current = nextSession;
+    setSession(nextSession);
+    setErrorMessage(null);
+
+    if (!keepCurrent && scoped[0]) {
+      return selectBranch(scoped[0].id);
+    }
+    return true;
+  }, [selectBranch]);
+
+  const reloadEmpresas = useCallback(async (preferredEmpresaId?: string | null) => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) return;
+
+    try {
+      const result = await authenticatedRequest<EmpresaResponse[]>(currentSession, "/companies", { method: "GET" }, { branchId: null });
+      const empresas = mapEmpresas(result.data);
+      const nextSession = {
+        ...currentSession,
+        accessToken: result.session.accessToken,
+        refreshToken: result.session.refreshToken,
+        sessionId: result.session.sessionId,
+        empresas,
+        activeEmpresaId: resolveActiveEmpresaId(
+          empresas,
+          currentSession.branches,
+          currentSession.activeBranchId,
+          preferredEmpresaId ?? currentSession.activeEmpresaId,
+        ),
+      };
+      sessionRef.current = nextSession;
+      setSession(nextSession);
+    } catch (error) {
+      if (error instanceof HttpError && [401, 403].includes(error.status)) {
+        throw error;
+      }
+    }
+  }, []);
 
   const hasAnyPermission = useCallback(
     (...permissions: string[]) => {
@@ -568,7 +716,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     async <T,>(path: string, init: RequestInit = {}, opts: { allowRefresh?: boolean; branchId?: string | null } = {}) => {
       const currentSession = sessionRef.current;
       if (!currentSession) {
-        throw new HttpError(401, "Session expired. Please sign in again.");
+        throw new HttpError(401, SESSION_EXPIRED_MESSAGE);
       }
 
       const result = await authenticatedRequest<T>(currentSession, path, { method: "GET", ...init }, opts);
@@ -602,12 +750,14 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       login,
       logout,
       selectCompany,
+      selectEmpresa,
       selectBranch,
+      reloadEmpresas,
       clearError,
       hasAnyPermission,
       apiJson,
     }),
-    [apiJson, clearError, errorMessage, hasAnyPermission, login, logout, selectBranch, selectCompany, session, status],
+    [apiJson, clearError, errorMessage, hasAnyPermission, login, logout, reloadEmpresas, selectBranch, selectCompany, selectEmpresa, session, status],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

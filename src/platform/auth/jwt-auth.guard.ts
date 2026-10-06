@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
-import { ensureRequestContext, PlatformRequest, resolveBranchId, resolveTenantId } from 'src/platform/http/request-context';
+import {
+  ensureRequestContext,
+  normalizeRequestValue,
+  PlatformRequest,
+  resolveBranchId,
+  resolveTenantId,
+} from 'src/platform/http/request-context';
 import { TokenFactoryService } from './token-factory.service';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
@@ -43,9 +49,14 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('JWT access token is invalid.');
     }
 
-    const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(payload.tenantId, payload.sub);
+    const tokenTenantId = normalizeRequestValue(payload.tenantId);
+    if (!tokenTenantId || !payload.sub) {
+      throw new UnauthorizedException('JWT access token is invalid.');
+    }
+
+    const effectiveAccess = await this.authorizationService.getEffectiveAccessForUser(tokenTenantId, payload.sub);
     const requestedTenantId = resolveTenantId(request);
-    if (requestedTenantId && requestedTenantId !== payload.tenantId) {
+    if (requestedTenantId && requestedTenantId !== tokenTenantId) {
       throw new ForbiddenException('Requested tenant is outside the authenticated tenant scope.');
     }
 
@@ -56,7 +67,7 @@ export class JwtAuthGuard implements CanActivate {
 
     requestContext.authenticatedPrincipal = {
       userId: payload.sub,
-      tenantId: payload.tenantId,
+      tenantId: tokenTenantId,
       sessionId: payload.sessionId,
       branchIds: effectiveAccess.branchIds,
       tokenPermissions: payload.permissions,
@@ -65,8 +76,8 @@ export class JwtAuthGuard implements CanActivate {
       communities: effectiveAccess.communities,
     };
 
-    if (!requestContext.requestedTenantId) {
-      requestContext.requestedTenantId = payload.tenantId;
+    if (!normalizeRequestValue(requestContext.requestedTenantId)) {
+      requestContext.requestedTenantId = tokenTenantId;
     }
 
     return true;

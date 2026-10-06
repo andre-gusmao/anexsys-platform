@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
@@ -33,6 +34,7 @@ type BranchForm = {
   displayName: string;
   parentBranchId: string;
   businessCalendarName: string;
+  companyId: string;
 };
 
 type ChildRecord = {
@@ -47,6 +49,7 @@ const emptyForm = (): BranchForm => ({
   displayName: "",
   parentBranchId: "",
   businessCalendarName: "",
+  companyId: "",
 });
 
 function mapBranchToForm(branch: BranchRecord): BranchForm {
@@ -56,11 +59,15 @@ function mapBranchToForm(branch: BranchRecord): BranchForm {
     displayName: branch.displayName,
     parentBranchId: branch.parentBranchId ?? "",
     businessCalendarName: branch.businessCalendarName ?? "",
+    companyId: branch.companyId ?? "",
   };
 }
 
 export function BranchesWorkspace() {
-  const { hasAnyPermission, apiJson } = useSession();
+  const { hasAnyPermission, apiJson, session, selectEmpresa } = useSession();
+  const activeEmpresaId = session?.activeEmpresaId ?? null;
+  const empresas = session?.empresas ?? [];
+  const activeEmpresa = empresas.find((empresa) => empresa.id === activeEmpresaId) ?? null;
   const canRead = hasAnyPermission("branches.read");
   const canWrite = hasAnyPermission("branches.write");
   const [branches, setBranches] = useState<BranchRecord[]>([]);
@@ -110,7 +117,7 @@ export function BranchesWorkspace() {
     } catch {
       setHours(null);
     }
-  }, [apiJson]);
+  }, [apiJson, setHours]);
 
   const loadChildren = useCallback(async (branchId: string) => {
     setDetailLoading(true);
@@ -131,7 +138,8 @@ export function BranchesWorkspace() {
     }
     setLoading(true);
     try {
-      const records = await apiJson<BranchRecord[]>("/branches");
+      const path = activeEmpresaId ? `/branches?companyId=${encodeURIComponent(activeEmpresaId)}` : "/branches";
+      const records = await apiJson<BranchRecord[]>(path);
       const resolvedActiveBranch =
         records.find((branch) => branch.id === activeBranchId) ??
         records[0] ??
@@ -152,7 +160,7 @@ export function BranchesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [activeBranchId, apiJson, canRead, loadChildren, loadHours, setActiveBranchId, setForm, showCreateForm]);
+  }, [activeBranchId, activeEmpresaId, apiJson, canRead, loadChildren, loadHours, setActiveBranchId, setBranches, setForm, setMessage, showCreateForm]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -176,6 +184,7 @@ export function BranchesWorkspace() {
           displayName: form.displayName,
           parentBranchId: form.parentBranchId || undefined,
           businessCalendarName: form.businessCalendarName || undefined,
+          companyId: form.companyId || activeEmpresaId || undefined,
         }),
       });
       setBranches((current) => [...current, created].sort((left, right) => left.displayName.localeCompare(right.displayName)));
@@ -205,6 +214,7 @@ export function BranchesWorkspace() {
           displayName: form.displayName,
           parentBranchId: form.parentBranchId || null,
           businessCalendarName: form.businessCalendarName || null,
+          companyId: form.companyId || undefined,
         }),
       });
       setBranches((current) => current.map((branch) => (branch.id === updated.id ? updated : branch)));
@@ -256,7 +266,11 @@ export function BranchesWorkspace() {
       <section className="hero-card">
         <div className="eyebrow">Administração</div>
         <h1 className="title">Filiais</h1>
-        <p>Gerencie busca, criação, edição, visualização e hierarquia física das filiais do contexto ativo.</p>
+        <p>
+          A Filial pertence a uma Empresa. Clientes e medidas são da Conta e aparecem em todas as Empresas. Troque a
+          Empresa no contexto ao lado para ver e cadastrar as filiais dela
+          {activeEmpresa ? ` (${empresaLabel(activeEmpresa)})` : ""}.
+        </p>
       </section>
 
       {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
@@ -279,7 +293,7 @@ export function BranchesWorkspace() {
                 className="button"
                 onClick={() => {
                   setShowCreateForm(true);
-                  setForm(emptyForm());
+                  setForm({ ...emptyForm(), companyId: activeEmpresaId ?? "" });
                 }}
                 type="button"
               >
@@ -293,6 +307,26 @@ export function BranchesWorkspace() {
               <span>Pesquisar</span>
               <input placeholder="Código, nome ou calendário" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
             </label>
+            {empresas.length > 0 ? (
+              <label className="field">
+                <span>Empresa</span>
+                <select
+                  value={activeEmpresaId ?? ""}
+                  onChange={(event) => {
+                    if (event.target.value) {
+                      void selectEmpresa(event.target.value);
+                    }
+                  }}
+                >
+                  {!activeEmpresaId ? <option value="">Selecione a Empresa</option> : null}
+                  {empresas.map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresaLabel(empresa)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="field">
               <span>Status</span>
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -359,6 +393,7 @@ export function BranchesWorkspace() {
               <BranchFormFields
                 branches={branches}
                 canCreate={canWrite}
+                empresas={empresas}
                 form={form}
                 saving={saving}
                 setBranches={setBranches}
@@ -395,6 +430,7 @@ export function BranchesWorkspace() {
                 <BranchFormFields
                   branches={branches.filter((branch) => branch.id !== activeBranch.id)}
                   canCreate={canWrite}
+                  empresas={empresas}
                   form={form}
                   saving={saving}
                   setBranches={setBranches}
@@ -483,6 +519,7 @@ export function BranchesWorkspace() {
 function BranchFormFields({
   branches,
   canCreate,
+  empresas,
   form,
   saving,
   setBranches,
@@ -491,6 +528,7 @@ function BranchFormFields({
 }: {
   branches: BranchRecord[];
   canCreate: boolean;
+  empresas: { id: string; legalName: string; tradeName: string | null; isDefault: boolean }[];
   form: BranchForm;
   saving: boolean;
   setBranches: Dispatch<SetStateAction<BranchRecord[]>>;
@@ -510,6 +548,23 @@ function BranchFormFields({
 
   return (
     <>
+      {empresas.length > 0 ? (
+        <label className="field">
+          <span>Empresa</span>
+          <select
+            required
+            value={form.companyId}
+            onChange={(event) => setForm((current) => ({ ...current, companyId: event.target.value }))}
+          >
+            <option value="">Selecione a Empresa</option>
+            {empresas.map((empresa) => (
+              <option key={empresa.id} value={empresa.id}>
+                {empresaLabel(empresa)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <label className="field">
         <span>Código</span>
         <input required value={form.code} onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))} />
@@ -595,7 +650,7 @@ function BranchFormFields({
               try {
                 const created = await apiJson<BranchRecord>("/branches", {
                   method: "POST",
-                  body: JSON.stringify({ code, displayName, legalName }),
+                  body: JSON.stringify({ code, displayName, legalName, companyId: form.companyId || undefined }),
                 });
                 onComplete(created);
               } catch (error) {

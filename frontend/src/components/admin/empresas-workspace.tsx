@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
 
@@ -130,6 +130,9 @@ function describeCompanyError(error: unknown, fallback: string): string {
   if (error instanceof TypeError || (error instanceof Error && /failed to fetch/i.test(error.message))) {
     return "Não foi possível falar com o servidor. Se o site acabou de acordar, aguarde uns segundos e tente de novo.";
   }
+  if (error instanceof Error && /tenant context is required|contexto da conta/i.test(error.message)) {
+    return "A Conta ativa não chegou no servidor. Saia e entre de novo, ou escolha a Conta no seletor.";
+  }
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
@@ -137,7 +140,7 @@ function describeCompanyError(error: unknown, fallback: string): string {
 }
 
 export function EmpresasWorkspace() {
-  const { hasAnyPermission, apiJson } = useSession();
+  const { hasAnyPermission, apiJson, status, reloadEmpresas, selectEmpresa } = useSession();
   const canRead = hasAnyPermission("companies.read");
   const canWrite = hasAnyPermission("companies.write");
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -148,6 +151,11 @@ export function EmpresasWorkspace() {
   const [activeId, setActiveId] = useWorkspaceScopedState<string | null>("empresas.activeId", null);
   const [showCreate, setShowCreate] = useWorkspaceScopedState("empresas.showCreate", false);
   const [form, setForm] = useWorkspaceScopedState<CompanyForm>("empresas.form", emptyForm());
+  const activeIdRef = useRef(activeId);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   const active = useMemo(() => companies.find((company) => company.id === activeId) ?? null, [activeId, companies]);
   useWorkspaceRegistration({
@@ -156,7 +164,7 @@ export function EmpresasWorkspace() {
   });
 
   const loadCompanies = useCallback(async () => {
-    if (!canRead) {
+    if (status !== "authenticated" || !canRead) {
       setLoading(false);
       return;
     }
@@ -164,7 +172,8 @@ export function EmpresasWorkspace() {
     try {
       const records = await apiJson<CompanyRecord[]>("/companies");
       setCompanies(records);
-      const nextId = records.some((company) => company.id === activeId) ? activeId : records[0]?.id ?? null;
+      const currentId = activeIdRef.current;
+      const nextId = records.some((company) => company.id === currentId) ? currentId : records[0]?.id ?? null;
       setActiveId(nextId);
       const next = records.find((company) => company.id === nextId) ?? null;
       if (next && !showCreate) {
@@ -176,7 +185,7 @@ export function EmpresasWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [activeId, apiJson, canRead, setActiveId, setForm, showCreate]);
+  }, [apiJson, canRead, setActiveId, setForm, showCreate, status]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -246,7 +255,9 @@ export function EmpresasWorkspace() {
       setActiveId(created.id);
       setShowCreate(false);
       setForm(mapCompanyToForm(created));
-      setMessage("Empresa criada. A Filial padrão (Matriz) nasceu junto, com horário de funcionamento.");
+      await reloadEmpresas(created.id);
+      await selectEmpresa(created.id);
+      setMessage("Empresa criada. A Filial padrão (Matriz) nasceu junto. Ela já está no contexto ativo.");
     } catch (error) {
       setMessage(describeCompanyError(error, "A empresa não pôde ser criada."));
     } finally {
@@ -266,6 +277,7 @@ export function EmpresasWorkspace() {
       });
       setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
       setForm(mapCompanyToForm(updated));
+      await reloadEmpresas(updated.id);
       setMessage("Empresa atualizada.");
     } catch (error) {
       setMessage(describeCompanyError(error, "A empresa não pôde ser atualizada."));
@@ -289,8 +301,9 @@ export function EmpresasWorkspace() {
         <div className="eyebrow">Administração</div>
         <h1 className="title">Empresas</h1>
         <p>
-          A Empresa é a pessoa jurídica (CNPJ) dentro da Conta: identificação, inscrições, contato e endereço fiscal. Se
-          não houver Filial física, o sistema cria a Filial padrão (Matriz).
+          A Empresa é o CNPJ dentro da Conta. Use o combo Empresa no contexto ao lado para trocar entre elas e associar
+          Filiais. Clientes e medidas são da Conta e valem para todas as Empresas. Se não houver Filial física, o
+          sistema cria a Filial padrão (Matriz).
         </p>
       </section>
 

@@ -7,19 +7,23 @@ import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-respo
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
 import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 import { WorkspaceKeepAlive } from "@/components/app-shell/workspace-screens";
+import { branchesOfEmpresa, empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
-  const { session, logout, errorMessage, clearError, selectCompany, selectBranch } = useSession();
+  const { session, logout, errorMessage, clearError, selectCompany, selectEmpresa, selectBranch } = useSession();
   const { currentTab, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow } = useWorkspaceManager();
   const { isDesktop, isMobile } = useWorkspaceViewportMode();
   const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
+  const [pendingEmpresaSwitch, setPendingEmpresaSwitch] = useState(false);
   const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const activeCompany = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
-  const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
-  const busy = pendingCompanySwitch || pendingBranchSwitch;
+  const activeConta = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
+  const activeEmpresa = (session?.empresas ?? []).find((empresa) => empresa.id === session?.activeEmpresaId) ?? null;
+  const visibleBranches = branchesOfEmpresa(session?.branches ?? [], session?.activeEmpresaId ?? null);
+  const activeBranch = visibleBranches.find((branch) => branch.id === session?.activeBranchId) ?? session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
+  const busy = pendingCompanySwitch || pendingEmpresaSwitch || pendingBranchSwitch;
   const sidebarVisible = isDesktop || sidebarOpen;
   const canOpenCurrentWorkspaceExternally = currentTab ? isMeaningfulWorkspaceTab(currentTab) : false;
 
@@ -33,11 +37,15 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
         </div>
 
         <section className="sidebar__context">
-          <div className="eyebrow">Active context</div>
+          <div className="eyebrow">Contexto ativo</div>
           <div className="sidebar__context-summary">
             <div className="sidebar__context-field">
-              <span>Company</span>
-              <strong>{activeCompany?.displayName ?? "Select company"}</strong>
+              <span>Conta</span>
+              <strong>{activeConta?.displayName ?? "Selecione a Conta"}</strong>
+            </div>
+            <div className="sidebar__context-field">
+              <span>Empresa</span>
+              <strong>{activeEmpresa ? empresaLabel(activeEmpresa) : "Selecione a Empresa"}</strong>
             </div>
             <div className="sidebar__context-field">
               <span>Filial</span>
@@ -47,7 +55,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
 
           {session && session.companies.length > 1 ? (
             <label className="field sidebar__context-select">
-              <span>Company</span>
+              <span>Conta</span>
               <select
                 disabled={busy}
                 value={session.tenantId}
@@ -66,6 +74,32 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
                 {session.companies.map((company) => (
                   <option key={company.tenantId} value={company.tenantId}>
                     {company.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {session && (session.empresas?.length ?? 0) > 0 ? (
+            <label className="field sidebar__context-select">
+              <span>Empresa</span>
+              <select
+                disabled={busy}
+                value={session.activeEmpresaId ?? ""}
+                onChange={async (event) => {
+                  if (!event.target.value) return;
+                  setPendingEmpresaSwitch(true);
+                  try {
+                    await selectEmpresa(event.target.value);
+                  } finally {
+                    setPendingEmpresaSwitch(false);
+                  }
+                }}
+              >
+                {!session.activeEmpresaId ? <option value="">Selecione a Empresa</option> : null}
+                {session.empresas.map((empresa) => (
+                  <option key={empresa.id} value={empresa.id}>
+                    {empresaLabel(empresa)}
                   </option>
                 ))}
               </select>
@@ -92,7 +126,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
                 }}
               >
                 {!session.activeBranchId ? <option value="">Selecione a filial</option> : null}
-                {session.branches.map((branch) => (
+                {visibleBranches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
                     {branch.label}
                   </option>

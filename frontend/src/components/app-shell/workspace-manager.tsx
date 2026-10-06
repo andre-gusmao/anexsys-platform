@@ -57,6 +57,7 @@ type WorkspaceManagerContextValue = {
   currentTabId: string | null;
   currentTab: WorkspaceTab | null;
   tabs: WorkspaceTab[];
+  storageReady: boolean;
   registerCurrentWorkspace: (input: WorkspaceRegistrationInput) => string | null;
   closeWorkspace: (tabId: string) => void;
   activateWorkspace: (tabId: string) => void;
@@ -117,7 +118,8 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlTabId = searchParams.get(WORKSPACE_QUERY_PARAM);
-  const [store, setStore] = useState<WorkspaceStore>(() => readStore());
+  const [store, setStore] = useState<WorkspaceStore>(() => createEmptyWorkspaceStore());
+  const [storageReady, setStorageReady] = useState(false);
   const storeRef = useRef(store);
   const hydratedFromUrlRef = useRef(false);
   const lastSyncedHrefRef = useRef<string | null>(null);
@@ -127,11 +129,23 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
   useEffect(() => {
     storeRef.current = store;
+    if (!storageReady) {
+      return;
+    }
     writeStore(store);
-  }, [store]);
+  }, [storageReady, store]);
 
   useEffect(() => {
-    if (hydratedFromUrlRef.current) {
+    const persisted = readStore();
+    storeRef.current = persisted;
+    // Tabs live in localStorage; apply them after mount so SSR and the first client paint stay empty together.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStore(persisted);
+    setStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady || hydratedFromUrlRef.current) {
       return;
     }
 
@@ -139,7 +153,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
     if (urlTabId && storeRef.current.tabs.some((tab) => tab.id === urlTabId)) {
       setStore((current) => setActiveWorkspaceTab(current, urlTabId));
     }
-  }, [urlTabId]);
+  }, [storageReady, urlTabId]);
 
   const findSingletonTabByPath = useCallback((targetPathname: string) => {
     const normalizedPath = normalizeWorkspacePathname(targetPathname);
@@ -456,6 +470,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       currentTabId,
       currentTab,
       tabs: store.tabs,
+      storageReady,
       registerCurrentWorkspace: (input) =>
         ensureWorkspaceTab({
           pathname: input.pathname ?? currentComparablePath,
@@ -489,6 +504,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       openWorkspaceInNewTab,
       currentComparablePath,
       readScopedState,
+      storageReady,
       store.tabs,
       writeScopedState,
     ],
@@ -515,18 +531,22 @@ export function useWorkspaceRegistration(input: { label: string; subtitle?: stri
     openWorkspaceInNewTab,
     navigateWithinWorkspace,
     registerCurrentWorkspace,
+    storageReady,
   } = useWorkspaceManager();
   const pane = useWorkspacePane();
   const { label, subtitle = null } = input;
 
   useEffect(() => {
+    if (!storageReady) {
+      return;
+    }
     registerCurrentWorkspace({
       label,
       subtitle,
       pathname: pane?.pathname,
       tabId: pane?.tabId,
     });
-  }, [label, pane?.pathname, pane?.tabId, registerCurrentWorkspace, subtitle]);
+  }, [label, pane?.pathname, pane?.tabId, registerCurrentWorkspace, storageReady, subtitle]);
 
   return {
     currentTab,

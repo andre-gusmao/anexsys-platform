@@ -22,24 +22,35 @@ export interface PlatformRequest extends Request {
   requestContext: RequestContextState;
 }
 
-function normalize(value: string | string[] | null | undefined): string | null {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
+export function normalizeRequestValue(value: string | string[] | null | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw !== 'string') {
+    return raw ?? null;
   }
 
-  return value ?? null;
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const lowered = trimmed.toLowerCase();
+  if (lowered === 'undefined' || lowered === 'null') {
+    return null;
+  }
+
+  return trimmed;
 }
 
 export function buildRequestContext(request: Request): RequestContextState {
   const authHeader = typeof request.header === 'function' ? request.header('authorization') : request.headers.authorization;
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null;
 
-  const requestedTenantId = normalize(
+  const requestedTenantId = normalizeRequestValue(
     typeof request.header === 'function' ? request.header('x-tenant-id') : request.headers['x-tenant-id'],
-  )?.trim() ?? null;
-  const requestedBranchId = normalize(
+  );
+  const requestedBranchId = normalizeRequestValue(
     typeof request.header === 'function' ? request.header('x-branch-id') : request.headers['x-branch-id'],
-  )?.trim() ?? null;
+  );
 
   return {
     authToken: bearerToken && bearerToken.length > 0 ? bearerToken : null,
@@ -59,10 +70,15 @@ export function getRequestContext(request: PlatformRequest): RequestContextState
 
 export function resolveTenantId(request: PlatformRequest): string | null {
   const requestContext = ensureRequestContext(request);
-  return normalize(request.params?.tenantId) ?? normalize(requestContext.requestedTenantId) ?? normalize(requestContext.authenticatedPrincipal?.tenantId) ?? null;
+  return (
+    normalizeRequestValue(request.params?.tenantId) ??
+    normalizeRequestValue(requestContext.requestedTenantId) ??
+    normalizeRequestValue(requestContext.authenticatedPrincipal?.tenantId) ??
+    null
+  );
 }
 
 export function resolveBranchId(request: PlatformRequest): string | null {
   const requestContext = ensureRequestContext(request);
-  return normalize(request.params?.branchId) ?? normalize(requestContext.requestedBranchId) ?? null;
+  return normalizeRequestValue(request.params?.branchId) ?? normalizeRequestValue(requestContext.requestedBranchId) ?? null;
 }

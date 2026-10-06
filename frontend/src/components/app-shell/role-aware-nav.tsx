@@ -63,13 +63,13 @@ const navSections: NavSection[] = [
       {
         href: "/admin/companies",
         label: "Empresas",
-        hint: "CNPJ dentro da Conta",
+        hint: "CNPJ da Conta; troque no contexto",
         requiredPermissions: ["companies.read"],
       },
       {
         href: "/admin/branches",
         label: "Filiais",
-        hint: "Administração de filiais",
+        hint: "Ligadas à Empresa ativa",
         requiredPermissions: ["branches.read"],
       },
       {
