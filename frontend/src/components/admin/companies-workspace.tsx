@@ -13,6 +13,7 @@ import {
   type CompanyRecord,
 } from "@/components/admin/company-list-records";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import {
   MasterDataDuplicateGuard,
   normalizeCodeValue,
@@ -345,11 +346,7 @@ export function CompaniesWorkspace() {
 
       {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
-        </section>
-      ) : null}
+      {message ? <WorkspaceFlash message={message} /> : null}
 
       {isListWorkspace ? (
         <CadastroListPanel

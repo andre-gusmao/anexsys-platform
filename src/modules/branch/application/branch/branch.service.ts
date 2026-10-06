@@ -43,9 +43,9 @@ export class BranchService {
     const company = await this.companyService.getById(companyId, dto.tenantId);
 
     const normalizedCode = dto.code.trim().toUpperCase();
-    const existingBranch = await this.branchRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+    const existingBranch = await this.branchRepository.findByCompanyAndCode(dto.tenantId, company.id, normalizedCode);
     if (existingBranch) {
-      throw new DomainValidationError(`Branch code '${normalizedCode}' already exists for this tenant.`);
+      throw new DomainValidationError(`Já existe uma Filial com o código ${normalizedCode} nesta Empresa.`);
     }
 
     const siblings = await this.branchRepository.findByCompany(dto.tenantId, company.id);
@@ -135,9 +135,14 @@ export class BranchService {
 
     if (dto.code && dto.code.trim().toUpperCase() !== branch.code) {
       const normalizedCode = dto.code.trim().toUpperCase();
-      const existingBranch = await this.branchRepository.findByTenantAndCode(branch.tenantId, normalizedCode);
+      const targetCompanyId = dto.companyId ?? branch.companyId;
+      const existingBranch = await this.branchRepository.findByCompanyAndCode(
+        branch.tenantId,
+        targetCompanyId,
+        normalizedCode,
+      );
       if (existingBranch && existingBranch.id !== id) {
-        throw new DomainValidationError(`Branch code '${normalizedCode}' already exists for this tenant.`);
+        throw new DomainValidationError(`Já existe uma Filial com o código ${normalizedCode} nesta Empresa.`);
       }
       branch.code = normalizedCode;
     }

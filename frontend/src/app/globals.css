@@ -727,6 +727,31 @@ textarea {
   margin-top: 12px;
 }
 
+.workspace-flash--error {
+  background: #fde8e8;
+  border: 1px solid #c62828;
+  color: #8b0000;
+  box-shadow: none;
+}
+
+.workspace-flash--error p {
+  color: #8b0000;
+  font-weight: 700;
+  margin: 0;
+}
+
+.workspace-flash--ok {
+  background: #e8f6ee;
+  border: 1px solid #2e7d32;
+  color: #1b5e20;
+  box-shadow: none;
+}
+
+.workspace-flash--ok p {
+  color: #1b5e20;
+  margin: 0;
+}
+
 .placeholder-list {
   list-style: none;
   display: grid;

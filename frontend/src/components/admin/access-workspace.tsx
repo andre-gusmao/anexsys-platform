@@ -8,6 +8,7 @@ import {
   normalizeEmailValue,
 } from "@/components/ui/master-data-duplicate-guard";
 import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
+import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type BranchRecord = {
@@ -704,11 +705,7 @@ export function AccessWorkspace() {
         <p>Administre usuários, roles, permissions e communities sem sair do fluxo operacional.</p>
       </section>
 
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
-        </section>
-      ) : null}
+      {message ? <WorkspaceFlash message={message} /> : null}
 
       <section className="mini-card">
         <div className="workspace-toolbar">

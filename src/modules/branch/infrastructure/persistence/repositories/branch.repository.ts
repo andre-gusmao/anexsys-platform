@@ -26,8 +26,8 @@ export class BranchRepository {
     return this.repository.find({ where: { tenantId, isDeleted: false }, order: { displayName: 'ASC' } });
   }
 
-  async findByTenantAndCode(tenantId: string, code: string): Promise<BranchEntity | null> {
-    return this.repository.findOne({ where: { tenantId, code, isDeleted: false } });
+  async findByCompanyAndCode(tenantId: string, companyId: string, code: string): Promise<BranchEntity | null> {
+    return this.repository.findOne({ where: { tenantId, companyId, code, isDeleted: false } });
   }
 
   async findByCompany(tenantId: string, companyId: string): Promise<BranchEntity[]> {

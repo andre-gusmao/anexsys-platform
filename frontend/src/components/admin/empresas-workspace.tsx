@@ -7,6 +7,7 @@ import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState 
 import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
+import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 
 type CompanyRecord = {
   id: string;
@@ -136,6 +137,9 @@ function describeCompanyError(error: unknown, fallback: string): string {
   }
   if (error instanceof Error && /tenant context is required|contexto da conta/i.test(error.message)) {
     return "A Conta ativa não chegou no servidor. Saia e entre de novo, ou escolha a Conta no seletor.";
+  }
+  if (error instanceof Error && /branch code .* already exists/i.test(error.message)) {
+    return "Já existe uma Filial Matriz nesta Empresa. Cada Empresa pode ter a sua própria Matriz.";
   }
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -385,11 +389,7 @@ export function EmpresasWorkspace() {
         </section>
       ) : null}
 
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
-        </section>
-      ) : null}
+      {message ? <WorkspaceFlash message={message} /> : null}
 
       {isListWorkspace ? (
         <EmpresaListPanel

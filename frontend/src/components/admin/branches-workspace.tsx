@@ -8,6 +8,7 @@ import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-respo
 import { empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 
@@ -368,11 +369,7 @@ export function BranchesWorkspace() {
 
       {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
-        </section>
-      ) : null}
+      {message ? <WorkspaceFlash message={message} /> : null}
 
       {isListWorkspace ? (
         <CadastroListPanel

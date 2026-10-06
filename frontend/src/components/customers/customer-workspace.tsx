@@ -14,6 +14,7 @@ import {
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { CustomerListPanel } from "@/components/customers/customer-list-panel";
+import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 
 type CustomerType = "person" | "company";
 type CustomerStatus = "active" | "inactive" | "blocked";
@@ -865,11 +866,7 @@ export function CustomerWorkspace() {
 
       {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
-      {workspaceMessage ? (
-        <div className="mini-card">
-          <p>{workspaceMessage}</p>
-        </div>
-      ) : null}
+      {workspaceMessage ? <WorkspaceFlash message={workspaceMessage} /> : null}
 
       {isListWorkspace ? (
         <CustomerListPanel

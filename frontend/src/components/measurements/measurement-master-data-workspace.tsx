@@ -6,6 +6,7 @@ import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane"
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
+import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import {
   MasterDataDuplicateGuard,
   normalizeBodyPartCodeValue,
@@ -265,11 +266,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
         <p>{config.description}</p>
       </section>
 
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
-        </section>
-      ) : null}
+      {message ? <WorkspaceFlash message={message} /> : null}
 
       <section className="workspace-split">
         {!isFormWorkspace ? (

@@ -6,6 +6,7 @@ import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane"
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { applyOsListFilters, buildOsExcelCsv } from "@/components/service-orders/os-list";
 import {
@@ -587,11 +588,7 @@ export function ServiceOrdersWorkspace() {
         </section>
       ) : null}
 
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
-        </section>
-      ) : null}
+      {message ? <WorkspaceFlash message={message} /> : null}
 
       {isListWorkspace ? (
         <CadastroListPanel
