@@ -129,6 +129,8 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   const [store, setStore] = useState<WorkspaceStore>(() => createEmptyWorkspaceStore());
   const [storageReady, setStorageReady] = useState(false);
   const storeRef = useRef(store);
+  const storageReadyRef = useRef(false);
+  const storeRenderQueuedRef = useRef(false);
   const hydratedFromUrlRef = useRef(false);
   const lastSyncedHrefRef = useRef<string | null>(null);
   const currentTabId = store.activeTabId;
@@ -138,7 +140,16 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   const commitStore = useCallback((next: WorkspaceStore | ((current: WorkspaceStore) => WorkspaceStore)) => {
     const resolved = typeof next === "function" ? next(storeRef.current) : next;
     storeRef.current = resolved;
-    setStore(resolved);
+    if (storageReadyRef.current) {
+      writeStore(resolved);
+    }
+    if (!storeRenderQueuedRef.current) {
+      storeRenderQueuedRef.current = true;
+      queueMicrotask(() => {
+        storeRenderQueuedRef.current = false;
+        setStore(storeRef.current);
+      });
+    }
     return resolved;
   }, []);
 
@@ -152,6 +163,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   useEffect(() => {
     const persisted = readStore();
     storeRef.current = persisted;
+    storageReadyRef.current = true;
     // Tabs live in localStorage; apply them after mount so SSR and the first client paint stay empty together.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStore(persisted);
@@ -594,7 +606,9 @@ export function useWorkspaceScopedState<T>(scope: string, initialValue: T): [T, 
     (next: T | ((current: T) => T)) => {
       setValue((current) => {
         const resolved = next instanceof Function ? next(current) : next;
-        writeScopedState(scope, resolved, scopedTabId);
+        if (scopedTabId) {
+          writeScopedState(scope, resolved, scopedTabId);
+        }
         return resolved;
       });
     },
