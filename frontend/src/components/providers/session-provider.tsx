@@ -212,10 +212,23 @@ function broadcastSessionExpired(message: string) {
   }
 }
 
+function resolveSessionTenantId(session: SessionRecord): string | null {
+  for (const candidate of [session.tenantId, session.user?.tenantId]) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    const lowered = trimmed.toLowerCase();
+    if (lowered === "undefined" || lowered === "null") continue;
+    return trimmed;
+  }
+  return null;
+}
+
 function buildHeaders(session: SessionRecord, branchId?: string | null): HeadersInit {
+  const tenantId = resolveSessionTenantId(session);
   return {
     authorization: ["Bearer", session.accessToken].join(" "),
-    "x-tenant-id": session.tenantId,
+    ...(tenantId ? { "x-tenant-id": tenantId } : {}),
     ...(branchId ? { "x-branch-id": branchId } : {}),
   };
 }
