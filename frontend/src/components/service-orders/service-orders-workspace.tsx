@@ -5,8 +5,9 @@ import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState 
 import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
-import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
+import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
+import { applyOsListFilters, buildOsExcelCsv } from "@/components/service-orders/os-list";
 import {
   addServiceOrderItemGridRow,
   buildCreateServiceOrderItemsPayload,
@@ -133,8 +134,6 @@ export function ServiceOrdersWorkspace() {
   const canWriteCustomers = hasAnyPermission("customers.write");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
-  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("service-orders.searchQuery", "");
-  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("service-orders.statusFilter", "");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -150,17 +149,6 @@ export function ServiceOrdersWorkspace() {
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
   const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const canPersistInContext = Boolean(session?.tenantId && session?.activeBranchId);
-
-  const filteredOrders = useMemo(() => {
-    const normalized = searchQuery.trim().toLowerCase();
-    return orders.filter((order) => {
-      if (statusFilter && order.status !== statusFilter) return false;
-      if (!normalized) return true;
-      return [order.orderNo, order.deliveryType, order.operationalPriority ?? "", order.status].some((value) =>
-        value.toLowerCase().includes(normalized),
-      );
-    });
-  }, [orders, searchQuery, statusFilter]);
 
   const selectedOrder = details?.serviceOrder ?? null;
   const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
@@ -395,7 +383,7 @@ export function ServiceOrdersWorkspace() {
   }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
   const openServiceOrderWorkspace = useCallback(
-    (order: ServiceOrderRecord) => {
+    (order: { id: string; orderNo: string; deliveryType?: string }) => {
       const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}`;
       if (isMobile) {
         navigateWithinWorkspace(targetPath);
@@ -591,11 +579,13 @@ export function ServiceOrdersWorkspace() {
 
   return (
     <>
-      <section className="hero-card">
-        <div className="eyebrow">Operações</div>
-        <h1 className="title">Service Orders</h1>
-        <p>Estrutura operacional com contexto herdado de Company/Branch, Order Header e editable Items Grid no mesmo fluxo ANEXSYS.</p>
-      </section>
+      {!isListWorkspace ? (
+        <section className="hero-card">
+          <div className="eyebrow">Operações</div>
+          <h1 className="title">{showCreateForm ? "Nova OS" : selectedOrder ? `OS #${selectedOrder.orderNo}` : "Ordem de serviço"}</h1>
+          <p>Estrutura operacional com contexto herdado de Company/Branch, Order Header e editable Items Grid no mesmo fluxo ANEXSYS.</p>
+        </section>
+      ) : null}
 
       {message ? (
         <section className="mini-card">
@@ -603,84 +593,81 @@ export function ServiceOrdersWorkspace() {
         </section>
       ) : null}
 
-      <section className="workspace-split">
-        {isListWorkspace ? (
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Operational grid</h3>
-                <p>{loading ? "Loading…" : `${filteredOrders.length} Service Order(s) visible`}</p>
-              </div>
-              {canWrite ? (
-                <button className="button" onClick={openCreateWorkspace} type="button">
-                  Add
-                </button>
-              ) : null}
-            </div>
-
-            <div className="filters-grid">
-              <label className="field">
-                <span>Buscar</span>
-                <SearchAutocomplete
-                  canCreate={canWrite}
-                  onChange={setSearchQuery}
-                  onCreate={() => openCreateWorkspace()}
-                  options={orderLookupOptions}
-                  placeholder="Número, status ou prioridade"
-                  value={searchQuery}
-                />
-              </label>
-              <label className="field">
-                <span>Status</span>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="">All</option>
-                  <option value="open">Open</option>
-                  <option value="approved">Approved</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="data-table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Service Order</th>
-                    <th>Delivery</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id} onClick={() => openServiceOrderWorkspace(order)}>
-                      <td>
-                        <strong>{order.orderNo}</strong>
-                        <div className="table-subtle">
-                          {order.deliveryType}
-                          {order.operationalPriority ? ` · ${order.operationalPriority}` : ""}
-                        </div>
-                      </td>
-                      <td>{formatDate(order.promisedDeliveryDate)}</td>
-                      <td>
-                        <span className={`status-chip status-chip--${order.status === "cancelled" ? "inactive" : "active"}`}>{order.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                  {!loading && filteredOrders.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>
-                        <div className="empty-state">No Service Orders found for the current filters.</div>
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        ) : null}
+      {isListWorkspace ? (
+        <CadastroListPanel
+          applyFilters={applyOsListFilters}
+          buildExcelCsv={buildOsExcelCsv}
+          canWrite={canWrite}
+          columnStorageKey="anexsys.frontend.os.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "OS",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.orderNo}</strong>
+                  <div className="table-subtle">
+                    {row.deliveryType}
+                    {row.operationalPriority ? ` · ${row.operationalPriority}` : ""}
+                  </div>
+                </>
+              ),
+            },
+            { id: "delivery", label: "Entrega", render: (row) => formatDate(row.promisedDeliveryDate) },
+            { id: "type", label: "Tipo", render: (row) => row.deliveryType },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => (
+                <span className={`status-chip status-chip--${row.status === "cancelled" ? "inactive" : "active"}`}>{row.status}</span>
+              ),
+            },
+            { id: "value", label: "Valor", render: (row) => row.totalValue ?? "—" },
+          ]}
+          defaultColumnIds={["name", "delivery", "status"]}
+          emptyFilters={{ name: "", status: "", deliveryType: "" }}
+          emptyMessage="Nenhuma OS encontrada para os filtros informados."
+          excelFileName="ordens-de-servico.csv"
+          filterFields={[
+            { id: "name", label: "Número", lookup: true, placeholder: "Número já cadastrado" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "open", label: "Aberta" },
+                { value: "approved", label: "Aprovada" },
+                { value: "cancelled", label: "Cancelada" },
+              ],
+            },
+            {
+              id: "deliveryType",
+              kind: "select",
+              label: "Tipo de entrega",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "Standard", label: "Standard" },
+                { value: "Priority", label: "Priority" },
+                { value: "Express", label: "Express" },
+              ],
+            },
+          ]}
+          loading={loading}
+          onCreate={openCreateWorkspace}
+          onEdit={openServiceOrderWorkspace}
+          records={orders}
+          rowLabel={(row) => row.orderNo}
+          searchKey="name"
+          searchOptions={orderLookupOptions}
+          searchPlaceholder="Buscar por número"
+          title="Ordens de serviço"
+        />
+      ) : null}
 
         {!isListWorkspace ? (
-        <article className="mini-card">
+        <article className="mini-card cadastro-form">
           <div className="workspace-toolbar">
             <div className="workspace-toolbar__copy">
               <h3>{showCreateForm ? "Create Service Order" : selectedOrder ? "Service Order Header + Items Grid" : "Service Order form"}</h3>
@@ -976,7 +963,6 @@ export function ServiceOrdersWorkspace() {
           )}
         </article>
         ) : null}
-      </section>
     </>
   );
 }

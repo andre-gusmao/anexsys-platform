@@ -1010,6 +1010,40 @@ textarea {
   background: #fff;
 }
 
+.cadastro-form,
+.mini-card:has(.form-grid) {
+  background: var(--grid-zebra);
+  color: #111111;
+  border: 1px solid var(--grid-accent);
+  box-shadow: none;
+}
+
+.cadastro-form h3,
+.cadastro-form h4,
+.cadastro-form p,
+.cadastro-form .subtitle,
+.cadastro-form .form-section-title,
+.cadastro-form .field > span,
+.cadastro-form .workspace-toolbar__copy p,
+.mini-card:has(.form-grid) h3,
+.mini-card:has(.form-grid) h4,
+.mini-card:has(.form-grid) p,
+.mini-card:has(.form-grid) .subtitle,
+.mini-card:has(.form-grid) .form-section-title,
+.mini-card:has(.form-grid) .field > span,
+.mini-card:has(.form-grid) .workspace-toolbar__copy p {
+  color: #111111;
+}
+
+.cadastro-form input,
+.cadastro-form select,
+.cadastro-form textarea,
+.mini-card:has(.form-grid) input,
+.mini-card:has(.form-grid) select,
+.mini-card:has(.form-grid) textarea {
+  background: #fff;
+}
+
 .data-table__check {
   width: 44px;
   text-align: center;

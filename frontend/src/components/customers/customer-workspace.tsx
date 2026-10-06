@@ -903,7 +903,7 @@ export function CustomerWorkspace() {
         {!isListWorkspace ? (
         <div className="workspace-stack">
           {showCreateForm ? (
-            <article className="mini-card">
+            <article className="mini-card cadastro-form">
               <h3>Novo cliente</h3>
               <p className="subtitle">Cadastre o cliente uma única vez no tenant e mantenha o endereço completo para uso operacional futuro.</p>
               <form className="form-grid" onSubmit={handleCreateCustomer}>
@@ -964,7 +964,7 @@ export function CustomerWorkspace() {
           ) : null}
 
           {!showCreateForm ? (
-            <article className="mini-card">
+            <article className="mini-card cadastro-form">
               <div className="workspace-toolbar">
                 <div className="workspace-toolbar__copy">
                   <h3>Detalhes do cliente</h3>

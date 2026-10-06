@@ -384,7 +384,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
         ) : null}
 
         {canWrite && isFormWorkspace ? (
-          <article className="mini-card" id="measurement-master-create-form">
+          <article className="mini-card cadastro-form" id="measurement-master-create-form">
             <h3>Novo cadastro</h3>
             <form className="form-grid" onSubmit={handleCreate}>
               {mode === "units" ? (

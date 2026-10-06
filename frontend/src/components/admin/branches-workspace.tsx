@@ -1,10 +1,13 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { applyFilialListFilters, buildFilialExcelCsv, filialStatusLabel } from "@/components/admin/filial-list";
+import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
-import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
+import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 
@@ -65,16 +68,19 @@ function mapBranchToForm(branch: BranchRecord): BranchForm {
 }
 
 export function BranchesWorkspace() {
-  const { hasAnyPermission, apiJson, session, selectEmpresa } = useSession();
+  const searchParams = useWorkspaceSearchParams();
+  const { isMobile } = useWorkspaceViewportMode();
+  const { hasAnyPermission, apiJson, session } = useSession();
   const activeEmpresaId = session?.activeEmpresaId ?? null;
   const empresas = session?.empresas ?? [];
   const activeEmpresa = empresas.find((empresa) => empresa.id === activeEmpresaId) ?? null;
   const canRead = hasAnyPermission("branches.read");
   const canWrite = hasAnyPermission("branches.write");
+  const workspaceMode = searchParams.get("workspaceMode");
+  const focusBranchId = searchParams.get("focusBranchId");
+  const prefillName = searchParams.get("prefillName") ?? "";
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [children, setChildren] = useState<ChildRecord[]>([]);
-  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("branches.searchQuery", "");
-  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("branches.statusFilter", "");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -86,30 +92,22 @@ export function BranchesWorkspace() {
   const [hours, setHours] = useState<{ timezone: string; days: HoursDay[] } | null>(null);
   const [hoursSaving, setHoursSaving] = useState(false);
 
-  const filteredBranches = useMemo(() => {
-    const normalized = searchQuery.trim().toLowerCase();
-    return branches.filter((branch) => {
-      if (statusFilter && branch.status !== statusFilter) return false;
-      if (!normalized) return true;
-      return [branch.code, branch.legalName, branch.displayName, branch.businessCalendarName ?? ""].some((value) =>
-        value.toLowerCase().includes(normalized),
-      );
-    });
-  }, [branches, searchQuery, statusFilter]);
-
   const branchLookupOptions = useMemo<SmartLookupOption[]>(
     () =>
       branches.map((branch) => ({
         id: branch.id,
         label: branch.displayName,
-        hint: `${branch.code} · ${branch.status}`,
+        hint: `${branch.code} · ${filialStatusLabel(branch.status)}`,
       })),
     [branches],
   );
 
   const activeBranch = useMemo(() => branches.find((branch) => branch.id === activeBranchId) ?? null, [activeBranchId, branches]);
-  useWorkspaceRegistration({
-    label: activeBranch ? `Filial: ${activeBranch.displayName}` : "Filiais",
+  const isFormWorkspace = workspaceMode === "new" || Boolean(focusBranchId);
+  const isListWorkspace = !isFormWorkspace;
+  const { closeWorkspace } = useWorkspaceManager();
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+    label: showCreateForm ? "Filial: Nova" : activeBranch ? `Filial: ${activeBranch.displayName}` : "Filiais",
     subtitle: showCreateForm ? "Novo cadastro" : activeBranch?.code ?? null,
   });
 
@@ -151,19 +149,7 @@ export function BranchesWorkspace() {
     try {
       const path = activeEmpresaId ? `/branches?companyId=${encodeURIComponent(activeEmpresaId)}` : "/branches";
       const records = await apiJson<BranchRecord[]>(path);
-      const resolvedActiveBranch =
-        records.find((branch) => branch.id === activeBranchId) ??
-        records[0] ??
-        null;
       setBranches(records);
-      setActiveBranchId(resolvedActiveBranch?.id ?? null);
-      if (!showCreateForm && resolvedActiveBranch) {
-        setForm(mapBranchToForm(resolvedActiveBranch));
-        void loadChildren(resolvedActiveBranch.id);
-        void loadHours(resolvedActiveBranch.id);
-      } else {
-        setChildren([]);
-      }
       setMessage(null);
       setDependencyValidation(null);
     } catch (error) {
@@ -171,7 +157,7 @@ export function BranchesWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [activeBranchId, activeEmpresaId, apiJson, canRead, loadChildren, loadHours, setActiveBranchId, setBranches, setForm, setMessage, showCreateForm]);
+  }, [activeEmpresaId, apiJson, canRead, setBranches, setMessage]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -179,6 +165,99 @@ export function BranchesWorkspace() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadBranches]);
+
+  const openCreateForm = useCallback(
+    (name?: string) => {
+      setShowCreateForm(true);
+      setActiveBranchId(null);
+      setChildren([]);
+      setHours(null);
+      setForm({
+        ...emptyForm(),
+        companyId: activeEmpresaId ?? "",
+        displayName: name?.trim() ?? "",
+        legalName: name?.trim() ?? "",
+      });
+    },
+    [activeEmpresaId, setActiveBranchId, setForm, setShowCreateForm],
+  );
+
+  const openCreateWorkspace = useCallback(
+    (name?: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (name?.trim()) {
+        params.set("prefillName", name.trim());
+      }
+      const targetPath = `/admin/branches?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, "Filial: Nova", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openEditWorkspace = useCallback(
+    (branch: Pick<BranchRecord, "id" | "displayName" | "code">) => {
+      const targetPath = `/admin/branches?focusBranchId=${encodeURIComponent(branch.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, `Filial: ${branch.displayName}`, {
+        cloneCurrent: false,
+        subtitle: branch.code,
+      });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const closeFormWorkspace = useCallback(() => {
+    if (!currentTabId || isMobile) {
+      navigateWithinWorkspace("/admin/branches");
+      return;
+    }
+    const closingTabId = currentTabId;
+    openWorkspaceInNewTab("/admin/branches", "Filiais", { cloneCurrent: false });
+    window.setTimeout(() => {
+      closeWorkspace(closingTabId);
+    }, 0);
+  }, [closeWorkspace, currentTabId, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
+
+  useEffect(() => {
+    if (workspaceMode !== "new") {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      openCreateForm(prefillName);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [openCreateForm, prefillName, workspaceMode]);
+
+  useEffect(() => {
+    if (!focusBranchId || workspaceMode === "new") {
+      return;
+    }
+    const branch = branches.find((item) => item.id === focusBranchId);
+    if (!branch) {
+      return;
+    }
+    setShowCreateForm(false);
+    setActiveBranchId(branch.id);
+    setForm(mapBranchToForm(branch));
+    void loadChildren(branch.id);
+    void loadHours(branch.id);
+  }, [branches, focusBranchId, loadChildren, loadHours, setActiveBranchId, setForm, setShowCreateForm, workspaceMode]);
+
+  useEffect(() => {
+    if (!isListWorkspace) {
+      return;
+    }
+    setShowCreateForm(false);
+    setActiveBranchId(null);
+  }, [isListWorkspace, setActiveBranchId, setShowCreateForm]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -202,6 +281,7 @@ export function BranchesWorkspace() {
       setActiveBranchId(created.id);
       setForm(mapBranchToForm(created));
       setShowCreateForm(false);
+      navigateWithinWorkspace(`/admin/branches?focusBranchId=${encodeURIComponent(created.id)}`);
       setMessage("Filial criada com sucesso.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "A filial não pôde ser criada.");
@@ -274,15 +354,17 @@ export function BranchesWorkspace() {
 
   return (
     <>
-      <section className="hero-card">
-        <div className="eyebrow">Administração</div>
-        <h1 className="title">Filiais</h1>
-        <p>
-          A Filial pertence a uma Empresa. Clientes e medidas são da Conta e aparecem em todas as Empresas. Troque a
-          Empresa no contexto ao lado para ver e cadastrar as filiais dela
-          {activeEmpresa ? ` (${empresaLabel(activeEmpresa)})` : ""}.
-        </p>
-      </section>
+      {!isListWorkspace ? (
+        <section className="hero-card">
+          <div className="eyebrow">Administração</div>
+          <h1 className="title">{showCreateForm ? "Nova filial" : activeBranch ? activeBranch.displayName : "Filial"}</h1>
+          <p>
+            A Filial pertence a uma Empresa. Clientes e medidas são da Conta e aparecem em todas as Empresas. Troque a
+            Empresa no contexto ao lado para ver e cadastrar as filiais dela
+            {activeEmpresa ? ` (${empresaLabel(activeEmpresa)})` : ""}.
+          </p>
+        </section>
+      ) : null}
 
       {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
@@ -292,164 +374,71 @@ export function BranchesWorkspace() {
         </section>
       ) : null}
 
-      <section className="workspace-split">
-        <article className="mini-card">
-          <div className="workspace-toolbar">
-            <div className="workspace-toolbar__copy">
-              <h3>Grade operacional</h3>
-              <p>{loading ? "Carregando…" : `${filteredBranches.length} filial(is) visível(is)`}</p>
-            </div>
-            {canWrite ? (
-              <button
-                className="button"
-                onClick={() => {
-                  setShowCreateForm(true);
-                  setForm({ ...emptyForm(), companyId: activeEmpresaId ?? "" });
-                }}
-                type="button"
-              >
-                Nova filial
-              </button>
-            ) : null}
-          </div>
-
-          <div className="filters-grid">
-            <label className="field">
-              <span>Pesquisar</span>
-              <SearchAutocomplete
-                canCreate={canWrite}
-                onChange={setSearchQuery}
-                onCreate={(name) => {
-                  setShowCreateForm(true);
-                  setForm({ ...emptyForm(), companyId: activeEmpresaId ?? "", displayName: name, legalName: name });
-                }}
-                options={branchLookupOptions}
-                placeholder="Código, nome ou calendário"
-                value={searchQuery}
-              />
-            </label>
-            {empresas.length > 0 ? (
-              <label className="field">
-                <span>Empresa</span>
-                <select
-                  value={activeEmpresaId ?? ""}
-                  onChange={(event) => {
-                    if (event.target.value) {
-                      void selectEmpresa(event.target.value);
-                    }
-                  }}
-                >
-                  {!activeEmpresaId ? <option value="">Selecione a Empresa</option> : null}
-                  {empresas.map((empresa) => (
-                    <option key={empresa.id} value={empresa.id}>
-                      {empresaLabel(empresa)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <label className="field">
-              <span>Status</span>
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="">Todos</option>
-                <option value="active">Ativas</option>
-                <option value="inactive">Inativas</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Filial</th>
-                  <th>Status</th>
-                  <th>Calendário</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBranches.map((branch) => (
-                  <tr
-                    key={branch.id}
-                    className={branch.id === activeBranchId ? "data-table__row--active" : undefined}
-                    onClick={() => {
-                      setActiveBranchId(branch.id);
-                      setShowCreateForm(false);
-                      setForm(mapBranchToForm(branch));
-                      void loadChildren(branch.id);
-                    }}
-                  >
-                    <td>
-                      <strong>{branch.displayName}</strong>
-                      <div className="table-subtle">
-                        {branch.code} · {branch.legalName}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`status-chip status-chip--${branch.status}`}>{branch.status}</span>
-                    </td>
-                    <td>{branch.businessCalendarName ?? "—"}</td>
-                  </tr>
-                ))}
-                {!loading && filteredBranches.length === 0 ? (
-                  <tr>
-                    <td colSpan={3}>
-                      <div className="empty-state">Nenhuma filial encontrada.</div>
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </article>
-
-        <article className="mini-card">
-          <div className="workspace-toolbar__copy">
-            <h3>{showCreateForm ? "Criar filial" : "Visualizar / editar"}</h3>
-            <p>{showCreateForm ? "Cadastre uma nova filial sem trocar de tela." : "Selecione uma filial para ver e editar os detalhes."}</p>
-          </div>
-
-          {showCreateForm ? (
-            <form className="form-grid" onSubmit={handleCreate}>
-              <BranchFormFields
-                branches={branches}
-                canCreate={canWrite}
-                empresas={empresas}
-                form={form}
-                saving={saving}
-                setBranches={setBranches}
-                setForm={setForm}
-                setMessage={setMessage}
-              />
-              <div className="button-row">
-                <button className="button" disabled={saving} type="submit">
-                  {saving ? "Salvando…" : "Salvar filial"}
-                </button>
-                <button className="button-secondary" onClick={() => setShowCreateForm(false)} type="button">
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          ) : activeBranch ? (
-            <div className="detail-stack">
-              <div className="detail-grid">
-                <div className="detail-field">
-                  <span>Status</span>
-                  <strong>{activeBranch.status}</strong>
-                </div>
-                <div className="detail-field">
-                  <span>Código</span>
-                  <strong>{activeBranch.code}</strong>
-                </div>
-                <div className="detail-field">
-                  <span>Filiais filhas</span>
-                  <strong>{detailLoading ? "Carregando…" : children.length}</strong>
-                </div>
-              </div>
-
-              <form className="form-grid" onSubmit={handleUpdate}>
+      {isListWorkspace ? (
+        <CadastroListPanel
+          applyFilters={applyFilialListFilters}
+          buildExcelCsv={buildFilialExcelCsv}
+          canWrite={canWrite}
+          columnStorageKey="anexsys.frontend.filiais.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "Filial",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.displayName}</strong>
+                  <div className="table-subtle">
+                    {row.code} · {row.legalName}
+                  </div>
+                </>
+              ),
+            },
+            { id: "code", label: "Código", render: (row) => row.code },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => <span className={`status-chip status-chip--${row.status}`}>{filialStatusLabel(row.status)}</span>,
+            },
+            { id: "calendar", label: "Calendário", render: (row) => row.businessCalendarName ?? "—" },
+            { id: "default", label: "Padrão", render: (row) => (row.isDefault ? "Sim" : "Não") },
+          ]}
+          defaultColumnIds={["name", "code", "status", "calendar"]}
+          emptyFilters={{ name: "", code: "", status: "" }}
+          emptyMessage="Nenhuma filial encontrada para os filtros informados."
+          excelFileName="filiais.csv"
+          filterFields={[
+            { id: "name", label: "Nome", lookup: true, placeholder: "Nome já cadastrado" },
+            { id: "code", label: "Código" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "active", label: "Ativas" },
+                { value: "inactive", label: "Inativas" },
+              ],
+            },
+          ]}
+          loading={loading}
+          onCreate={openCreateWorkspace}
+          onEdit={openEditWorkspace}
+          records={branches}
+          rowLabel={(row) => row.displayName}
+          searchKey="name"
+          searchOptions={branchLookupOptions}
+          searchPlaceholder="Buscar por nome"
+          title="Filiais"
+        />
+      ) : (
+        <section className="workspace-stack">
+          <article className="mini-card cadastro-form">
+            {showCreateForm ? (
+              <form className="form-grid" onSubmit={handleCreate}>
+                <h3>Nova filial</h3>
                 <BranchFormFields
-                  branches={branches.filter((branch) => branch.id !== activeBranch.id)}
+                  branches={branches}
                   canCreate={canWrite}
                   empresas={empresas}
                   form={form}
@@ -459,80 +448,125 @@ export function BranchesWorkspace() {
                   setMessage={setMessage}
                 />
                 <div className="button-row">
-                  <button className="button" disabled={saving || !canWrite} type="submit">
-                    {saving ? "Salvando…" : "Salvar alterações"}
+                  <button className="button" disabled={saving} type="submit">
+                    {saving ? "Salvando…" : "Salvar filial"}
                   </button>
-                  <button
-                    className="button-secondary"
-                    disabled={saving || !canWrite || activeBranch.status === "active"}
-                    onClick={() => void handleStatus("activate")}
-                    type="button"
-                  >
-                    Ativar
-                  </button>
-                  <button
-                    className="button-secondary"
-                    disabled={saving || !canWrite || activeBranch.status === "inactive"}
-                    onClick={() => void handleStatus("deactivate")}
-                    type="button"
-                  >
-                    Desativar
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                    Cancelar
                   </button>
                 </div>
               </form>
-
-              <BranchHoursEditor
-                canWrite={canWrite}
-                hours={hours}
-                saving={hoursSaving}
-                onChange={setHours}
-                onSave={async () => {
-                  if (!activeBranch || !hours) return;
-                  setHoursSaving(true);
-                  setMessage(null);
-                  try {
-                    const saved = await apiJson<{ timezone: string; days: HoursDay[] }>(`/branches/${activeBranch.id}/operating-hours`, {
-                      method: "PUT",
-                      body: JSON.stringify(hours),
-                    });
-                    setHours({
-                      timezone: saved.timezone || hours.timezone,
-                      days: saved.days.map((day) => ({
-                        ...day,
-                        opensAt: day.opensAt?.slice(0, 5) ?? null,
-                        closesAt: day.closesAt?.slice(0, 5) ?? null,
-                        cutoffAt: day.cutoffAt?.slice(0, 5) ?? null,
-                      })),
-                    });
-                    setMessage("Horário e hora de corte da Filial atualizados.");
-                  } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "O horário não pôde ser salvo.");
-                  } finally {
-                    setHoursSaving(false);
-                  }
-                }}
-              />
-
-              <div className="mini-section">
-                <h4>Subfiliais</h4>
-                {children.length > 0 ? (
-                  <div className="token-list">
-                    {children.map((child) => (
-                      <span className="token-pill" key={child.id}>
-                        {child.displayName} · {child.code}
-                      </span>
-                    ))}
+            ) : activeBranch ? (
+              <div className="detail-stack">
+                <h3>{activeBranch.displayName}</h3>
+                <div className="detail-grid">
+                  <div className="detail-field">
+                    <span>Status</span>
+                    <strong>{filialStatusLabel(activeBranch.status)}</strong>
                   </div>
-                ) : (
-                  <div className="empty-state">Nenhuma subfilial vinculada.</div>
-                )}
+                  <div className="detail-field">
+                    <span>Código</span>
+                    <strong>{activeBranch.code}</strong>
+                  </div>
+                  <div className="detail-field">
+                    <span>Filiais filhas</span>
+                    <strong>{detailLoading ? "Carregando…" : children.length}</strong>
+                  </div>
+                </div>
+
+                <form className="form-grid" onSubmit={handleUpdate}>
+                  <BranchFormFields
+                    branches={branches.filter((branch) => branch.id !== activeBranch.id)}
+                    canCreate={canWrite}
+                    empresas={empresas}
+                    form={form}
+                    saving={saving}
+                    setBranches={setBranches}
+                    setForm={setForm}
+                    setMessage={setMessage}
+                  />
+                  <div className="button-row">
+                    <button className="button" disabled={saving || !canWrite} type="submit">
+                      {saving ? "Salvando…" : "Salvar alterações"}
+                    </button>
+                    <button
+                      className="button-secondary"
+                      disabled={saving || !canWrite || activeBranch.status === "active"}
+                      onClick={() => void handleStatus("activate")}
+                      type="button"
+                    >
+                      Ativar
+                    </button>
+                    <button
+                      className="button-secondary"
+                      disabled={saving || !canWrite || activeBranch.status === "inactive"}
+                      onClick={() => void handleStatus("deactivate")}
+                      type="button"
+                    >
+                      Desativar
+                    </button>
+                    <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                      Voltar para a lista
+                    </button>
+                  </div>
+                </form>
+
+                <BranchHoursEditor
+                  canWrite={canWrite}
+                  hours={hours}
+                  saving={hoursSaving}
+                  onChange={setHours}
+                  onSave={async () => {
+                    if (!activeBranch || !hours) return;
+                    setHoursSaving(true);
+                    setMessage(null);
+                    try {
+                      const saved = await apiJson<{ timezone: string; days: HoursDay[] }>(
+                        `/branches/${activeBranch.id}/operating-hours`,
+                        {
+                          method: "PUT",
+                          body: JSON.stringify(hours),
+                        },
+                      );
+                      setHours({
+                        timezone: saved.timezone || hours.timezone,
+                        days: saved.days.map((day) => ({
+                          ...day,
+                          opensAt: day.opensAt?.slice(0, 5) ?? null,
+                          closesAt: day.closesAt?.slice(0, 5) ?? null,
+                          cutoffAt: day.cutoffAt?.slice(0, 5) ?? null,
+                        })),
+                      });
+                      setMessage("Horário e hora de corte da Filial atualizados.");
+                    } catch (error) {
+                      setMessage(error instanceof Error ? error.message : "O horário não pôde ser salvo.");
+                    } finally {
+                      setHoursSaving(false);
+                    }
+                  }}
+                />
+
+                <div className="mini-section">
+                  <h4>Subfiliais</h4>
+                  {children.length > 0 ? (
+                    <div className="token-list">
+                      {children.map((child) => (
+                        <span className="token-pill" key={child.id}>
+                          {child.displayName} · {child.code}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">Nenhuma subfilial vinculada.</div>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="empty-state">Selecione uma filial na grade para visualizar os detalhes.</div>
-          )}
-        </article>
-      </section>
+            ) : (
+              <div className="empty-state">{loading ? "Carregando…" : "Filial não encontrada."}</div>
+            )}
+          </article>
+        </section>
+      )}
     </>
   );
 }

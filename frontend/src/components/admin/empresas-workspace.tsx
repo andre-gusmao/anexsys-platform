@@ -401,7 +401,7 @@ export function EmpresasWorkspace() {
         />
       ) : (
         <section className="workspace-stack">
-          <article className="mini-card">
+          <article className="mini-card cadastro-form">
             {showCreate ? (
               <form className="form-grid" onSubmit={handleCreate}>
                 <h3>Nova empresa</h3>
