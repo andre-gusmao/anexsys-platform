@@ -110,19 +110,6 @@ export function SearchAutocomplete({
             role="combobox"
             value={value}
           />
-          {showCreate ? (
-            <button
-              className="smart-lookup__create"
-              disabled={disabled}
-              onClick={() => {
-                onCreate?.(value.trim());
-                setOpen(false);
-              }}
-              type="button"
-            >
-              {createLabel}
-            </button>
-          ) : null}
         </div>
       </div>
       {open && value.trim() ? (
@@ -147,7 +134,23 @@ export function SearchAutocomplete({
               );
             })
           ) : (
-            <div className="smart-lookup__empty">{emptyMessage}</div>
+            <div className="smart-lookup__empty">
+              <p>{emptyMessage}</p>
+              {showCreate ? (
+                <button
+                  className="smart-lookup__create"
+                  disabled={disabled}
+                  onClick={() => {
+                    onCreate?.(value.trim());
+                    setOpen(false);
+                  }}
+                  onMouseDown={(event) => event.preventDefault()}
+                  type="button"
+                >
+                  {createLabel}
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
       ) : null}

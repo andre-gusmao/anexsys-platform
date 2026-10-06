@@ -170,12 +170,7 @@ export function SmartLookup({
             role="combobox"
             value={displayValue}
           />
-          {showCreate ? (
-            <button className="smart-lookup__create" disabled={disabled} onClick={openCreate} type="button">
-              {createLabel}
-            </button>
-          ) : null}
-          {allowClear && selected && !showCreate ? (
+          {allowClear && selected ? (
             <button className="smart-lookup__clear" disabled={disabled} onClick={() => onChange(null)} type="button">
               Limpar
             </button>
@@ -205,7 +200,14 @@ export function SmartLookup({
               );
             })
           ) : (
-            <div className="smart-lookup__empty">{query.trim() ? emptyMessage : "Digite para ver sugestões."}</div>
+            <div className="smart-lookup__empty">
+              <p>{query.trim() ? emptyMessage : "Digite para ver sugestões."}</p>
+              {showCreate ? (
+                <button className="smart-lookup__create" disabled={disabled} onClick={openCreate} onMouseDown={(event) => event.preventDefault()} type="button">
+                  {createLabel}
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
       ) : null}

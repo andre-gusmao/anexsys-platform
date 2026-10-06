@@ -321,7 +321,7 @@ De cima para baixo:
 Em **busca, cadastro e movimentação** (OS incluída): o campo sugere registros já cadastrados enquanto se digita.
 
 - Se a lista sugerir, a atendente escolhe o item.
-- Se **não sugerir**, aparece **Cadastrar** **dentro da caixinha** do campo, para não quebrar o layout. O atalho abre o cadastro (aba interna, com o texto já preenchido).
+- Se **não sugerir**, a caixinha de “Nenhum registro encontrado” traz o botão **Cadastrar**. O atalho abre o cadastro (aba interna, com o texto já preenchido).
 - Vale para **todo campo que vem de outra tabela** (cliente na OS, filial, parte do corpo, unidade, etc.).
 
 ### Excluir e inativar
