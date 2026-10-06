@@ -21,6 +21,7 @@ import {
   setWorkspaceScopedState,
   upsertWorkspaceTab,
 } from '../../frontend/src/components/app-shell/workspace-manager-store';
+import { WORKSPACE_STORAGE_KEY } from '../../frontend/src/components/app-shell/workspace-storage';
 
 test('activates a workspace tab independently of the current route', () => {
   let store = createEmptyWorkspaceStore();
@@ -197,4 +198,8 @@ test('post-login landing on /dashboard creates Dashboard when it is missing', ()
     activeTabId: 'tab-empresas',
     createDashboard: true,
   });
+});
+
+test('workspace tabs use a new storage key so stale v1 tabs are ignored', () => {
+  assert.equal(WORKSPACE_STORAGE_KEY, 'anexsys.frontend.workspace-manager.v2');
 });

@@ -34,8 +34,8 @@ import {
   WORKSPACE_QUERY_PARAM,
 } from "@/components/app-shell/workspace-manager-store";
 import { useWorkspacePane } from "@/components/app-shell/workspace-pane";
+import { clearLegacyWorkspaceStores, WORKSPACE_STORAGE_KEY } from "@/components/app-shell/workspace-storage";
 
-const STORAGE_KEY = "anexsys.frontend.workspace-manager.v1";
 const DASHBOARD_PATH = "/dashboard";
 
 function isSingletonWorkspacePath(pathname: string) {
@@ -95,7 +95,8 @@ function readStore(): WorkspaceStore {
     return createEmptyWorkspaceStore();
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  clearLegacyWorkspaceStores();
+  const raw = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
   if (!raw) {
     return createEmptyWorkspaceStore();
   }
@@ -108,7 +109,7 @@ function readStore(): WorkspaceStore {
       stateByTabId: parsed.stateByTabId ?? {},
     });
   } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(WORKSPACE_STORAGE_KEY);
     return createEmptyWorkspaceStore();
   }
 }
@@ -118,7 +119,7 @@ function writeStore(store: WorkspaceStore) {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(store));
 }
 
 export function WorkspaceManagerProvider({ children }: Readonly<{ children: ReactNode }>) {
@@ -605,9 +606,11 @@ export function useWorkspaceScopedState<T>(scope: string, initialValue: T): [T, 
   const setPersistedValue = useCallback(
     (next: T | ((current: T) => T)) => {
       setValue((current) => {
-        const resolved = next instanceof Function ? next(current) : next;
+        const resolved = next instanceof Function ? (next as (value: T) => T)(current) : next;
         if (scopedTabId) {
-          writeScopedState(scope, resolved, scopedTabId);
+          queueMicrotask(() => {
+            writeScopedState(scope, resolved, scopedTabId);
+          });
         }
         return resolved;
       });

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { clearPersistedWorkspaceStore } from "@/components/app-shell/workspace-storage";
 import {
   branchesOfEmpresa,
   resolveActiveEmpresaId,
@@ -539,6 +540,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   const login = useCallback(
     async ({ email, password }: LoginInput) => {
       setErrorMessage(null);
+      clearPersistedWorkspaceStore();
       const loginEmail = email.trim().toLowerCase();
       const result = await requestJson<AuthResponse>("/auth/login/password", {
         method: "POST",
@@ -570,6 +572,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     }
 
     writeStoredSession(null);
+    clearPersistedWorkspaceStore();
     sessionRef.current = null;
     setSession(null);
     setStatus("anonymous");
@@ -680,29 +683,18 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     if (!currentSession) return;
 
     try {
-      const result = await authenticatedRequest<EmpresaResponse[]>(currentSession, "/companies", { method: "GET" }, { branchId: null });
-      const empresas = mapEmpresas(result.data);
-      const nextSession = {
-        ...currentSession,
-        accessToken: result.session.accessToken,
-        refreshToken: result.session.refreshToken,
-        sessionId: result.session.sessionId,
-        empresas,
-        activeEmpresaId: resolveActiveEmpresaId(
-          empresas,
-          currentSession.branches,
-          currentSession.activeBranchId,
-          preferredEmpresaId ?? currentSession.activeEmpresaId,
-        ),
-      };
-      sessionRef.current = nextSession;
-      setSession(nextSession);
+      const resolved = await hydrateSession(
+        currentSession,
+        undefined,
+        preferredEmpresaId ?? currentSession.activeEmpresaId,
+      );
+      sessionRef.current = resolved;
     } catch (error) {
       if (error instanceof HttpError && [401, 403].includes(error.status)) {
         throw error;
       }
     }
-  }, []);
+  }, [hydrateSession]);
 
   const hasAnyPermission = useCallback(
     (...permissions: string[]) => {

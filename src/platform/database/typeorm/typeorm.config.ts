@@ -1,7 +1,22 @@
+import { resolve } from 'node:path';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import { ensureSslModeRequire, resolveRemoteSsl } from '../postgres-url';
 import { typeOrmEntities } from './entities';
+
+function loadLocalEnvFile(): void {
+  const candidates = [resolve(process.cwd(), '.env'), resolve(__dirname, '../../../../.env')];
+  for (const filePath of candidates) {
+    try {
+      process.loadEnvFile(filePath);
+      return;
+    } catch {
+      // Sem .env: o Nest, o Render e o CI já injetam as variáveis no processo.
+    }
+  }
+}
+
+loadLocalEnvFile();
 
 export function buildTypeOrmOptions(): TypeOrmModuleOptions & PostgresConnectionOptions {
   const rawUrl = process.env.DATABASE_URL?.trim() || undefined;

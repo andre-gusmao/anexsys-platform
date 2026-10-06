@@ -6,8 +6,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+if [[ -f "$ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
+
 if [[ -z "${BOOTSTRAP_ADMIN_EMAIL:-}" || -z "${BOOTSTRAP_ADMIN_PASSWORD:-}" ]]; then
-  echo "Defina BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD antes de executar este script." >&2
+  echo "Defina BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD no .env (ou exporte-as) antes de executar este script." >&2
   exit 1
 fi
 
@@ -28,12 +35,7 @@ echo "Aguardando o PostgreSQL aceitar conexões..."
 node scripts/wait-for-postgres.cjs
 
 echo "Compilando o servidor..."
-if npx nest build; then
-  :
-else
-  echo "A compilação pelo Nest falhou neste ambiente; tentando tsc..."
-  npx tsc -p tsconfig.build.json
-fi
+npm run build
 
 echo "Aplicando migrações..."
 npm run migration:run
