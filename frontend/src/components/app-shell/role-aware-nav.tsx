@@ -101,7 +101,8 @@ const navSections: NavSection[] = [
 
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const { hasAnyPermission } = useSession();
-  const { currentTab, tabs, activateWorkspace, openWorkspaceFromMenu, openWorkspaceInNewTab } = useWorkspaceManager();
+  const { currentTab, tabs, activateWorkspace, closeWorkspace, openWorkspaceFromMenu, openWorkspaceInNewTab } =
+    useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
@@ -162,9 +163,12 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
                       {relatedTabs.map((tab) => {
                         const subActive = tab.id === currentTab?.id;
                         return (
-                          <li key={tab.id}>
+                          <li
+                            className={`nav-subitem${subActive ? " nav-subitem--active" : ""}`}
+                            key={tab.id}
+                          >
                             <button
-                              className={`nav-sublink${subActive ? " nav-sublink--active" : ""}`}
+                              className="nav-sublink"
                               onClick={() => {
                                 activateWorkspace(tab.id);
                                 onNavigate?.();
@@ -174,6 +178,18 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
                             >
                               <span>{tab.label}</span>
                               {tab.subtitle ? <small>{tab.subtitle}</small> : null}
+                            </button>
+                            <button
+                              aria-label={`Fechar ${tab.label}`}
+                              className="nav-sublink__close"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                closeWorkspace(tab.id);
+                              }}
+                              type="button"
+                            >
+                              ×
                             </button>
                           </li>
                         );
