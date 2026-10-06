@@ -20,12 +20,8 @@ export function AuthenticatedApp({ children }: Readonly<{ children: ReactNode }>
     }
   }, [router, status]);
 
-  if (status === "loading") {
-    return <div className="loading-state">Restoring session context…</div>;
-  }
-
-  if (status === "anonymous" || status === "company-selection" || status === "branch-selection" || !session) {
-    return <div className="loading-state">Redirecting…</div>;
+  if (status === "loading" || status === "anonymous" || status === "company-selection" || status === "branch-selection" || !session) {
+    return <div className="loading-state">Restaurando a sessão…</div>;
   }
 
   return (

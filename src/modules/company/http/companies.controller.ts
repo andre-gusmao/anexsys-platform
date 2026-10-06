@@ -10,14 +10,23 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { IsEmail, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator';
+import { Permissions } from 'src/platform/auth/permissions.decorator';
+import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
+import { normalizeRequestValue, PlatformRequest } from 'src/platform/http/request-context';
+import { CompanyService } from '../application/company/company.service';
 
 function hasText(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }
-import { Permissions } from 'src/platform/auth/permissions.decorator';
-import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
-import { PlatformRequest } from 'src/platform/http/request-context';
-import { CompanyService } from '../application/company/company.service';
+
+function requireTenantId(tenantId: string | null, request: PlatformRequest): string {
+  const resolved =
+    normalizeRequestValue(tenantId) ?? normalizeRequestValue(request.requestContext.authenticatedPrincipal?.tenantId);
+  if (!resolved) {
+    throw new BadRequestException('O contexto da Conta é obrigatório para o cadastro de empresas.');
+  }
+  return resolved;
+}
 
 class CompanyFiscalBody {
   @IsOptional()
@@ -113,11 +122,8 @@ export class CompaniesController {
 
   @Permissions('companies.read')
   @Get()
-  async list(@CurrentTenantId() tenantId: string | null) {
-    if (!tenantId) {
-      throw new BadRequestException('Tenant context is required.');
-    }
-    return this.companyService.listByTenant(tenantId);
+  async list(@CurrentTenantId() tenantId: string | null, @CurrentRequest() request: PlatformRequest) {
+    return this.companyService.listByTenant(requireTenantId(tenantId, request));
   }
 
   @Permissions('companies.write')
@@ -128,13 +134,15 @@ export class CompaniesController {
     @CurrentRequest() request: PlatformRequest,
   ) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant context is required.');
-    }
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
-    return this.companyService.create({ ...body, tenantId, actorUserId, createDefaultBranch: true });
+    return this.companyService.create({
+      ...body,
+      tenantId: requireTenantId(tenantId, request),
+      actorUserId,
+      createDefaultBranch: true,
+    });
   }
 
   @Permissions('companies.read')
@@ -142,11 +150,9 @@ export class CompaniesController {
   async getById(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
   ) {
-    if (!tenantId) {
-      throw new BadRequestException('Tenant context is required.');
-    }
-    return this.companyService.getById(companyId, tenantId);
+    return this.companyService.getById(companyId, requireTenantId(tenantId, request));
   }
 
   @Permissions('companies.write')
@@ -158,12 +164,9 @@ export class CompaniesController {
     @CurrentRequest() request: PlatformRequest,
   ) {
     const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant context is required.');
-    }
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
-    return this.companyService.update(companyId, tenantId, { ...body, actorUserId });
+    return this.companyService.update(companyId, requireTenantId(tenantId, request), { ...body, actorUserId });
   }
 }
