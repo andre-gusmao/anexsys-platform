@@ -69,7 +69,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 - Cada funcionário tem o leitor de QR no celular, cadastrado, e muda o status seguindo uma **ordem sem pular nem retroagir** (resposta 32: C, fluxo rígido). A reprovação é o único retorno previsto.
 - **Quem faz o quê:** costureiras (técnicas) fazem a produção; atendentes fazem medição, revisão e controle de qualidade. Só o papel responsável pela fase avança (resposta 31: B).
 - Reprovado: volta para a mesma técnica, se estiver escalada no dia, ou para outra; ao ler o QR a outra técnica **assume a refação**.
-- Quando a peça é produzida em tempo diferente, o André controla por **quantidade de peças da OS** (para dimensionar a grade de costureiros e contratar) e por **grau de dificuldade 1, 2, 3, 4** (para definir tempo médio).
+- Quando a peça é produzida em tempo diferente, o André controla por **quantidade de peças da OS** (para dimensionar a grade de costureiros e contratar) e por **grau de dificuldade 1, 2, 3, 4** (para definir tempo médio). O fluxo completo da **grade diária** (ativar o técnico do dia, comparecimento, contas a pagar e Pix) está na **seção 13**.
 - **Diaristas/terceiros (35 C)**: hoje se identificam anotando dia e hora na OS e em caderno. Querem log próprio (login) como **diário de bordo**, para saber o que produziram e para um **bônus por produtividade**. O diário de bordo deve mostrar a **descrição do serviço** de cada peça, como alternativa ao papel.
 
 ### Controle da unidade (pergunta 10)
@@ -329,7 +329,7 @@ Confirmado pelo André. **Não construir agora.** Fica no escopo para não esque
 
 O topo (hoje nome da sessão e Sair) vira acompanhamento para **atendente e gerente**, visível em qualquer aba:
 
-- **Técnicos do dia** — quem está em operação.
+- **Técnicos do dia** — quem está em operação (alimentado pela grade diária, abaixo).
 - **Concierge** — chegada dos clientes (versão futura; o piloto atual não tem fila).
 - **Alerta operacional** — fica vermelho se houver OS parada, produção atrasada ou prazo perto sem finalizar.
 - **Produtividade** — recorte do dia por técnico/costureira.
@@ -339,3 +339,16 @@ São **chips compactos**; o clique abre o detalhe. A regra do que é atraso mora
 ### Estilização para comercializar
 
 A paleta atual (ciano-turquesa e letras pretas) vale para o homologador. **Quando o ANEXSYS for vendido a outros ateliês**, precisa existir um **lugar de estilização** (identidade visual da Conta: cores, logo, faixa, menu, grade). O padrão de hoje é o tema inicial, não o único.
+
+### Grade diária de técnicos
+
+No questionário já existia o **dimensionamento** da equipe (quantidade de peças + grau de dificuldade), o **diário de bordo**, o login das diaristas e o dashboard de produtividade. **Não estava** o dia a dia de convocar, confirmar presença e pagar.
+
+Fluxo registrado em 06/10/2026:
+
+1. **Cadastro de prestador de serviço** — pessoa que trabalha para o ateliê. No cadastro: **cargo** (costureiro, gerente, atendente e assim por diante), **média de performance**, **valor contratado do dia** e dados para **Pix**. “Técnico” é o prestador convocado para produzir. O **papel** (permissão) continua sendo outro cadastro: recepção, atendente/medidor, produção, qualidade, gerente.
+2. **Grade diária** — escolhe o **dia** a analisar. O sistema mostra a **demanda futura** (OS, peças, dificuldade, prazo). O André **marca os técnicos** que vai convocar (eles aparecem de forma variável, conforme planejamento e demanda). Com os marcados, vê se **atende a demanda** ou se precisa chamar mais. Objetivo: contratar só as pessoas necessárias, otimizar o resultado e **garantir o prazo do cliente**.
+3. **Comparecimento** — no dia, confirma quem veio trabalhar.
+4. **Contas a pagar** — quem compareceu gera um título no **valor contratado**. Pagamento **no fim do dia via Pix**. Este Pix é **ao técnico**, não o QR Pix da OS do cliente (esse saiu na seção 11).
+
+Alimenta o chip **Técnicos do dia** da barra superior. Completa o “dimensionamento de grade” previsto no Ciclo 8. **Não construir agora.**

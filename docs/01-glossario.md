@@ -1,6 +1,6 @@
 # Glossário
 
-**Atualizado em:** 05/10/2026 (noite)
+**Atualizado em:** 06/10/2026
 **Substitui:** os termos espalhados pela documentação antiga (`docs/arquivo/`).
 
 Este glossário vale para as conversas, os documentos e as telas. A coluna "No código" ajuda quem abrir o programa, que usa nomes em inglês.
@@ -31,7 +31,12 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
 | **QR code** | Código impresso na Ordem de Produção. **Um por OS** (não por peça). O funcionário lê com o celular para mudar o status | `qr code` |
 | **Grau de dificuldade** | Nota de 1 a 4 definida **por serviço** (valor padrão no catálogo). A OS mostra a **maior**, e o atendente pode ajustar. Usada para estimar tempo médio e dimensionar a equipe | ainda não existe |
-| **Técnico / técnica** | Quem produz (costureira, diarista, terceiro). Tem **login próprio** | `operational resource` / `user` |
+| **Prestador de serviço** | Pessoa que trabalha para o ateliê (costureiro, gerente, atendente, diarista, terceiro). Cadastro com **cargo**, **média de performance**, **valor contratado do dia** e dados de **Pix**. Ver `docs/02-decisoes-do-andre.md` seção 13 | ainda não existe |
+| **Cargo** | Função do prestador no ateliê (costureiro, gerente, atendente…). Distinto do **papel**, que é o conjunto de permissões | ainda não existe |
+| **Técnico / técnica** | Prestador convocado para produzir (costureira, diarista, terceiro). Tem **login próprio** | `operational resource` / `user` |
+| **Grade diária** | Tela em que o gerente escolhe o dia, vê a demanda futura, marca quem vai trabalhar e confere se a equipe atende o prazo. Quem comparece gera **contas a pagar** e recebe **Pix** no fim do dia | ainda não existe |
+| **Comparecimento** | Confirmação de que o técnico marcado na grade veio trabalhar naquele dia | ainda não existe |
+| **Contas a pagar do técnico** | Título no valor contratado do dia, para quem compareceu. Pago via **Pix ao técnico** (não é o QR Pix da OS do cliente) | ainda não existe |
 | **Revisor** | Quem faz o controle de qualidade (hoje papel de atendente) | `user` |
 | **Diário de bordo** | Registro do que cada técnico produziu: OS, descrição do serviço, hora de início e fim, quantidade de peças e dificuldade. Substitui o caderno | ainda não existe |
 

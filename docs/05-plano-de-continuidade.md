@@ -555,7 +555,7 @@ Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você v
 
 **Objetivo:** acompanhar produção e produtividade pelo próprio sistema.
 
-**Feito:** D21. **Dashboard** por técnica, por quantidade de peças e dificuldade; **tempo médio** por grau (medido ou informado); **dimensionamento de grade**; **alertas de atraso** antes de vencer; **alerta de aprovação pendente** ao atendente; base do **bônus por produtividade** (regra de cálculo a definir).
+**Feito:** D21. **Dashboard** por técnica, por quantidade de peças e dificuldade; **tempo médio** por grau (medido ou informado); **dimensionamento de grade**; **alertas de atraso** antes de vencer; **alerta de aprovação pendente** ao atendente; base do **bônus por produtividade** (regra de cálculo a definir). A **grade diária** (ativar técnico, comparecimento, contas a pagar e Pix ao prestador) completa esse dimensionamento; está no escopo futuro em `docs/02-decisoes-do-andre.md` seção 13, **sem construir agora**.
 
 **Valida:** configura o alerta de "2 horas antes do prazo"; deixa uma OS atrasar e confere o alerta; confere que os **tempos médios por grau** (30, 60, 90 e 180 minutos) alimentam as estimativas e **muda um deles** na tela de parâmetros; compara o dashboard com o diário de bordo de um dia.
 
@@ -591,7 +591,7 @@ Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você v
 
 ### Depois do piloto (Ciclo 11 em diante)
 
-Entrega em domicílio completa (com a Guia de entrega, preço por faixa ou geolocalização, comprovante), retirada por terceiros, cobrança do ANEXSYS (D24), Pix QR (se não entrou), concierge com câmera e reconhecimento facial, segundo tipo de negócio, Stone e Rede.
+Entrega em domicílio completa (com a Guia de entrega, preço por faixa ou geolocalização, comprovante), retirada por terceiros, cobrança do ANEXSYS (D24), Pix QR do cliente (se não entrou; **não confundir** com o **Pix ao técnico** da grade diária), concierge com câmera e reconhecimento facial, segundo tipo de negócio, Stone e Rede. **Grade diária de técnicos** (cadastro de prestador, convocar, comparecimento, contas a pagar e Pix): ver `docs/02-decisoes-do-andre.md` seção 13.
 
 ---
 
