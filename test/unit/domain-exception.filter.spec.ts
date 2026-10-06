@@ -76,4 +76,16 @@ describe('DomainExceptionFilter', () => {
     assert.equal(result.statusCode, 500);
     assert.match(String((result.body as { message?: string }).message), /start:dev/);
   });
+
+  it('translates the tsx login limiter crash into a recoverable message', () => {
+    const { host, result } = createHost({ method: 'POST', url: '/api/v1/auth/login/password' });
+
+    new DomainExceptionFilter().catch(
+      new TypeError("Cannot read properties of undefined (reading 'assertAllowed')"),
+      host as never,
+    );
+
+    assert.equal(result.statusCode, 500);
+    assert.match(String((result.body as { message?: string }).message), /start:dev/);
+  });
 });

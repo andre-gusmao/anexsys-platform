@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -35,13 +35,21 @@ export interface UpdateUserDto {
 @Injectable()
 export class IdentityService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(UserIdentityRepository)
     private readonly userIdentityRepository: UserIdentityRepository,
+    @Inject(UserCredentialRepository)
     private readonly userCredentialRepository: UserCredentialRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(PasswordHasherService)
     private readonly passwordHasherService: PasswordHasherService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(UserContextPreferenceRepository)
     private readonly userContextPreferenceRepository: UserContextPreferenceRepository,
   ) {}
 

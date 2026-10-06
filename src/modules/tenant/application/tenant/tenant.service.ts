@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
@@ -14,8 +14,11 @@ import { TenantRepository } from '../../infrastructure/persistence/repositories/
 @Injectable()
 export class TenantService {
   constructor(
+    @Inject(TenantRepository)
     private readonly tenantRepository: TenantRepository,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 

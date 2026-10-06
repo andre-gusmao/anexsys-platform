@@ -564,7 +564,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
         const raw = error instanceof Error ? error.message : "";
         setStatus("anonymous");
         setErrorMessage(
-          /getAllAndOverride|internal server error/i.test(raw)
+          /getAllAndOverride|assertAllowed|internal server error/i.test(raw)
             ? "O servidor não concluiu o login. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente entrar de novo."
             : raw || "Não foi possível entrar.",
         );

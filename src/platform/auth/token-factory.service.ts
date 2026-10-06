@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 
@@ -29,7 +29,7 @@ export interface IssuedAuthTokens {
 
 @Injectable()
 export class TokenFactoryService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(@Inject(JwtService) private readonly jwtService: JwtService) {}
 
   async issueTokens(payload: Omit<AuthTokenPayload, 'sessionId'>, refreshTokenId: string = randomUUID()): Promise<IssuedAuthTokens> {
     const tokenPayload = { ...payload, sessionId: refreshTokenId };
