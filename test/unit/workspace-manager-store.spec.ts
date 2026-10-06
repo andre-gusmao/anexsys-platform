@@ -16,6 +16,7 @@ import {
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
+  resolveLandingWorkspaceTab,
   setActiveWorkspaceTab,
   setWorkspaceScopedState,
   upsertWorkspaceTab,
@@ -159,4 +160,41 @@ test('normalizing the store removes extra Dashboard tabs from localStorage', () 
     ['dash-1'],
   );
   assert.equal(store.activeTabId, 'dash-1');
+});
+
+test('post-login landing on /dashboard activates Dashboard instead of a persisted cadastro tab', () => {
+  const store = {
+    tabs: [
+      createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'tab-empresas', pathname: '/admin/companies', label: 'Empresas' }),
+    ],
+    activeTabId: 'tab-empresas',
+    stateByTabId: {},
+  };
+
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', null), {
+    activeTabId: 'tab-dashboard',
+    createDashboard: false,
+  });
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', 'tab-empresas'), {
+    activeTabId: 'tab-empresas',
+    createDashboard: false,
+  });
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/admin/companies', null), {
+    activeTabId: 'tab-empresas',
+    createDashboard: false,
+  });
+});
+
+test('post-login landing on /dashboard creates Dashboard when it is missing', () => {
+  const store = {
+    tabs: [createWorkspaceTab({ id: 'tab-empresas', pathname: '/admin/companies', label: 'Empresas' })],
+    activeTabId: 'tab-empresas',
+    stateByTabId: {},
+  };
+
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', null), {
+    activeTabId: 'tab-empresas',
+    createDashboard: true,
+  });
 });

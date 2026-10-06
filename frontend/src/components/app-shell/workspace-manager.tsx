@@ -25,6 +25,7 @@ import {
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
+  resolveLandingWorkspaceTab,
   setActiveWorkspaceTab,
   setWorkspaceScopedState,
   upsertWorkspaceTab,
@@ -163,10 +164,16 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
     }
 
     hydratedFromUrlRef.current = true;
-    if (urlTabId && storeRef.current.tabs.some((tab) => tab.id === urlTabId)) {
-      commitStore((current) => setActiveWorkspaceTab(current, urlTabId));
+    const landing = resolveLandingWorkspaceTab(storeRef.current, pathname, urlTabId);
+    if (landing.createDashboard) {
+      const dashboardTab = createWorkspaceTab({ id: createTabId(), pathname: DASHBOARD_PATH, label: "Dashboard" });
+      commitStore((current) => activateWorkspaceTab(current, dashboardTab));
+      return;
     }
-  }, [commitStore, storageReady, urlTabId]);
+    if (landing.activeTabId && landing.activeTabId !== storeRef.current.activeTabId) {
+      commitStore((current) => setActiveWorkspaceTab(current, landing.activeTabId));
+    }
+  }, [commitStore, pathname, storageReady, urlTabId]);
 
   const findSingletonTabByPath = useCallback((targetPathname: string) => {
     const normalizedPath = normalizeWorkspacePathname(targetPathname);

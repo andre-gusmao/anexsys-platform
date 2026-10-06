@@ -184,6 +184,27 @@ export function findWorkspaceTabByBasePath(tabs: WorkspaceTab[], pathname: strin
   return [...tabs].reverse().find((tab) => getWorkspaceBasePath(tab.pathname) === basePath);
 }
 
+export function resolveLandingWorkspaceTab(
+  store: WorkspaceStore,
+  currentPathname: string,
+  urlTabId: string | null,
+): { activeTabId: string | null; createDashboard: boolean } {
+  if (urlTabId && store.tabs.some((tab) => tab.id === urlTabId)) {
+    return { activeTabId: urlTabId, createDashboard: false };
+  }
+
+  if (!isDashboardWorkspacePath(currentPathname)) {
+    return { activeTabId: store.activeTabId, createDashboard: false };
+  }
+
+  const dashboardTab = findWorkspaceTabByBasePath(store.tabs, "/dashboard");
+  if (dashboardTab) {
+    return { activeTabId: dashboardTab.id, createDashboard: false };
+  }
+
+  return { activeTabId: store.activeTabId, createDashboard: true };
+}
+
 export function collapseDuplicateDashboardTabs(store: WorkspaceStore): WorkspaceStore {
   const dashboardTabs = store.tabs.filter(
     (tab) => isDashboardWorkspacePath(tab.pathname) && !tab.pathname.includes("?"),
