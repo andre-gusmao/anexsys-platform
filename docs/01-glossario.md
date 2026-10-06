@@ -72,6 +72,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Garantia de serviço** | **90 dias**, contados **da retirada**, para defeito de execução (descosturou, a barra se desfez), negociável no balcão |
 | **Grupo de OS** | OS ligadas pela divisão automática (mais de 5 peças): um só link, um só aviso e um só pagamento **[assumido]** |
 | **Divisão automática** | Quando a OS passa de 5 peças, o sistema cria uma segunda OS ligada à primeira |
+| **Sugestão de cadastro** | Nos campos de busca e nos que vêm de tabela, o sistema sugere o que já está cadastrado. Se não houver sugestão, aparece **Cadastrar** ao lado |
 | **Tela de parâmetros** | Tela onde o administrador altera as regras do sistema (graus e tempos, prazos, cortes, sobretaxas, status etc.), com histórico de quem mudou e quando |
 | **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |
 | **Estorno de cartão** | Devolução do pagamento feito na maquininha, pela operadora (Cielo). Só o gerente, com motivo. Não é o reembolso via Pix |

@@ -7,6 +7,7 @@ import {
   MasterDataDuplicateGuard,
   normalizeEmailValue,
 } from "@/components/ui/master-data-duplicate-guard";
+import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type BranchRecord = {
@@ -246,6 +247,19 @@ export function AccessWorkspace() {
     () => communities.filter((community) => matchesSearch([community.displayName, community.code, community.description], searchQuery)),
     [communities, searchQuery],
   );
+
+  const accessLookupOptions = useMemo<SmartLookupOption[]>(() => {
+    if (activeTab === "users") {
+      return users.map((user) => ({ id: user.id, label: user.displayName, hint: user.email }));
+    }
+    if (activeTab === "roles") {
+      return roles.map((role) => ({ id: role.id, label: role.displayName, hint: role.code }));
+    }
+    if (activeTab === "permissions") {
+      return permissions.map((permission) => ({ id: permission.id, label: permission.displayName, hint: permission.code }));
+    }
+    return communities.map((community) => ({ id: community.id, label: community.displayName, hint: community.code }));
+  }, [activeTab, communities, permissions, roles, users]);
 
   const activeUser = useMemo(() => users.find((record) => record.id === activeUserId) ?? null, [activeUserId, users]);
   const activeRole = useMemo(() => roles.find((record) => record.id === activeRoleId) ?? null, [activeRoleId, roles]);
@@ -718,7 +732,40 @@ export function AccessWorkspace() {
         <div className="filters-grid">
           <label className="field">
             <span>Pesquisar</span>
-            <input placeholder="Digite para localizar" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+            <SearchAutocomplete
+              canCreate={
+                activeTab === "users"
+                  ? canWriteUsers
+                  : activeTab === "roles"
+                    ? canWriteRoles
+                    : activeTab === "permissions"
+                      ? canWritePermissions
+                      : canWriteCommunities
+              }
+              onChange={setSearchQuery}
+              onCreate={(name) => {
+                if (activeTab === "users") {
+                  setShowCreateUser(true);
+                  setUserForm({ ...emptyUserForm(), displayName: name });
+                  return;
+                }
+                if (activeTab === "roles") {
+                  setShowCreateRole(true);
+                  setRoleForm({ ...emptyRoleForm(), displayName: name });
+                  return;
+                }
+                if (activeTab === "permissions") {
+                  setShowCreatePermission(true);
+                  setPermissionForm({ ...emptyPermissionForm(), displayName: name });
+                  return;
+                }
+                setShowCreateCommunity(true);
+                setCommunityForm({ ...emptyCommunityForm(), displayName: name });
+              }}
+              options={accessLookupOptions}
+              placeholder="Digite para localizar"
+              value={searchQuery}
+            />
           </label>
         </div>
       </section>
@@ -1416,7 +1463,7 @@ function UserFormFields({
         <SmartLookup
           allowClear
           canCreate={canQuickCreateBranch}
-          createLabel="Criar nova filial"
+          createLabel="Cadastrar"
           disabled={saving}
           entityType="branches"
           label="Filial padrão"

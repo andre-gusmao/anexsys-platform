@@ -258,6 +258,7 @@ export function CustomerWorkspace() {
   const focusCustomerId = searchParams.get("focusCustomerId");
   const focusSection = searchParams.get("focusSection");
   const workspaceMode = searchParams.get("workspaceMode");
+  const prefillName = searchParams.get("prefillName") ?? "";
 
   const [listQuery, setListQuery] = useWorkspaceScopedState("customers.listQuery", EMPTY_CUSTOMER_LIST_QUERY);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
@@ -437,12 +438,12 @@ export function CustomerWorkspace() {
     setDetailError(null);
   }, [isListWorkspace, setActiveCustomerId, setMeasurements, setProfile, setShowCreateForm]);
 
-  const openCreateCustomerForm = useCallback(() => {
+  const openCreateCustomerForm = useCallback((prefillName?: string) => {
     setShowCreateForm(true);
     setActiveCustomerId(null);
     setProfile(null);
     setMeasurements(null);
-    setCustomerForm(defaultCustomerForm());
+    setCustomerForm({ ...defaultCustomerForm(), fullName: prefillName?.trim() ?? "" });
     clearCustomerDuplicate();
     resetMeasurementForm();
   }, [clearCustomerDuplicate, resetMeasurementForm, setActiveCustomerId, setCustomerForm, setMeasurements, setProfile, setShowCreateForm]);
@@ -453,21 +454,29 @@ export function CustomerWorkspace() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      openCreateCustomerForm();
+      openCreateCustomerForm(prefillName);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [openCreateCustomerForm, workspaceMode]);
+  }, [openCreateCustomerForm, prefillName, workspaceMode]);
 
-  const openCreateCustomerWorkspace = useCallback(() => {
-    const targetPath = "/customers?workspaceMode=new";
-    if (isMobile) {
-      navigateWithinWorkspace(targetPath);
-      return;
-    }
+  const openCreateCustomerWorkspace = useCallback(
+    (prefillName?: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (prefillName?.trim()) {
+        params.set("prefillName", prefillName.trim());
+      }
+      const targetPath = `/customers?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
 
-    openWorkspaceInNewTab(targetPath, "Cliente: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
-  }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
+      openWorkspaceInNewTab(targetPath, "Cliente: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
 
   const openCustomerWorkspace = useCallback(
     (customer: CustomerRecord) => {
@@ -1117,7 +1126,7 @@ export function CustomerWorkspace() {
                               <div className="field">
                                 <SmartLookup
                                   canCreate={canWriteMeasurements}
-                                  createLabel="Criar nova parte do corpo"
+                                  createLabel="Cadastrar"
                                   entityType="body-parts"
                                   label="Parte do corpo"
                                   options={bodyPartLookupOptions}
@@ -1172,7 +1181,7 @@ export function CustomerWorkspace() {
                                 <SmartLookup
                                   allowClear
                                   canCreate={canWriteMeasurements}
-                                  createLabel="Criar nova unidade"
+                                  createLabel="Cadastrar"
                                   entityType="measurement-units"
                                   label={`Unidade (padrão ${catalog?.defaultUnitCode ?? "CM"})`}
                                   options={unitLookupOptions}

@@ -947,7 +947,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #fff;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .cadastro-search input {
@@ -1234,7 +1234,14 @@ textarea {
 
 .smart-lookup {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  position: relative;
+}
+
+.smart-lookup--compact {
+  gap: 0;
+  min-width: 0;
+  flex: 1;
 }
 
 .smart-lookup__label-row {
@@ -1248,7 +1255,8 @@ textarea {
 .smart-lookup__search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
 }
 
 .smart-lookup__search-row input {
@@ -1261,16 +1269,33 @@ textarea {
   padding: 0 14px;
 }
 
-.smart-lookup__selected {
-  color: var(--muted);
-  font-size: 13px;
+.smart-lookup--compact .smart-lookup__search-row input {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  padding: 0 12px;
 }
 
-.smart-lookup__options {
+.smart-lookup__dropdown {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
   display: grid;
-  gap: 8px;
-  max-height: 220px;
+  gap: 0;
+  max-height: 240px;
   overflow: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.smart-lookup__empty {
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .smart-lookup__option {
@@ -1278,10 +1303,15 @@ textarea {
   gap: 4px;
   text-align: left;
   padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
+  border: 0;
+  border-bottom: 1px solid var(--border);
   background: #fff;
   cursor: pointer;
+  border-radius: 0;
+}
+
+.smart-lookup__option:last-child {
+  border-bottom: 0;
 }
 
 .smart-lookup__option small {
@@ -1290,8 +1320,7 @@ textarea {
 
 .smart-lookup__option--active,
 .smart-lookup__option:hover {
-  border-color: var(--primary);
-  background: var(--primary-soft);
+  background: var(--grid-zebra);
 }
 
 .smart-lookup__quick-create {

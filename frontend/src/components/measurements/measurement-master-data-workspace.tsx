@@ -5,6 +5,7 @@ import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState 
 import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
+import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
 import {
   MasterDataDuplicateGuard,
   normalizeBodyPartCodeValue,
@@ -86,6 +87,16 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
       [record.displayName, "code" in record ? record.code : ""].some((value) => value.toLowerCase().includes(normalizedQuery)),
     );
   }, [records, searchQuery]);
+
+  const recordLookupOptions = useMemo(
+    () =>
+      records.map((record) => ({
+        id: record.id,
+        label: record.displayName,
+        hint: "code" in record ? record.code : undefined,
+      })),
+    [records],
+  );
 
   const loadRecords = useCallback(async () => {
     if (!canRead) {
@@ -278,7 +289,17 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
             <div className="filters-grid">
               <label className="field">
                 <span>Filtro</span>
-                <input placeholder={mode === "body-parts" ? "Buscar parte do corpo" : "Buscar código ou nome"} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+                <SearchAutocomplete
+                  canCreate={canWrite}
+                  onChange={setSearchQuery}
+                  onCreate={(name) => {
+                    setNewDisplayName(name);
+                    openCreateWorkspace();
+                  }}
+                  options={recordLookupOptions}
+                  placeholder={mode === "body-parts" ? "Buscar parte do corpo" : "Buscar código ou nome"}
+                  value={searchQuery}
+                />
               </label>
             </div>
 

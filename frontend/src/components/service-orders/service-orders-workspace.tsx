@@ -5,6 +5,7 @@ import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState 
 import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
+import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import {
   addServiceOrderItemGridRow,
@@ -129,6 +130,7 @@ export function ServiceOrdersWorkspace() {
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
+  const canWriteCustomers = hasAnyPermission("customers.write");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
   const [searchQuery, setSearchQuery] = useWorkspaceScopedState("service-orders.searchQuery", "");
@@ -163,7 +165,7 @@ export function ServiceOrdersWorkspace() {
   const selectedOrder = details?.serviceOrder ?? null;
   const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
   const { closeWorkspace } = useWorkspaceManager();
-  const { currentTabId, navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow, openWorkspaceInNewTab } = useWorkspaceRegistration({
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
     label: showCreateForm ? "OS: New" : selectedOrder ? `OS #${selectedOrder.orderNo}` : "Service Orders",
     subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
   });
@@ -190,7 +192,7 @@ export function ServiceOrdersWorkspace() {
         return;
       }
 
-      openWorkspaceInNewTab(targetPath, focusSection === "measurements" ? "Measurements" : "Customer", {
+      openWorkspaceInNewTab(targetPath, focusSection === "measurements" ? "Medidas" : "Cliente", {
         cloneCurrent: false,
       });
     },
@@ -214,6 +216,33 @@ export function ServiceOrdersWorkspace() {
 
     return options;
   }, [customers, details]);
+
+  const orderLookupOptions = useMemo<SmartLookupOption[]>(
+    () =>
+      orders.map((order) => ({
+        id: order.id,
+        label: order.orderNo,
+        hint: [order.status, order.deliveryType, order.operationalPriority].filter(Boolean).join(" · ") || undefined,
+      })),
+    [orders],
+  );
+
+  const openCreateCustomerFromLookup = useCallback(
+    (query: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (query.trim()) {
+        params.set("prefillName", query.trim());
+      }
+      const targetPath = `/customers?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, "Cliente: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
 
   const loadDetails = useCallback(
     async (serviceOrderId: string) => {
@@ -591,8 +620,15 @@ export function ServiceOrdersWorkspace() {
 
             <div className="filters-grid">
               <label className="field">
-                <span>Search</span>
-                <input placeholder="Number, status or priority" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+                <span>Buscar</span>
+                <SearchAutocomplete
+                  canCreate={canWrite}
+                  onChange={setSearchQuery}
+                  onCreate={() => openCreateWorkspace()}
+                  options={orderLookupOptions}
+                  placeholder="Número, status ou prioridade"
+                  value={searchQuery}
+                />
               </label>
               <label className="field">
                 <span>Status</span>
@@ -700,19 +736,25 @@ export function ServiceOrdersWorkspace() {
               <div className="field">
                 <SmartLookup
                   allowClear={false}
+                  canCreate={canWriteCustomers}
+                  createLabel="Cadastrar"
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder) || !canReadCustomers}
                   emptyMessage={
                     loadingCustomers
-                      ? "Loading customers…"
+                      ? "Carregando clientes…"
                       : canReadCustomers
-                        ? "No customers available."
-                        : "Customer lookup depends on Customers read permission."
+                        ? "Nenhum cliente encontrado."
+                        : "A busca de cliente depende da permissão de Clientes."
                   }
                   entityType="customers"
-                  label="Customer"
+                  label="Cliente"
                   onChange={(option) => setHeaderForm((current) => ({ ...current, customerId: option?.id ?? "" }))}
+                  onCreate={openCreateCustomerFromLookup}
+                  onOpen={() => {
+                    void loadCustomers();
+                  }}
                   options={customerLookupOptions}
-                  searchPlaceholder="Search and select customer"
+                  searchPlaceholder="Digite o nome do cliente"
                   value={headerForm.customerId}
                 />
                 <div className="button-row">
@@ -722,7 +764,7 @@ export function ServiceOrdersWorkspace() {
                     onClick={() => openRelatedCustomerWorkspace()}
                     type="button"
                   >
-                    Abrir Customer
+                    Abrir cliente
                   </button>
                   <button
                     className="button-secondary"
@@ -730,34 +772,8 @@ export function ServiceOrdersWorkspace() {
                     onClick={() => openRelatedCustomerWorkspace("measurements")}
                     type="button"
                   >
-                    Abrir Measurements
+                    Abrir medidas
                   </button>
-                  {!isMobile && selectedCustomerId ? (
-                    <>
-                      <button
-                        className="button-secondary"
-                        onClick={() =>
-                          openWorkspaceInBrowserTab(`/customers?focusCustomerId=${encodeURIComponent(selectedCustomerId)}`, "Customer", {
-                            cloneCurrent: false,
-                          })
-                        }
-                        type="button"
-                      >
-                        Customer em nova aba
-                      </button>
-                      <button
-                        className="button-secondary"
-                        onClick={() =>
-                          openWorkspaceInBrowserWindow(`/customers?focusCustomerId=${encodeURIComponent(selectedCustomerId)}`, "Customer", {
-                            cloneCurrent: false,
-                          })
-                        }
-                        type="button"
-                      >
-                        Customer em nova janela
-                      </button>
-                    </>
-                  ) : null}
                 </div>
               </div>
 

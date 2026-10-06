@@ -316,6 +316,14 @@ De cima para baixo:
 2. **Filtro:** o botão é uma **lupa com +** para abrir e vira **lupa com −** para fechar. O painel é uma caixa **ciano-turquesa**, à parte do fundo, com **Buscar** e **Limpar**.
 3. **Grade** com caixa de seleção, colunas configuráveis, **Alterar / Excluir / Inativar**, zebrinha **ciano-turquesa claro / branco**, e **paginação** com números de página, anterior e próxima.
 
+### Campos que vêm de tabela
+
+Em **busca, cadastro e movimentação** (OS incluída): o campo sugere registros já cadastrados enquanto se digita.
+
+- Se a lista sugerir, a atendente escolhe o item.
+- Se **não sugerir**, aparece **Cadastrar** ao lado do campo. O atalho abre o cadastro (aba interna, com o texto já preenchido).
+- Vale para **todo campo que vem de outra tabela** (cliente na OS, filial, parte do corpo, unidade, etc.).
+
 ### Excluir e inativar
 
 - **Inativar:** o registro deixa de ser usado no dia a dia, mas o histórico permanece.

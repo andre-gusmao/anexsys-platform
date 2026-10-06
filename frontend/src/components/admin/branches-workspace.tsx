@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, ty
 import { useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
+import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 
@@ -95,6 +96,16 @@ export function BranchesWorkspace() {
       );
     });
   }, [branches, searchQuery, statusFilter]);
+
+  const branchLookupOptions = useMemo<SmartLookupOption[]>(
+    () =>
+      branches.map((branch) => ({
+        id: branch.id,
+        label: branch.displayName,
+        hint: `${branch.code} · ${branch.status}`,
+      })),
+    [branches],
+  );
 
   const activeBranch = useMemo(() => branches.find((branch) => branch.id === activeBranchId) ?? null, [activeBranchId, branches]);
   useWorkspaceRegistration({
@@ -305,7 +316,17 @@ export function BranchesWorkspace() {
           <div className="filters-grid">
             <label className="field">
               <span>Pesquisar</span>
-              <input placeholder="Código, nome ou calendário" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+              <SearchAutocomplete
+                canCreate={canWrite}
+                onChange={setSearchQuery}
+                onCreate={(name) => {
+                  setShowCreateForm(true);
+                  setForm({ ...emptyForm(), companyId: activeEmpresaId ?? "", displayName: name, legalName: name });
+                }}
+                options={branchLookupOptions}
+                placeholder="Código, nome ou calendário"
+                value={searchQuery}
+              />
             </label>
             {empresas.length > 0 ? (
               <label className="field">
@@ -585,7 +606,7 @@ function BranchFormFields({
         <SmartLookup
           allowClear
           canCreate={canCreate}
-          createLabel="Criar nova filial"
+          createLabel="Cadastrar"
           disabled={saving}
           entityType="branches"
           label="Filial pai"

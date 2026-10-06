@@ -10,6 +10,7 @@ import {
   type CompanyApiRecord,
   type CompanyRecord,
 } from "@/components/admin/company-list-records";
+import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
 import {
   MasterDataDuplicateGuard,
   normalizeCodeValue,
@@ -69,6 +70,16 @@ export function CompaniesWorkspace() {
       [company.code, company.legalName, company.displayName].some((value) => value.toLowerCase().includes(normalized)),
     );
   }, [companies, searchQuery]);
+
+  const companyLookupOptions = useMemo(
+    () =>
+      companies.map((company) => ({
+        id: company.id,
+        label: company.displayName,
+        hint: [company.code, company.legalName].filter(Boolean).join(" · ") || undefined,
+      })),
+    [companies],
+  );
 
   const activeCompany = useMemo(
     () => companies.find((company) => company.id === activeCompanyId) ?? null,
@@ -293,7 +304,18 @@ export function CompaniesWorkspace() {
           <div className="filters-grid">
             <label className="field">
               <span>Pesquisar</span>
-              <input placeholder="Código ou nome" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+              <SearchAutocomplete
+                canCreate={canCreate}
+                onChange={setSearchQuery}
+                onCreate={(name) => {
+                  setShowCreateForm(true);
+                  setForm({ ...emptyForm(), displayName: name, legalName: name });
+                  clearCompanyDuplicate();
+                }}
+                options={companyLookupOptions}
+                placeholder="Código ou nome"
+                value={searchQuery}
+              />
             </label>
           </div>
 

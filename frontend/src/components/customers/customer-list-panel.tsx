@@ -21,6 +21,8 @@ import {
   type CustomerListFilters,
   type CustomerListRecord,
 } from "@/components/customers/customer-list";
+import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
+import type { SmartLookupOption } from "@/components/ui/lookup-suggestions";
 
 const COLUMN_STORAGE_KEY = "anexsys.frontend.customers.grid-columns.v1";
 
@@ -57,7 +59,7 @@ type CustomerListPanelProps = {
   canWrite: boolean;
   actingCustomerId: string | null;
   onApplyQuery: (query: { q: string; status: string; customerType: string }) => void;
-  onCreate: () => void;
+  onCreate: (prefillName?: string) => void;
   onEdit: (customer: CustomerListRecord) => void;
   onDelete: (customer: CustomerListRecord) => void;
   onDeleteMany: (customers: CustomerListRecord[]) => void;
@@ -101,6 +103,15 @@ export function CustomerListPanel({
   const selectedCustomers = useMemo(
     () => customers.filter((customer) => selectedIds.includes(customer.id)),
     [customers, selectedIds],
+  );
+  const nameLookupOptions = useMemo<SmartLookupOption[]>(
+    () =>
+      customers.map((customer) => ({
+        id: customer.id,
+        label: customer.legalName,
+        hint: customer.cpfCnpj ?? customer.phone ?? customer.email ?? undefined,
+      })),
+    [customers],
   );
   const pageIds = pagination.items.map((customer) => customer.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
@@ -186,7 +197,7 @@ export function CustomerListPanel({
       <div className="cadastro-toolbar" ref={toolbarRef}>
         <div className="cadastro-toolbar__left">
           {canWrite ? (
-            <button className="button" onClick={onCreate} type="button">
+            <button className="button" onClick={() => onCreate()} type="button">
               + Adicionar
             </button>
           ) : null}
@@ -281,8 +292,17 @@ export function CustomerListPanel({
               applyFilters(filters);
             }}
           >
-            <input
-              onChange={(event) => setFilters((current) => ({ ...current, name: event.target.value }))}
+            <SearchAutocomplete
+              canCreate={canWrite}
+              compact
+              onChange={(name) => setFilters((current) => ({ ...current, name }))}
+              onCreate={(name) => onCreate(name)}
+              onSelect={(option) => {
+                const next = { ...filters, name: option.label };
+                setFilters(next);
+                applyFilters(next);
+              }}
+              options={nameLookupOptions}
               placeholder="Buscar por nome"
               value={filters.name}
             />
@@ -319,8 +339,12 @@ export function CustomerListPanel({
             </label>
             <label className="field">
               <span>Nome</span>
-              <input
-                onChange={(event) => setFilters((current) => ({ ...current, name: event.target.value }))}
+              <SearchAutocomplete
+                canCreate={canWrite}
+                onChange={(name) => setFilters((current) => ({ ...current, name }))}
+                onCreate={(name) => onCreate(name)}
+                options={nameLookupOptions}
+                placeholder="Nome já cadastrado"
                 value={filters.name}
               />
             </label>
