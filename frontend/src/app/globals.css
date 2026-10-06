@@ -407,16 +407,6 @@ textarea {
   cursor: pointer;
 }
 
-.nav-link__quick-action {
-  min-width: 30px;
-  min-height: 30px;
-  border-radius: 999px;
-  border: 1px solid var(--grid-accent);
-  background: #fff;
-  color: #111111;
-  cursor: pointer;
-}
-
 .nav-link:hover,
 .nav-link--active {
   background: #fff;

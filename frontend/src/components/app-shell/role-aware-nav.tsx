@@ -117,8 +117,7 @@ function TreeChevron({ expanded }: Readonly<{ expanded: boolean }>) {
 
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const { hasAnyPermission } = useSession();
-  const { currentTab, tabs, activateWorkspace, closeWorkspace, openWorkspaceFromMenu, openWorkspaceInNewTab } =
-    useWorkspaceManager();
+  const { currentTab, tabs, activateWorkspace, closeWorkspace, openWorkspaceFromMenu } = useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
   const tree = useSyncExternalStore(subscribeSidebarTree, readSidebarTree, createEmptySidebarTree);
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
@@ -136,30 +135,29 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
     }))
     .filter((section) => section.items.length > 0);
 
-  const toggleSection = (title: string) => {
+  const toggleSection = (title: string, lockedOpen: boolean) => {
+    if (lockedOpen && !tree.collapsedSections.includes(title)) {
+      return;
+    }
     writeSidebarTree({
       ...tree,
       collapsedSections: toggleTreeId(tree.collapsedSections, title),
     });
   };
 
-  const toggleItem = (href: string) => {
-    writeSidebarTree({
-      ...tree,
-      collapsedItems: toggleTreeId(tree.collapsedItems, href),
-    });
-  };
-
   return (
     <nav className="nav-tree">
       {visibleSections.map((section) => {
-        const sectionExpanded = !tree.collapsedSections.includes(section.title);
+        const hasOpenSubmenu = section.items.some(
+          (item) => !isMobile && shouldShowWorkspaceNavSubmenu(tabs, item.href),
+        );
+        const sectionExpanded = hasOpenSubmenu || !tree.collapsedSections.includes(section.title);
         return (
           <div className="nav-tree__section" key={section.title}>
             <button
               aria-expanded={sectionExpanded}
               className="sidebar__section-title"
-              onClick={() => toggleSection(section.title)}
+              onClick={() => toggleSection(section.title, hasOpenSubmenu)}
               type="button"
             >
               <TreeChevron expanded={sectionExpanded} />
@@ -170,25 +168,14 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
                 {section.items.map((item) => {
                   const relatedTabs = listWorkspaceTabsForNavItem(tabs, item.href);
                   const hasSubmenu = !isMobile && shouldShowWorkspaceNavSubmenu(tabs, item.href);
-                  const itemExpanded = hasSubmenu && !tree.collapsedItems.includes(item.href);
                   const active = currentTab ? getWorkspaceBasePath(currentTab.pathname) === item.href : false;
                   return (
                     <li key={item.href}>
                       <div className={`nav-link${active ? " nav-link--active" : ""}`}>
                         {hasSubmenu ? (
-                          <button
-                            aria-expanded={itemExpanded}
-                            aria-label={itemExpanded ? `Recolher ${item.label}` : `Expandir ${item.label}`}
-                            className="nav-tree-toggle"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              toggleItem(item.href);
-                            }}
-                            type="button"
-                          >
-                            <TreeChevron expanded={itemExpanded} />
-                          </button>
+                          <span className="nav-tree-toggle">
+                            <TreeChevron expanded />
+                          </span>
                         ) : (
                           <span className="nav-tree-toggle nav-tree-toggle--spacer" />
                         )}
@@ -203,22 +190,8 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
                           <span>{item.label}</span>
                           <span className="nav-hint">{item.hint}</span>
                         </button>
-                        {!isMobile ? (
-                          <button
-                            aria-label={`Abrir ${item.label} em novo workspace`}
-                            className="nav-link__quick-action"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false, reuse: "none" });
-                            }}
-                            type="button"
-                          >
-                            +
-                          </button>
-                        ) : null}
                       </div>
-                      {itemExpanded ? (
+                      {hasSubmenu ? (
                         <ul aria-label={`Abas abertas de ${item.label}`} className="nav-sublist">
                           {relatedTabs.map((tab) => {
                             const subActive = tab.id === currentTab?.id;
