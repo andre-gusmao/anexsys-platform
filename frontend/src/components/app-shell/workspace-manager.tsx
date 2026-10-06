@@ -118,9 +118,14 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   const pendingActiveTabIdRef = useRef<string | null>(null);
   const [store, setStore] = useState<WorkspaceStore>(() => readStore());
   const storeRef = useRef(store);
-  const currentTabId = pendingActiveTabId ?? urlTabId;
+  const settledPendingTabId = pendingActiveTabId && pendingActiveTabId === urlTabId ? null : pendingActiveTabId;
+  const currentTabId = settledPendingTabId ?? urlTabId;
   const currentTab = currentTabId ? store.tabs.find((candidate) => candidate.id === currentTabId) ?? null : null;
   const currentComparablePath = resolveComparableCurrentPath(pathname, searchParams);
+
+  if (pendingActiveTabId !== settledPendingTabId) {
+    setPendingActiveTabId(settledPendingTabId);
+  }
 
   const markPendingTab = useCallback((tabId: string | null) => {
     pendingActiveTabIdRef.current = tabId;
@@ -128,15 +133,13 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   }, []);
 
   useEffect(() => {
+    pendingActiveTabIdRef.current = pendingActiveTabId;
+  }, [pendingActiveTabId]);
+
+  useEffect(() => {
     storeRef.current = store;
     writeStore(store);
   }, [store]);
-
-  useEffect(() => {
-    if (pendingActiveTabId && pendingActiveTabId === urlTabId) {
-      markPendingTab(null);
-    }
-  }, [markPendingTab, pendingActiveTabId, urlTabId]);
 
   const findSingletonTabByPath = useCallback((targetPathname: string) => {
     const normalizedPath = normalizeWorkspacePathname(targetPathname);
