@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 import {
@@ -7,6 +8,13 @@ import {
   listWorkspaceTabsForNavItem,
   shouldShowWorkspaceNavSubmenu,
 } from "@/components/app-shell/workspace-manager-store";
+import {
+  createEmptySidebarTree,
+  readSidebarTree,
+  subscribeSidebarTree,
+  toggleTreeId,
+  writeSidebarTree,
+} from "@/components/app-shell/sidebar-tree";
 import { useSession } from "@/components/providers/session-provider";
 
 type NavItem = {
@@ -99,11 +107,20 @@ const navSections: NavSection[] = [
   },
 ];
 
+function TreeChevron({ expanded }: Readonly<{ expanded: boolean }>) {
+  return (
+    <span aria-hidden="true" className={`nav-tree-chevron${expanded ? " nav-tree-chevron--expanded" : ""}`}>
+      ▸
+    </span>
+  );
+}
+
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const { hasAnyPermission } = useSession();
   const { currentTab, tabs, activateWorkspace, closeWorkspace, openWorkspaceFromMenu, openWorkspaceInNewTab } =
     useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
+  const tree = useSyncExternalStore(subscribeSidebarTree, readSidebarTree, createEmptySidebarTree);
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
   const visibleSections = navSections
@@ -119,89 +136,134 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
     }))
     .filter((section) => section.items.length > 0);
 
+  const toggleSection = (title: string) => {
+    writeSidebarTree({
+      ...tree,
+      collapsedSections: toggleTreeId(tree.collapsedSections, title),
+    });
+  };
+
+  const toggleItem = (href: string) => {
+    writeSidebarTree({
+      ...tree,
+      collapsedItems: toggleTreeId(tree.collapsedItems, href),
+    });
+  };
+
   return (
-    <nav>
-      {visibleSections.map((section) => (
-        <div key={section.title}>
-          <div className="sidebar__section-title">{section.title}</div>
-          <ul className="nav-list">
-            {section.items.map((item) => {
-              const relatedTabs = listWorkspaceTabsForNavItem(tabs, item.href);
-              const showSubmenu = !isMobile && shouldShowWorkspaceNavSubmenu(tabs, item.href);
-              const active = currentTab ? getWorkspaceBasePath(currentTab.pathname) === item.href : false;
-              return (
-                <li key={item.href}>
-                  <div className={`nav-link${active ? " nav-link--active" : ""}`}>
-                    <button
-                      className="nav-link__main"
-                      onClick={() => {
-                        openWorkspaceFromMenu(item.href, item.label);
-                        onNavigate?.();
-                      }}
-                      type="button"
-                    >
-                      <span>{item.label}</span>
-                      <span className="nav-hint">{item.hint}</span>
-                    </button>
-                    {!isMobile ? (
-                      <button
-                        aria-label={`Abrir ${item.label} em novo workspace`}
-                        className="nav-link__quick-action"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false, reuse: "none" });
-                        }}
-                        type="button"
-                      >
-                        +
-                      </button>
-                    ) : null}
-                  </div>
-                  {showSubmenu ? (
-                    <ul aria-label={`Abas abertas de ${item.label}`} className="nav-sublist">
-                      {relatedTabs.map((tab) => {
-                        const subActive = tab.id === currentTab?.id;
-                        return (
-                          <li
-                            className={`nav-subitem${subActive ? " nav-subitem--active" : ""}`}
-                            key={tab.id}
+    <nav className="nav-tree">
+      {visibleSections.map((section) => {
+        const sectionExpanded = !tree.collapsedSections.includes(section.title);
+        return (
+          <div className="nav-tree__section" key={section.title}>
+            <button
+              aria-expanded={sectionExpanded}
+              className="sidebar__section-title"
+              onClick={() => toggleSection(section.title)}
+              type="button"
+            >
+              <TreeChevron expanded={sectionExpanded} />
+              <span>{section.title}</span>
+            </button>
+            {sectionExpanded ? (
+              <ul className="nav-list">
+                {section.items.map((item) => {
+                  const relatedTabs = listWorkspaceTabsForNavItem(tabs, item.href);
+                  const hasSubmenu = !isMobile && shouldShowWorkspaceNavSubmenu(tabs, item.href);
+                  const itemExpanded = hasSubmenu && !tree.collapsedItems.includes(item.href);
+                  const active = currentTab ? getWorkspaceBasePath(currentTab.pathname) === item.href : false;
+                  return (
+                    <li key={item.href}>
+                      <div className={`nav-link${active ? " nav-link--active" : ""}`}>
+                        {hasSubmenu ? (
+                          <button
+                            aria-expanded={itemExpanded}
+                            aria-label={itemExpanded ? `Recolher ${item.label}` : `Expandir ${item.label}`}
+                            className="nav-tree-toggle"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggleItem(item.href);
+                            }}
+                            type="button"
                           >
-                            <button
-                              className="nav-sublink"
-                              onClick={() => {
-                                activateWorkspace(tab.id);
-                                onNavigate?.();
-                              }}
-                              title={tab.subtitle ? `${tab.label} · ${tab.subtitle}` : tab.label}
-                              type="button"
-                            >
-                              <span>{tab.label}</span>
-                              {tab.subtitle ? <small>{tab.subtitle}</small> : null}
-                            </button>
-                            <button
-                              aria-label={`Fechar ${tab.label}`}
-                              className="nav-sublink__close"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                closeWorkspace(tab.id);
-                              }}
-                              type="button"
-                            >
-                              ×
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+                            <TreeChevron expanded={itemExpanded} />
+                          </button>
+                        ) : (
+                          <span className="nav-tree-toggle nav-tree-toggle--spacer" />
+                        )}
+                        <button
+                          className="nav-link__main"
+                          onClick={() => {
+                            openWorkspaceFromMenu(item.href, item.label);
+                            onNavigate?.();
+                          }}
+                          type="button"
+                        >
+                          <span>{item.label}</span>
+                          <span className="nav-hint">{item.hint}</span>
+                        </button>
+                        {!isMobile ? (
+                          <button
+                            aria-label={`Abrir ${item.label} em novo workspace`}
+                            className="nav-link__quick-action"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false, reuse: "none" });
+                            }}
+                            type="button"
+                          >
+                            +
+                          </button>
+                        ) : null}
+                      </div>
+                      {itemExpanded ? (
+                        <ul aria-label={`Abas abertas de ${item.label}`} className="nav-sublist">
+                          {relatedTabs.map((tab) => {
+                            const subActive = tab.id === currentTab?.id;
+                            return (
+                              <li
+                                className={`nav-subitem${subActive ? " nav-subitem--active" : ""}`}
+                                key={tab.id}
+                              >
+                                <button
+                                  className="nav-sublink"
+                                  onClick={() => {
+                                    activateWorkspace(tab.id);
+                                    onNavigate?.();
+                                  }}
+                                  title={tab.subtitle ? `${tab.label} · ${tab.subtitle}` : tab.label}
+                                  type="button"
+                                >
+                                  <span>{tab.label}</span>
+                                  {tab.subtitle ? <small>{tab.subtitle}</small> : null}
+                                </button>
+                                <button
+                                  aria-label={`Fechar ${tab.label}`}
+                                  className="nav-sublink__close"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    closeWorkspace(tab.id);
+                                  }}
+                                  type="button"
+                                >
+                                  ×
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
+        );
+      })}
     </nav>
   );
 }

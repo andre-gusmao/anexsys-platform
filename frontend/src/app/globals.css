@@ -315,13 +315,64 @@ textarea {
 }
 
 .sidebar__section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #111111;
   margin-bottom: 10px;
-  padding: 0 12px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar__section-title:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.nav-tree {
+  display: grid;
+  gap: 12px;
+}
+
+.nav-tree-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #111111;
+  cursor: pointer;
+}
+
+.nav-tree-toggle--spacer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nav-tree-chevron {
+  display: inline-block;
+  font-size: 12px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.nav-tree-chevron--expanded {
+  transform: rotate(90deg);
 }
 
 .nav-list {
@@ -334,8 +385,8 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px 8px;
   border-radius: 14px;
   color: #111111;
 }
