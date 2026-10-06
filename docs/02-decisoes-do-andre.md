@@ -110,6 +110,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 
 - **Dashboard de produtividade** na tela do sistema (por técnico e por quantidade de peças da OS) e **alertas de atraso** antes que a entrega atrase, com parâmetros configuráveis.
 - Validação: quer receber pelo próprio sistema o painel e os alertas, não só link e roteiro.
+- **Lugar na tela (06/10/2026):** chips na **barra superior** (sempre visíveis, em qualquer aba). Ver seção 13.
 
 ## 7. Dados do sistema atual (55)
 - Importação (C): o sistema atual gera tudo em Excel; ele pensa em importar histórico completo, **depois da validação**.
@@ -319,3 +320,22 @@ De cima para baixo:
 
 - **Inativar:** o registro deixa de ser usado no dia a dia, mas o histórico permanece.
 - **Excluir:** só se **não houver movimento** (OS, medidas, financeiro). Com movimento, a tela avisa e não apaga; use Inativar quando a regra permitir.
+
+## 13. Escopo futuro registrado (06/10/2026)
+
+Confirmado pelo André. **Não construir agora.** Fica no escopo para não esquecer.
+
+### Barra superior operacional
+
+O topo (hoje nome da sessão e Sair) vira acompanhamento para **atendente e gerente**, visível em qualquer aba:
+
+- **Técnicos do dia** — quem está em operação.
+- **Concierge** — chegada dos clientes (versão futura; o piloto atual não tem fila).
+- **Alerta operacional** — fica vermelho se houver OS parada, produção atrasada ou prazo perto sem finalizar.
+- **Produtividade** — recorte do dia por técnico/costureira.
+
+São **chips compactos**; o clique abre o detalhe. A regra do que é atraso mora na **tela de parâmetros**. Sem botão de mentira até existir dado real de produção.
+
+### Estilização para comercializar
+
+A paleta atual (ciano-turquesa e letras pretas) vale para o homologador. **Quando o ANEXSYS for vendido a outros ateliês**, precisa existir um **lugar de estilização** (identidade visual da Conta: cores, logo, faixa, menu, grade). O padrão de hoje é o tema inicial, não o único.
