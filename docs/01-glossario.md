@@ -11,7 +11,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 |---|---|---|
 | **Conta** | Quem assina o ANEXSYS. É a dona dos dados. Exemplo: "Grupo Ateliê Silva". Os dados de uma Conta **nunca** se misturam com os de outra | `tenant` |
 | **Empresa** | O pai: a pessoa jurídica (CNPJ) dentro de uma Conta. Uma Conta pode ter várias Empresas. As Filiais são filhas desta Empresa. Ao cadastrar, nasce a Filial padrão (Matriz) | `company` |
-| **Filial** | O filho: a unidade física onde se atende e produz. Cada Empresa pode ter várias Filiais; a primeira é a Matriz | `branch` |
+| **Filial** | O filho: a unidade física onde se atende e produz. Cada Empresa pode ter várias Filiais no mesmo nível; a primeira é a Matriz. **Não existe Filial pai** | `branch` |
 | **Usuário** | Pessoa que entra no sistema com e-mail e senha | `user` |
 | **Papel** | Conjunto de permissões. Papéis iniciais: recepção, atendente/medidor, produção, qualidade e gerente | `role` |
 | **Escopo** | A quais Empresas e Filiais um usuário tem acesso. Usuário novo nasce **sem nenhuma Filial** até o administrador marcar | `branch scope` |

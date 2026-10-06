@@ -66,6 +66,7 @@ describe('BranchService', () => {
     assert.equal(createdPayloads[0]?.code, 'BR-01');
     assert.equal(createdPayloads[0]?.companyId, 'company-1');
     assert.equal(createdPayloads[0]?.isDefault, true);
+    assert.equal(createdPayloads[0]?.parentBranchId, null);
   });
 
   it('rejects duplicate branch code on update', async () => {
@@ -96,51 +97,21 @@ describe('BranchService', () => {
     );
   });
 
-  it('rejects setting a branch as its own parent during update', async () => {
+  it('rejects Filial pai because the parent is the Empresa', async () => {
     const extras = extraDeps();
-    const branchRepository = {
-      async findById(id: string) {
-        if (id === 'branch-1') {
-          return { id: 'branch-1', tenantId: 'tenant-a', companyId: 'company-1', code: 'BR-01', legalName: 'A', displayName: 'A', parentBranchId: null };
-        }
-        return null;
-      },
-      async findByCompanyAndCode() {
-        return null;
-      },
-    };
-    const service = new BranchService(
-      branchRepository as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      extras.companyService as never,
-      extras.hoursService as never,
-    );
-
-    await assert.rejects(
-      () => service.update('branch-1', { parentBranchId: 'branch-1', actorUserId: 'actor-1' }),
-      DomainValidationError,
-    );
-  });
-
-  it('rejects a parent branch from a different tenant', async () => {
-    const extras = extraDeps();
-    const branchRepository = {
-      async findByCompanyAndCode() {
-        return null;
-      },
-      async findById() {
-        return { id: 'parent-1', tenantId: 'tenant-b' };
-      },
-    };
     const tenantService = { async getById() { return { id: 'tenant-a' }; } };
-    const auditService = { async record() {} };
     const service = new BranchService(
-      branchRepository as never,
+      {
+        async findByCompanyAndCode() {
+          return null;
+        },
+        async findById() {
+          return { id: 'branch-1', tenantId: 'tenant-a', companyId: 'company-1', code: 'BR-01', parentBranchId: null };
+        },
+      } as never,
       tenantService as never,
-      auditService as never,
-      { async assertBranchCanDeactivate() {} } as never,
+      {} as never,
+      {} as never,
       extras.companyService as never,
       extras.hoursService as never,
     );
@@ -155,7 +126,12 @@ describe('BranchService', () => {
           parentBranchId: 'parent-1',
           actorUserId: 'actor-1',
         }),
-      DomainValidationError,
+      (error: unknown) => error instanceof DomainValidationError && /Empresa/.test(error.message),
+    );
+
+    await assert.rejects(
+      () => service.update('branch-1', { parentBranchId: 'parent-1', actorUserId: 'actor-1' }),
+      (error: unknown) => error instanceof DomainValidationError && /Empresa/.test(error.message),
     );
   });
 

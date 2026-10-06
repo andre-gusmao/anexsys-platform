@@ -9,7 +9,7 @@ import { empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import { WorkspaceFlash } from "@/components/ui/workspace-flash";
-import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
+import { type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 
 type BranchRecord = {
@@ -18,7 +18,6 @@ type BranchRecord = {
   legalName: string;
   displayName: string;
   status: "active" | "inactive";
-  parentBranchId: string | null;
   businessCalendarName: string | null;
   companyId?: string;
   timezone?: string;
@@ -37,22 +36,14 @@ type BranchForm = {
   code: string;
   legalName: string;
   displayName: string;
-  parentBranchId: string;
   businessCalendarName: string;
   companyId: string;
-};
-
-type ChildRecord = {
-  id: string;
-  displayName: string;
-  code: string;
 };
 
 const emptyForm = (): BranchForm => ({
   code: "",
   legalName: "",
   displayName: "",
-  parentBranchId: "",
   businessCalendarName: "",
   companyId: "",
 });
@@ -62,7 +53,6 @@ function mapBranchToForm(branch: BranchRecord): BranchForm {
     code: branch.code,
     legalName: branch.legalName,
     displayName: branch.displayName,
-    parentBranchId: branch.parentBranchId ?? "",
     businessCalendarName: branch.businessCalendarName ?? "",
     companyId: branch.companyId ?? "",
   };
@@ -81,9 +71,7 @@ export function BranchesWorkspace() {
   const focusBranchId = searchParams.get("focusBranchId");
   const prefillName = searchParams.get("prefillName") ?? "";
   const [branches, setBranches] = useState<BranchRecord[]>([]);
-  const [children, setChildren] = useState<ChildRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [activeBranchId, setActiveBranchId] = useWorkspaceScopedState<string | null>("branches.activeBranchId", null);
@@ -129,18 +117,6 @@ export function BranchesWorkspace() {
     }
   }, [apiJson, setHours]);
 
-  const loadChildren = useCallback(async (branchId: string) => {
-    setDetailLoading(true);
-    try {
-      const records = await apiJson<ChildRecord[]>(`/branches/${branchId}/children`);
-      setChildren(records);
-    } catch {
-      setChildren([]);
-    } finally {
-      setDetailLoading(false);
-    }
-  }, [apiJson]);
-
   const loadBranches = useCallback(async () => {
     if (!canRead) {
       setLoading(false);
@@ -171,7 +147,6 @@ export function BranchesWorkspace() {
     (name?: string) => {
       setShowCreateForm(true);
       setActiveBranchId(null);
-      setChildren([]);
       setHours(null);
       setForm({
         ...emptyForm(),
@@ -248,9 +223,8 @@ export function BranchesWorkspace() {
     setShowCreateForm(false);
     setActiveBranchId(branch.id);
     setForm(mapBranchToForm(branch));
-    void loadChildren(branch.id);
     void loadHours(branch.id);
-  }, [branches, focusBranchId, loadChildren, loadHours, setActiveBranchId, setForm, setShowCreateForm, workspaceMode]);
+  }, [branches, focusBranchId, loadHours, setActiveBranchId, setForm, setShowCreateForm, workspaceMode]);
 
   useEffect(() => {
     if (!isListWorkspace) {
@@ -273,7 +247,6 @@ export function BranchesWorkspace() {
           code: form.code,
           legalName: form.legalName,
           displayName: form.displayName,
-          parentBranchId: form.parentBranchId || undefined,
           businessCalendarName: form.businessCalendarName || undefined,
           companyId: form.companyId || activeEmpresaId || undefined,
         }),
@@ -304,7 +277,6 @@ export function BranchesWorkspace() {
           code: form.code,
           legalName: form.legalName,
           displayName: form.displayName,
-          parentBranchId: form.parentBranchId || null,
           businessCalendarName: form.businessCalendarName || null,
           companyId: form.companyId || undefined,
         }),
@@ -312,7 +284,6 @@ export function BranchesWorkspace() {
       setBranches((current) => current.map((branch) => (branch.id === updated.id ? updated : branch)));
       setForm(mapBranchToForm(updated));
       setMessage("Filial atualizada com sucesso.");
-      void loadChildren(updated.id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "A filial não pôde ser atualizada.");
     } finally {
@@ -360,8 +331,8 @@ export function BranchesWorkspace() {
           <div className="eyebrow">Administração</div>
           <h1 className="title">{showCreateForm ? "Nova filial" : activeBranch ? activeBranch.displayName : "Filial"}</h1>
           <p>
-            A Filial pertence a uma Empresa. Clientes e medidas são da Conta e aparecem em todas as Empresas. Troque a
-            Empresa no contexto ao lado para ver e cadastrar as filiais dela
+            A Filial é filha da Empresa. Não existe Filial pai: unidades da mesma Empresa ficam no mesmo nível. Clientes
+            e medidas são da Conta. Troque a Empresa no contexto ao lado para ver e cadastrar as filiais dela
             {activeEmpresa ? ` (${empresaLabel(activeEmpresa)})` : ""}.
           </p>
         </section>
@@ -434,16 +405,7 @@ export function BranchesWorkspace() {
             {showCreateForm ? (
               <form className="form-grid" onSubmit={handleCreate}>
                 <h3>Nova filial</h3>
-                <BranchFormFields
-                  branches={branches}
-                  canCreate={canWrite}
-                  empresas={empresas}
-                  form={form}
-                  saving={saving}
-                  setBranches={setBranches}
-                  setForm={setForm}
-                  setMessage={setMessage}
-                />
+                <BranchFormFields empresas={empresas} form={form} setForm={setForm} />
                 <div className="button-row">
                   <button className="button" disabled={saving} type="submit">
                     {saving ? "Salvando…" : "Salvar filial"}
@@ -466,22 +428,13 @@ export function BranchesWorkspace() {
                     <strong>{activeBranch.code}</strong>
                   </div>
                   <div className="detail-field">
-                    <span>Filiais filhas</span>
-                    <strong>{detailLoading ? "Carregando…" : children.length}</strong>
+                    <span>Empresa</span>
+                    <strong>{activeEmpresa ? empresaLabel(activeEmpresa) : "—"}</strong>
                   </div>
                 </div>
 
                 <form className="form-grid" onSubmit={handleUpdate}>
-                  <BranchFormFields
-                    branches={branches.filter((branch) => branch.id !== activeBranch.id)}
-                    canCreate={canWrite}
-                    empresas={empresas}
-                    form={form}
-                    saving={saving}
-                    setBranches={setBranches}
-                    setForm={setForm}
-                    setMessage={setMessage}
-                  />
+                  <BranchFormFields empresas={empresas} form={form} setForm={setForm} />
                   <div className="button-row">
                     <button className="button" disabled={saving || !canWrite} type="submit">
                       {saving ? "Salvando…" : "Salvar alterações"}
@@ -542,21 +495,6 @@ export function BranchesWorkspace() {
                     }
                   }}
                 />
-
-                <div className="mini-section">
-                  <h4>Subfiliais</h4>
-                  {children.length > 0 ? (
-                    <div className="token-list">
-                      {children.map((child) => (
-                        <span className="token-pill" key={child.id}>
-                          {child.displayName} · {child.code}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="empty-state">Nenhuma subfilial vinculada.</div>
-                  )}
-                </div>
               </div>
             ) : (
               <div className="empty-state">{loading ? "Carregando…" : "Filial não encontrada."}</div>
@@ -569,35 +507,14 @@ export function BranchesWorkspace() {
 }
 
 function BranchFormFields({
-  branches,
-  canCreate,
   empresas,
   form,
-  saving,
-  setBranches,
   setForm,
-  setMessage,
 }: {
-  branches: BranchRecord[];
-  canCreate: boolean;
   empresas: { id: string; legalName: string; tradeName: string | null; isDefault: boolean }[];
   form: BranchForm;
-  saving: boolean;
-  setBranches: Dispatch<SetStateAction<BranchRecord[]>>;
   setForm: Dispatch<SetStateAction<BranchForm>>;
-  setMessage: Dispatch<SetStateAction<string | null>>;
 }) {
-  const { apiJson } = useSession();
-  const lookupOptions = useMemo<SmartLookupOption[]>(
-    () =>
-      branches.map((branch) => ({
-        id: branch.id,
-        label: branch.displayName,
-        hint: `${branch.code} · ${branch.status}`,
-      })),
-    [branches],
-  );
-
   return (
     <>
       {empresas.length > 0 ? (
@@ -633,95 +550,8 @@ function BranchFormFields({
         <span>Calendário operacional</span>
         <input value={form.businessCalendarName} onChange={(event) => setForm((current) => ({ ...current, businessCalendarName: event.target.value }))} />
       </label>
-      <div className="field">
-        <SmartLookup
-          allowClear
-          canCreate={canCreate}
-          createLabel="Cadastrar"
-          disabled={saving}
-          entityType="branches"
-          label="Filial pai"
-          options={lookupOptions}
-          value={form.parentBranchId}
-          onChange={(option) => setForm((current) => ({ ...current, parentBranchId: option?.id ?? "" }))}
-          renderQuickCreate={({ cancelCreate, completeCreate, initialValue }) => (
-            <QuickCreateBranch
-              initialValue={initialValue}
-              onCancel={cancelCreate}
-              onComplete={(created) => {
-                setBranches((current) => [...current, created].sort((left, right) => left.displayName.localeCompare(right.displayName)));
-                setMessage("Filial criada e selecionada automaticamente.");
-                completeCreate({
-                  id: created.id,
-                  label: created.displayName,
-                  hint: `${created.code} · ${created.status}`,
-                });
-              }}
-            />
-          )}
-        />
-      </div>
     </>
   );
-
-  function QuickCreateBranch({
-    initialValue,
-    onCancel,
-    onComplete,
-  }: {
-    initialValue: string;
-    onCancel: () => void;
-    onComplete: (created: BranchRecord) => void;
-  }) {
-    const [code, setCode] = useState(initialValue.slice(0, 12).toUpperCase());
-    const [displayName, setDisplayName] = useState(initialValue);
-    const [legalName, setLegalName] = useState(initialValue);
-    const [pending, setPending] = useState(false);
-
-    return (
-      <div className="form-grid">
-        <h4>Quick create</h4>
-        <label className="field">
-          <span>Código</span>
-          <input required value={code} onChange={(event) => setCode(event.target.value)} />
-        </label>
-        <label className="field">
-          <span>Nome exibido</span>
-          <input required value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-        </label>
-        <label className="field">
-          <span>Razão social</span>
-          <input required value={legalName} onChange={(event) => setLegalName(event.target.value)} />
-        </label>
-        <div className="button-row">
-          <button
-            className="button"
-            disabled={pending}
-            onClick={async () => {
-              setPending(true);
-              try {
-                const created = await apiJson<BranchRecord>("/branches", {
-                  method: "POST",
-                  body: JSON.stringify({ code, displayName, legalName, companyId: form.companyId || undefined }),
-                });
-                onComplete(created);
-              } catch (error) {
-                setMessage(error instanceof Error ? error.message : "A filial não pôde ser criada.");
-              } finally {
-                setPending(false);
-              }
-            }}
-            type="button"
-          >
-            {pending ? "Salvando…" : "Salvar e selecionar"}
-          </button>
-          <button className="button-secondary" onClick={onCancel} type="button">
-            Cancelar
-          </button>
-        </div>
-      </div>
-    );
-  }
 }
 
 const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];

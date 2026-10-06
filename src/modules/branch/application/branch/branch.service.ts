@@ -38,7 +38,7 @@ export class BranchService {
 
   async create(dto: CreateBranchDto): Promise<BranchEntity> {
     await this.tenantService.getById(dto.tenantId);
-    await this.assertParentBranch(dto.tenantId, dto.parentBranchId ?? null);
+    this.rejectParentBranch(dto.parentBranchId);
 
     const companyId = dto.companyId ?? (await this.companyService.getOrCreateDefault(dto.tenantId, dto.actorUserId)).id;
     const company = await this.companyService.getById(companyId, dto.tenantId);
@@ -60,7 +60,7 @@ export class BranchService {
       legalName: dto.legalName.trim(),
       displayName: dto.displayName.trim(),
       status: BranchStatus.ACTIVE,
-      parentBranchId: dto.parentBranchId ?? null,
+      parentBranchId: null,
       businessCalendarName: dto.businessCalendarName?.trim() || null,
       timezone: dto.timezone?.trim() || DEFAULT_BRANCH_TIMEZONE,
       isDefault,
@@ -183,7 +183,7 @@ export class BranchService {
   async update(id: string, dto: UpdateBranchDto): Promise<BranchEntity> {
     const branch = await this.getById(id);
     const previousValues = this.buildAuditSnapshot(branch);
-    await this.assertParentBranch(branch.tenantId, dto.parentBranchId ?? branch.parentBranchId, id);
+    this.rejectParentBranch(dto.parentBranchId);
 
     if (dto.code && dto.code.trim().toUpperCase() !== branch.code) {
       const normalizedCode = dto.code.trim().toUpperCase();
@@ -201,7 +201,7 @@ export class BranchService {
 
     branch.legalName = dto.legalName?.trim() ?? branch.legalName;
     branch.displayName = dto.displayName?.trim() ?? branch.displayName;
-    branch.parentBranchId = dto.parentBranchId === undefined ? branch.parentBranchId : dto.parentBranchId;
+    branch.parentBranchId = null;
     branch.businessCalendarName =
       dto.businessCalendarName === undefined
         ? branch.businessCalendarName
@@ -275,18 +275,9 @@ export class BranchService {
     return saved;
   }
 
-  private async assertParentBranch(tenantId: string, parentBranchId: string | null, branchId?: string): Promise<void> {
-    if (!parentBranchId) {
-      return;
-    }
-
-    if (branchId && branchId === parentBranchId) {
-      throw new DomainValidationError('Branch cannot be its own parent.');
-    }
-
-    const parentBranch = await this.getById(parentBranchId);
-    if (parentBranch.tenantId !== tenantId) {
-      throw new DomainValidationError('Parent branch must belong to the same tenant.');
+  private rejectParentBranch(parentBranchId?: string | null): void {
+    if (parentBranchId) {
+      throw new DomainValidationError('Filial não tem Filial pai. O pai é a Empresa.');
     }
   }
 
