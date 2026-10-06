@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   Body,
   Controller,
@@ -44,7 +45,10 @@ class UpsertMeasurementUnitBody {
 
 @Controller('measurement-catalog')
 export class MeasurementCatalogController {
-  constructor(private readonly measurementCatalogService: MeasurementCatalogService) {}
+  constructor(
+    @Inject(MeasurementCatalogService)
+    private readonly measurementCatalogService: MeasurementCatalogService,
+  ) {}
 
   @Permissions('measurements.read')
   @Get()
@@ -60,7 +64,10 @@ export class MeasurementCatalogController {
 
 @Controller('measurement-body-parts')
 export class MeasurementBodyPartsController {
-  constructor(private readonly measurementCatalogService: MeasurementCatalogService) {}
+  constructor(
+    @Inject(MeasurementCatalogService)
+    private readonly measurementCatalogService: MeasurementCatalogService,
+  ) {}
 
   @Permissions('measurements.read')
   @Get()
@@ -120,7 +127,10 @@ export class MeasurementBodyPartsController {
 
 @Controller('measurement-units')
 export class MeasurementUnitsController {
-  constructor(private readonly measurementCatalogService: MeasurementCatalogService) {}
+  constructor(
+    @Inject(MeasurementCatalogService)
+    private readonly measurementCatalogService: MeasurementCatalogService,
+  ) {}
 
   @Permissions('measurements.read')
   @Get()

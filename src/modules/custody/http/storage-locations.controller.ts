@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
@@ -54,7 +54,12 @@ class AssignLocationBody {
 
 @Controller()
 export class StorageLocationsController {
-  constructor(private readonly custodyService: CustodyService, private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    @Inject(CustodyService)
+    private readonly custodyService: CustodyService,
+    @Inject(ServiceOrderService)
+    private readonly serviceOrderService: ServiceOrderService,
+  ) {}
 
   @Permissions('custody.read')
   @Get('storage-locations')

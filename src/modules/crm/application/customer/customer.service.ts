@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -24,12 +24,19 @@ import { UpdateCustomerDto } from '../../contracts/dto/update-customer.dto';
 @Injectable()
 export class CustomerService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(CustomerRepository)
     private readonly customerRepository: CustomerRepository,
+    @Inject(CustomerContactRepository)
     private readonly customerContactRepository: CustomerContactRepository,
+    @Inject(CustomerInteractionRepository)
     private readonly customerInteractionRepository: CustomerInteractionRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 

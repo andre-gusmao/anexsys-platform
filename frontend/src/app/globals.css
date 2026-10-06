@@ -727,6 +727,10 @@ textarea {
   margin-top: 12px;
 }
 
+.workspace-flash {
+  padding: 12px 16px;
+}
+
 .workspace-flash--error {
   background: #fde8e8;
   border: 1px solid #c62828;

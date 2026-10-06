@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { IsArray, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ProductionOrderService } from 'src/modules/production-orders/application/production-order/production-order.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
@@ -57,7 +57,12 @@ class ResolveWarrantyExecutionBody {
 
 @Controller('warranty-executions')
 export class WarrantyExecutionsController {
-  constructor(private readonly warrantyService: WarrantyService, private readonly productionOrderService: ProductionOrderService) {}
+  constructor(
+    @Inject(WarrantyService)
+    private readonly warrantyService: WarrantyService,
+    @Inject(ProductionOrderService)
+    private readonly productionOrderService: ProductionOrderService,
+  ) {}
 
   @Permissions('warranty.read')
   @Get()

@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   Body,
   Controller,
@@ -47,8 +48,11 @@ class CreateMeasurementsBody {
 @Controller('customers')
 export class CustomersController {
   constructor(
+    @Inject(CustomerService)
     private readonly customerService: CustomerService,
+    @Inject(MeasurementService)
     private readonly measurementService: MeasurementService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 

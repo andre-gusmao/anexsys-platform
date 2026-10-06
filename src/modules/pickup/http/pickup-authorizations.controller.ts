@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsDateString, IsEnum, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
@@ -59,7 +59,12 @@ class CompletePickupAuthorizationBody {
 
 @Controller()
 export class PickupAuthorizationsController {
-  constructor(private readonly pickupService: PickupService, private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    @Inject(PickupService)
+    private readonly pickupService: PickupService,
+    @Inject(ServiceOrderService)
+    private readonly serviceOrderService: ServiceOrderService,
+  ) {}
 
   @Permissions('pickup.read')
   @Get('pickup-authorizations')

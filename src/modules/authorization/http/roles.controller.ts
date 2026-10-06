@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   Body,
   Controller,
@@ -62,7 +63,10 @@ class UpdateRoleBody {
 
 @Controller('roles')
 export class RolesController {
-  constructor(private readonly authorizationService: AuthorizationService) {}
+  constructor(
+    @Inject(AuthorizationService)
+    private readonly authorizationService: AuthorizationService,
+  ) {}
 
   @Permissions('roles.read')
   @Get()

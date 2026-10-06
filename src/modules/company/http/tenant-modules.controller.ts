@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, UnauthorizedException } from '@nestjs/common';
+import { Inject, BadRequestException, Body, Controller, Get, Param, Patch, UnauthorizedException } from '@nestjs/common';
 import { IsBoolean } from 'class-validator';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
@@ -12,7 +12,10 @@ class UpdateTenantModuleBody {
 
 @Controller('tenant-modules')
 export class TenantModulesController {
-  constructor(private readonly tenantModuleRepository: TenantModuleRepository) {}
+  constructor(
+    @Inject(TenantModuleRepository)
+    private readonly tenantModuleRepository: TenantModuleRepository,
+  ) {}
 
   @Permissions('tenants.read')
   @Get()

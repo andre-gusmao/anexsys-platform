@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
@@ -26,18 +26,31 @@ import { SmartConciergeCheckInRepository } from '../../infrastructure/persistenc
 @Injectable()
 export class SmartConciergeService {
   constructor(
+    @Inject(SmartConciergeCheckInRepository)
     private readonly checkInRepository: SmartConciergeCheckInRepository,
+    @Inject(CommunicationEventRepository)
     private readonly communicationEventRepository: CommunicationEventRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(CustomerService)
     private readonly customerService: CustomerService,
+    @Inject(CustomerPortalProfileRepository)
     private readonly customerPortalProfileRepository: CustomerPortalProfileRepository,
+    @Inject(ServiceOrderRepository)
     private readonly serviceOrderRepository: ServiceOrderRepository,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(PickupService)
     private readonly pickupService: PickupService,
+    @Inject(CustodyService)
     private readonly custodyService: CustodyService,
+    @Inject(WarrantyService)
     private readonly warrantyService: WarrantyService,
+    @Inject(FinanceService)
     private readonly financeService: FinanceService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

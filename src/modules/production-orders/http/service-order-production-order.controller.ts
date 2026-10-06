@@ -1,4 +1,5 @@
 import {
+  Inject,
   Controller,
   Param,
   ParseUUIDPipe,
@@ -12,7 +13,10 @@ import { ProductionOrderService } from '../application/production-order/producti
 
 @Controller('service-orders/:serviceOrderId/production-order')
 export class ServiceOrderProductionOrderController {
-  constructor(private readonly productionOrderService: ProductionOrderService) {}
+  constructor(
+    @Inject(ProductionOrderService)
+    private readonly productionOrderService: ProductionOrderService,
+  ) {}
 
   @Permissions('production_orders.write')
   @Post('generate')

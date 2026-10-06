@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { IsArray, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ProductionOrderService } from 'src/modules/production-orders/application/production-order/production-order.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
@@ -67,7 +67,12 @@ class CloseReworkCaseBody {
 
 @Controller('rework-cases')
 export class ReworkCasesController {
-  constructor(private readonly reworkService: ReworkService, private readonly productionOrderService: ProductionOrderService) {}
+  constructor(
+    @Inject(ReworkService)
+    private readonly reworkService: ReworkService,
+    @Inject(ProductionOrderService)
+    private readonly productionOrderService: ProductionOrderService,
+  ) {}
 
   @Permissions('rework.read')
   @Get()

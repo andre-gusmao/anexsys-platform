@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -30,12 +30,19 @@ import { PaymentRecordRepository } from '../../infrastructure/persistence/reposi
 @Injectable()
 export class FinanceService {
   constructor(
+    @Inject(PaymentRecordRepository)
     private readonly paymentRecordRepository: PaymentRecordRepository,
+    @Inject(PartialPaymentRepository)
     private readonly partialPaymentRepository: PartialPaymentRepository,
+    @Inject(FinancialExceptionRepository)
     private readonly financialExceptionRepository: FinancialExceptionRepository,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Controller, ForbiddenException, Get, Query, UnauthorizedException } from '@nestjs/common';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
@@ -8,7 +8,10 @@ import { SearchExpectedCashflowDto } from '../contracts/dto/search-expected-cash
 
 @Controller('cashflow')
 export class CashflowController {
-  constructor(private readonly financeService: FinanceService) {}
+  constructor(
+    @Inject(FinanceService)
+    private readonly financeService: FinanceService,
+  ) {}
 
   @Permissions('finance.read')
   @Get('expected')

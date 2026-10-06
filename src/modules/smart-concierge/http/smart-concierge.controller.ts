@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
@@ -39,7 +39,10 @@ class NotificationBody {
 
 @Controller('smart-concierge')
 export class SmartConciergeController {
-  constructor(private readonly smartConciergeService: SmartConciergeService) {}
+  constructor(
+    @Inject(SmartConciergeService)
+    private readonly smartConciergeService: SmartConciergeService,
+  ) {}
 
   @Permissions('smart-concierge.read')
   @Get('queue')

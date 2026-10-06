@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
@@ -32,14 +32,23 @@ import { QualityRecordRepository } from '../../infrastructure/persistence/reposi
 @Injectable()
 export class QualityService {
   constructor(
+    @Inject(QualityRecordRepository)
     private readonly qualityRecordRepository: QualityRecordRepository,
+    @Inject(CustomerRejectionRepository)
     private readonly customerRejectionRepository: CustomerRejectionRepository,
+    @Inject(ProductionOrderService)
     private readonly productionOrderService: ProductionOrderService,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(ReworkService)
     private readonly reworkService: ReworkService,
+    @Inject(WarrantyService)
     private readonly warrantyService: WarrantyService,
   ) {}
 

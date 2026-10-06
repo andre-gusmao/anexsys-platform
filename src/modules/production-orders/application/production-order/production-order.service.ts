@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -40,19 +40,33 @@ import { QrEventRepository } from '../../infrastructure/persistence/repositories
 @Injectable()
 export class ProductionOrderService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(ProductionOrderRepository)
     private readonly productionOrderRepository: ProductionOrderRepository,
+    @Inject(ProductionOrderItemLinkRepository)
     private readonly itemLinkRepository: ProductionOrderItemLinkRepository,
+    @Inject(ProductionOrderVersionRepository)
     private readonly versionRepository: ProductionOrderVersionRepository,
+    @Inject(ProductionOrderOperationalAssignmentRepository)
     private readonly assignmentRepository: ProductionOrderOperationalAssignmentRepository,
+    @Inject(QrCodeRepository)
     private readonly qrCodeRepository: QrCodeRepository,
+    @Inject(QrEventRepository)
     private readonly qrEventRepository: QrEventRepository,
+    @Inject(ProductionExecutionEventRepository)
     private readonly executionEventRepository: ProductionExecutionEventRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(MeasurementService)
     private readonly measurementService: MeasurementService,
+    @Inject(OperationalResourceService)
     private readonly operationalResourceService: OperationalResourceService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

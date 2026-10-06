@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
@@ -25,9 +25,13 @@ const DEFAULT_UNITS = ['CM', 'MM', 'M', 'POL'] as const;
 @Injectable()
 export class MeasurementCatalogService {
   constructor(
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(MeasurementBodyPartRepository)
     private readonly bodyPartRepository: MeasurementBodyPartRepository,
+    @Inject(MeasurementUnitRepository)
     private readonly unitRepository: MeasurementUnitRepository,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Query, UnauthorizedException } from '@nestjs/common';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -16,7 +16,10 @@ class SearchCustodyEventsQuery {
 
 @Controller('custody-events')
 export class CustodyEventsController {
-  constructor(private readonly custodyService: CustodyService) {}
+  constructor(
+    @Inject(CustodyService)
+    private readonly custodyService: CustodyService,
+  ) {}
 
   @Permissions('custody.read')
   @Get()

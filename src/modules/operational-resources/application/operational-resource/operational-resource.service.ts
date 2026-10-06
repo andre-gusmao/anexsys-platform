@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource, EntityManager } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -25,12 +25,19 @@ import {
 @Injectable()
 export class OperationalResourceService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(OperationalResourceRepository)
     private readonly operationalResourceRepository: OperationalResourceRepository,
+    @Inject(OperationalResourceBranchScopeRepository)
     private readonly branchScopeRepository: OperationalResourceBranchScopeRepository,
+    @Inject(ProductionOrderOperationalAssignmentRepository)
     private readonly assignmentRepository: ProductionOrderOperationalAssignmentRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

@@ -14,7 +14,7 @@ import {
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { CustomerListPanel } from "@/components/customers/customer-list-panel";
-import { WorkspaceFlash } from "@/components/ui/workspace-flash";
+import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 
 type CustomerType = "person" | "company";
 type CustomerStatus = "active" | "inactive" | "blocked";
@@ -346,7 +346,7 @@ export function CustomerWorkspace() {
             : [createMeasurementDraft(response.defaultUnitId)],
       }));
     } catch (error) {
-      setWorkspaceMessage(error instanceof Error ? error.message : "Measurement catalog could not be loaded.");
+      setWorkspaceMessage(describeWorkspaceError(error, "O catálogo de medidas não pôde ser carregado."));
     }
   }, [apiJson, canReadMeasurements, setMeasurementForm]);
 
@@ -362,7 +362,7 @@ export function CustomerWorkspace() {
       setCustomers(response);
       setWorkspaceMessage(null);
     } catch (error) {
-      setWorkspaceMessage(error instanceof Error ? error.message : "Customers could not be loaded.");
+      setWorkspaceMessage(describeWorkspaceError(error, "Os clientes não puderam ser carregados."));
     } finally {
       setLoadingCustomers(false);
     }

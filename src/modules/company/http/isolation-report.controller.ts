@@ -1,4 +1,4 @@
-import { Controller, Get, BadRequestException } from '@nestjs/common';
+import { Inject, Controller, Get, BadRequestException } from '@nestjs/common';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
@@ -7,7 +7,9 @@ import { IsolationReportService } from '../application/company/isolation-report.
 @Controller('tenancy')
 export class IsolationReportController {
   constructor(
+    @Inject(IsolationReportService)
     private readonly isolationReportService: IsolationReportService,
+    @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
   ) {}
 

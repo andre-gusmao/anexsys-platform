@@ -88,4 +88,16 @@ describe('DomainExceptionFilter', () => {
     assert.equal(result.statusCode, 500);
     assert.match(String((result.body as { message?: string }).message), /start:dev/);
   });
+
+  it('translates a tsx customer search crash into a recoverable message', () => {
+    const { host, result } = createHost({ method: 'GET', url: '/api/v1/customers' });
+
+    new DomainExceptionFilter().catch(
+      new TypeError("Cannot read properties of undefined (reading 'search')"),
+      host as never,
+    );
+
+    assert.equal(result.statusCode, 500);
+    assert.match(String((result.body as { message?: string }).message), /start:dev/);
+  });
 });

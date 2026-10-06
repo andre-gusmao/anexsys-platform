@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { addDays } from './utils';
 import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
 import { DEFAULT_BRANCH_TIMEZONE } from 'src/modules/company/application/company.defaults';
@@ -10,9 +10,13 @@ import { BusinessCalendarDayRepository } from '../../infrastructure/persistence/
 @Injectable()
 export class DeliveryDateService {
   constructor(
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(BusinessCalendarDayRepository)
     private readonly businessCalendarDayRepository: BusinessCalendarDayRepository,
+    @Inject(BranchHoursService)
     private readonly branchHoursService: BranchHoursService,
   ) {}
 

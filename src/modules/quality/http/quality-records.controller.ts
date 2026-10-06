@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { IsArray, IsDateString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ProductionOrderService } from 'src/modules/production-orders/application/production-order/production-order.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
@@ -108,7 +108,9 @@ class RequestWarrantyExecutionBody {
 @Controller('quality-records')
 export class QualityRecordsController {
   constructor(
+    @Inject(QualityService)
     private readonly qualityService: QualityService,
+    @Inject(ProductionOrderService)
     private readonly productionOrderService: ProductionOrderService,
   ) {}
 
@@ -198,7 +200,12 @@ export class QualityRecordsController {
 
 @Controller('production-orders/:productionOrderId/quality')
 export class ProductionOrderQualityController {
-  constructor(private readonly qualityService: QualityService, private readonly productionOrderService: ProductionOrderService) {}
+  constructor(
+    @Inject(QualityService)
+    private readonly qualityService: QualityService,
+    @Inject(ProductionOrderService)
+    private readonly productionOrderService: ProductionOrderService,
+  ) {}
 
   @Permissions('quality.read')
   @Get()

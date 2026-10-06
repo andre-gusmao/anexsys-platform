@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
@@ -19,11 +19,17 @@ import { ProductionOrderService } from '../production-order/production-order.ser
 @Injectable()
 export class QrTrackingService {
   constructor(
+    @Inject(QrEventRepository)
     private readonly qrEventRepository: QrEventRepository,
+    @Inject(ProductionOrderService)
     private readonly productionOrderService: ProductionOrderService,
+    @Inject(OperationalResourceService)
     private readonly operationalResourceService: OperationalResourceService,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

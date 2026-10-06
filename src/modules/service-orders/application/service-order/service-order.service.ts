@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Inject, ForbiddenException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource, QueryFailedError } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -32,14 +32,23 @@ import {
 @Injectable()
 export class ServiceOrderService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(ServiceOrderRepository)
     private readonly serviceOrderRepository: ServiceOrderRepository,
+    @Inject(ServiceOrderItemRepository)
     private readonly serviceOrderItemRepository: ServiceOrderItemRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(CustomerService)
     private readonly customerService: CustomerService,
+    @Inject(IdentityService)
     private readonly identityService: IdentityService,
+    @Inject(DeliveryDateService)
     private readonly deliveryDateService: DeliveryDateService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { ArrayMinSize, IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
@@ -118,7 +118,12 @@ class SyncFiscalDocumentStatusBody {
 
 @Controller('fiscal-documents')
 export class FiscalDocumentsController {
-  constructor(private readonly fiscalService: FiscalService, private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    @Inject(FiscalService)
+    private readonly fiscalService: FiscalService,
+    @Inject(ServiceOrderService)
+    private readonly serviceOrderService: ServiceOrderService,
+  ) {}
 
   @Permissions('fiscal.read', 'finance.read')
   @Get()

@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   Body,
   Controller,
@@ -90,8 +91,11 @@ class UpdateUserBody {
 @Controller('users')
 export class UsersController {
   constructor(
+    @Inject(IdentityService)
     private readonly identityService: IdentityService,
+    @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
+    @Inject(AuthService)
     private readonly authService: AuthService,
   ) {}
 

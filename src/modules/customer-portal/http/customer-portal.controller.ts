@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UnauthorizedException } from '@nestjs/common';
 import { IsBoolean, IsDateString, IsEmail, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
@@ -51,7 +51,10 @@ class CreateWarrantyRequestBody {
 
 @Controller('customer-portal')
 export class CustomerPortalController {
-  constructor(private readonly customerPortalService: CustomerPortalService) {}
+  constructor(
+    @Inject(CustomerPortalService)
+    private readonly customerPortalService: CustomerPortalService,
+  ) {}
 
   @Permissions('customer-portal.manage')
   @Post('profiles')

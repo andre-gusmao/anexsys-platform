@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   ForbiddenException,
@@ -241,7 +242,10 @@ class UpdateServiceOrderItemBody {
 
 @Controller('service-orders')
 export class ServiceOrdersController {
-  constructor(private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    @Inject(ServiceOrderService)
+    private readonly serviceOrderService: ServiceOrderService,
+  ) {}
 
   @Permissions('service_orders.read')
   @Get()
