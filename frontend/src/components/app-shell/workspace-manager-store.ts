@@ -60,15 +60,20 @@ export function isMeaningfulWorkspaceTab(tab: WorkspaceTab): boolean {
 }
 
 export function normalizeWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
-  const tabs = store.tabs.map((tab) => createWorkspaceTab(tab)).filter(isMeaningfulWorkspaceTab);
+  const collapsed = collapseDuplicateDashboardTabs({
+    tabs: store.tabs.map((tab) => createWorkspaceTab(tab)).filter(isMeaningfulWorkspaceTab),
+    activeTabId: store.activeTabId,
+    stateByTabId: store.stateByTabId ?? {},
+  });
+  const tabs = collapsed.tabs;
   const validTabIds = new Set(tabs.map((tab) => tab.id));
   const stateByTabId = Object.fromEntries(
-    Object.entries(store.stateByTabId ?? {}).filter(([tabId]) => validTabIds.has(tabId)),
+    Object.entries(collapsed.stateByTabId).filter(([tabId]) => validTabIds.has(tabId)),
   );
 
   return {
     tabs,
-    activeTabId: resolveActiveWorkspaceTabId(tabs, store.activeTabId),
+    activeTabId: resolveActiveWorkspaceTabId(tabs, collapsed.activeTabId),
     stateByTabId,
   };
 }
@@ -168,6 +173,43 @@ export function clearWorkspaceScopedState(store: WorkspaceStore, tabId: string, 
 
 export function getWorkspaceBasePath(pathname: string): string {
   return normalizeWorkspacePathname(pathname).split("?")[0] || "/";
+}
+
+export function isDashboardWorkspacePath(pathname: string): boolean {
+  return getWorkspaceBasePath(pathname) === "/dashboard";
+}
+
+export function findWorkspaceTabByBasePath(tabs: WorkspaceTab[], pathname: string): WorkspaceTab | undefined {
+  const basePath = getWorkspaceBasePath(pathname);
+  return [...tabs].reverse().find((tab) => getWorkspaceBasePath(tab.pathname) === basePath);
+}
+
+export function collapseDuplicateDashboardTabs(store: WorkspaceStore): WorkspaceStore {
+  const dashboardTabs = store.tabs.filter(
+    (tab) => isDashboardWorkspacePath(tab.pathname) && !tab.pathname.includes("?"),
+  );
+  if (dashboardTabs.length <= 1) {
+    return store;
+  }
+
+  const keepId = dashboardTabs.some((tab) => tab.id === store.activeTabId)
+    ? store.activeTabId
+    : dashboardTabs[0]?.id;
+  if (!keepId) {
+    return store;
+  }
+
+  const dropIds = new Set(dashboardTabs.filter((tab) => tab.id !== keepId).map((tab) => tab.id));
+  const remainingState = { ...store.stateByTabId };
+  for (const tabId of dropIds) {
+    delete remainingState[tabId];
+  }
+
+  return {
+    ...store,
+    tabs: store.tabs.filter((tab) => !dropIds.has(tab.id)),
+    stateByTabId: remainingState,
+  };
 }
 
 export function getWorkspaceSearchParams(pathname: string): URLSearchParams {

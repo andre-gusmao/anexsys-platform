@@ -2,6 +2,7 @@
 
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useWorkspaceManager } from "@/components/app-shell/workspace-manager";
+import { getWorkspaceBasePath } from "@/components/app-shell/workspace-manager-store";
 import { useSession } from "@/components/providers/session-provider";
 
 type NavItem = {
@@ -96,7 +97,7 @@ const navSections: NavSection[] = [
 
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const { hasAnyPermission } = useSession();
-  const { currentTab, openWorkspaceInNewTab } = useWorkspaceManager();
+  const { currentTab, openWorkspaceFromMenu, openWorkspaceInNewTab } = useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
@@ -120,14 +121,14 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
           <div className="sidebar__section-title">{section.title}</div>
           <ul className="nav-list">
             {section.items.map((item) => {
-              const active = currentTab?.pathname === item.href || Boolean(currentTab?.pathname.startsWith(`${item.href}?`));
+              const active = currentTab ? getWorkspaceBasePath(currentTab.pathname) === item.href : false;
               return (
                 <li key={item.href}>
                    <div className={`nav-link${active ? " nav-link--active" : ""}`}>
                      <button
                        className="nav-link__main"
                        onClick={() => {
-                         openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false });
+                         openWorkspaceFromMenu(item.href, item.label);
                          onNavigate?.();
                        }}
                        type="button"
@@ -142,7 +143,7 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
                          onClick={(event) => {
                            event.preventDefault();
                            event.stopPropagation();
-                           openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false });
+                           openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false, reuse: "none" });
                          }}
                          type="button"
                        >

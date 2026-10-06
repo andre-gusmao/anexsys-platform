@@ -5,11 +5,14 @@ import {
   buildWorkspaceHref,
   clearWorkspaceScopedState,
   cloneWorkspaceTabState,
+  collapseDuplicateDashboardTabs,
   createEmptyWorkspaceStore,
   createWorkspaceTab,
+  findWorkspaceTabByBasePath,
   getWorkspaceBasePath,
   getWorkspaceScopedState,
   getWorkspaceSearchParams,
+  isDashboardWorkspacePath,
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
@@ -101,4 +104,59 @@ test('ignores unnamed or empty workspace tabs', () => {
 
   assert.deepEqual(store.tabs.map((tab) => tab.id), ['tab-1']);
   assert.deepEqual(Object.keys(store.stateByTabId), ['tab-1']);
+});
+
+test('finds the latest workspace tab by menu base path', () => {
+  const dashboard = createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' });
+  const clientes = createWorkspaceTab({ id: 'tab-clientes', pathname: '/customers', label: 'Clientes' });
+  const clienteNovo = createWorkspaceTab({
+    id: 'tab-cliente-novo',
+    pathname: '/customers?workspaceMode=new',
+    label: 'Customer: New',
+  });
+
+  assert.equal(isDashboardWorkspacePath('/dashboard?workspaceTab=abc'), true);
+  assert.equal(findWorkspaceTabByBasePath([dashboard, clientes, clienteNovo], '/customers')?.id, 'tab-cliente-novo');
+  assert.equal(findWorkspaceTabByBasePath([dashboard, clientes, clienteNovo], '/dashboard')?.id, 'tab-dashboard');
+});
+
+test('collapses duplicate Dashboard tabs and keeps the active one', () => {
+  const store = collapseDuplicateDashboardTabs({
+    tabs: [
+      createWorkspaceTab({ id: 'dash-1', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'dash-2', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'clientes', pathname: '/customers', label: 'Clientes' }),
+    ],
+    activeTabId: 'dash-2',
+    stateByTabId: {
+      'dash-1': { leftover: true },
+      'dash-2': { keep: true },
+      clientes: { form: true },
+    },
+  });
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['dash-2', 'clientes'],
+  );
+  assert.equal(store.activeTabId, 'dash-2');
+  assert.deepEqual(Object.keys(store.stateByTabId).sort(), ['clientes', 'dash-2']);
+});
+
+test('normalizing the store removes extra Dashboard tabs from localStorage', () => {
+  const store = normalizeWorkspaceStore({
+    tabs: [
+      createWorkspaceTab({ id: 'dash-1', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'dash-2', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'dash-3', pathname: '/dashboard', label: 'Dashboard' }),
+    ],
+    activeTabId: 'dash-1',
+    stateByTabId: {},
+  });
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['dash-1'],
+  );
+  assert.equal(store.activeTabId, 'dash-1');
 });

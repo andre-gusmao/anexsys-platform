@@ -19,10 +19,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const [pendingEmpresaSwitch, setPendingEmpresaSwitch] = useState(false);
   const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const activeConta = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
-  const activeEmpresa = (session?.empresas ?? []).find((empresa) => empresa.id === session?.activeEmpresaId) ?? null;
   const visibleBranches = branchesOfEmpresa(session?.branches ?? [], session?.activeEmpresaId ?? null);
-  const activeBranch = visibleBranches.find((branch) => branch.id === session?.activeBranchId) ?? session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const busy = pendingCompanySwitch || pendingEmpresaSwitch || pendingBranchSwitch;
   const sidebarVisible = isDesktop || sidebarOpen;
   const canOpenCurrentWorkspaceExternally = currentTab ? isMeaningfulWorkspaceTab(currentTab) : false;
@@ -38,26 +35,12 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
 
         <section className="sidebar__context">
           <div className="eyebrow">Contexto ativo</div>
-          <div className="sidebar__context-summary">
-            <div className="sidebar__context-field">
-              <span>Conta</span>
-              <strong>{activeConta?.displayName ?? "Selecione a Conta"}</strong>
-            </div>
-            <div className="sidebar__context-field">
-              <span>Empresa</span>
-              <strong>{activeEmpresa ? empresaLabel(activeEmpresa) : "Selecione a Empresa"}</strong>
-            </div>
-            <div className="sidebar__context-field">
-              <span>Filial</span>
-              <strong>{activeBranch?.label ?? "Selecione a filial"}</strong>
-            </div>
-          </div>
 
-          {session && session.companies.length > 1 ? (
+          {session ? (
             <label className="field sidebar__context-select">
               <span>Conta</span>
               <select
-                disabled={busy}
+                disabled={busy || session.companies.length < 2}
                 value={session.tenantId}
                 onChange={async (event) => {
                   setPendingCompanySwitch(true);
@@ -80,11 +63,11 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
             </label>
           ) : null}
 
-          {session && (session.empresas?.length ?? 0) > 0 ? (
+          {session ? (
             <label className="field sidebar__context-select">
               <span>Empresa</span>
               <select
-                disabled={busy}
+                disabled={busy || (session.empresas?.length ?? 0) === 0}
                 value={session.activeEmpresaId ?? ""}
                 onChange={async (event) => {
                   if (!event.target.value) return;
@@ -97,7 +80,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
                 }}
               >
                 {!session.activeEmpresaId ? <option value="">Selecione a Empresa</option> : null}
-                {session.empresas.map((empresa) => (
+                {(session.empresas ?? []).map((empresa) => (
                   <option key={empresa.id} value={empresa.id}>
                     {empresaLabel(empresa)}
                   </option>
