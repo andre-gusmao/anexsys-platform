@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/master-data-duplicate-guard";
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
+import { CustomerListPanel } from "@/components/customers/customer-list-panel";
 
 type CustomerType = "person" | "company";
 type CustomerStatus = "active" | "inactive" | "blocked";
@@ -175,6 +176,8 @@ const defaultCustomerForm = (): CustomerFormState => ({
   status: "active",
 });
 
+const EMPTY_CUSTOMER_LIST_QUERY = { q: "", status: "", customerType: "" };
+
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
 
 function normalizePostalCode(value: string) {
@@ -206,12 +209,6 @@ function formatDate(value: string | null | undefined) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("pt-BR").format(date);
-}
-
-function customerStatusLabel(status: CustomerStatus) {
-  if (status === "inactive") return "Inativo";
-  if (status === "blocked") return "Bloqueado";
-  return "Ativo";
 }
 
 function mapCustomerToForm(customer: CustomerRecord): CustomerFormState {
@@ -262,9 +259,7 @@ export function CustomerWorkspace() {
   const focusSection = searchParams.get("focusSection");
   const workspaceMode = searchParams.get("workspaceMode");
 
-  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("customers.searchQuery", "");
-  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("customers.statusFilter", "");
-  const [typeFilter, setTypeFilter] = useWorkspaceScopedState("customers.typeFilter", "");
+  const [listQuery, setListQuery] = useWorkspaceScopedState("customers.listQuery", EMPTY_CUSTOMER_LIST_QUERY);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [activeCustomerId, setActiveCustomerId] = useWorkspaceScopedState<string | null>("customers.activeCustomerId", null);
@@ -357,9 +352,9 @@ export function CustomerWorkspace() {
     setLoadingCustomers(true);
     try {
       const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (statusFilter) params.set("status", statusFilter);
-      if (typeFilter) params.set("customerType", typeFilter);
+      if (listQuery.q.trim()) params.set("q", listQuery.q.trim());
+      if (listQuery.status) params.set("status", listQuery.status);
+      if (listQuery.customerType) params.set("customerType", listQuery.customerType);
       const suffix = params.toString() ? `?${params}` : "";
       const response = await apiJson<CustomerRecord[]>(`/customers${suffix}`);
       setCustomers(response);
@@ -369,7 +364,7 @@ export function CustomerWorkspace() {
     } finally {
       setLoadingCustomers(false);
     }
-  }, [apiJson, searchQuery, statusFilter, typeFilter]);
+  }, [apiJson, listQuery]);
 
   const loadCustomerDetails = useCallback(
     async (customerId: string) => {
@@ -527,13 +522,14 @@ export function CustomerWorkspace() {
   );
 
   const handleDeleteCustomer = useCallback(
-    async (customer: CustomerRecord) => {
+    async (customer: CustomerRecord, options: { skipConfirm?: boolean } = {}) => {
       if (
+        !options.skipConfirm &&
         !window.confirm(
           `Excluir ${customer.legalName}? Só é possível se não houver OS, medidas ou financeiro. O cliente some da lista.`,
         )
       ) {
-        return;
+        return false;
       }
 
       setActingCustomerId(customer.id);
@@ -546,18 +542,49 @@ export function CustomerWorkspace() {
         if (!validation.allowed) {
           setDependencyValidation(validation);
           setWorkspaceMessage(validation.message);
-          return;
+          return false;
         }
         await apiJson(`/customers/${customer.id}`, { method: "DELETE" });
         setWorkspaceMessage(`${customer.legalName} foi excluído da lista.`);
         await loadCustomers();
+        return true;
       } catch (error) {
         setWorkspaceMessage(error instanceof Error ? error.message : "O cliente não pôde ser excluído.");
+        return false;
       } finally {
         setActingCustomerId(null);
       }
     },
     [apiJson, loadCustomers],
+  );
+
+  const handleDeleteCustomers = useCallback(
+    async (selected: CustomerRecord[]) => {
+      if (selected.length === 0) {
+        return;
+      }
+      if (
+        !window.confirm(
+          `Excluir ${selected.length} cliente(s) selecionado(s)? Só é possível se não houver OS, medidas ou financeiro.`,
+        )
+      ) {
+        return;
+      }
+
+      let deleted = 0;
+      for (const customer of selected) {
+        const ok = await handleDeleteCustomer(customer, { skipConfirm: true });
+        if (ok) {
+          deleted += 1;
+        } else {
+          break;
+        }
+      }
+      if (deleted > 1) {
+        setWorkspaceMessage(`${deleted} cliente(s) foram excluídos da lista.`);
+      }
+    },
+    [handleDeleteCustomer],
   );
 
   const closeCustomerWorkspace = useCallback(() => {
@@ -599,15 +626,6 @@ export function CustomerWorkspace() {
 
     return () => window.cancelAnimationFrame(frameId);
   }, [focusCustomerId, focusSection, selectedCustomer?.id]);
-
-  const customerSuggestions = useMemo(
-    () =>
-      customers.map((customer) => ({
-        id: customer.id,
-        label: customer.tradeName ? `${customer.legalName} · ${customer.tradeName}` : customer.legalName,
-      })),
-    [customers],
-  );
 
   const handlePostalCodeLookup = useCallback(async () => {
     const postalCode = normalizePostalCode(customerForm.postalCode);
@@ -828,11 +846,13 @@ export function CustomerWorkspace() {
 
   return (
     <>
-      <section className="hero-card">
-        <div className="eyebrow">Módulo operacional</div>
-        <h1 className="title">Cadastro de clientes</h1>
-        <p>Cadastre clientes do tenant, pesquise rapidamente, edite dados cadastrais completos e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
-      </section>
+      {!isListWorkspace ? (
+        <section className="hero-card">
+          <div className="eyebrow">Módulo operacional</div>
+          <h1 className="title">Cadastro de clientes</h1>
+          <p>Cadastre clientes do tenant, pesquise rapidamente, edite dados cadastrais completos e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
+        </section>
+      ) : null}
 
       {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
@@ -843,130 +863,32 @@ export function CustomerWorkspace() {
       ) : null}
 
       {isListWorkspace ? (
-        <section className="mini-card cadastro-list">
-          <div className="filters-grid">
-            <label className="field">
-              <span>Localizar</span>
-              <input
-                list="customer-suggestions"
-                placeholder="Nome, telefone, CPF/CNPJ ou e-mail"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-              <datalist id="customer-suggestions">
-                {customerSuggestions.map((customer) => (
-                  <option key={customer.id} value={customer.label} />
-                ))}
-              </datalist>
-            </label>
-
-            <label className="field">
-              <span>Status</span>
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="">Todos</option>
-                <option value="active">Ativo</option>
-                <option value="inactive">Inativo</option>
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Tipo de cliente</span>
-              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-                <option value="">Todos</option>
-                <option value="person">Pessoa</option>
-                <option value="company">Empresa</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="cadastro-list__toolbar">
-            {canWriteCustomers ? (
-              <button className="button" onClick={openCreateCustomerWorkspace} type="button">
-                Cadastrar novo
-              </button>
-            ) : (
-              <span />
-            )}
-            <p className="cadastro-list__count">
-              {loadingCustomers ? "Carregando…" : `${customers.length} cliente(s)`}
-            </p>
-          </div>
-
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Tipo</th>
-                  <th>Documento</th>
-                  <th>Status</th>
-                  <th>Telefone</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer) => {
-                  const busy = actingCustomerId === customer.id;
-                  return (
-                    <tr key={customer.id}>
-                      <td>
-                        <strong>{customer.legalName}</strong>
-                        <div className="table-subtle">{customer.tradeName ?? customer.email ?? "—"}</div>
-                      </td>
-                      <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
-                      <td>{customer.cpfCnpj ?? "—"}</td>
-                      <td>
-                        <span className={`status-chip status-chip--${customer.status}`}>
-                          {customerStatusLabel(customer.status)}
-                        </span>
-                      </td>
-                      <td>{formatPhone(customer.phone)}</td>
-                      <td>
-                        {canWriteCustomers ? (
-                          <div className="table-actions">
-                            <button
-                              className="button-secondary"
-                              disabled={busy}
-                              onClick={() => openCustomerWorkspace(customer)}
-                              type="button"
-                            >
-                              Alterar
-                            </button>
-                            <button
-                              className="button-secondary"
-                              disabled={busy}
-                              onClick={() => void handleDeleteCustomer(customer)}
-                              type="button"
-                            >
-                              Excluir
-                            </button>
-                            <button
-                              className="button-secondary"
-                              disabled={busy || customer.status === "inactive"}
-                              onClick={() => void handleInactivateCustomer(customer)}
-                              type="button"
-                            >
-                              Inativar
-                            </button>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {!loadingCustomers && customers.length === 0 ? (
-                  <tr>
-                    <td colSpan={6}>
-                      <div className="empty-state">Nenhum cliente encontrado para os filtros informados.</div>
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <CustomerListPanel
+          actingCustomerId={actingCustomerId}
+          canWrite={canWriteCustomers}
+          customers={customers}
+          loading={loadingCustomers}
+          onApplyQuery={(query) => setListQuery(query)}
+          onCreate={openCreateCustomerWorkspace}
+          onDelete={(row) => {
+            const customer = customers.find((item) => item.id === row.id);
+            if (customer) void handleDeleteCustomer(customer);
+          }}
+          onDeleteMany={(rows) => {
+            const selected = rows
+              .map((row) => customers.find((item) => item.id === row.id))
+              .filter((item): item is CustomerRecord => Boolean(item));
+            void handleDeleteCustomers(selected);
+          }}
+          onEdit={(row) => {
+            const customer = customers.find((item) => item.id === row.id);
+            if (customer) openCustomerWorkspace(customer);
+          }}
+          onInactivate={(row) => {
+            const customer = customers.find((item) => item.id === row.id);
+            if (customer) void handleInactivateCustomer(customer);
+          }}
+        />
       ) : null}
 
         {!isListWorkspace ? (

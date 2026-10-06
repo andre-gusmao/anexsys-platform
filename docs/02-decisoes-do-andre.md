@@ -306,9 +306,9 @@ Validado no ambiente local. Vale para **todos** os cadastros; o primeiro a receb
 
 De cima para baixo:
 
-1. **Filtro** para localizar o que já está cadastrado.
-2. **Cadastrar novo**, à esquerda.
-3. **Grade** dos registros, com **Alterar**, **Excluir** e **Inativar** em cada linha.
+1. **Cabeçalho da grade:** **Adicionar** à esquerda; **Mais ações** (exportar Excel, exportar e-mails e excluir) só vale com linhas **marcadas**; à direita busca por nome, ícone para **escolher colunas** e botão para **abrir o filtro**.
+2. **Filtro** (abre no botão): campos para localizar, com **Buscar** e **Limpar**.
+3. **Grade** com caixa de seleção, colunas configuráveis, **Alterar / Excluir / Inativar**, e **paginação** (quantidade por página, anterior e próxima).
 
 ### Excluir e inativar
 
