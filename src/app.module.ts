@@ -1,6 +1,8 @@
 import { MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
+import { AuthorizationService } from './modules/authorization/application/authorization/authorization.service';
+import { TokenFactoryService } from './platform/auth/token-factory.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -59,11 +61,17 @@ import { patchPostgresQueryRunnerForRls } from './platform/tenancy/tenant-rls.pa
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useFactory: (
+        reflector: Reflector,
+        tokenFactoryService: TokenFactoryService,
+        authorizationService: AuthorizationService,
+      ) => new JwtAuthGuard(reflector, tokenFactoryService, authorizationService),
+      inject: [Reflector, TokenFactoryService, AuthorizationService],
     },
     {
       provide: APP_GUARD,
-      useClass: PermissionsGuard,
+      useFactory: (reflector: Reflector) => new PermissionsGuard(reflector),
+      inject: [Reflector],
     },
     {
       provide: APP_INTERCEPTOR,

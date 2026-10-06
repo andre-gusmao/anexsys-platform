@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -20,8 +21,11 @@ import { IS_PUBLIC_KEY } from './public.decorator';
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
+    @Inject(TokenFactoryService)
     private readonly tokenFactoryService: TokenFactoryService,
+    @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
   ) {}
 

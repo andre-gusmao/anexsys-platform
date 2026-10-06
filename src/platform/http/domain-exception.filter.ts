@@ -47,7 +47,12 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: exception instanceof Error ? exception.message : 'Internal server error',
+      message:
+        exception instanceof Error && /getAllAndOverride/.test(exception.message)
+          ? 'O servidor não concluiu o login. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente entrar de novo.'
+          : exception instanceof Error
+            ? exception.message
+            : 'Internal server error',
     });
   }
 

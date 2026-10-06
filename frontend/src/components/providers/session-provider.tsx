@@ -544,21 +544,31 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       setErrorMessage(null);
       clearPersistedWorkspaceStore();
       const loginEmail = email.trim().toLowerCase();
-      const result = await requestJson<AuthResponse>("/auth/login/password", {
-        method: "POST",
-        body: JSON.stringify({ email: loginEmail, password }),
-      });
+      try {
+        const result = await requestJson<AuthResponse>("/auth/login/password", {
+          method: "POST",
+          body: JSON.stringify({ email: loginEmail, password }),
+        });
 
-      const baseSession = createPendingHydrationSession({
-        tenantId: result.tenantId,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-        sessionId: result.sessionId,
-        permissions: result.permissions,
-        branchIds: result.branchIds,
-      });
+        const baseSession = createPendingHydrationSession({
+          tenantId: result.tenantId,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          sessionId: result.sessionId,
+          permissions: result.permissions,
+          branchIds: result.branchIds,
+        });
 
-      await hydrateSession(baseSession);
+        await hydrateSession(baseSession);
+      } catch (error) {
+        const raw = error instanceof Error ? error.message : "";
+        setStatus("anonymous");
+        setErrorMessage(
+          /getAllAndOverride|internal server error/i.test(raw)
+            ? "O servidor não concluiu o login. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente entrar de novo."
+            : raw || "Não foi possível entrar.",
+        );
+      }
     },
     [hydrateSession],
   );

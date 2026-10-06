@@ -64,4 +64,16 @@ describe('DomainExceptionFilter', () => {
       statusCode: 400,
     });
   });
+
+  it('translates the tsx Reflector login crash into a recoverable message', () => {
+    const { host, result } = createHost({ method: 'POST', url: '/api/v1/auth/login/password' });
+
+    new DomainExceptionFilter().catch(
+      new TypeError("Cannot read properties of undefined (reading 'getAllAndOverride')"),
+      host as never,
+    );
+
+    assert.equal(result.statusCode, 500);
+    assert.match(String((result.body as { message?: string }).message), /start:dev/);
+  });
 });
