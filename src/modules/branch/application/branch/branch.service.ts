@@ -85,6 +85,7 @@ export class BranchService {
   }
 
   async listByCompany(tenantId: string, companyId: string): Promise<BranchEntity[]> {
+    await this.companyService.getById(companyId, tenantId);
     return this.branchRepository.findByCompany(tenantId, companyId);
   }
 

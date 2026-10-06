@@ -1,12 +1,14 @@
 "use client";
 
 import { useWorkspaceRegistration } from "@/components/app-shell/workspace-manager";
+import { empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 
 export function DashboardWorkspace() {
   useWorkspaceRegistration({ label: "Dashboard" });
   const { session } = useSession();
-  const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
+  const activeConta = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
+  const activeEmpresa = (session?.empresas ?? []).find((empresa) => empresa.id === session?.activeEmpresaId) ?? null;
   const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
 
   return (
@@ -15,8 +17,8 @@ export function DashboardWorkspace() {
         <div className="eyebrow">ANEXSYS</div>
         <h1 className="title">Dashboard placeholder</h1>
         <p>
-          Frontend Sprint 1 delivers the first usable browser experience for ANEXSYS: login, company and filial selection,
-          business-friendly context display, and the administrative shell.
+          Conta isola o ateliê. Empresa é o CNPJ. Filial é o ponto físico. Clientes e medidas são da Conta e valem para
+          todas as Empresas.
         </p>
       </section>
 
@@ -26,8 +28,9 @@ export function DashboardWorkspace() {
           <ul className="placeholder-list">
             <li>User: {session?.user?.displayName ?? "-"}</li>
             <li>Email: {session?.user?.email ?? "-"}</li>
-            <li>Company: {activeCompany?.displayName ?? "Not selected"}</li>
-            <li>Filial ativa: {activeBranch?.label ?? "Não selecionada"}</li>
+            <li>Conta: {activeConta?.displayName ?? "Não selecionada"}</li>
+            <li>Empresa: {activeEmpresa ? empresaLabel(activeEmpresa) : "Não selecionada"}</li>
+            <li>Filial: {activeBranch?.label ?? "Não selecionada"}</li>
           </ul>
         </article>
 

@@ -192,4 +192,23 @@ describe('BranchService', () => {
 
     await assert.rejects(() => service.deactivate('branch-1', 'actor-1'), DomainValidationError);
   });
+
+  it('lists filiais of one empresa after checking it belongs to the conta', async () => {
+    const extras = extraDeps();
+    const service = new BranchService(
+      {
+        async findByCompany(tenantId: string, companyId: string) {
+          return [{ id: 'branch-a', tenantId, companyId }];
+        },
+      } as never,
+      {} as never,
+      { async record() {} } as never,
+      { async assertBranchCanDeactivate() {} } as never,
+      extras.companyService as never,
+      extras.hoursService as never,
+    );
+
+    const listed = await service.listByCompany('tenant-a', 'company-1');
+    assert.equal(listed[0]?.companyId, 'company-1');
+  });
 });

@@ -140,7 +140,7 @@ function describeCompanyError(error: unknown, fallback: string): string {
 }
 
 export function EmpresasWorkspace() {
-  const { hasAnyPermission, apiJson, status } = useSession();
+  const { hasAnyPermission, apiJson, status, reloadEmpresas, selectEmpresa } = useSession();
   const canRead = hasAnyPermission("companies.read");
   const canWrite = hasAnyPermission("companies.write");
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -255,7 +255,9 @@ export function EmpresasWorkspace() {
       setActiveId(created.id);
       setShowCreate(false);
       setForm(mapCompanyToForm(created));
-      setMessage("Empresa criada. A Filial padrão (Matriz) nasceu junto, com horário de funcionamento.");
+      await reloadEmpresas(created.id);
+      await selectEmpresa(created.id);
+      setMessage("Empresa criada. A Filial padrão (Matriz) nasceu junto. Ela já está no contexto ativo.");
     } catch (error) {
       setMessage(describeCompanyError(error, "A empresa não pôde ser criada."));
     } finally {
@@ -275,6 +277,7 @@ export function EmpresasWorkspace() {
       });
       setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
       setForm(mapCompanyToForm(updated));
+      await reloadEmpresas(updated.id);
       setMessage("Empresa atualizada.");
     } catch (error) {
       setMessage(describeCompanyError(error, "A empresa não pôde ser atualizada."));
@@ -298,8 +301,9 @@ export function EmpresasWorkspace() {
         <div className="eyebrow">Administração</div>
         <h1 className="title">Empresas</h1>
         <p>
-          A Empresa é a pessoa jurídica (CNPJ) dentro da Conta: identificação, inscrições, contato e endereço fiscal. Se
-          não houver Filial física, o sistema cria a Filial padrão (Matriz).
+          A Empresa é o CNPJ dentro da Conta. Use o combo Empresa no contexto ao lado para trocar entre elas e associar
+          Filiais. Clientes e medidas são da Conta e valem para todas as Empresas. Se não houver Filial física, o
+          sistema cria a Filial padrão (Matriz).
         </p>
       </section>
 

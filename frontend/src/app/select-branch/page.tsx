@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { branchesOfEmpresa, empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 
 export default function SelectBranchPage() {
   const router = useRouter();
-  const { status, session, selectCompany, selectBranch } = useSession();
+  const { status, session, selectCompany, selectEmpresa, selectBranch } = useSession();
   const [pendingCompanyId, setPendingCompanyId] = useState<string | null>(null);
   const [pendingBranchId, setPendingBranchId] = useState<string | null>(null);
 
@@ -24,9 +25,15 @@ export default function SelectBranchPage() {
     return <div className="loading-state">Loading your company and filial…</div>;
   }
 
-  const activeCompany = session.companies.find((company) => company.tenantId === session.tenantId) ?? null;
+  const activeConta = session.companies.find((company) => company.tenantId === session.tenantId) ?? null;
+  const activeEmpresa = (session.empresas ?? []).find((empresa) => empresa.id === session.activeEmpresaId) ?? null;
+  const visibleBranches = branchesOfEmpresa(session.branches, session.activeEmpresaId);
   const needsCompanySelection = session.companySelectionRequired;
-  const branchTitle = activeCompany ? `Selecione a filial ativa de ${activeCompany.displayName}` : "Selecione a filial ativa";
+  const branchTitle = activeEmpresa
+    ? `Selecione a filial de ${empresaLabel(activeEmpresa)}`
+    : activeConta
+      ? `Selecione a filial da Conta ${activeConta.displayName}`
+      : "Selecione a filial ativa";
   const busy = pendingCompanyId !== null || pendingBranchId !== null;
 
   return (
@@ -34,15 +41,15 @@ export default function SelectBranchPage() {
       <section className="content-card" style={{ maxWidth: 920 }}>
         <div className="content-card__header">
           <div className="eyebrow">ANEXSYS</div>
-          <h1 className="title">Choose company and filial</h1>
-          <p className="subtitle">We open your last valid context automatically when possible. If needed, confirm your company and filial.</p>
+          <h1 className="title">Conta, Empresa e Filial</h1>
+          <p className="subtitle">A Conta isola o ateliê. A Empresa é o CNPJ. A Filial é o ponto físico. Confirmamos o último contexto válido quando dá.</p>
         </div>
 
         <div className="content-card__body" style={{ display: "grid", gap: 32 }}>
           {session.companies.length > 1 ? (
             <section>
-              <div className="eyebrow">Company</div>
-              <h2 style={{ marginTop: 12 }}>{needsCompanySelection ? "Select active company" : activeCompany?.displayName ?? "Switch company"}</h2>
+              <div className="eyebrow">Conta</div>
+              <h2 style={{ marginTop: 12 }}>{needsCompanySelection ? "Selecione a Conta ativa" : activeConta?.displayName ?? "Trocar Conta"}</h2>
               <div className="branch-grid" style={{ marginTop: 20 }}>
                 {session.companies.map((company) => (
                   <button
@@ -62,9 +69,38 @@ export default function SelectBranchPage() {
                     }}
                     type="button"
                   >
-                    <div className="eyebrow">Company</div>
+                    <div className="eyebrow">Conta</div>
                     <h2 style={{ marginTop: 12 }}>{company.displayName}</h2>
-                    <p className="branch-card__meta">{pendingCompanyId === company.tenantId ? "Switching…" : "Open company"}</p>
+                    <p className="branch-card__meta">{pendingCompanyId === company.tenantId ? "Trocando…" : "Abrir Conta"}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {!needsCompanySelection && (session.empresas?.length ?? 0) > 1 ? (
+            <section>
+              <div className="eyebrow">Empresa</div>
+              <h2 style={{ marginTop: 12 }}>{activeEmpresa ? empresaLabel(activeEmpresa) : "Selecione a Empresa"}</h2>
+              <div className="branch-grid" style={{ marginTop: 20 }}>
+                {session.empresas.map((empresa) => (
+                  <button
+                    className="branch-card"
+                    disabled={busy}
+                    key={empresa.id}
+                    onClick={async () => {
+                      setPendingCompanyId(empresa.id);
+                      try {
+                        await selectEmpresa(empresa.id);
+                      } finally {
+                        setPendingCompanyId(null);
+                      }
+                    }}
+                    type="button"
+                  >
+                    <div className="eyebrow">Empresa</div>
+                    <h2 style={{ marginTop: 12 }}>{empresaLabel(empresa)}</h2>
+                    <p className="branch-card__meta">{pendingCompanyId === empresa.id ? "Trocando…" : "Usar esta Empresa"}</p>
                   </button>
                 ))}
               </div>
@@ -75,9 +111,9 @@ export default function SelectBranchPage() {
             <section>
               <div className="eyebrow">Filial</div>
               <h2 style={{ marginTop: 12 }}>{branchTitle}</h2>
-              {session.branches.length > 0 ? (
+              {visibleBranches.length > 0 ? (
                 <div className="branch-grid" style={{ marginTop: 20 }}>
-                  {session.branches.map((branch) => (
+                  {visibleBranches.map((branch) => (
                     <button
                       className="branch-card"
                       disabled={busy}
@@ -102,7 +138,7 @@ export default function SelectBranchPage() {
                 </div>
               ) : (
                 <div className="mini-card" style={{ marginTop: 20 }}>
-                  <p>No Branch is available for the selected Company yet. Change Company or ask an administrator to grant Branch access.</p>
+                  <p>Esta Empresa ainda não tem Filial. Troque a Empresa ou cadastre a Filial em Administração → Filiais.</p>
                 </div>
               )}
             </section>

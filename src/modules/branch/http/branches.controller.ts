@@ -126,9 +126,14 @@ export class BranchesController {
 
   @Permissions('branches.read')
   @Get()
-  async list(@CurrentTenantId() tenantId: string | null) {
+  async list(@CurrentTenantId() tenantId: string | null, @Query('companyId') companyId?: string) {
     if (!tenantId) {
       throw new BadRequestException('Tenant context is required.');
+    }
+
+    const empresaId = companyId?.trim();
+    if (empresaId) {
+      return this.branchService.listByCompany(tenantId, empresaId);
     }
 
     return this.branchService.listByTenant(tenantId);
