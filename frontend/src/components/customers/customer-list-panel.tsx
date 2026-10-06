@@ -5,6 +5,7 @@ import {
   applyCustomerListFilters,
   buildCustomerEmailCsv,
   buildCustomerExcelCsv,
+  buildPaginationItems,
   CUSTOMER_LIST_COLUMNS,
   CUSTOMER_LIST_PAGE_SIZES,
   customerListStatusLabel,
@@ -447,49 +448,67 @@ export function CustomerListPanel({
       </div>
 
       <div className="cadastro-pagination">
-        <p>
+        <p className="cadastro-pagination__summary">
           {loading
             ? "Carregando…"
             : pagination.totalItems === 0
               ? "Nenhum registro"
-              : `${pagination.start}–${pagination.end} de ${pagination.totalItems}`}
+              : `Registros ${pagination.start}–${pagination.end} de ${pagination.totalItems} no total`}
         </p>
-        <label>
-          <span>Por página</span>
-          <select
-            onChange={(event) => {
-              setPageSize(Number(event.target.value) as (typeof CUSTOMER_LIST_PAGE_SIZES)[number]);
-              setPage(1);
-            }}
-            value={pageSize}
-          >
-            {CUSTOMER_LIST_PAGE_SIZES.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="cadastro-pagination__nav">
-          <button
-            className="button-secondary"
-            disabled={pagination.currentPage <= 1}
-            onClick={() => setPage(pagination.currentPage - 1)}
-            type="button"
-          >
-            Anterior
-          </button>
-          <span>
-            Página {pagination.currentPage} de {pagination.totalPages}
-          </span>
-          <button
-            className="button-secondary"
-            disabled={pagination.currentPage >= pagination.totalPages}
-            onClick={() => setPage(pagination.currentPage + 1)}
-            type="button"
-          >
-            Próxima
-          </button>
+        <div className="cadastro-pagination__controls">
+          <label>
+            <span>Por página</span>
+            <select
+              onChange={(event) => {
+                setPageSize(Number(event.target.value) as (typeof CUSTOMER_LIST_PAGE_SIZES)[number]);
+                setPage(1);
+              }}
+              value={pageSize}
+            >
+              {CUSTOMER_LIST_PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="cadastro-pagination__nav">
+            <button
+              aria-label="Página anterior"
+              className="cadastro-page"
+              disabled={pagination.currentPage <= 1}
+              onClick={() => setPage(pagination.currentPage - 1)}
+              type="button"
+            >
+              ‹
+            </button>
+            {buildPaginationItems(pagination.currentPage, pagination.totalPages).map((item, index) =>
+              item === "ellipsis" ? (
+                <span className="cadastro-page cadastro-page--ellipsis" key={`ellipsis-${index}`}>
+                  …
+                </span>
+              ) : (
+                <button
+                  aria-current={item === pagination.currentPage ? "page" : undefined}
+                  className={`cadastro-page${item === pagination.currentPage ? " cadastro-page--active" : ""}`}
+                  key={item}
+                  onClick={() => setPage(item)}
+                  type="button"
+                >
+                  {item}
+                </button>
+              ),
+            )}
+            <button
+              aria-label="Próxima página"
+              className="cadastro-page"
+              disabled={pagination.currentPage >= pagination.totalPages}
+              onClick={() => setPage(pagination.currentPage + 1)}
+              type="button"
+            >
+              ›
+            </button>
+          </div>
         </div>
       </div>
     </section>

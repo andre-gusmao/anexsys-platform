@@ -4,6 +4,7 @@ import {
   applyCustomerListFilters,
   buildCustomerEmailCsv,
   buildCustomerExcelCsv,
+  buildPaginationItems,
   emptyCustomerListFilters,
   normalizeCustomerListColumnIds,
   paginateCustomerList,
@@ -75,4 +76,11 @@ test('builds Excel and email exports from selected customers', () => {
 test('keeps the name column when restoring visible columns', () => {
   assert.deepEqual(normalizeCustomerListColumnIds(['phone', 'email']), ['name', 'phone', 'email']);
   assert.deepEqual(normalizeCustomerListColumnIds(['unknown']), ['name']);
+});
+
+test('builds numbered pagination with ellipsis', () => {
+  assert.deepEqual(buildPaginationItems(2, 16), [1, 2, 3, 4, 5, 'ellipsis', 16]);
+  assert.deepEqual(buildPaginationItems(10, 16), [1, 'ellipsis', 9, 10, 11, 'ellipsis', 16]);
+  assert.deepEqual(buildPaginationItems(15, 16), [1, 'ellipsis', 12, 13, 14, 15, 16]);
+  assert.deepEqual(buildPaginationItems(1, 4), [1, 2, 3, 4]);
 });

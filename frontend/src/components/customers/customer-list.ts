@@ -64,7 +64,7 @@ export const DEFAULT_CUSTOMER_LIST_COLUMN_IDS: CustomerListColumnId[] = [
   "createdAt",
 ];
 
-export const CUSTOMER_LIST_PAGE_SIZES = [10, 25, 50] as const;
+export const CUSTOMER_LIST_PAGE_SIZES = [10, 25, 50, 100] as const;
 
 export const emptyCustomerListFilters = (): CustomerListFilters => ({
   name: "",
@@ -159,6 +159,42 @@ export function paginateCustomerList<T>(items: T[], page: number, pageSize: numb
     start: totalItems === 0 ? 0 : start + 1,
     end: Math.min(start + safePageSize, totalItems),
   };
+}
+
+export type PaginationItem = number | "ellipsis";
+
+export function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
+  if (totalPages <= 0) {
+    return [];
+  }
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set<number>([1, totalPages]);
+  if (currentPage <= 4) {
+    for (let page = 2; page <= 5; page += 1) {
+      pages.add(page);
+    }
+  } else if (currentPage >= totalPages - 3) {
+    for (let page = totalPages - 4; page < totalPages; page += 1) {
+      pages.add(page);
+    }
+  } else {
+    pages.add(currentPage - 1);
+    pages.add(currentPage);
+    pages.add(currentPage + 1);
+  }
+
+  const sorted = [...pages].filter((page) => page >= 1 && page <= totalPages).sort((left, right) => left - right);
+  const items: PaginationItem[] = [];
+  for (const [index, page] of sorted.entries()) {
+    if (index > 0 && page - sorted[index - 1] > 1) {
+      items.push("ellipsis");
+    }
+    items.push(page);
+  }
+  return items;
 }
 
 function csvCell(value: string | null | undefined) {

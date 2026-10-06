@@ -308,7 +308,7 @@ De cima para baixo:
 
 1. **Cabeçalho da grade:** **Adicionar** à esquerda; **Mais ações** (exportar Excel, exportar e-mails e excluir) só vale com linhas **marcadas**; à direita busca por nome, ícone para **escolher colunas** e botão para **abrir o filtro**.
 2. **Filtro** (abre no botão): campos para localizar, com **Buscar** e **Limpar**.
-3. **Grade** com caixa de seleção, colunas configuráveis, **Alterar / Excluir / Inativar**, e **paginação** (quantidade por página, anterior e próxima).
+3. **Grade** com caixa de seleção, colunas configuráveis, **Alterar / Excluir / Inativar**, zebrinha **ciano-turquesa claro / branco**, e **paginação** com números de página, anterior e próxima.
 
 ### Excluir e inativar
 
