@@ -152,7 +152,10 @@ export function EmpresasWorkspace() {
   const [showCreate, setShowCreate] = useWorkspaceScopedState("empresas.showCreate", false);
   const [form, setForm] = useWorkspaceScopedState<CompanyForm>("empresas.form", emptyForm());
   const activeIdRef = useRef(activeId);
-  activeIdRef.current = activeId;
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   const active = useMemo(() => companies.find((company) => company.id === activeId) ?? null, [activeId, companies]);
   useWorkspaceRegistration({
