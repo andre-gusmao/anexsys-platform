@@ -37,6 +37,8 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Grade diária** | Tela em que o gerente escolhe o dia, vê a demanda futura, marca quem vai trabalhar e confere se a equipe atende o prazo. Quem comparece gera **contas a pagar** e recebe **Pix** no fim do dia | ainda não existe |
 | **Comparecimento** | Confirmação de que o técnico marcado na grade veio trabalhar naquele dia | ainda não existe |
 | **Contas a pagar do técnico** | Título no valor contratado do dia, para quem compareceu. Pago via **Pix ao técnico** (não é o QR Pix da OS do cliente) | ainda não existe |
+| **Pix automático (saída)** | Conexão do sistema com o banco (ou intermediário) para **enviar** Pix: pagar o técnico e reembolsar o cliente. Não é o QR Pix da OS | ainda não existe |
+| **Reembolso ao cliente** | Devolução de valor ao cliente, acionada na OS. Só sai com **aprovação do administrador**, via Pix. Distinto do **estorno de cartão** na maquininha | ainda não existe |
 | **Revisor** | Quem faz o controle de qualidade (hoje papel de atendente) | `user` |
 | **Diário de bordo** | Registro do que cada técnico produziu: OS, descrição do serviço, hora de início e fim, quantidade de peças e dificuldade. Substitui o caderno | ainda não existe |
 
@@ -72,6 +74,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Divisão automática** | Quando a OS passa de 5 peças, o sistema cria uma segunda OS ligada à primeira |
 | **Tela de parâmetros** | Tela onde o administrador altera as regras do sistema (graus e tempos, prazos, cortes, sobretaxas, status etc.), com histórico de quem mudou e quando |
 | **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |
+| **Estorno de cartão** | Devolução do pagamento feito na maquininha, pela operadora (Cielo). Só o gerente, com motivo. Não é o reembolso via Pix |
 | **Aprovação pendente** | OS cujo cliente ainda não assinou. Lista sempre visível e aviso diário ao atendente e ao gerente |
 | **Filial padrão** | Filial criada automaticamente quando a Empresa não tem nenhuma. Pode ser renomeada |
 | **Entrega em domicílio** | Funcionalidade nova, **fora do piloto**, com preço por distância ou geolocalização |

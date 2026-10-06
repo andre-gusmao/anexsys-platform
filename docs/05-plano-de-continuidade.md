@@ -591,7 +591,7 @@ Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você v
 
 ### Depois do piloto (Ciclo 11 em diante)
 
-Entrega em domicílio completa (com a Guia de entrega, preço por faixa ou geolocalização, comprovante), retirada por terceiros, cobrança do ANEXSYS (D24), Pix QR do cliente (se não entrou; **não confundir** com o **Pix ao técnico** da grade diária), concierge com câmera e reconhecimento facial, segundo tipo de negócio, Stone e Rede. **Grade diária de técnicos** (cadastro de prestador, convocar, comparecimento, contas a pagar e Pix): ver `docs/02-decisoes-do-andre.md` seção 13.
+Entrega em domicílio completa (com a Guia de entrega, preço por faixa ou geolocalização, comprovante), retirada por terceiros, cobrança do ANEXSYS (D24), Pix QR do cliente (se não entrou; **não confundir** com o **Pix automático de saída**), concierge com câmera e reconhecimento facial, segundo tipo de negócio, Stone e Rede. **Grade diária de técnicos** e **Pix automático / reembolso ao cliente** (aprovação do administrador): ver `docs/02-decisoes-do-andre.md` seção 13.
 
 ---
 

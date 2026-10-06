@@ -349,6 +349,19 @@ Fluxo registrado em 06/10/2026:
 1. **Cadastro de prestador de serviço** — pessoa que trabalha para o ateliê. No cadastro: **cargo** (costureiro, gerente, atendente e assim por diante), **média de performance**, **valor contratado do dia** e dados para **Pix**. “Técnico” é o prestador convocado para produzir. O **papel** (permissão) continua sendo outro cadastro: recepção, atendente/medidor, produção, qualidade, gerente.
 2. **Grade diária** — escolhe o **dia** a analisar. O sistema mostra a **demanda futura** (OS, peças, dificuldade, prazo). O André **marca os técnicos** que vai convocar (eles aparecem de forma variável, conforme planejamento e demanda). Com os marcados, vê se **atende a demanda** ou se precisa chamar mais. Objetivo: contratar só as pessoas necessárias, otimizar o resultado e **garantir o prazo do cliente**.
 3. **Comparecimento** — no dia, confirma quem veio trabalhar.
-4. **Contas a pagar** — quem compareceu gera um título no **valor contratado**. Pagamento **no fim do dia via Pix**. Este Pix é **ao técnico**, não o QR Pix da OS do cliente (esse saiu na seção 11).
+4. **Contas a pagar** — quem compareceu gera um título no **valor contratado**. Pagamento **no fim do dia via Pix**. Este Pix é **ao técnico**, não o QR Pix da OS do cliente (esse saiu na seção 11). O envio automático pela conexão bancária está no item seguinte.
 
 Alimenta o chip **Técnicos do dia** da barra superior. Completa o “dimensionamento de grade” previsto no Ciclo 8. **Não construir agora.**
+
+### Pix automático de saída e reembolso ao cliente
+
+**É possível.** O sistema se conecta ao banco (ou a um intermediário Pix) para **enviar** Pix. Isso **não** volta o QR Pix na tela da OS: o cliente continua pagando na **maquininha**.
+
+Dois usos da mesma conexão:
+
+1. **Pagar o técnico** no fim do dia (grade diária, acima) — o título aprovado dispara o Pix no valor contratado.
+2. **Reembolso ao cliente** — o sistema abre a ação na OS (motivo e valor). O dinheiro **só sai** depois da **aprovação do administrador**. Aí o Pix vai para a chave do cliente.
+
+O **estorno de cartão** na maquininha Cielo continua sendo outro caminho (já previsto no Ciclo 7: gerente + motivo). Reembolso via Pix é para quando o dinheiro precisa **sair da conta** para o cliente.
+
+A conexão bancária depende de contrato com o banco ou intermediário; detalha-se na hora de construir. **Não construir agora.**
