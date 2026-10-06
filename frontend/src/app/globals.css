@@ -108,6 +108,15 @@ textarea {
   gap: 18px;
 }
 
+.form-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -962,6 +971,10 @@ textarea {
   .workspace__content,
   .topbar {
     padding: 18px;
+  }
+
+  .form-section-title {
+    margin-top: 8px;
   }
 
   .workspace-split,

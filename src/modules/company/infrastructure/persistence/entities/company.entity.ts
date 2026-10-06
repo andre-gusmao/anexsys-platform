@@ -21,6 +21,42 @@ export class CompanyEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'cnpj', type: 'varchar', length: 14, nullable: true })
   cnpj!: string | null;
 
+  @Column({ name: 'state_registration', type: 'varchar', length: 30, nullable: true })
+  stateRegistration!: string | null;
+
+  @Column({ name: 'municipal_registration', type: 'varchar', length: 30, nullable: true })
+  municipalRegistration!: string | null;
+
+  @Column({ name: 'email', type: 'varchar', length: 255, nullable: true })
+  email!: string | null;
+
+  @Column({ name: 'phone', type: 'varchar', length: 30, nullable: true })
+  phone!: string | null;
+
+  @Column({ name: 'postal_code', type: 'varchar', length: 20, nullable: true })
+  postalCode!: string | null;
+
+  @Column({ name: 'street', type: 'text', nullable: true })
+  street!: string | null;
+
+  @Column({ name: 'address_number', type: 'text', nullable: true })
+  number!: string | null;
+
+  @Column({ name: 'complement', type: 'text', nullable: true })
+  complement!: string | null;
+
+  @Column({ name: 'district', type: 'text', nullable: true })
+  district!: string | null;
+
+  @Column({ name: 'city', type: 'text', nullable: true })
+  city!: string | null;
+
+  @Column({ name: 'state', type: 'varchar', length: 10, nullable: true })
+  state!: string | null;
+
+  @Column({ name: 'country', type: 'text', nullable: true })
+  country!: string | null;
+
   @Column({ name: 'is_default', type: 'boolean', default: false })
   isDefault!: boolean;
 

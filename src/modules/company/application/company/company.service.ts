@@ -9,11 +9,27 @@ import { CompanyEntity } from '../../infrastructure/persistence/entities/company
 import { CompanyRepository } from '../../infrastructure/persistence/repositories/company.repository';
 import { DEFAULT_BRANCH_CODE, DEFAULT_BRANCH_DISPLAY_NAME, DEFAULT_BRANCH_TIMEZONE } from '../company.defaults';
 
-export type CreateCompanyInput = {
-  tenantId: string;
-  legalName: string;
+export type CompanyFiscalInput = {
+  legalName?: string;
   tradeName?: string | null;
   cnpj?: string | null;
+  stateRegistration?: string | null;
+  municipalRegistration?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  postalCode?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  district?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+};
+
+export type CreateCompanyInput = CompanyFiscalInput & {
+  tenantId: string;
+  legalName: string;
   createDefaultBranch?: boolean;
   actorUserId: string;
 };
@@ -32,13 +48,13 @@ export class CompanyService {
     await this.tenantService.getById(input.tenantId);
     const legalName = input.legalName.trim();
     if (!legalName) {
-      throw new DomainValidationError('Company legal name is required.');
+      throw new DomainValidationError('A razão social é obrigatória.');
     }
-    const cnpj = this.normalizeCnpj(input.cnpj);
-    if (cnpj) {
-      const existing = await this.companyRepository.findByTenantAndCnpj(input.tenantId, cnpj);
+    const profile = this.normalizeFiscalProfile(input);
+    if (profile.cnpj) {
+      const existing = await this.companyRepository.findByTenantAndCnpj(input.tenantId, profile.cnpj);
       if (existing) {
-        throw new DomainValidationError('Another company with the same CNPJ already exists in this account.');
+        throw new DomainValidationError('Já existe uma empresa com este CNPJ nesta Conta.');
       }
     }
 
@@ -47,8 +63,8 @@ export class CompanyService {
       id: randomUUID(),
       tenantId: input.tenantId,
       legalName,
-      tradeName: input.tradeName?.trim() || null,
-      cnpj,
+      ...profile,
+      country: profile.country ?? 'BR',
       isDefault: existingCompanies.length === 0,
       isDeleted: false,
       deletedAt: null,
@@ -122,44 +138,145 @@ export class CompanyService {
   async update(
     id: string,
     tenantId: string,
-    dto: { legalName?: string; tradeName?: string | null; cnpj?: string | null; actorUserId: string },
+    dto: CompanyFiscalInput & { actorUserId: string },
   ): Promise<CompanyEntity> {
     const company = await this.getById(id, tenantId);
     if (dto.legalName !== undefined) {
       const legalName = dto.legalName.trim();
       if (!legalName) {
-        throw new DomainValidationError('Company legal name is required.');
+        throw new DomainValidationError('A razão social é obrigatória.');
       }
       company.legalName = legalName;
     }
+    const profile = this.normalizeFiscalProfile(dto);
     if (dto.tradeName !== undefined) {
-      company.tradeName = dto.tradeName?.trim() || null;
+      company.tradeName = profile.tradeName;
     }
     if (dto.cnpj !== undefined) {
-      const cnpj = this.normalizeCnpj(dto.cnpj);
-      if (cnpj) {
-        const existing = await this.companyRepository.findByTenantAndCnpj(tenantId, cnpj);
+      if (profile.cnpj) {
+        const existing = await this.companyRepository.findByTenantAndCnpj(tenantId, profile.cnpj);
         if (existing && existing.id !== company.id) {
-          throw new DomainValidationError('Another company with the same CNPJ already exists in this account.');
+          throw new DomainValidationError('Já existe uma empresa com este CNPJ nesta Conta.');
         }
       }
-      company.cnpj = cnpj;
+      company.cnpj = profile.cnpj;
+    }
+    if (dto.stateRegistration !== undefined) {
+      company.stateRegistration = profile.stateRegistration;
+    }
+    if (dto.municipalRegistration !== undefined) {
+      company.municipalRegistration = profile.municipalRegistration;
+    }
+    if (dto.email !== undefined) {
+      company.email = profile.email;
+    }
+    if (dto.phone !== undefined) {
+      company.phone = profile.phone;
+    }
+    if (dto.postalCode !== undefined) {
+      company.postalCode = profile.postalCode;
+    }
+    if (dto.street !== undefined) {
+      company.street = profile.street;
+    }
+    if (dto.number !== undefined) {
+      company.number = profile.number;
+    }
+    if (dto.complement !== undefined) {
+      company.complement = profile.complement;
+    }
+    if (dto.district !== undefined) {
+      company.district = profile.district;
+    }
+    if (dto.city !== undefined) {
+      company.city = profile.city;
+    }
+    if (dto.state !== undefined) {
+      company.state = profile.state;
+    }
+    if (dto.country !== undefined) {
+      company.country = profile.country;
     }
     company.updatedBy = dto.actorUserId;
     return this.companyRepository.save(company);
   }
 
-  private normalizeCnpj(value?: string | null): string | null {
-    if (!value) {
+  private normalizeFiscalProfile(input: CompanyFiscalInput) {
+    return {
+      tradeName: this.normalizeOptionalText(input.tradeName),
+      cnpj: this.normalizeCnpj(input.cnpj),
+      stateRegistration: this.normalizeOptionalText(input.stateRegistration),
+      municipalRegistration: this.normalizeOptionalText(input.municipalRegistration),
+      email: this.normalizeEmail(input.email),
+      phone: this.normalizeOptionalText(input.phone),
+      postalCode: this.normalizePostalCode(input.postalCode),
+      street: this.normalizeOptionalText(input.street),
+      number: this.normalizeOptionalText(input.number),
+      complement: this.normalizeOptionalText(input.complement),
+      district: this.normalizeOptionalText(input.district),
+      city: this.normalizeOptionalText(input.city),
+      state: this.normalizeState(input.state),
+      country: this.normalizeOptionalText(input.country),
+    };
+  }
+
+  private normalizeOptionalText(value?: string | null): string | null {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  private normalizeEmail(value?: string | null): string | null {
+    const email = this.normalizeOptionalText(value);
+    return email ? email.toLowerCase() : null;
+  }
+
+  private normalizePostalCode(value?: string | null): string | null {
+    if (value === undefined || value === null || !value.trim()) {
       return null;
     }
     const digits = value.replace(/\D/g, '');
-    if (!digits) {
-      return null;
-    }
-    if (digits.length !== 14) {
-      throw new DomainValidationError('CNPJ must contain 14 digits.');
+    if (digits.length !== 8) {
+      throw new DomainValidationError('O CEP deve ter 8 dígitos.');
     }
     return digits;
+  }
+
+  private normalizeState(value?: string | null): string | null {
+    const state = this.normalizeOptionalText(value);
+    return state ? state.toUpperCase() : null;
+  }
+
+  private normalizeCnpj(value?: string | null): string | null {
+    if (value === undefined || value === null || !value.trim()) {
+      return null;
+    }
+    const digits = value.replace(/\D/g, '');
+    if (digits.length !== 14) {
+      throw new DomainValidationError('O CNPJ deve ter 14 dígitos.');
+    }
+    if (!this.isValidCnpj(digits)) {
+      throw new DomainValidationError('O CNPJ informado é inválido.');
+    }
+    return digits;
+  }
+
+  private isValidCnpj(value: string): boolean {
+    if (!/^\d{14}$/.test(value) || /^(\d)\1{13}$/.test(value)) {
+      return false;
+    }
+
+    const digits = value.split('').map(Number);
+    const firstCheck = this.calculateWeightedCheckDigit(digits.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const secondCheck = this.calculateWeightedCheckDigit(digits.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return firstCheck === digits[12] && secondCheck === digits[13];
+  }
+
+  private calculateWeightedCheckDigit(baseDigits: number[], weights: number[]): number {
+    const sum = baseDigits.reduce((total, digit, index) => total + digit * weights[index], 0);
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
   }
 }

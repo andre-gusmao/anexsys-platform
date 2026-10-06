@@ -9,38 +9,102 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsOptional, IsString, Length } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator';
+
+function hasText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { CompanyService } from '../application/company/company.service';
 
-class CreateCompanyBody {
-  @IsString()
-  legalName!: string;
-
+class CompanyFiscalBody {
   @IsOptional()
   @IsString()
-  tradeName?: string;
-
-  @IsOptional()
-  @IsString()
-  @Length(14, 18)
-  cnpj?: string;
-}
-
-class UpdateCompanyBody {
-  @IsOptional()
-  @IsString()
-  legalName?: string;
-
-  @IsOptional()
-  @IsString()
+  @MaxLength(200)
   tradeName?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, value) => hasText(value))
   @IsString()
+  @Length(14, 18)
   cnpj?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  stateRegistration?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  municipalRegistration?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => hasText(value))
+  @IsEmail()
+  @MaxLength(255)
+  email?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  postalCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  street?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  number?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  complement?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  district?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  city?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => hasText(value))
+  @IsString()
+  @MaxLength(2)
+  state?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  country?: string | null;
+}
+
+class CreateCompanyBody extends CompanyFiscalBody {
+  @IsString()
+  @MaxLength(200)
+  legalName!: string;
+}
+
+class UpdateCompanyBody extends CompanyFiscalBody {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  legalName?: string;
 }
 
 @Controller('companies')

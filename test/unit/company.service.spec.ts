@@ -69,4 +69,28 @@ describe('CompanyService', () => {
       DomainValidationError,
     );
   });
+
+  it('rejects a CNPJ with an invalid checksum', async () => {
+    const service = new CompanyService(
+      {
+        async findByTenant() {
+          return [];
+        },
+      } as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
+      { async record() {} } as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.create({
+          tenantId: 'tenant-1',
+          legalName: 'Atelie',
+          cnpj: '11.111.111/1111-11',
+          actorUserId: 'actor-1',
+        }),
+      (error: unknown) => error instanceof DomainValidationError && /CNPJ informado é inválido/.test(error.message),
+    );
+  });
 });
