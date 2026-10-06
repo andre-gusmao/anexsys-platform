@@ -143,6 +143,16 @@ export function clearWorkspaceScopedState(store: WorkspaceStore, tabId: string, 
   };
 }
 
+export function getWorkspaceBasePath(pathname: string): string {
+  return normalizeWorkspacePathname(pathname).split("?")[0] || "/";
+}
+
+export function getWorkspaceSearchParams(pathname: string): URLSearchParams {
+  const normalized = normalizeWorkspacePathname(pathname);
+  const queryIndex = normalized.indexOf("?");
+  return new URLSearchParams(queryIndex >= 0 ? normalized.slice(queryIndex + 1) : "");
+}
+
 export function buildWorkspaceHref(pathname: string, tabId: string): string {
   const [pathWithQuery, hashFragment = ""] = pathname.split("#");
   const [basePath, rawQuery = ""] = pathWithQuery.split("?");

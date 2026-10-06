@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 import { useSession } from "@/components/providers/session-provider";
@@ -97,9 +95,8 @@ const navSections: NavSection[] = [
 ];
 
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
-  const pathname = usePathname();
   const { hasAnyPermission } = useSession();
-  const { openWorkspaceInNewTab } = useWorkspaceManager();
+  const { currentTab, openWorkspaceInNewTab } = useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
@@ -123,14 +120,21 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
           <div className="sidebar__section-title">{section.title}</div>
           <ul className="nav-list">
             {section.items.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = currentTab?.pathname === item.href || Boolean(currentTab?.pathname.startsWith(`${item.href}?`));
               return (
                 <li key={item.href}>
                    <div className={`nav-link${active ? " nav-link--active" : ""}`}>
-                     <Link className="nav-link__main" href={item.href} onClick={onNavigate}>
+                     <button
+                       className="nav-link__main"
+                       onClick={() => {
+                         openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false });
+                         onNavigate?.();
+                       }}
+                       type="button"
+                     >
                        <span>{item.label}</span>
                        <span className="nav-hint">{item.hint}</span>
-                     </Link>
+                     </button>
                      {!isMobile ? (
                        <button
                          aria-label={`Abrir ${item.label} em novo workspace`}

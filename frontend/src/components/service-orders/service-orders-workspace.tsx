@@ -1,8 +1,8 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
@@ -121,7 +121,7 @@ function formatWorkspaceMessage(error: unknown, fallback: string) {
 }
 
 export function ServiceOrdersWorkspace() {
-  const searchParams = useSearchParams();
+  const searchParams = useWorkspaceSearchParams();
   const { session, hasAnyPermission, apiJson } = useSession();
   const { isMobile } = useWorkspaceViewportMode();
   const focusServiceOrderId = searchParams.get("focusServiceOrderId");

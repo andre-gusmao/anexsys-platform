@@ -6,6 +6,7 @@ import { isMeaningfulWorkspaceTab } from "@/components/app-shell/workspace-manag
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
 import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
+import { WorkspaceKeepAlive } from "@/components/app-shell/workspace-screens";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
@@ -152,7 +153,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
               </button>
             </div>
           ) : null}
-          {children}
+          <WorkspaceKeepAlive>{children}</WorkspaceKeepAlive>
         </main>
       </div>
     </div>

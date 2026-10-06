@@ -68,6 +68,15 @@ export function EmpresasWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [loadCompanies]);
 
+  useEffect(() => {
+    if (loading || companies.length > 0 || !canWrite || showCreate) {
+      return;
+    }
+
+    setShowCreate(true);
+    setForm(emptyForm());
+  }, [canWrite, companies.length, loading, setForm, setShowCreate, showCreate]);
+
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canWrite) return;
@@ -204,7 +213,16 @@ export function EmpresasWorkspace() {
                 <button className="button" disabled={saving} type="submit">
                   {saving ? "Salvando…" : "Criar empresa"}
                 </button>
-                <button className="button-secondary" onClick={() => setShowCreate(false)} type="button">
+                <button
+                  className="button-secondary"
+                  onClick={() => {
+                    if (companies.length === 0) {
+                      return;
+                    }
+                    setShowCreate(false);
+                  }}
+                  type="button"
+                >
                   Cancelar
                 </button>
               </div>

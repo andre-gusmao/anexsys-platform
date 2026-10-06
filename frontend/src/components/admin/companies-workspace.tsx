@@ -138,6 +138,15 @@ export function CompaniesWorkspace() {
     return () => window.clearTimeout(timeoutId);
   }, [loadCompanies]);
 
+  useEffect(() => {
+    if (loading || companies.length > 0 || !canCreate || showCreateForm) {
+      return;
+    }
+
+    setShowCreateForm(true);
+    setForm(emptyForm());
+  }, [canCreate, companies.length, loading, setForm, setShowCreateForm, showCreateForm]);
+
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canCreate) return;
@@ -379,7 +388,16 @@ export function CompaniesWorkspace() {
                 <button className="button" disabled={saving || companyDuplicateStatus !== "idle"} type="submit">
                   {saving ? "Salvando…" : "Salvar empresa"}
                 </button>
-                <button className="button-secondary" onClick={() => setShowCreateForm(false)} type="button">
+                <button
+                  className="button-secondary"
+                  onClick={() => {
+                    if (companies.length === 0) {
+                      return;
+                    }
+                    setShowCreateForm(false);
+                  }}
+                  type="button"
+                >
                   Cancelar
                 </button>
               </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import {
@@ -246,7 +246,7 @@ function formatCustomerSaveError(error: unknown) {
 }
 
 export function CustomerWorkspace() {
-  const searchParams = useSearchParams();
+  const searchParams = useWorkspaceSearchParams();
   const { hasAnyPermission, apiJson } = useSession();
   const { isMobile } = useWorkspaceViewportMode();
   const canWriteCustomers = hasAnyPermission("customers.write");

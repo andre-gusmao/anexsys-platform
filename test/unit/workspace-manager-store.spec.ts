@@ -6,7 +6,9 @@ import {
   cloneWorkspaceTabState,
   createEmptyWorkspaceStore,
   createWorkspaceTab,
+  getWorkspaceBasePath,
   getWorkspaceScopedState,
+  getWorkspaceSearchParams,
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
@@ -49,6 +51,13 @@ test('normalizes workspace pathnames and strips workspace query state', () => {
     createWorkspaceTab({ id: 'tab-3', pathname: '/service-orders?focusServiceOrderId=15&workspaceTab=tab-9', label: 'OS #15' }).pathname,
     '/service-orders?focusServiceOrderId=15',
   );
+});
+
+test('reads workspace base path and tab-owned search params', () => {
+  assert.equal(getWorkspaceBasePath('/admin/tenants?workspaceTab=tab-1'), '/admin/tenants');
+  assert.equal(getWorkspaceBasePath('/customers?workspaceMode=new&focusCustomerId=9'), '/customers');
+  assert.equal(getWorkspaceSearchParams('/customers?workspaceMode=new&workspaceTab=tab-2').get('workspaceMode'), 'new');
+  assert.equal(getWorkspaceSearchParams('/admin/companies').get('workspaceMode'), null);
 });
 
 test('ignores unnamed or empty workspace tabs', () => {

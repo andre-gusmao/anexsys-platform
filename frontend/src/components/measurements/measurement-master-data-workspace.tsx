@@ -1,8 +1,8 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import {
@@ -32,7 +32,7 @@ type Props = {
 };
 
 export function MeasurementMasterDataWorkspace({ mode }: Props) {
-  const searchParams = useSearchParams();
+  const searchParams = useWorkspaceSearchParams();
   const { hasAnyPermission, apiJson } = useSession();
   const { isMobile } = useWorkspaceViewportMode();
   const workspaceMode = searchParams.get("workspaceMode");
