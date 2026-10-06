@@ -292,7 +292,9 @@ Modelo exato da LIO e compatibilidade com a integração remota; se o pedido apa
 
 ## 12. Navegação e cadastros (06/10/2026)
 
-Validado no ambiente local. Vale para **todos** os cadastros; o primeiro a receber o padrão na tela é **Clientes**.
+Validado no ambiente local. Vale para **todos** os cadastros. O primeiro a receber o padrão na tela é **Clientes**. O segundo é **Empresas** (lista com Adicionar, filtro, grade e aba interna de Novo/Alterar). Filial e OS vêm depois. Em Empresas ainda não há Excluir nem Inativar: a API não oferece.
+
+**Homologação local (06/10/2026):** Atelier A e Atelier B, neste momento, são **duas Empresas (CNPJ) na mesma Conta**, para validar o combo Empresa. Só cadastrar depois desta lista padronizada. Duas **Contas** Ateliê A/B (isolamento do Ciclo 1) ficam para a tela de Contas.
 
 ### Abas internas
 
