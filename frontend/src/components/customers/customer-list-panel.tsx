@@ -24,6 +24,17 @@ import {
 
 const COLUMN_STORAGE_KEY = "anexsys.frontend.customers.grid-columns.v1";
 
+function FilterToggleIcon({ open }: Readonly<{ open: boolean }>) {
+  return (
+    <svg aria-hidden="true" height="22" viewBox="0 0 24 24" width="22">
+      <circle cx="10" cy="10" fill="none" r="6.25" stroke="currentColor" strokeWidth="2" />
+      <path d="M14.8 14.8 L20 20" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+      <path d="M7 10 H13" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+      {open ? null : <path d="M10 7 V13" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />}
+    </svg>
+  );
+}
+
 function readStoredColumnIds(): CustomerListColumnId[] {
   if (typeof window === "undefined") {
     return [...DEFAULT_CUSTOMER_LIST_COLUMN_IDS];
@@ -280,12 +291,14 @@ export function CustomerListPanel({
             </button>
           </form>
           <button
-            aria-label="Abrir filtros"
-            className={`cadastro-icon-button${showFilters ? " cadastro-icon-button--active" : ""}`}
+            aria-expanded={showFilters}
+            aria-label={showFilters ? "Fechar filtros" : "Abrir filtros"}
+            className={`cadastro-icon-button cadastro-filter-toggle${showFilters ? " cadastro-filter-toggle--open" : ""}`}
             onClick={() => setShowFilters((current) => !current)}
+            title={showFilters ? "Fechar filtros" : "Abrir filtros"}
             type="button"
           >
-            Filtros
+            <FilterToggleIcon open={showFilters} />
           </button>
         </div>
       </div>

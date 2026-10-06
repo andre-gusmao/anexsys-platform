@@ -925,11 +925,31 @@ textarea {
   color: var(--primary);
 }
 
+.cadastro-filter-toggle {
+  color: var(--grid-accent);
+}
+
+.cadastro-filter-toggle--open {
+  background: var(--grid-accent);
+  border-color: var(--grid-accent);
+  color: #fff;
+}
+
+.cadastro-filter-toggle svg {
+  display: block;
+}
+
 .cadastro-filter-panel {
-  padding: 16px;
-  border: 1px solid var(--border);
+  padding: 18px;
+  border: 1px solid var(--grid-accent);
   border-radius: 16px;
-  background: var(--surface-alt);
+  background: var(--grid-zebra);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.cadastro-filter-panel .field input,
+.cadastro-filter-panel .field select {
+  background: #fff;
 }
 
 .data-table__check {
