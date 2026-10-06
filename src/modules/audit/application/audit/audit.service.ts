@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditEventEntity } from '../../infrastructure/persistence/entities/audit-event.entity';
 import { AuditEventRepository } from '../../infrastructure/persistence/repositories/audit-event.repository';
@@ -18,7 +18,10 @@ export interface AuditWriteInput {
 
 @Injectable()
 export class AuditService {
-  constructor(private readonly auditEventRepository: AuditEventRepository) {}
+  constructor(
+    @Inject(AuditEventRepository)
+    private readonly auditEventRepository: AuditEventRepository,
+  ) {}
 
   async record(input: AuditWriteInput): Promise<void> {
     const event = this.auditEventRepository.create({

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -128,8 +129,11 @@ class UpdateCompanyBody extends CompanyFiscalBody {
 @Controller('companies')
 export class CompaniesController {
   constructor(
+    @Inject(CompanyService)
     private readonly companyService: CompanyService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 

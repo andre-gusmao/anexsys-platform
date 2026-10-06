@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 
@@ -19,7 +19,7 @@ export type DependencyValidationResult = {
 
 @Injectable()
 export class DependencyValidationService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(@Inject(DataSource) private readonly dataSource: DataSource) {}
 
   async validateTenantDeactivation(tenantId: string): Promise<DependencyValidationResult> {
     const [branches, customers, serviceOrders, users] = await Promise.all([
