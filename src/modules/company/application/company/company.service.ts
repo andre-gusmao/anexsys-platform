@@ -1,13 +1,11 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
-import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { CompanyEntity } from '../../infrastructure/persistence/entities/company.entity';
 import { CompanyRepository } from '../../infrastructure/persistence/repositories/company.repository';
-import { DEFAULT_BRANCH_CODE, DEFAULT_BRANCH_DISPLAY_NAME, DEFAULT_BRANCH_TIMEZONE } from '../company.defaults';
 
 export type CompanyFiscalInput = {
   legalName?: string;
@@ -30,17 +28,17 @@ export type CompanyFiscalInput = {
 export type CreateCompanyInput = CompanyFiscalInput & {
   tenantId: string;
   legalName: string;
-  createDefaultBranch?: boolean;
   actorUserId: string;
 };
 
 @Injectable()
 export class CompanyService {
   constructor(
+    @Inject(CompanyRepository)
     private readonly companyRepository: CompanyRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
-    @Inject(forwardRef(() => BranchService))
-    private readonly branchService: BranchService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 
@@ -73,22 +71,6 @@ export class CompanyService {
       updatedBy: input.actorUserId,
     });
     const saved = await this.companyRepository.save(company);
-
-    if (input.createDefaultBranch !== false) {
-      const existingBranches = await this.branchService.listByCompany(input.tenantId, saved.id);
-      if (existingBranches.length === 0) {
-        await this.branchService.create({
-          tenantId: input.tenantId,
-          companyId: saved.id,
-          code: DEFAULT_BRANCH_CODE,
-          legalName,
-          displayName: DEFAULT_BRANCH_DISPLAY_NAME,
-          timezone: DEFAULT_BRANCH_TIMEZONE,
-          isDefault: true,
-          actorUserId: input.actorUserId,
-        });
-      }
-    }
 
     await this.auditService.record({
       tenantId: input.tenantId,
@@ -130,7 +112,6 @@ export class CompanyService {
       tenantId,
       legalName: tenant.legalName,
       tradeName: tenant.displayName,
-      createDefaultBranch: false,
       actorUserId,
     });
   }

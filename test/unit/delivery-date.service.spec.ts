@@ -7,15 +7,8 @@ import { DeliveryDateService } from 'src/modules/service-orders/application/deli
 function hoursService() {
   const service = new BranchHoursService(
     {
-      async findByBranch() {
+      async listByBranch() {
         return defaultOperatingHours().map((day) => ({ ...day }));
-      },
-      async deleteByBranch() {},
-      create(payload: unknown) {
-        return payload;
-      },
-      async saveMany(rows: unknown[]) {
-        return rows;
       },
     } as never,
     {

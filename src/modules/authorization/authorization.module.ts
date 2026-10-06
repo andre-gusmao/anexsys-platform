@@ -37,7 +37,7 @@ import { UserRoleAssignmentRepository } from './infrastructure/persistence/repos
       UserCommunityEntity,
     ]),
     AuditModule,
-    BranchModule,
+    forwardRef(() => BranchModule),
     forwardRef(() => IdentityModule),
   ],
   controllers: [RolesController, PermissionsController, CommunitiesController],

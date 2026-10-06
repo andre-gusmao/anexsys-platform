@@ -4,6 +4,7 @@ import { AuthorizationService } from 'src/modules/authorization/application/auth
 import { PermissionRepository } from 'src/modules/authorization/infrastructure/persistence/repositories/permission.repository';
 import { RolePermissionRepository } from 'src/modules/authorization/infrastructure/persistence/repositories/role-permission.repository';
 import { RoleRepository } from 'src/modules/authorization/infrastructure/persistence/repositories/role.repository';
+import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { TenantContext } from 'src/platform/tenancy/tenant-context';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import { ATELIER_ROLES, PILOT_MODULE_CODES } from '../company.defaults';
@@ -15,6 +16,7 @@ export class TenantProvisioningService {
   constructor(
     private readonly tenantService: TenantService,
     private readonly companyService: CompanyService,
+    private readonly branchService: BranchService,
     private readonly authorizationService: AuthorizationService,
     private readonly roleRepository: RoleRepository,
     private readonly permissionRepository: PermissionRepository,
@@ -41,7 +43,12 @@ export class TenantProvisioningService {
         legalName: input.legalName,
         tradeName: input.displayName,
         cnpj: input.cnpj ?? null,
-        createDefaultBranch: true,
+        actorUserId: input.actorUserId,
+      });
+      await this.branchService.ensureDefaultBranchForCompany({
+        tenantId: tenant.id,
+        companyId: company.id,
+        legalName: company.legalName,
         actorUserId: input.actorUserId,
       });
       await this.ensureAtelierRoles(tenant.id, input.actorUserId);

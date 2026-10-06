@@ -4,6 +4,7 @@ import { AuditModule } from 'src/modules/audit/audit.module';
 import { AuthorizationModule } from 'src/modules/authorization/authorization.module';
 import { BranchModule } from 'src/modules/branch/branch.module';
 import { TenantModule } from 'src/modules/tenant/tenant.module';
+import { BranchHoursSeedService } from './application/company/branch-hours-seed.service';
 import { BranchHoursService } from './application/company/branch-hours.service';
 import { CompanyService } from './application/company/company.service';
 import { IsolationReportService } from './application/company/isolation-report.service';
@@ -29,6 +30,7 @@ import { TenantModuleRepository } from './infrastructure/persistence/repositorie
   controllers: [CompaniesController, IsolationReportController, TenantModulesController],
   providers: [
     CompanyService,
+    BranchHoursSeedService,
     BranchHoursService,
     TenantProvisioningService,
     IsolationReportService,
@@ -38,6 +40,7 @@ import { TenantModuleRepository } from './infrastructure/persistence/repositorie
   ],
   exports: [
     CompanyService,
+    BranchHoursSeedService,
     BranchHoursService,
     TenantProvisioningService,
     IsolationReportService,
