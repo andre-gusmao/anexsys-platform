@@ -675,18 +675,27 @@ textarea {
 }
 
 .hero-card {
-  background: linear-gradient(135deg, #163067 0%, #1f4fd1 100%);
-  color: #fff;
+  background: var(--grid-zebra);
+  color: #111111;
+  border: 1px solid var(--grid-accent);
   border-radius: 24px;
   padding: 28px;
-  box-shadow: var(--shadow);
+  box-shadow: none;
+}
+
+.hero-card .eyebrow,
+.hero-card .title,
+.hero-card h1,
+.hero-card h2,
+.hero-card h3 {
+  color: #111111;
 }
 
 .hero-card p {
   margin-top: 10px;
   max-width: 720px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.84);
+  color: #111111;
 }
 
 .card-grid {
