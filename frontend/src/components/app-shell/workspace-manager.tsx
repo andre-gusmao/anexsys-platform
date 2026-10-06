@@ -120,6 +120,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   const [store, setStore] = useState<WorkspaceStore>(() => readStore());
   const storeRef = useRef(store);
   const hydratedFromUrlRef = useRef(false);
+  const lastSyncedHrefRef = useRef<string | null>(null);
   const currentTabId = store.activeTabId;
   const currentTab = currentTabId ? store.tabs.find((candidate) => candidate.id === currentTabId) ?? null : null;
   const currentComparablePath = resolveComparableCurrentPath(pathname, searchParams);
@@ -149,17 +150,21 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
     return storeRef.current.tabs.find((candidate) => candidate.pathname === normalizedPath) ?? null;
   }, []);
 
-  useEffect(() => {
-    if (!currentTab) {
-      return;
-    }
-
-    if (currentComparablePath === currentTab.pathname && urlTabId === currentTab.id) {
-      return;
-    }
-
-    router.replace(buildWorkspaceHref(currentTab.pathname, currentTab.id));
-  }, [currentComparablePath, currentTab, router, urlTabId]);
+  const syncWorkspaceUrl = useCallback(
+    (targetPathname: string, tabId: string) => {
+      const href = buildWorkspaceHref(targetPathname, tabId);
+      if (lastSyncedHrefRef.current === href) {
+        return;
+      }
+      if (currentComparablePath === normalizeWorkspacePathname(targetPathname) && urlTabId === tabId) {
+        lastSyncedHrefRef.current = href;
+        return;
+      }
+      lastSyncedHrefRef.current = href;
+      router.replace(href);
+    },
+    [currentComparablePath, router, urlTabId],
+  );
 
   const activateWorkspace = useCallback(
     (tabId: string) => {
@@ -169,9 +174,9 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       }
 
       setStore((current) => setActiveWorkspaceTab(current, tabId));
-      router.replace(buildWorkspaceHref(target.pathname, tabId));
+      syncWorkspaceUrl(target.pathname, tabId);
     },
-    [router],
+    [syncWorkspaceUrl],
   );
 
   const ensureWorkspaceTab = useCallback(
@@ -213,7 +218,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         const singletonTab = findSingletonTabByPath(nextTabDefinition.pathname);
         if (singletonTab) {
           setStore((current) => setActiveWorkspaceTab(current, singletonTab.id));
-          router.replace(buildWorkspaceHref(singletonTab.pathname, singletonTab.id));
+          syncWorkspaceUrl(singletonTab.pathname, singletonTab.id);
           return singletonTab.id;
         }
       }
@@ -232,7 +237,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         const singletonTab = findSingletonTabByPath(nextTabDefinition.pathname);
         if (singletonTab) {
           setStore((current) => setActiveWorkspaceTab(current, singletonTab.id));
-          router.replace(buildWorkspaceHref(singletonTab.pathname, singletonTab.id));
+          syncWorkspaceUrl(singletonTab.pathname, singletonTab.id);
           return singletonTab.id;
         }
 
@@ -243,7 +248,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
           subtitle: nextTabDefinition.subtitle,
         });
         setStore((current) => activateWorkspaceTab(current, createdTab));
-        router.replace(buildWorkspaceHref(createdTab.pathname, createdTab.id));
+        syncWorkspaceUrl(createdTab.pathname, createdTab.id);
         return createdTab.id;
       }
 
@@ -252,11 +257,11 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         return next.activeTabId ? next : setActiveWorkspaceTab(next, nextTabDefinition.id);
       });
       if (!effectiveTabId) {
-        router.replace(buildWorkspaceHref(nextTabDefinition.pathname, nextTabDefinition.id));
+        syncWorkspaceUrl(nextTabDefinition.pathname, nextTabDefinition.id);
       }
       return nextTabDefinition.id;
     },
-    [currentComparablePath, findSingletonTabByPath, router],
+    [currentComparablePath, findSingletonTabByPath, syncWorkspaceUrl],
   );
 
   const closeWorkspace = useCallback(
@@ -273,15 +278,15 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       if (remainingTabs.length === 0) {
         const dashboardTab = createWorkspaceTab({ id: createTabId(), pathname: DASHBOARD_PATH, label: "Dashboard" });
         setStore(activateWorkspaceTab(nextStore, dashboardTab));
-        router.replace(buildWorkspaceHref(DASHBOARD_PATH, dashboardTab.id));
+        syncWorkspaceUrl(DASHBOARD_PATH, dashboardTab.id);
         return;
       }
 
       const fallbackTab = remainingTabs[Math.max(Math.min(closingTabIndex, remainingTabs.length - 1), 0)] ?? remainingTabs[0];
       setStore(setActiveWorkspaceTab(nextStore, fallbackTab.id));
-      router.replace(buildWorkspaceHref(fallbackTab.pathname, fallbackTab.id));
+      syncWorkspaceUrl(fallbackTab.pathname, fallbackTab.id);
     },
-    [currentTabId, router],
+    [currentTabId, syncWorkspaceUrl],
   );
 
   const openWorkspaceInNewTab = useCallback(
@@ -300,7 +305,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       const singletonTab = findSingletonTabByPath(nextTab.pathname);
       if (singletonTab) {
         setStore((current) => setActiveWorkspaceTab(current, singletonTab.id));
-        router.replace(buildWorkspaceHref(singletonTab.pathname, singletonTab.id));
+        syncWorkspaceUrl(singletonTab.pathname, singletonTab.id);
         return;
       }
 
@@ -311,9 +316,9 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       }
 
       setStore(nextStore);
-      router.replace(buildWorkspaceHref(nextTab.pathname, nextTabId));
+      syncWorkspaceUrl(nextTab.pathname, nextTabId);
     },
-    [currentTabId, findSingletonTabByPath, router],
+    [currentTabId, findSingletonTabByPath, syncWorkspaceUrl],
   );
 
   const openWorkspaceInBrowserTab = useCallback(
@@ -393,6 +398,10 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
     (nextPathname: string) => {
       const tabId = storeRef.current.activeTabId;
       if (!tabId) {
+        if (lastSyncedHrefRef.current === nextPathname) {
+          return;
+        }
+        lastSyncedHrefRef.current = nextPathname;
         router.replace(nextPathname);
         return;
       }
@@ -410,9 +419,9 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         );
       }
 
-      router.replace(buildWorkspaceHref(nextPathname, tabId));
+      syncWorkspaceUrl(nextPathname, tabId);
     },
-    [router],
+    [router, syncWorkspaceUrl],
   );
 
   const readScopedState = useCallback(<T,>(scope: string, tabId?: string | null): T | null => {
