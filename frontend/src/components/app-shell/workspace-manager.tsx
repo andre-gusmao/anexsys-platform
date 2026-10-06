@@ -347,7 +347,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
   const openWorkspaceFromMenu = useCallback(
     (nextPathname: string, label: string) => {
-      openWorkspaceInNewTab(nextPathname, label, { cloneCurrent: false, reuse: "base" });
+      openWorkspaceInNewTab(nextPathname, label, { cloneCurrent: false, reuse: "path" });
     },
     [openWorkspaceInNewTab],
   );

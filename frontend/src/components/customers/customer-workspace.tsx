@@ -208,6 +208,12 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
+function customerStatusLabel(status: CustomerStatus) {
+  if (status === "inactive") return "Inativo";
+  if (status === "blocked") return "Bloqueado";
+  return "Ativo";
+}
+
 function mapCustomerToForm(customer: CustomerRecord): CustomerFormState {
   return {
     customerType: customer.customerType,
@@ -276,6 +282,7 @@ export function CustomerWorkspace() {
   const [customerDuplicateStatus, setCustomerDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
   const [customerDuplicateMatch, setCustomerDuplicateMatch] = useState<CustomerRecord | null>(null);
   const customerDuplicateCheckRef = useRef(0);
+  const [actingCustomerId, setActingCustomerId] = useState<string | null>(null);
   const [measurementForm, setMeasurementForm] = useWorkspaceScopedState("customers.measurementForm", {
     measurementDate: todayIsoDate(),
     notes: "",
@@ -323,7 +330,7 @@ export function CustomerWorkspace() {
   const selectedCustomer = profile?.customer ?? null;
   const { closeWorkspace } = useWorkspaceManager();
   const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
-    label: showCreateForm ? "Customer: New" : selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
+    label: showCreateForm ? "Cliente: Novo" : selectedCustomer ? `Cliente: ${selectedCustomer.legalName}` : "Clientes",
     subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
   });
   const isFormWorkspace = workspaceMode === "new" || Boolean(focusCustomerId);
@@ -464,7 +471,7 @@ export function CustomerWorkspace() {
       return;
     }
 
-    openWorkspaceInNewTab(targetPath, "Customer: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    openWorkspaceInNewTab(targetPath, "Cliente: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
   }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
   const openCustomerWorkspace = useCallback(
@@ -475,12 +482,82 @@ export function CustomerWorkspace() {
         return;
       }
 
-      openWorkspaceInNewTab(targetPath, `Customer: ${customer.legalName}`, {
+      openWorkspaceInNewTab(targetPath, `Cliente: ${customer.legalName}`, {
         cloneCurrent: false,
         subtitle: customer.cpfCnpj ?? undefined,
       });
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const handleInactivateCustomer = useCallback(
+    async (customer: CustomerRecord) => {
+      if (customer.status === "inactive") {
+        return;
+      }
+      if (!window.confirm(`Inativar ${customer.legalName}? O cadastro deixa de aparecer como ativo.`)) {
+        return;
+      }
+
+      setActingCustomerId(customer.id);
+      setWorkspaceMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `/customers/${customer.id}/dependency-check?action=inactivate`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setWorkspaceMessage(validation.message);
+          return;
+        }
+        await apiJson<CustomerRecord>(`/customers/${customer.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "inactive" }),
+        });
+        setWorkspaceMessage(`${customer.legalName} foi inativado.`);
+        await loadCustomers();
+      } catch (error) {
+        setWorkspaceMessage(error instanceof Error ? error.message : "O cliente não pôde ser inativado.");
+      } finally {
+        setActingCustomerId(null);
+      }
+    },
+    [apiJson, loadCustomers],
+  );
+
+  const handleDeleteCustomer = useCallback(
+    async (customer: CustomerRecord) => {
+      if (
+        !window.confirm(
+          `Excluir ${customer.legalName}? Só é possível se não houver OS, medidas ou financeiro. O cliente some da lista.`,
+        )
+      ) {
+        return;
+      }
+
+      setActingCustomerId(customer.id);
+      setWorkspaceMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `/customers/${customer.id}/dependency-check?action=delete`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setWorkspaceMessage(validation.message);
+          return;
+        }
+        await apiJson(`/customers/${customer.id}`, { method: "DELETE" });
+        setWorkspaceMessage(`${customer.legalName} foi excluído da lista.`);
+        await loadCustomers();
+      } catch (error) {
+        setWorkspaceMessage(error instanceof Error ? error.message : "O cliente não pôde ser excluído.");
+      } finally {
+        setActingCustomerId(null);
+      }
+    },
+    [apiJson, loadCustomers],
   );
 
   const closeCustomerWorkspace = useCallback(() => {
@@ -495,7 +572,7 @@ export function CustomerWorkspace() {
     }
 
     const closingTabId = currentTabId;
-    openWorkspaceInNewTab("/customers", "Customers", { cloneCurrent: false });
+    openWorkspaceInNewTab("/customers", "Clientes", { cloneCurrent: false });
     window.setTimeout(() => {
       closeWorkspace(closingTabId);
     }, 0);
@@ -766,23 +843,16 @@ export function CustomerWorkspace() {
       ) : null}
 
       {isListWorkspace ? (
-        <section className="mini-card">
-          <div className="workspace-toolbar">
-            <div className="workspace-toolbar__copy">
-              <h3>Pesquisa de clientes</h3>
-              <p>O autocomplete ajuda a localizar clientes rapidamente sem sair do fluxo operacional.</p>
-            </div>
-            {canWriteCustomers ? (
-              <button className="button" onClick={openCreateCustomerWorkspace} type="button">
-                Novo cliente
-              </button>
-            ) : null}
-          </div>
-
+        <section className="mini-card cadastro-list">
           <div className="filters-grid">
             <label className="field">
-              <span>Busca</span>
-              <input list="customer-suggestions" placeholder="Nome, telefone, CPF/CNPJ ou email" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+              <span>Localizar</span>
+              <input
+                list="customer-suggestions"
+                placeholder="Nome, telefone, CPF/CNPJ ou e-mail"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
               <datalist id="customer-suggestions">
                 {customerSuggestions.map((customer) => (
                   <option key={customer.id} value={customer.label} />
@@ -808,64 +878,96 @@ export function CustomerWorkspace() {
               </select>
             </label>
           </div>
-        </section>
-      ) : null}
 
-      <section className="workspace-split">
-        {isListWorkspace ? (
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Grade de clientes</h3>
-                <p>{loadingCustomers ? "Carregando clientes…" : `${customers.length} cliente(s) encontrado(s)`}</p>
-              </div>
-            </div>
+          <div className="cadastro-list__toolbar">
+            {canWriteCustomers ? (
+              <button className="button" onClick={openCreateCustomerWorkspace} type="button">
+                Cadastrar novo
+              </button>
+            ) : (
+              <span />
+            )}
+            <p className="cadastro-list__count">
+              {loadingCustomers ? "Carregando…" : `${customers.length} cliente(s)`}
+            </p>
+          </div>
 
-            <div className="data-table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Tipo</th>
-                    <th>Documento</th>
-                    <th>Status</th>
-                    <th>Telefone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((customer) => (
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Tipo</th>
+                  <th>Documento</th>
+                  <th>Status</th>
+                  <th>Telefone</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map((customer) => {
+                  const busy = actingCustomerId === customer.id;
+                  return (
                     <tr key={customer.id}>
                       <td>
-                        <button
-                          className="button-ghost"
-                          onClick={() => openCustomerWorkspace(customer)}
-                          style={{ alignItems: "start", display: "grid", justifyItems: "start", textAlign: "left" }}
-                          type="button"
-                        >
-                          <strong>{customer.legalName}</strong>
-                          <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
-                        </button>
+                        <strong>{customer.legalName}</strong>
+                        <div className="table-subtle">{customer.tradeName ?? customer.email ?? "—"}</div>
                       </td>
                       <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
                       <td>{customer.cpfCnpj ?? "—"}</td>
                       <td>
-                        <span className={`status-chip status-chip--${customer.status}`}>{customer.status}</span>
+                        <span className={`status-chip status-chip--${customer.status}`}>
+                          {customerStatusLabel(customer.status)}
+                        </span>
                       </td>
                       <td>{formatPhone(customer.phone)}</td>
-                    </tr>
-                  ))}
-                  {!loadingCustomers && customers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5}>
-                        <div className="empty-state">Nenhum cliente encontrado para os filtros informados.</div>
+                      <td>
+                        {canWriteCustomers ? (
+                          <div className="table-actions">
+                            <button
+                              className="button-secondary"
+                              disabled={busy}
+                              onClick={() => openCustomerWorkspace(customer)}
+                              type="button"
+                            >
+                              Alterar
+                            </button>
+                            <button
+                              className="button-secondary"
+                              disabled={busy}
+                              onClick={() => void handleDeleteCustomer(customer)}
+                              type="button"
+                            >
+                              Excluir
+                            </button>
+                            <button
+                              className="button-secondary"
+                              disabled={busy || customer.status === "inactive"}
+                              onClick={() => void handleInactivateCustomer(customer)}
+                              type="button"
+                            >
+                              Inativar
+                            </button>
+                          </div>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                     </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        ) : null}
+                  );
+                })}
+                {!loadingCustomers && customers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className="empty-state">Nenhum cliente encontrado para os filtros informados.</div>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
         {!isListWorkspace ? (
         <div className="workspace-stack">
@@ -1270,7 +1372,6 @@ export function CustomerWorkspace() {
           ) : null}
         </div>
         ) : null}
-      </section>
     </>
   );
 }

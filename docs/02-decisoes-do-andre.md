@@ -1,6 +1,6 @@
 # Decisões do André
 
-**Atualizado em:** 05/10/2026 (noite)
+**Atualizado em:** 06/10/2026
 **Substitui:** as regras de negócio da documentação antiga (`docs/arquivo/`) nos pontos em que elas divergem deste documento.
 **Valor:** este é o documento **oficial** das regras de negócio. Quando outro documento discordar, vale este.
 
@@ -288,3 +288,28 @@ Estão nas perguntas complementares da terceira rodada (fora do repositório).
 ### 11.10 O que o André precisa verificar com a operadora (da pesquisa)
 
 Modelo exato da LIO e compatibilidade com a integração remota; se o pedido aparece sozinho na maquininha; se o resultado volta por aviso automático ou só por consulta; custos (aluguel, taxas, integração); prazo do token de produção; modelo de parceria para vender o ANEXSYS a outros ateliês. Lista completa em `docs/07-parecer-integracao-maquininha.md`, seção 9.
+
+## 12. Navegação e cadastros (06/10/2026)
+
+Validado no ambiente local. Vale para **todos** os cadastros; o primeiro a receber o padrão na tela é **Clientes**.
+
+### Abas internas
+
+- O **menu** abre ou volta para a aba daquela tela. Dashboard não empilha.
+- **Cadastrar novo** e **Alterar** abrem **outra aba interna**. A lista **permanece aberta**.
+- Assim o atendente não perde um cadastro de cliente se precisar abrir uma OS no meio do atendimento.
+- Não se usa “nova aba do navegador” nem “nova janela”.
+- **Combos** Conta / Empresa / Filial só mudam o contexto. Ficam fixos no alto da barra esquerda.
+
+### Tela principal de cada cadastro
+
+De cima para baixo:
+
+1. **Filtro** para localizar o que já está cadastrado.
+2. **Cadastrar novo**, à esquerda.
+3. **Grade** dos registros, com **Alterar**, **Excluir** e **Inativar** em cada linha.
+
+### Excluir e inativar
+
+- **Inativar:** o registro deixa de ser usado no dia a dia, mas o histórico permanece.
+- **Excluir:** só se **não houver movimento** (OS, medidas, financeiro). Com movimento, a tela avisa e não apaga; use Inativar quando a regra permitir.

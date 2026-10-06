@@ -714,6 +714,37 @@ textarea {
   margin-top: 4px;
 }
 
+.cadastro-list {
+  display: grid;
+  gap: 16px;
+}
+
+.cadastro-list__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cadastro-list__count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table-actions .button,
+.table-actions .button-secondary {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
 .status-chip {
   display: inline-flex;
   align-items: center;

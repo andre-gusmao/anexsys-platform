@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -120,11 +121,13 @@ export class CustomersController {
     if (!tenantId || !principal) {
       throw new UnauthorizedException('Authenticated tenant context is required.');
     }
-    if (action && action !== 'inactivate') {
+    if (action && action !== 'inactivate' && action !== 'delete') {
       throw new BadRequestException(`Unsupported dependency validation action '${action}'.`);
     }
     await this.customerService.getById(customerId, tenantId);
-    return this.dependencyValidationService.validateCustomerInactivation(tenantId, customerId);
+    return action === 'delete'
+      ? this.dependencyValidationService.validateCustomerDeletion(tenantId, customerId)
+      : this.dependencyValidationService.validateCustomerInactivation(tenantId, customerId);
   }
 
   @Permissions('customers.write')
@@ -148,6 +151,22 @@ export class CustomersController {
       ...(body as UpdateCustomerDto),
       actorUserId: principal.userId,
     });
+  }
+
+  @Permissions('customers.write')
+  @Delete(':customerId')
+  async remove(
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+
+    await this.customerService.remove(customerId, tenantId, principal.userId);
+    return { id: customerId, deleted: true };
   }
 
   @Permissions('measurements.read')
