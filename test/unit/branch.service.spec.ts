@@ -211,4 +211,42 @@ describe('BranchService', () => {
     const listed = await service.listByCompany('tenant-a', 'company-1');
     assert.equal(listed[0]?.companyId, 'company-1');
   });
+
+  it('creates the default Matriz filial when the empresa has none', async () => {
+    const extras = extraDeps();
+    const createdPayloads: Array<Record<string, unknown>> = [];
+    const service = new BranchService(
+      {
+        async findByCompany() {
+          return [];
+        },
+        async findByTenantAndCode() {
+          return null;
+        },
+        create(payload: Record<string, unknown>) {
+          createdPayloads.push(payload);
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          return payload;
+        },
+      } as never,
+      { async getById() { return { id: 'tenant-a' }; } } as never,
+      { async record() {} } as never,
+      { async assertBranchCanDeactivate() {} } as never,
+      extras.companyService as never,
+      extras.hoursService as never,
+    );
+
+    const branch = await service.ensureDefaultBranchForCompany({
+      tenantId: 'tenant-a',
+      companyId: 'company-1',
+      legalName: 'Atelie Iza Gusmao',
+      actorUserId: 'actor-1',
+    });
+
+    assert.equal(branch.code, 'MATRIZ');
+    assert.equal(createdPayloads[0]?.isDefault, true);
+    assert.equal(createdPayloads[0]?.companyId, 'company-1');
+  });
 });

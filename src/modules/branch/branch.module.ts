@@ -10,7 +10,13 @@ import { BranchEntity } from './infrastructure/persistence/entities/branch.entit
 import { BranchRepository } from './infrastructure/persistence/repositories/branch.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([BranchEntity]), AuditModule, TenantModule, GovernanceModule, forwardRef(() => CompanyModule)],
+  imports: [
+    TypeOrmModule.forFeature([BranchEntity]),
+    AuditModule,
+    forwardRef(() => TenantModule),
+    GovernanceModule,
+    forwardRef(() => CompanyModule),
+  ],
   controllers: [BranchesController],
   providers: [BranchService, BranchRepository],
   exports: [BranchService, BranchRepository],

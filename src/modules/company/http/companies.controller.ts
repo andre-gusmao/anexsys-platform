@@ -10,9 +10,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { IsEmail, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator';
+import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
-import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { normalizeRequestValue, PlatformRequest } from 'src/platform/http/request-context';
+import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
 import { CompanyService } from '../application/company/company.service';
 
 function hasText(value: unknown): boolean {
@@ -118,7 +119,10 @@ class UpdateCompanyBody extends CompanyFiscalBody {
 
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companyService: CompanyService) {}
+  constructor(
+    private readonly companyService: CompanyService,
+    private readonly branchService: BranchService,
+  ) {}
 
   @Permissions('companies.read')
   @Get()
@@ -137,12 +141,18 @@ export class CompaniesController {
     if (!actorUserId) {
       throw new UnauthorizedException('Authenticated user is required.');
     }
-    return this.companyService.create({
+    const company = await this.companyService.create({
       ...body,
       tenantId: requireTenantId(tenantId, request),
       actorUserId,
-      createDefaultBranch: true,
     });
+    await this.branchService.ensureDefaultBranchForCompany({
+      tenantId: company.tenantId,
+      companyId: company.id,
+      legalName: company.legalName,
+      actorUserId,
+    });
+    return company;
   }
 
   @Permissions('companies.read')

@@ -1,9 +1,13 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
+import { BranchHoursSeedService } from 'src/modules/company/application/company/branch-hours-seed.service';
 import { CompanyService } from 'src/modules/company/application/company/company.service';
-import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
-import { DEFAULT_BRANCH_TIMEZONE } from 'src/modules/company/application/company.defaults';
+import {
+  DEFAULT_BRANCH_CODE,
+  DEFAULT_BRANCH_DISPLAY_NAME,
+  DEFAULT_BRANCH_TIMEZONE,
+} from 'src/modules/company/application/company.defaults';
 import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import { BranchStatus } from 'src/shared/domain/enums';
@@ -17,14 +21,18 @@ import { BranchRepository } from '../../infrastructure/persistence/repositories/
 @Injectable()
 export class BranchService {
   constructor(
+    @Inject(BranchRepository)
     private readonly branchRepository: BranchRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
     @Inject(forwardRef(() => CompanyService))
     private readonly companyService: CompanyService,
-    @Inject(forwardRef(() => BranchHoursService))
-    private readonly branchHoursService: BranchHoursService,
+    @Inject(BranchHoursSeedService)
+    private readonly branchHoursSeed: BranchHoursSeedService,
   ) {}
 
   async create(dto: CreateBranchDto): Promise<BranchEntity> {
@@ -63,7 +71,7 @@ export class BranchService {
     });
 
     const saved = await this.branchRepository.save(branch);
-    await this.branchHoursService.seedDefaults(dto.tenantId, saved.id, dto.actorUserId);
+    await this.branchHoursSeed.seedDefaults(dto.tenantId, saved.id, dto.actorUserId);
     await this.auditService.record({
       tenantId: dto.tenantId,
       branchId: saved.id,
@@ -87,6 +95,28 @@ export class BranchService {
   async listByCompany(tenantId: string, companyId: string): Promise<BranchEntity[]> {
     await this.companyService.getById(companyId, tenantId);
     return this.branchRepository.findByCompany(tenantId, companyId);
+  }
+
+  async ensureDefaultBranchForCompany(params: {
+    tenantId: string;
+    companyId: string;
+    legalName: string;
+    actorUserId: string;
+  }): Promise<BranchEntity> {
+    const existing = await this.listByCompany(params.tenantId, params.companyId);
+    if (existing[0]) {
+      return existing[0];
+    }
+    return this.create({
+      tenantId: params.tenantId,
+      companyId: params.companyId,
+      code: DEFAULT_BRANCH_CODE,
+      legalName: params.legalName,
+      displayName: DEFAULT_BRANCH_DISPLAY_NAME,
+      timezone: DEFAULT_BRANCH_TIMEZONE,
+      isDefault: true,
+      actorUserId: params.actorUserId,
+    });
   }
 
   async getById(id: string): Promise<BranchEntity> {

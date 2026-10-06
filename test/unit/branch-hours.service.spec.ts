@@ -1,32 +1,42 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { BranchHoursSeedService } from 'src/modules/company/application/company/branch-hours-seed.service';
 import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 
+function hoursStack() {
+  const saved: Array<Record<string, unknown>> = [];
+  const repo = {
+    async deleteByBranch() {},
+    create(payload: Record<string, unknown>) {
+      return payload;
+    },
+    async saveMany(rows: Array<Record<string, unknown>>) {
+      saved.push(...rows);
+      return rows;
+    },
+    async findByBranch() {
+      return saved;
+    },
+  };
+  const seed = new BranchHoursSeedService(repo as never);
+  const service = new BranchHoursService(
+    seed,
+    {
+      async getById() {
+        return { id: 'branch-1', tenantId: 'tenant-1', timezone: 'America/Sao_Paulo', updatedBy: 'actor-1' };
+      },
+      async update() {
+        return {};
+      },
+    } as never,
+  );
+  return { service, saved };
+}
+
 describe('BranchHoursService', () => {
   it('stores cutoff equal to closing time by default', async () => {
-    const saved: Array<Record<string, unknown>> = [];
-    const service = new BranchHoursService(
-      {
-        async deleteByBranch() {},
-        create(payload: Record<string, unknown>) {
-          return payload;
-        },
-        async saveMany(rows: Array<Record<string, unknown>>) {
-          saved.push(...rows);
-          return rows;
-        },
-      } as never,
-      {
-        async getById() {
-          return { id: 'branch-1', tenantId: 'tenant-1', timezone: 'America/Sao_Paulo', updatedBy: 'actor-1' };
-        },
-        async update() {
-          return {};
-        },
-      } as never,
-    );
-
+    const { service, saved } = hoursStack();
     await service.seedDefaults('tenant-1', 'branch-1', 'actor-1');
     const saturday = saved.find((row) => row.weekday === 6);
     const sunday = saved.find((row) => row.weekday === 0);
@@ -39,23 +49,7 @@ describe('BranchHoursService', () => {
   });
 
   it('rejects incomplete weekly hours', async () => {
-    const service = new BranchHoursService(
-      {
-        async deleteByBranch() {},
-        create(payload: Record<string, unknown>) {
-          return payload;
-        },
-        async saveMany(rows: unknown[]) {
-          return rows;
-        },
-      } as never,
-      {
-        async getById() {
-          return { id: 'branch-1', tenantId: 'tenant-1' };
-        },
-      } as never,
-    );
-
+    const { service } = hoursStack();
     await assert.rejects(
       () =>
         service.replaceHours(
