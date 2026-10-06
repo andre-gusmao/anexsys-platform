@@ -111,11 +111,10 @@ class HttpError extends Error {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-function getInitialState(): { status: SessionStatus; session: SessionRecord | null } {
-  const session = readStoredSession();
+export function createIdleSessionState(): { status: SessionStatus; session: SessionRecord | null } {
   return {
-    status: session ? "loading" : "anonymous",
-    session,
+    status: "loading",
+    session: null,
   };
 }
 
@@ -211,6 +210,9 @@ function broadcastSessionExpired(message: string) {
     window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail: { message } }));
   }
 }
+
+const SESSION_EXPIRED_MESSAGE = "A sessão expirou. Entre de novo.";
+const SESSION_RESTORE_FAILED_MESSAGE = "Não foi possível restaurar a sessão. Entre de novo.";
 
 function resolveSessionTenantId(session: SessionRecord): string | null {
   for (const candidate of [session.tenantId, session.user?.tenantId]) {
@@ -310,8 +312,8 @@ async function authenticatedRequest<T>(
       try {
         workingSession = await refreshSession(workingSession);
       } catch {
-        broadcastSessionExpired("Session expired. Please sign in again.");
-        throw new HttpError(401, "Session expired. Please sign in again.");
+        broadcastSessionExpired(SESSION_EXPIRED_MESSAGE);
+        throw new HttpError(401, SESSION_EXPIRED_MESSAGE);
       }
       continue;
     }
@@ -319,7 +321,7 @@ async function authenticatedRequest<T>(
     throw new HttpError(response.status, getErrorMessage(payload, "Authenticated request failed."));
   }
 
-  throw new HttpError(401, "Session refresh failed.");
+  throw new HttpError(401, SESSION_EXPIRED_MESSAGE);
 }
 
 function resolveActiveBranchId(
@@ -344,11 +346,11 @@ function resolveActiveBranchId(
 }
 
 export function SessionProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const initialState = useMemo(() => getInitialState(), []);
-  const [status, setStatus] = useState<SessionStatus>(initialState.status);
-  const [session, setSession] = useState<SessionRecord | null>(initialState.session);
+  const [status, setStatus] = useState<SessionStatus>("loading");
+  const [session, setSession] = useState<SessionRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const sessionRef = useRef<SessionRecord | null>(null);
+  const restoreAttemptedRef = useRef(false);
 
   const clearError = useCallback(() => setErrorMessage(null), []);
 
@@ -421,8 +423,11 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
 
   useEffect(() => {
     sessionRef.current = session;
+    if (status === "loading" && !restoreAttemptedRef.current) {
+      return;
+    }
     writeStoredSession(session);
-  }, [session]);
+  }, [session, status]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -432,7 +437,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
       sessionRef.current = null;
       setSession(null);
       setStatus("anonymous");
-      setErrorMessage(detail?.message ?? "Session expired. Please sign in again.");
+      setErrorMessage(detail?.message ?? SESSION_EXPIRED_MESSAGE);
     };
 
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired as EventListener);
@@ -440,21 +445,26 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   }, []);
 
   useEffect(() => {
-    const existing = initialState.session;
+    const existing = readStoredSession();
+    restoreAttemptedRef.current = true;
     if (!existing) {
+      // First paint is always "loading" so SSR and the client match; settle after mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSession(null);
+      setStatus("anonymous");
       return;
     }
 
-    // Session restoration intentionally rehydrates client state from persisted local storage on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    sessionRef.current = existing;
+    setSession(existing);
     hydrateSession(existing).catch((error: unknown) => {
       writeStoredSession(null);
       sessionRef.current = null;
       setSession(null);
       setStatus("anonymous");
-      setErrorMessage(error instanceof Error ? error.message : "Session could not be restored.");
+      setErrorMessage(error instanceof Error ? error.message : SESSION_RESTORE_FAILED_MESSAGE);
     });
-  }, [hydrateSession, initialState.session]);
+  }, [hydrateSession]);
 
   const login = useCallback(
     async ({ email, password }: LoginInput) => {
@@ -581,7 +591,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     async <T,>(path: string, init: RequestInit = {}, opts: { allowRefresh?: boolean; branchId?: string | null } = {}) => {
       const currentSession = sessionRef.current;
       if (!currentSession) {
-        throw new HttpError(401, "Session expired. Please sign in again.");
+        throw new HttpError(401, SESSION_EXPIRED_MESSAGE);
       }
 
       const result = await authenticatedRequest<T>(currentSession, path, { method: "GET", ...init }, opts);
