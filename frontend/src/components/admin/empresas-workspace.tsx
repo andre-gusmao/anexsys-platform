@@ -7,6 +7,7 @@ import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState 
 import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
+import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 
 type CompanyRecord = {
@@ -27,6 +28,7 @@ type CompanyRecord = {
   state: string | null;
   country: string | null;
   isDefault: boolean;
+  status: "active" | "inactive";
 };
 
 type CompanyForm = {
@@ -138,8 +140,8 @@ function describeCompanyError(error: unknown, fallback: string): string {
   if (error instanceof Error && /tenant context is required|contexto da conta/i.test(error.message)) {
     return "A Conta ativa não chegou no servidor. Saia e entre de novo, ou escolha a Conta no seletor.";
   }
-  if (error instanceof Error && /branch code .* already exists/i.test(error.message)) {
-    return "Já existe uma Filial Matriz nesta Empresa. Cada Empresa pode ter a sua própria Matriz.";
+  if (error instanceof Error && /branch code .* already exists|já existe uma filial com o código/i.test(error.message)) {
+    return "Não foi possível criar a Filial filha padrão (Matriz) desta Empresa. A Empresa é o pai; a Matriz é a primeira Filial. Puxe o código, rode npm run migration:run e reinicie o backend.";
   }
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -161,6 +163,8 @@ export function EmpresasWorkspace() {
   const [saving, setSaving] = useState(false);
   const [lookingUpPostalCode, setLookingUpPostalCode] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [dependencyValidation, setDependencyValidation] = useState<DependencyValidationResult | null>(null);
+  const [actingEmpresaId, setActingEmpresaId] = useState<string | null>(null);
   const [activeId, setActiveId] = useWorkspaceScopedState<string | null>("empresas.activeId", null);
   const [showCreate, setShowCreate] = useWorkspaceScopedState("empresas.showCreate", false);
   const [form, setForm] = useWorkspaceScopedState<CompanyForm>("empresas.form", emptyForm());
@@ -182,7 +186,7 @@ export function EmpresasWorkspace() {
     setLoading(true);
     try {
       const records = await apiJson<CompanyRecord[]>("/companies");
-      setCompanies(records);
+      setCompanies(records.map((company) => ({ ...company, status: company.status === "inactive" ? "inactive" : "active" })));
       setMessage(null);
     } catch (error) {
       setMessage(describeCompanyError(error, "As empresas não puderam ser carregadas."));
@@ -330,14 +334,17 @@ export function EmpresasWorkspace() {
         method: "POST",
         body: JSON.stringify(toPayload(form)),
       });
-      setCompanies((current) => [...current, created]);
+      setCompanies((current) => [
+        ...current,
+        { ...created, status: created.status === "inactive" ? "inactive" : "active" },
+      ]);
       setActiveId(created.id);
       setShowCreate(false);
       setForm(mapCompanyToForm(created));
       await reloadEmpresas(created.id);
       await selectEmpresa(created.id);
       navigateWithinWorkspace(`/admin/companies?focusCompanyId=${encodeURIComponent(created.id)}`);
-      setMessage("Empresa criada. A Filial padrão (Matriz) nasceu junto. Ela já está no contexto ativo.");
+      setMessage("Empresa criada. A Filial filha padrão (Matriz) nasceu junto. Ela já está no contexto ativo.");
     } catch (error) {
       setMessage(describeCompanyError(error, "A empresa não pôde ser criada."));
     } finally {
@@ -355,9 +362,10 @@ export function EmpresasWorkspace() {
         method: "PATCH",
         body: JSON.stringify(toPayload(form)),
       });
-      setCompanies((current) => current.map((company) => (company.id === updated.id ? updated : company)));
-      setForm(mapCompanyToForm(updated));
-      await reloadEmpresas(updated.id);
+      const normalized = { ...updated, status: updated.status === "inactive" ? "inactive" : "active" } as CompanyRecord;
+      setCompanies((current) => current.map((company) => (company.id === normalized.id ? normalized : company)));
+      setForm(mapCompanyToForm(normalized));
+      await reloadEmpresas(normalized.id);
       setMessage("Empresa atualizada.");
     } catch (error) {
       setMessage(describeCompanyError(error, "A empresa não pôde ser atualizada."));
@@ -365,6 +373,110 @@ export function EmpresasWorkspace() {
       setSaving(false);
     }
   }
+
+  const handleInactivateEmpresa = useCallback(
+    async (empresa: EmpresaListRecord) => {
+      if (empresa.status === "inactive") {
+        return;
+      }
+      if (!window.confirm(`Inativar ${empresaDisplayName(empresa)}? Ela some do combo, mas continua na lista.`)) {
+        return;
+      }
+
+      setActingEmpresaId(empresa.id);
+      setMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `/companies/${empresa.id}/dependency-check?action=inactivate`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return;
+        }
+        await apiJson<CompanyRecord>(`/companies/${empresa.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "inactive" }),
+        });
+        setMessage(`${empresaDisplayName(empresa)} foi inativada.`);
+        await loadCompanies();
+        await reloadEmpresas();
+      } catch (error) {
+        setMessage(describeCompanyError(error, "A empresa não pôde ser inativada."));
+      } finally {
+        setActingEmpresaId(null);
+      }
+    },
+    [apiJson, loadCompanies, reloadEmpresas],
+  );
+
+  const handleDeleteEmpresa = useCallback(
+    async (empresa: EmpresaListRecord, options: { skipConfirm?: boolean } = {}) => {
+      if (
+        !options.skipConfirm &&
+        !window.confirm(
+          `Excluir ${empresaDisplayName(empresa)}? Só é possível se não houver OS ou financeiro nas Filiais filhas. A Empresa some da lista.`,
+        )
+      ) {
+        return false;
+      }
+
+      setActingEmpresaId(empresa.id);
+      setMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `/companies/${empresa.id}/dependency-check?action=delete`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return false;
+        }
+        await apiJson(`/companies/${empresa.id}`, { method: "DELETE" });
+        setMessage(`${empresaDisplayName(empresa)} foi excluída da lista.`);
+        await loadCompanies();
+        await reloadEmpresas();
+        return true;
+      } catch (error) {
+        setMessage(describeCompanyError(error, "A empresa não pôde ser excluída."));
+        return false;
+      } finally {
+        setActingEmpresaId(null);
+      }
+    },
+    [apiJson, loadCompanies, reloadEmpresas],
+  );
+
+  const handleDeleteEmpresas = useCallback(
+    async (selected: EmpresaListRecord[]) => {
+      if (selected.length === 0) {
+        return;
+      }
+      if (
+        !window.confirm(
+          `Excluir ${selected.length} empresa(s) selecionada(s)? Só é possível se não houver OS ou financeiro nas Filiais filhas.`,
+        )
+      ) {
+        return;
+      }
+
+      let deleted = 0;
+      for (const empresa of selected) {
+        const ok = await handleDeleteEmpresa(empresa, { skipConfirm: true });
+        if (ok) {
+          deleted += 1;
+        } else {
+          break;
+        }
+      }
+      if (deleted > 1) {
+        setMessage(`${deleted} empresa(s) foram excluídas da lista.`);
+      }
+    },
+    [handleDeleteEmpresa],
+  );
 
   if (!canRead) {
     return (
@@ -382,22 +494,35 @@ export function EmpresasWorkspace() {
           <div className="eyebrow">Administração</div>
           <h1 className="title">{showCreate ? "Nova empresa" : active ? empresaDisplayName(active) : "Empresa"}</h1>
           <p>
-            A Empresa é o CNPJ dentro da Conta. Use o combo Empresa no contexto ao lado para trocar entre elas e
-            associar Filiais. Clientes e medidas são da Conta e valem para todas as Empresas. Se não houver Filial
-            física, o sistema cria a Filial padrão (Matriz).
+            A Empresa é o pai: o CNPJ dentro da Conta. As Filiais são os filhos. Ao criar a Empresa, o sistema já cria a
+            primeira Filial filha, a Matriz — você não cadastra a Matriz como se fosse outra Empresa. Outras lojas ou
+            ateliês físicos nascem depois em Administração → Filiais, sempre debaixo desta Empresa. Clientes e medidas
+            são da Conta e valem para todas as Empresas.
           </p>
         </section>
       ) : null}
+
+      {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
       {message ? <WorkspaceFlash message={message} /> : null}
 
       {isListWorkspace ? (
         <EmpresaListPanel
+          actingEmpresaId={actingEmpresaId}
           canWrite={canWrite}
           empresas={companies}
           loading={loading}
           onCreate={openCreateWorkspace}
+          onDelete={(empresa) => {
+            void handleDeleteEmpresa(empresa);
+          }}
+          onDeleteMany={(selected) => {
+            void handleDeleteEmpresas(selected);
+          }}
           onEdit={openEditWorkspace}
+          onInactivate={(empresa) => {
+            void handleInactivateEmpresa(empresa);
+          }}
         />
       ) : (
         <section className="workspace-stack">
@@ -405,6 +530,9 @@ export function EmpresasWorkspace() {
             {showCreate ? (
               <form className="form-grid" onSubmit={handleCreate}>
                 <h3>Nova empresa</h3>
+                <p className="table-subtle">
+                  Este cadastro é o pai (CNPJ). A primeira Filial filha, a Matriz, nasce automaticamente ao salvar.
+                </p>
                 <CompanyFields
                   form={form}
                   lookingUpPostalCode={lookingUpPostalCode}

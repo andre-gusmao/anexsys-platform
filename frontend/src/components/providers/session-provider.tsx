@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { clearPersistedWorkspaceStore } from "@/components/app-shell/workspace-storage";
 import {
   branchesOfEmpresa,
+  isEmpresaActiveForCombo,
   resolveActiveEmpresaId,
   type BranchOption,
   type EmpresaOption,
@@ -110,6 +111,7 @@ type EmpresaResponse = {
   legalName?: string;
   tradeName?: string | null;
   isDefault?: boolean;
+  status?: string;
 };
 
 const STORAGE_KEY = "anexsys.frontend.session.v2";
@@ -271,7 +273,7 @@ function mapEmpresas(input: EmpresaResponse[] | null): EmpresaOption[] {
   if (!input) return [];
   return input
     .filter((empresa): empresa is Required<Pick<EmpresaResponse, "id" | "legalName">> & EmpresaResponse => {
-      return typeof empresa.id === "string" && typeof empresa.legalName === "string";
+      return typeof empresa.id === "string" && typeof empresa.legalName === "string" && isEmpresaActiveForCombo(empresa.status);
     })
     .map((empresa) => ({
       id: empresa.id,

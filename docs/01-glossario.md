@@ -10,8 +10,8 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | Termo | Significado | No código |
 |---|---|---|
 | **Conta** | Quem assina o ANEXSYS. É a dona dos dados. Exemplo: "Grupo Ateliê Silva". Os dados de uma Conta **nunca** se misturam com os de outra | `tenant` |
-| **Empresa** | A pessoa jurídica (CNPJ) dentro de uma Conta. Uma Conta pode ter várias Empresas. **No Ciclo 1 a tela existe**; a Filial padrão nasce junto | `company` |
-| **Filial** | A unidade física onde se atende e produz. Cada Empresa pode ter várias Filiais | `branch` |
+| **Empresa** | O pai: a pessoa jurídica (CNPJ) dentro de uma Conta. Uma Conta pode ter várias Empresas. As Filiais são filhas desta Empresa. Ao cadastrar, nasce a Filial padrão (Matriz) | `company` |
+| **Filial** | O filho: a unidade física onde se atende e produz. Cada Empresa pode ter várias Filiais; a primeira é a Matriz | `branch` |
 | **Usuário** | Pessoa que entra no sistema com e-mail e senha | `user` |
 | **Papel** | Conjunto de permissões. Papéis iniciais: recepção, atendente/medidor, produção, qualidade e gerente | `role` |
 | **Escopo** | A quais Empresas e Filiais um usuário tem acesso. Usuário novo nasce **sem nenhuma Filial** até o administrador marcar | `branch scope` |
@@ -77,7 +77,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |
 | **Estorno de cartão** | Devolução do pagamento feito na maquininha, pela operadora (Cielo). Só o gerente, com motivo. Não é o reembolso via Pix |
 | **Aprovação pendente** | OS cujo cliente ainda não assinou. Lista sempre visível e aviso diário ao atendente e ao gerente |
-| **Filial padrão** | Filial criada automaticamente quando a Empresa não tem nenhuma. Pode ser renomeada |
+| **Filial padrão** | Primeira Filial filha, criada automaticamente quando a Empresa não tem nenhuma. Nome de tela: Matriz. Pode ser renomeada |
 | **Entrega em domicílio** | Funcionalidade nova, **fora do piloto**, com preço por distância ou geolocalização |
 | **Feriado** | Dia fechado, cadastrado por Filial. A regra de adiar ou antecipar a data está em aberto |
 

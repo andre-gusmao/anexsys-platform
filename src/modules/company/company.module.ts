@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from 'src/modules/audit/audit.module';
 import { AuthorizationModule } from 'src/modules/authorization/authorization.module';
 import { BranchModule } from 'src/modules/branch/branch.module';
+import { GovernanceModule } from 'src/modules/governance/governance.module';
 import { TenantModule } from 'src/modules/tenant/tenant.module';
 import { BranchHoursSeedService } from './application/company/branch-hours-seed.service';
 import { BranchHoursService } from './application/company/branch-hours.service';
@@ -23,6 +24,7 @@ import { TenantModuleRepository } from './infrastructure/persistence/repositorie
   imports: [
     TypeOrmModule.forFeature([CompanyEntity, BranchOperatingHoursEntity, TenantModuleEntity]),
     AuditModule,
+    GovernanceModule,
     forwardRef(() => TenantModule),
     forwardRef(() => BranchModule),
     forwardRef(() => AuthorizationModule),

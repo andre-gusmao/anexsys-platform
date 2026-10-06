@@ -290,4 +290,48 @@ describe('BranchService', () => {
     assert.equal(branch.code, 'MATRIZ');
     assert.equal(createdPayloads[0]?.companyId, 'company-2');
   });
+
+  it('retries the default Matriz with a unique code when the tenant still blocks MATRIZ', async () => {
+    const extras = extraDeps();
+    extras.companyService.getById = async (id?: string) => ({ id: id ?? 'company-2', tenantId: 'tenant-a' });
+    const createdPayloads: Array<Record<string, unknown>> = [];
+    const service = new BranchService(
+      {
+        async findByCompany() {
+          return [];
+        },
+        async findByCompanyAndCode() {
+          return null;
+        },
+        create(payload: Record<string, unknown>) {
+          createdPayloads.push(payload);
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          if (payload.code === 'MATRIZ') {
+            throw Object.assign(new Error('duplicate key'), {
+              code: '23505',
+              driverError: { code: '23505', constraint: 'uq_branches_tenant_code' },
+            });
+          }
+          return payload;
+        },
+      } as never,
+      { async getById() { return { id: 'tenant-a' }; } } as never,
+      { async record() {} } as never,
+      { async assertBranchCanDeactivate() {} } as never,
+      extras.companyService as never,
+      extras.hoursService as never,
+    );
+
+    const branch = await service.ensureDefaultBranchForCompany({
+      tenantId: 'tenant-a',
+      companyId: 'aa11bb22-cc33-4455-6677-8899aabbccdd',
+      legalName: 'Atelier C',
+      actorUserId: 'actor-1',
+    });
+
+    assert.equal(branch.code, 'MATRIZ-AA11BB');
+    assert.equal(createdPayloads[1]?.companyId, 'aa11bb22-cc33-4455-6677-8899aabbccdd');
+  });
 });

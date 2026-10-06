@@ -6,6 +6,7 @@ import {
   buildEmpresaExcelCsv,
   emptyEmpresaListFilters,
   empresaDisplayName,
+  empresaListStatusLabel,
   formatEmpresaCnpj,
   normalizeEmpresaListColumnIds,
   type EmpresaListRecord,
@@ -22,6 +23,7 @@ const empresas: EmpresaListRecord[] = [
     city: 'São Paulo',
     state: 'SP',
     isDefault: true,
+    status: 'active',
   },
   {
     id: '2',
@@ -33,6 +35,7 @@ const empresas: EmpresaListRecord[] = [
     city: 'Campinas',
     state: 'SP',
     isDefault: false,
+    status: 'inactive',
   },
 ];
 
@@ -67,12 +70,22 @@ test('formats CNPJ and prefers trade name on the grid', () => {
   assert.equal(formatEmpresaCnpj(null), '—');
   assert.equal(empresaDisplayName(empresas[0]), 'Atelier A');
   assert.equal(empresaDisplayName({ legalName: 'Só Razão', tradeName: null }), 'Só Razão');
+  assert.equal(empresaListStatusLabel('inactive'), 'Inativa');
+});
+
+test('filters the empresa grid by status', () => {
+  const inactive = applyEmpresaListFilters(empresas, { ...emptyEmpresaListFilters(), status: 'inactive' });
+  assert.deepEqual(
+    inactive.map((empresa) => empresa.id),
+    ['2'],
+  );
 });
 
 test('builds Excel and email exports from selected empresas', () => {
   const excel = buildEmpresaExcelCsv([empresas[0]]);
   assert.match(excel, /Atelier A LTDA/);
   assert.match(excel, /a@atelier.test/);
+  assert.match(excel, /Ativa/);
   assert.match(excel, /Sim/);
 
   const emails = buildEmpresaEmailCsv(empresas);

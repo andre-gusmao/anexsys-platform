@@ -12,6 +12,7 @@ import {
   EMPRESA_LIST_PAGE_SIZES,
   emptyEmpresaListFilters,
   empresaDisplayName,
+  empresaListStatusLabel,
   formatEmpresaCnpj,
   normalizeEmpresaListColumnIds,
   paginateEmpresaList,
@@ -55,11 +56,25 @@ type EmpresaListPanelProps = {
   empresas: EmpresaListRecord[];
   loading: boolean;
   canWrite: boolean;
+  actingEmpresaId?: string | null;
   onCreate: (prefillName?: string) => void;
   onEdit: (empresa: EmpresaListRecord) => void;
+  onDelete: (empresa: EmpresaListRecord) => void;
+  onDeleteMany: (empresas: EmpresaListRecord[]) => void;
+  onInactivate: (empresa: EmpresaListRecord) => void;
 };
 
-export function EmpresaListPanel({ empresas, loading, canWrite, onCreate, onEdit }: Readonly<EmpresaListPanelProps>) {
+export function EmpresaListPanel({
+  empresas,
+  loading,
+  canWrite,
+  actingEmpresaId,
+  onCreate,
+  onEdit,
+  onDelete,
+  onDeleteMany,
+  onInactivate,
+}: Readonly<EmpresaListPanelProps>) {
   const [filters, setFilters] = useState<EmpresaListFilters>(emptyEmpresaListFilters);
   const [appliedFilters, setAppliedFilters] = useState<EmpresaListFilters>(emptyEmpresaListFilters);
   const [showFilters, setShowFilters] = useState(false);
@@ -154,6 +169,9 @@ export function EmpresaListPanel({ empresas, loading, canWrite, onCreate, onEdit
     if (columnId === "state") return empresa.state ?? "—";
     if (columnId === "email") return empresa.email ?? "—";
     if (columnId === "phone") return empresa.phone ?? "—";
+    if (columnId === "status") {
+      return <span className={`status-chip status-chip--${empresa.status}`}>{empresaListStatusLabel(empresa.status)}</span>;
+    }
     return empresa.isDefault ? "Sim" : "Não";
   };
 
@@ -206,6 +224,20 @@ export function EmpresaListPanel({ empresas, loading, canWrite, onCreate, onEdit
                     Exportar e-mails
                   </button>
                 </li>
+                {canWrite ? (
+                  <li>
+                    <button
+                      disabled={!hasSelection}
+                      onClick={() => {
+                        onDeleteMany(selectedEmpresas);
+                        setOpenMenu(null);
+                      }}
+                      type="button"
+                    >
+                      Excluir selecionados
+                    </button>
+                  </li>
+                ) : null}
               </ul>
             ) : null}
           </div>
@@ -319,6 +351,17 @@ export function EmpresaListPanel({ empresas, loading, canWrite, onCreate, onEdit
                 value={filters.email}
               />
             </label>
+            <label className="field">
+              <span>Status</span>
+              <select
+                onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
+                value={filters.status}
+              >
+                <option value="">Todos</option>
+                <option value="active">Ativa</option>
+                <option value="inactive">Inativa</option>
+              </select>
+            </label>
           </div>
           <div className="button-row">
             <button className="button" onClick={() => applyFilters(filters)} type="button">
@@ -358,7 +401,9 @@ export function EmpresaListPanel({ empresas, loading, canWrite, onCreate, onEdit
             </tr>
           </thead>
           <tbody>
-            {pagination.items.map((empresa) => (
+            {pagination.items.map((empresa) => {
+              const busy = actingEmpresaId === empresa.id;
+              return (
               <tr key={empresa.id}>
                 <td className="data-table__check">
                   <input
@@ -374,8 +419,19 @@ export function EmpresaListPanel({ empresas, loading, canWrite, onCreate, onEdit
                 <td>
                   {canWrite ? (
                     <div className="table-actions">
-                      <button className="button-secondary" onClick={() => onEdit(empresa)} type="button">
+                      <button className="button-secondary" disabled={busy} onClick={() => onEdit(empresa)} type="button">
                         Alterar
+                      </button>
+                      <button className="button-secondary" disabled={busy} onClick={() => onDelete(empresa)} type="button">
+                        Excluir
+                      </button>
+                      <button
+                        className="button-secondary"
+                        disabled={busy || empresa.status === "inactive"}
+                        onClick={() => onInactivate(empresa)}
+                        type="button"
+                      >
+                        Inativar
                       </button>
                     </div>
                   ) : (
@@ -383,7 +439,8 @@ export function EmpresaListPanel({ empresas, loading, canWrite, onCreate, onEdit
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {!loading && pagination.totalItems === 0 ? (
               <tr>
                 <td colSpan={visibleColumns.length + 2}>

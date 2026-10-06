@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   branchesOfEmpresa,
   empresaLabel,
+  isEmpresaActiveForCombo,
   resolveActiveEmpresaId,
 } from '../../frontend/src/components/providers/session-context';
 
@@ -30,5 +31,11 @@ describe('session empresa context', () => {
       ['filial-a'],
     );
     assert.equal(empresaLabel(empresas[1]), 'Atelier A');
+  });
+
+  it('hides inactive empresas from the context combo', () => {
+    assert.equal(isEmpresaActiveForCombo('active'), true);
+    assert.equal(isEmpresaActiveForCombo(undefined), true);
+    assert.equal(isEmpresaActiveForCombo('inactive'), false);
   });
 });

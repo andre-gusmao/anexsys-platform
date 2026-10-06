@@ -8,6 +8,11 @@ export enum BranchStatus {
   INACTIVE = 'inactive',
 }
 
+export enum CompanyStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
 export enum UserStatus {
   ACTIVE = 'active',
   INVITED = 'invited',

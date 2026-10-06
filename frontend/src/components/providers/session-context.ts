@@ -17,6 +17,10 @@ export type EmpresaOption = {
   isDefault: boolean;
 };
 
+export function isEmpresaActiveForCombo(status?: string | null): boolean {
+  return status !== "inactive";
+}
+
 export type BranchOption = {
   id: string;
   label: string;

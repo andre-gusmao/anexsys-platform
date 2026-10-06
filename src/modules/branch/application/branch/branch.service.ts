@@ -7,6 +7,7 @@ import {
   DEFAULT_BRANCH_CODE,
   DEFAULT_BRANCH_DISPLAY_NAME,
   DEFAULT_BRANCH_TIMEZONE,
+  defaultBranchFallbackCode,
 } from 'src/modules/company/application/company.defaults';
 import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
@@ -107,16 +108,67 @@ export class BranchService {
     if (existing[0]) {
       return existing[0];
     }
-    return this.create({
-      tenantId: params.tenantId,
-      companyId: params.companyId,
-      code: DEFAULT_BRANCH_CODE,
-      legalName: params.legalName,
-      displayName: DEFAULT_BRANCH_DISPLAY_NAME,
-      timezone: DEFAULT_BRANCH_TIMEZONE,
-      isDefault: true,
-      actorUserId: params.actorUserId,
-    });
+
+    try {
+      return await this.create({
+        tenantId: params.tenantId,
+        companyId: params.companyId,
+        code: DEFAULT_BRANCH_CODE,
+        legalName: params.legalName,
+        displayName: DEFAULT_BRANCH_DISPLAY_NAME,
+        timezone: DEFAULT_BRANCH_TIMEZONE,
+        isDefault: true,
+        actorUserId: params.actorUserId,
+      });
+    } catch (error) {
+      if (!this.isDuplicateBranchCodeError(error)) {
+        throw error;
+      }
+      try {
+        return await this.create({
+          tenantId: params.tenantId,
+          companyId: params.companyId,
+          code: defaultBranchFallbackCode(params.companyId),
+          legalName: params.legalName,
+          displayName: DEFAULT_BRANCH_DISPLAY_NAME,
+          timezone: DEFAULT_BRANCH_TIMEZONE,
+          isDefault: true,
+          actorUserId: params.actorUserId,
+        });
+      } catch (retryError) {
+        if (this.isDuplicateBranchCodeError(retryError)) {
+          throw new DomainValidationError(
+            'Não foi possível criar a Filial filha padrão (Matriz) desta Empresa. A Empresa é o pai e a Matriz é a primeira Filial. Rode as migrations e tente de novo.',
+          );
+        }
+        throw retryError;
+      }
+    }
+  }
+
+  async archiveByCompany(tenantId: string, companyId: string, actorUserId: string): Promise<void> {
+    const branches = await this.branchRepository.findByCompany(tenantId, companyId);
+    const deletedAt = new Date();
+    for (const branch of branches) {
+      const previousValues = this.buildAuditSnapshot(branch);
+      branch.isDeleted = true;
+      branch.deletedAt = deletedAt;
+      branch.deletedBy = actorUserId;
+      branch.updatedBy = actorUserId;
+      const saved = await this.branchRepository.save(branch);
+      await this.auditService.record({
+        tenantId: saved.tenantId,
+        branchId: saved.id,
+        actorUserId,
+        entityType: 'branch',
+        entityId: saved.id,
+        action: 'branch.deleted',
+        eventType: 'governance.write',
+        metadata: { companyId, reason: 'company.deleted' },
+        previousValues,
+        newValues: this.buildAuditSnapshot(saved),
+      });
+    }
   }
 
   async getById(id: string): Promise<BranchEntity> {
@@ -236,6 +288,31 @@ export class BranchService {
     if (parentBranch.tenantId !== tenantId) {
       throw new DomainValidationError('Parent branch must belong to the same tenant.');
     }
+  }
+
+  private isDuplicateBranchCodeError(error: unknown): boolean {
+    if (error instanceof DomainValidationError) {
+      return (
+        /já existe uma filial com o código/i.test(error.message) || /branch code .* already exists/i.test(error.message)
+      );
+    }
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+    const candidate = error as {
+      code?: string;
+      constraint?: string;
+      driverError?: { code?: string; constraint?: string };
+    };
+    const pgCode = candidate.code ?? candidate.driverError?.code;
+    if (pgCode !== '23505') {
+      return false;
+    }
+    const constraint = `${candidate.constraint ?? ''} ${candidate.driverError?.constraint ?? ''}`.toLowerCase();
+    if (!constraint.trim()) {
+      return true;
+    }
+    return constraint.includes('code');
   }
 
   private buildAuditSnapshot(branch: BranchEntity) {

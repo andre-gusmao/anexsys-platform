@@ -8,6 +8,8 @@ import {
 export const EMPRESA_LIST_PAGE_SIZES = CUSTOMER_LIST_PAGE_SIZES;
 export { buildPaginationItems, downloadTextFile, paginateCustomerList as paginateEmpresaList };
 
+export type EmpresaListStatus = "active" | "inactive";
+
 export type EmpresaListRecord = {
   id: string;
   legalName: string;
@@ -18,6 +20,7 @@ export type EmpresaListRecord = {
   city: string | null;
   state: string | null;
   isDefault: boolean;
+  status: EmpresaListStatus;
 };
 
 export type EmpresaListFilters = {
@@ -26,9 +29,10 @@ export type EmpresaListFilters = {
   city: string;
   state: string;
   email: string;
+  status: string;
 };
 
-export type EmpresaListColumnId = "name" | "document" | "city" | "state" | "email" | "phone" | "default";
+export type EmpresaListColumnId = "name" | "document" | "city" | "state" | "email" | "phone" | "default" | "status";
 
 export type EmpresaListColumn = {
   id: EmpresaListColumnId;
@@ -44,9 +48,17 @@ export const EMPRESA_LIST_COLUMNS: EmpresaListColumn[] = [
   { id: "email", label: "E-mail" },
   { id: "phone", label: "Telefone" },
   { id: "default", label: "Padrão" },
+  { id: "status", label: "Status" },
 ];
 
-export const DEFAULT_EMPRESA_LIST_COLUMN_IDS: EmpresaListColumnId[] = ["name", "document", "city", "state", "default"];
+export const DEFAULT_EMPRESA_LIST_COLUMN_IDS: EmpresaListColumnId[] = [
+  "name",
+  "document",
+  "city",
+  "state",
+  "status",
+  "default",
+];
 
 export const emptyEmpresaListFilters = (): EmpresaListFilters => ({
   name: "",
@@ -54,7 +66,12 @@ export const emptyEmpresaListFilters = (): EmpresaListFilters => ({
   city: "",
   state: "",
   email: "",
+  status: "",
 });
+
+export function empresaListStatusLabel(status: EmpresaListStatus) {
+  return status === "inactive" ? "Inativa" : "Ativa";
+}
 
 function includesNormalized(value: string | null | undefined, query: string) {
   if (!query) return true;
@@ -71,6 +88,7 @@ export function applyEmpresaListFilters(empresas: EmpresaListRecord[], filters: 
   const cityQuery = filters.city.trim().toLowerCase();
   const stateQuery = filters.state.trim().toLowerCase();
   const emailQuery = filters.email.trim().toLowerCase();
+  const statusQuery = (filters.status ?? "").trim();
 
   return empresas.filter((empresa) => {
     if (nameQuery && ![empresa.legalName, empresa.tradeName].some((value) => includesNormalized(value, nameQuery))) {
@@ -86,6 +104,9 @@ export function applyEmpresaListFilters(empresas: EmpresaListRecord[], filters: 
       return false;
     }
     if (emailQuery && !includesNormalized(empresa.email, emailQuery)) {
+      return false;
+    }
+    if (statusQuery && empresa.status !== statusQuery) {
       return false;
     }
     return true;
@@ -115,7 +136,7 @@ function csvCell(value: string | null | undefined) {
 }
 
 export function buildEmpresaExcelCsv(empresas: EmpresaListRecord[]) {
-  const header = ["Razão social", "Fantasia", "CNPJ", "Cidade", "UF", "E-mail", "Telefone", "Padrão"];
+  const header = ["Razão social", "Fantasia", "CNPJ", "Cidade", "UF", "E-mail", "Telefone", "Status", "Padrão"];
   const rows = empresas.map((empresa) => [
     empresa.legalName,
     empresa.tradeName ?? "",
@@ -124,6 +145,7 @@ export function buildEmpresaExcelCsv(empresas: EmpresaListRecord[]) {
     empresa.state ?? "",
     empresa.email ?? "",
     empresa.phone ?? "",
+    empresaListStatusLabel(empresa.status),
     empresa.isDefault ? "Sim" : "Não",
   ]);
   return [header, ...rows].map((row) => row.map((cell) => csvCell(cell)).join(";")).join("\n");

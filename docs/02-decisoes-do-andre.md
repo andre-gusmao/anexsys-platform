@@ -292,9 +292,9 @@ Modelo exato da LIO e compatibilidade com a integração remota; se o pedido apa
 
 ## 12. Navegação e cadastros (06/10/2026)
 
-Validado no ambiente local. Vale para **todos** os cadastros de uma vez: mesma lista (Adicionar, Mais ações, busca, colunas, lupa de filtro, zebrinha, paginação), Novo/Alterar em aba interna, menu lateral com submenu, e **formulário com fundo ciano**. Não homologar tela por tela. Clientes, Empresas, Filiais, Contas e OS já usam esse padrão. Em Empresas ainda não há Excluir nem Inativar: a API não oferece.
+Validado no ambiente local. Vale para **todos** os cadastros de uma vez: mesma lista (Adicionar, Mais ações, busca, colunas, lupa de filtro, zebrinha, paginação), Novo/Alterar em aba interna, menu lateral com submenu, e **formulário com fundo ciano**. Não homologar tela por tela. Clientes, Empresas, Filiais, Contas e OS já usam esse padrão. Empresas tem **Alterar / Excluir / Inativar** como Clientes. Combo Empresa esconde as inativas; a lista continua mostrando. A última Empresa ativa da Conta não pode ser inativada nem excluída.
 
-**Homologação local (06/10/2026):** Atelier A e Atelier B, neste momento, são **duas Empresas (CNPJ) na mesma Conta**, para validar o combo Empresa. Só cadastrar depois desta lista padronizada. Cada Empresa ganha a sua Filial padrão **Matriz** (o código MATRIZ é único **por Empresa**, não na Conta inteira). Duas **Contas** Ateliê A/B (isolamento do Ciclo 1) ficam para a tela de Contas, já com o mesmo padrão de lista. Mensagem de erro na tela aparece **em vermelho**.
+**Homologação local (06/10/2026):** Atelier A e Atelier B, neste momento, são **duas Empresas (CNPJ) na mesma Conta**, para validar o combo Empresa. Hierarquia: **Conta** (quem assina) → **Empresa** (pai, CNPJ) → **Filiais** (filhos). Ao cadastrar a Empresa, o sistema cria a primeira Filial filha, a **Matriz**. Você não cadastra a Matriz como se fosse outra Empresa; outras Filiais nascem em Administração → Filiais, sempre debaixo da Empresa. O código MATRIZ é único **por Empresa**. Se o banco antigo ainda travar o código na Conta inteira, a Matriz da segunda Empresa nasce com um código reserva. Duas **Contas** Ateliê A/B (isolamento do Ciclo 1) ficam para a tela de Contas, já com o mesmo padrão de lista. Mensagem de erro na tela aparece **em vermelho**.
 
 ### Abas internas
 

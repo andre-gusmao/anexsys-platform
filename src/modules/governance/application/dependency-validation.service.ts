@@ -126,6 +126,24 @@ export class DependencyValidationService {
     this.assertAllowed(validation);
   }
 
+  async validateCompanyInactivation(tenantId: string, companyId: string): Promise<DependencyValidationResult> {
+    return this.buildCompanyLifecycleResult(tenantId, companyId, 'Inativar');
+  }
+
+  async validateCompanyDeletion(tenantId: string, companyId: string): Promise<DependencyValidationResult> {
+    return this.buildCompanyLifecycleResult(tenantId, companyId, 'Excluir');
+  }
+
+  async assertCompanyCanInactivate(tenantId: string, companyId: string): Promise<void> {
+    const validation = await this.validateCompanyInactivation(tenantId, companyId);
+    this.assertAllowed(validation);
+  }
+
+  async assertCompanyCanDelete(tenantId: string, companyId: string): Promise<void> {
+    const validation = await this.validateCompanyDeletion(tenantId, companyId);
+    this.assertAllowed(validation);
+  }
+
   private async buildCustomerLifecycleResult(
     tenantId: string,
     customerId: string,
@@ -170,6 +188,45 @@ export class DependencyValidationService {
       blockers: [
         { code: 'service-orders', label: 'Service Orders', count: serviceOrders, workspacePath: '/service-orders' },
         { code: 'measurements', label: 'Medições', count: measurementSets, workspacePath: '/customers' },
+        { code: 'financial-records', label: 'Registros financeiros', count: financialRecords, workspacePath: '/service-orders' },
+      ],
+    });
+  }
+
+  private async buildCompanyLifecycleResult(
+    tenantId: string,
+    companyId: string,
+    actionLabel: 'Inativar' | 'Excluir',
+  ): Promise<DependencyValidationResult> {
+    const [serviceOrders, financialRecords] = await Promise.all([
+      this.count(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM service_orders
+        INNER JOIN branches ON branches.id = service_orders.branch_id
+        WHERE service_orders.tenant_id = $1
+          AND branches.company_id = $2
+          AND service_orders.is_deleted = false
+      `,
+        [tenantId, companyId],
+      ),
+      this.count(
+        `
+        SELECT COUNT(DISTINCT payment_records.id)::int AS total
+        FROM payment_records
+        INNER JOIN branches ON branches.id = payment_records.branch_id
+        WHERE branches.tenant_id = $1
+          AND branches.company_id = $2
+      `,
+        [tenantId, companyId],
+      ),
+    ]);
+
+    return this.buildResult({
+      entityLabel: 'Empresa',
+      actionLabel,
+      blockers: [
+        { code: 'service-orders', label: 'Ordens de serviço', count: serviceOrders, workspacePath: '/service-orders' },
         { code: 'financial-records', label: 'Registros financeiros', count: financialRecords, workspacePath: '/service-orders' },
       ],
     });
