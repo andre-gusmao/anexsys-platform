@@ -2,20 +2,17 @@
 
 import { useState, type ReactNode } from "react";
 import { ActiveContextCombos } from "@/components/app-shell/active-context-combos";
-import { isMeaningfulWorkspaceTab } from "@/components/app-shell/workspace-manager-store";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
-import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
+import { WorkspaceTabsBar } from "@/components/app-shell/workspace-manager";
 import { WorkspaceKeepAlive } from "@/components/app-shell/workspace-screens";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   const { session, logout, errorMessage, clearError } = useSession();
-  const { currentTab, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow } = useWorkspaceManager();
   const { isDesktop, isMobile } = useWorkspaceViewportMode();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarVisible = isDesktop || sidebarOpen;
-  const canOpenCurrentWorkspaceExternally = currentTab ? isMeaningfulWorkspaceTab(currentTab) : false;
 
   return (
     <div className="app-shell">
@@ -51,16 +48,6 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           </div>
 
           <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
-            {!isMobile ? (
-              <>
-                <button className="button-secondary" disabled={!canOpenCurrentWorkspaceExternally} onClick={() => openWorkspaceInBrowserTab()} type="button">
-                  Nova aba do navegador
-                </button>
-                <button className="button-secondary" disabled={!canOpenCurrentWorkspaceExternally} onClick={() => openWorkspaceInBrowserWindow()} type="button">
-                  Nova janela
-                </button>
-              </>
-            ) : null}
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout
             </button>
