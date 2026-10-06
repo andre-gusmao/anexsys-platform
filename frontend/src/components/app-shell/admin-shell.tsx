@@ -1,26 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { ActiveContextCombos } from "@/components/app-shell/active-context-combos";
 import { isMeaningfulWorkspaceTab } from "@/components/app-shell/workspace-manager-store";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
 import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
 import { WorkspaceKeepAlive } from "@/components/app-shell/workspace-screens";
-import { branchesOfEmpresa, empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
-  const router = useRouter();
-  const { session, logout, errorMessage, clearError, selectCompany, selectEmpresa, selectBranch } = useSession();
+  const { session, logout, errorMessage, clearError } = useSession();
   const { currentTab, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow } = useWorkspaceManager();
   const { isDesktop, isMobile } = useWorkspaceViewportMode();
-  const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
-  const [pendingEmpresaSwitch, setPendingEmpresaSwitch] = useState(false);
-  const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const visibleBranches = branchesOfEmpresa(session?.branches ?? [], session?.activeEmpresaId ?? null);
-  const busy = pendingCompanySwitch || pendingEmpresaSwitch || pendingBranchSwitch;
   const sidebarVisible = isDesktop || sidebarOpen;
   const canOpenCurrentWorkspaceExternally = currentTab ? isMeaningfulWorkspaceTab(currentTab) : false;
 
@@ -33,91 +26,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
           <p>Fast access to your company, filial, and daily administrative work.</p>
         </div>
 
-        <section className="sidebar__context">
-          <div className="eyebrow">Contexto ativo</div>
-
-          {session ? (
-            <label className="field sidebar__context-select">
-              <span>Conta</span>
-              <select
-                disabled={busy || session.companies.length < 2}
-                value={session.tenantId}
-                onChange={async (event) => {
-                  setPendingCompanySwitch(true);
-                  try {
-                    const resolved = await selectCompany(event.target.value);
-                    if (!resolved) {
-                      router.push("/select-branch");
-                    }
-                  } finally {
-                    setPendingCompanySwitch(false);
-                  }
-                }}
-              >
-                {session.companies.map((company) => (
-                  <option key={company.tenantId} value={company.tenantId}>
-                    {company.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          {session ? (
-            <label className="field sidebar__context-select">
-              <span>Empresa</span>
-              <select
-                disabled={busy || (session.empresas?.length ?? 0) === 0}
-                value={session.activeEmpresaId ?? ""}
-                onChange={async (event) => {
-                  if (!event.target.value) return;
-                  setPendingEmpresaSwitch(true);
-                  try {
-                    await selectEmpresa(event.target.value);
-                  } finally {
-                    setPendingEmpresaSwitch(false);
-                  }
-                }}
-              >
-                {!session.activeEmpresaId ? <option value="">Selecione a Empresa</option> : null}
-                {(session.empresas ?? []).map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>
-                    {empresaLabel(empresa)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          {session ? (
-            <label className="field sidebar__context-select">
-              <span>Filial</span>
-              <select
-                disabled={busy}
-                value={session.activeBranchId ?? ""}
-                onChange={async (event) => {
-                  if (!event.target.value) {
-                    router.push("/select-branch");
-                    return;
-                  }
-                  setPendingBranchSwitch(true);
-                  try {
-                    await selectBranch(event.target.value);
-                  } finally {
-                    setPendingBranchSwitch(false);
-                  }
-                }}
-              >
-                {!session.activeBranchId ? <option value="">Selecione a filial</option> : null}
-                {visibleBranches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-        </section>
+        <ActiveContextCombos />
 
         <RoleAwareNav onNavigate={() => setSidebarOpen(false)} />
       </aside>
