@@ -88,40 +88,42 @@ export function SearchAutocomplete({
         </div>
       )}
       <div className="smart-lookup__search-row">
-        <input
-          aria-autocomplete="list"
-          aria-controls={listId}
-          aria-expanded={open}
-          aria-label={label ?? placeholder}
-          disabled={disabled}
-          onChange={(event) => {
-            onChange(event.target.value);
-            setOpen(true);
-            setHighlightedIndex(0);
-          }}
-          onFocus={() => {
-            if (value.trim()) {
-              setOpen(true);
-            }
-          }}
-          onKeyDown={onKeyDown}
-          placeholder={placeholder}
-          role="combobox"
-          value={value}
-        />
-        {showCreate ? (
-          <button
-            className="button"
+        <div className="smart-lookup__box">
+          <input
+            aria-autocomplete="list"
+            aria-controls={listId}
+            aria-expanded={open}
+            aria-label={label ?? placeholder}
             disabled={disabled}
-            onClick={() => {
-              onCreate?.(value.trim());
-              setOpen(false);
+            onChange={(event) => {
+              onChange(event.target.value);
+              setOpen(true);
+              setHighlightedIndex(0);
             }}
-            type="button"
-          >
-            {createLabel}
-          </button>
-        ) : null}
+            onFocus={() => {
+              if (value.trim()) {
+                setOpen(true);
+              }
+            }}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder}
+            role="combobox"
+            value={value}
+          />
+          {showCreate ? (
+            <button
+              className="smart-lookup__create"
+              disabled={disabled}
+              onClick={() => {
+                onCreate?.(value.trim());
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {createLabel}
+            </button>
+          ) : null}
+        </div>
       </div>
       {open && value.trim() ? (
         <div className="smart-lookup__dropdown" id={listId} role="listbox">

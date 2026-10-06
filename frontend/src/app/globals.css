@@ -1253,26 +1253,67 @@ textarea {
 }
 
 .smart-lookup__search-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
+  min-width: 0;
 }
 
-.smart-lookup__search-row input {
-  min-height: 46px;
+.smart-lookup__box {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   width: 100%;
   border: 1px solid var(--border);
   background: #fff;
+  border-radius: 12px;
+}
+
+.smart-lookup__box:focus-within {
+  border-color: var(--grid-accent);
+}
+
+.smart-lookup__box input {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  width: 100%;
+  border: 0;
+  background: transparent;
   color: var(--foreground);
   border-radius: 12px;
   padding: 0 14px;
 }
 
-.smart-lookup--compact .smart-lookup__search-row input {
-  min-height: 44px;
+.smart-lookup__create,
+.smart-lookup__clear {
+  flex: 0 0 auto;
+  margin: 4px 6px 4px 0;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.smart-lookup__create {
+  background: var(--grid-accent);
+  color: #111111;
+}
+
+.smart-lookup__clear {
+  background: var(--surface-alt);
+  color: var(--foreground);
+}
+
+.smart-lookup--compact .smart-lookup__box {
   border: 0;
   border-radius: 0;
+}
+
+.smart-lookup--compact .smart-lookup__box input {
+  min-height: 44px;
   padding: 0 12px;
 }
 

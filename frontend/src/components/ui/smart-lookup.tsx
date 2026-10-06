@@ -143,42 +143,44 @@ export function SmartLookup({
       )}
 
       <div className="smart-lookup__search-row">
-        <input
-          aria-autocomplete="list"
-          aria-controls={listId}
-          aria-expanded={open}
-          aria-label={label}
-          disabled={disabled}
-          onChange={(event) => {
-            const next = event.target.value;
-            setQuery(next);
-            setOpen(true);
-            setHighlightedIndex(0);
-            setQuickCreateOpen(false);
-            if (selected && next.trim().toLowerCase() !== selected.label.toLowerCase()) {
-              onChange(null);
-            }
-          }}
-          onFocus={() => {
-            setOpen(true);
-            setQuery(selected?.label ?? query);
-            onOpen?.();
-          }}
-          onKeyDown={onKeyDown}
-          placeholder={searchPlaceholder ?? placeholder}
-          role="combobox"
-          value={displayValue}
-        />
-        {showCreate ? (
-          <button className="button" disabled={disabled} onClick={openCreate} type="button">
-            {createLabel}
-          </button>
-        ) : null}
-        {allowClear && selected && !showCreate ? (
-          <button className="button-secondary" disabled={disabled} onClick={() => onChange(null)} type="button">
-            Limpar
-          </button>
-        ) : null}
+        <div className="smart-lookup__box">
+          <input
+            aria-autocomplete="list"
+            aria-controls={listId}
+            aria-expanded={open}
+            aria-label={label}
+            disabled={disabled}
+            onChange={(event) => {
+              const next = event.target.value;
+              setQuery(next);
+              setOpen(true);
+              setHighlightedIndex(0);
+              setQuickCreateOpen(false);
+              if (selected && next.trim().toLowerCase() !== selected.label.toLowerCase()) {
+                onChange(null);
+              }
+            }}
+            onFocus={() => {
+              setOpen(true);
+              setQuery(selected?.label ?? query);
+              onOpen?.();
+            }}
+            onKeyDown={onKeyDown}
+            placeholder={searchPlaceholder ?? placeholder}
+            role="combobox"
+            value={displayValue}
+          />
+          {showCreate ? (
+            <button className="smart-lookup__create" disabled={disabled} onClick={openCreate} type="button">
+              {createLabel}
+            </button>
+          ) : null}
+          {allowClear && selected && !showCreate ? (
+            <button className="smart-lookup__clear" disabled={disabled} onClick={() => onChange(null)} type="button">
+              Limpar
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {open && !quickCreateOpen ? (
