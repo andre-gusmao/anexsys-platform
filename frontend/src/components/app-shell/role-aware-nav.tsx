@@ -2,7 +2,11 @@
 
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useWorkspaceManager } from "@/components/app-shell/workspace-manager";
-import { getWorkspaceBasePath } from "@/components/app-shell/workspace-manager-store";
+import {
+  getWorkspaceBasePath,
+  listWorkspaceTabsForNavItem,
+  shouldShowWorkspaceNavSubmenu,
+} from "@/components/app-shell/workspace-manager-store";
 import { useSession } from "@/components/providers/session-provider";
 
 type NavItem = {
@@ -97,7 +101,7 @@ const navSections: NavSection[] = [
 
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const { hasAnyPermission } = useSession();
-  const { currentTab, openWorkspaceFromMenu, openWorkspaceInNewTab } = useWorkspaceManager();
+  const { currentTab, tabs, activateWorkspace, openWorkspaceFromMenu, openWorkspaceInNewTab } = useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
 
@@ -121,36 +125,61 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
           <div className="sidebar__section-title">{section.title}</div>
           <ul className="nav-list">
             {section.items.map((item) => {
+              const relatedTabs = listWorkspaceTabsForNavItem(tabs, item.href);
+              const showSubmenu = !isMobile && shouldShowWorkspaceNavSubmenu(tabs, item.href);
               const active = currentTab ? getWorkspaceBasePath(currentTab.pathname) === item.href : false;
               return (
                 <li key={item.href}>
-                   <div className={`nav-link${active ? " nav-link--active" : ""}`}>
-                     <button
-                       className="nav-link__main"
-                       onClick={() => {
-                         openWorkspaceFromMenu(item.href, item.label);
-                         onNavigate?.();
-                       }}
-                       type="button"
-                     >
-                       <span>{item.label}</span>
-                       <span className="nav-hint">{item.hint}</span>
-                     </button>
-                     {!isMobile ? (
-                       <button
-                         aria-label={`Abrir ${item.label} em novo workspace`}
-                         className="nav-link__quick-action"
-                         onClick={(event) => {
-                           event.preventDefault();
-                           event.stopPropagation();
-                           openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false, reuse: "none" });
-                         }}
-                         type="button"
-                       >
-                         +
-                       </button>
-                     ) : null}
-                   </div>
+                  <div className={`nav-link${active ? " nav-link--active" : ""}`}>
+                    <button
+                      className="nav-link__main"
+                      onClick={() => {
+                        openWorkspaceFromMenu(item.href, item.label);
+                        onNavigate?.();
+                      }}
+                      type="button"
+                    >
+                      <span>{item.label}</span>
+                      <span className="nav-hint">{item.hint}</span>
+                    </button>
+                    {!isMobile ? (
+                      <button
+                        aria-label={`Abrir ${item.label} em novo workspace`}
+                        className="nav-link__quick-action"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          openWorkspaceInNewTab(item.href, item.label, { cloneCurrent: false, reuse: "none" });
+                        }}
+                        type="button"
+                      >
+                        +
+                      </button>
+                    ) : null}
+                  </div>
+                  {showSubmenu ? (
+                    <ul aria-label={`Abas abertas de ${item.label}`} className="nav-sublist">
+                      {relatedTabs.map((tab) => {
+                        const subActive = tab.id === currentTab?.id;
+                        return (
+                          <li key={tab.id}>
+                            <button
+                              className={`nav-sublink${subActive ? " nav-sublink--active" : ""}`}
+                              onClick={() => {
+                                activateWorkspace(tab.id);
+                                onNavigate?.();
+                              }}
+                              title={tab.subtitle ? `${tab.label} · ${tab.subtitle}` : tab.label}
+                              type="button"
+                            >
+                              <span>{tab.label}</span>
+                              {tab.subtitle ? <small>{tab.subtitle}</small> : null}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
                 </li>
               );
             })}

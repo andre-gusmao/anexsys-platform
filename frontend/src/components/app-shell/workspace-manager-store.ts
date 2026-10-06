@@ -175,6 +175,20 @@ export function getWorkspaceBasePath(pathname: string): string {
   return normalizeWorkspacePathname(pathname).split("?")[0] || "/";
 }
 
+export function listWorkspaceTabsForNavItem(tabs: WorkspaceTab[], href: string): WorkspaceTab[] {
+  return tabs.filter((tab) => getWorkspaceBasePath(tab.pathname) === href);
+}
+
+export function shouldShowWorkspaceNavSubmenu(tabs: WorkspaceTab[], href: string): boolean {
+  if (isDashboardWorkspacePath(href)) {
+    return false;
+  }
+
+  return listWorkspaceTabsForNavItem(tabs, href).some(
+    (tab) => normalizeWorkspacePathname(tab.pathname) !== href,
+  );
+}
+
 export function isDashboardWorkspacePath(pathname: string): boolean {
   return getWorkspaceBasePath(pathname) === "/dashboard";
 }

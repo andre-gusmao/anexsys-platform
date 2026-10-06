@@ -13,12 +13,14 @@ import {
   getWorkspaceScopedState,
   getWorkspaceSearchParams,
   isDashboardWorkspacePath,
+  listWorkspaceTabsForNavItem,
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
   resolveLandingWorkspaceTab,
   setActiveWorkspaceTab,
   setWorkspaceScopedState,
+  shouldShowWorkspaceNavSubmenu,
   upsertWorkspaceTab,
 } from '../../frontend/src/components/app-shell/workspace-manager-store';
 import { WORKSPACE_STORAGE_KEY } from '../../frontend/src/components/app-shell/workspace-storage';
@@ -202,4 +204,31 @@ test('post-login landing on /dashboard creates Dashboard when it is missing', ()
 
 test('workspace tabs use a new storage key so stale v1 tabs are ignored', () => {
   assert.equal(WORKSPACE_STORAGE_KEY, 'anexsys.frontend.workspace-manager.v2');
+});
+
+test('groups open workspace tabs under the matching sidebar item', () => {
+  const dashboard = createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' });
+  const clientes = createWorkspaceTab({ id: 'tab-clientes', pathname: '/customers', label: 'Clientes' });
+  const clienteNovo = createWorkspaceTab({
+    id: 'tab-cliente-novo',
+    pathname: '/customers?workspaceMode=new',
+    label: 'Cliente: Novo',
+  });
+  const clienteMaria = createWorkspaceTab({
+    id: 'tab-cliente-maria',
+    pathname: '/customers?focusCustomerId=9',
+    label: 'Cliente: Maria Silva',
+    subtitle: '123.456.789-00',
+  });
+  const empresas = createWorkspaceTab({ id: 'tab-empresas', pathname: '/admin/companies', label: 'Empresas' });
+  const tabs = [dashboard, clientes, clienteNovo, clienteMaria, empresas];
+
+  assert.deepEqual(
+    listWorkspaceTabsForNavItem(tabs, '/customers').map((tab) => tab.id),
+    ['tab-clientes', 'tab-cliente-novo', 'tab-cliente-maria'],
+  );
+  assert.equal(shouldShowWorkspaceNavSubmenu(tabs, '/customers'), true);
+  assert.equal(shouldShowWorkspaceNavSubmenu([dashboard, clientes], '/customers'), false);
+  assert.equal(shouldShowWorkspaceNavSubmenu(tabs, '/admin/companies'), false);
+  assert.equal(shouldShowWorkspaceNavSubmenu(tabs, '/dashboard'), false);
 });
