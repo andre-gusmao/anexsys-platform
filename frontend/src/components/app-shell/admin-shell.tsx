@@ -17,15 +17,19 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="app-shell">
       <aside className={`sidebar${sidebarVisible ? " sidebar--open" : ""}`}>
-        <div className="sidebar__brand">
-          <div className="eyebrow">ANEXSYS</div>
-          <h1>Administrative Portal</h1>
-          <p>Fast access to your company, filial, and daily administrative work.</p>
+        <div className="sidebar__pinned">
+          <div className="sidebar__brand">
+            <div className="eyebrow">ANEXSYS</div>
+            <h1>Administrative Portal</h1>
+            <p>Fast access to your company, filial, and daily administrative work.</p>
+          </div>
+
+          <ActiveContextCombos />
         </div>
 
-        <ActiveContextCombos />
-
-        <RoleAwareNav onNavigate={() => setSidebarOpen(false)} />
+        <div className="sidebar__nav">
+          <RoleAwareNav onNavigate={() => setSidebarOpen(false)} />
+        </div>
       </aside>
 
       {!isDesktop && sidebarVisible ? <button aria-label="Fechar menu" className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} type="button" /> : null}
