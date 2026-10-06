@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  activateWorkspaceTab,
   buildWorkspaceHref,
   clearWorkspaceScopedState,
   cloneWorkspaceTabState,
@@ -22,6 +23,7 @@ import {
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
+  setActiveWorkspaceTab,
   setWorkspaceScopedState,
   upsertWorkspaceTab,
   type WorkspaceStore,
@@ -93,6 +95,7 @@ function readStore(): WorkspaceStore {
     const parsed = JSON.parse(raw) as WorkspaceStore;
     return normalizeWorkspaceStore({
       tabs: parsed.tabs ?? [],
+      activeTabId: parsed.activeTabId ?? null,
       stateByTabId: parsed.stateByTabId ?? {},
     });
   } catch {
@@ -114,32 +117,28 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlTabId = searchParams.get(WORKSPACE_QUERY_PARAM);
-  const [pendingActiveTabId, setPendingActiveTabId] = useState<string | null>(null);
-  const pendingActiveTabIdRef = useRef<string | null>(null);
   const [store, setStore] = useState<WorkspaceStore>(() => readStore());
   const storeRef = useRef(store);
-  const settledPendingTabId = pendingActiveTabId && pendingActiveTabId === urlTabId ? null : pendingActiveTabId;
-  const currentTabId = settledPendingTabId ?? urlTabId;
+  const hydratedFromUrlRef = useRef(false);
+  const currentTabId = store.activeTabId;
   const currentTab = currentTabId ? store.tabs.find((candidate) => candidate.id === currentTabId) ?? null : null;
   const currentComparablePath = resolveComparableCurrentPath(pathname, searchParams);
-
-  if (pendingActiveTabId !== settledPendingTabId) {
-    setPendingActiveTabId(settledPendingTabId);
-  }
-
-  const markPendingTab = useCallback((tabId: string | null) => {
-    pendingActiveTabIdRef.current = tabId;
-    setPendingActiveTabId(tabId);
-  }, []);
-
-  useEffect(() => {
-    pendingActiveTabIdRef.current = pendingActiveTabId;
-  }, [pendingActiveTabId]);
 
   useEffect(() => {
     storeRef.current = store;
     writeStore(store);
   }, [store]);
+
+  useEffect(() => {
+    if (hydratedFromUrlRef.current) {
+      return;
+    }
+
+    hydratedFromUrlRef.current = true;
+    if (urlTabId && storeRef.current.tabs.some((tab) => tab.id === urlTabId)) {
+      setStore((current) => setActiveWorkspaceTab(current, urlTabId));
+    }
+  }, [urlTabId]);
 
   const findSingletonTabByPath = useCallback((targetPathname: string) => {
     const normalizedPath = normalizeWorkspacePathname(targetPathname);
@@ -151,15 +150,11 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
   }, []);
 
   useEffect(() => {
-    if (pendingActiveTabIdRef.current) {
+    if (!currentTab) {
       return;
     }
 
-    if (!urlTabId || !currentTab) {
-      return;
-    }
-
-    if (currentComparablePath === currentTab.pathname) {
+    if (currentComparablePath === currentTab.pathname && urlTabId === currentTab.id) {
       return;
     }
 
@@ -173,16 +168,16 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         return;
       }
 
-      markPendingTab(tabId);
-      router.push(buildWorkspaceHref(target.pathname, tabId));
+      setStore((current) => setActiveWorkspaceTab(current, tabId));
+      router.replace(buildWorkspaceHref(target.pathname, tabId));
     },
-    [markPendingTab, router],
+    [router],
   );
 
   const ensureWorkspaceTab = useCallback(
     (input: WorkspaceRegistrationInput) => {
       const resolvedPathname = input.pathname ?? currentComparablePath;
-      const effectiveTabId = pendingActiveTabIdRef.current ?? urlTabId;
+      const effectiveTabId = storeRef.current.activeTabId;
 
       if (input.tabId && input.tabId !== effectiveTabId) {
         const paneTab = storeRef.current.tabs.find((candidate) => candidate.id === input.tabId);
@@ -217,7 +212,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       if (!effectiveTabId) {
         const singletonTab = findSingletonTabByPath(nextTabDefinition.pathname);
         if (singletonTab) {
-          markPendingTab(singletonTab.id);
+          setStore((current) => setActiveWorkspaceTab(current, singletonTab.id));
           router.replace(buildWorkspaceHref(singletonTab.pathname, singletonTab.id));
           return singletonTab.id;
         }
@@ -236,7 +231,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       if (existingTab && isSingletonWorkspacePath(existingTab.pathname) && existingTab.pathname !== nextTabDefinition.pathname) {
         const singletonTab = findSingletonTabByPath(nextTabDefinition.pathname);
         if (singletonTab) {
-          markPendingTab(singletonTab.id);
+          setStore((current) => setActiveWorkspaceTab(current, singletonTab.id));
           router.replace(buildWorkspaceHref(singletonTab.pathname, singletonTab.id));
           return singletonTab.id;
         }
@@ -247,20 +242,21 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
           label: nextTabDefinition.label,
           subtitle: nextTabDefinition.subtitle,
         });
-        setStore((current) => upsertWorkspaceTab(current, createdTab));
-        markPendingTab(createdTab.id);
+        setStore((current) => activateWorkspaceTab(current, createdTab));
         router.replace(buildWorkspaceHref(createdTab.pathname, createdTab.id));
         return createdTab.id;
       }
 
-      setStore((current) => upsertWorkspaceTab(current, nextTabDefinition));
+      setStore((current) => {
+        const next = upsertWorkspaceTab(current, nextTabDefinition);
+        return next.activeTabId ? next : setActiveWorkspaceTab(next, nextTabDefinition.id);
+      });
       if (!effectiveTabId) {
-        markPendingTab(nextTabDefinition.id);
         router.replace(buildWorkspaceHref(nextTabDefinition.pathname, nextTabDefinition.id));
       }
       return nextTabDefinition.id;
     },
-    [currentComparablePath, findSingletonTabByPath, markPendingTab, router, urlTabId],
+    [currentComparablePath, findSingletonTabByPath, router],
   );
 
   const closeWorkspace = useCallback(
@@ -276,17 +272,16 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       const remainingTabs = nextStore.tabs;
       if (remainingTabs.length === 0) {
         const dashboardTab = createWorkspaceTab({ id: createTabId(), pathname: DASHBOARD_PATH, label: "Dashboard" });
-        setStore(upsertWorkspaceTab(nextStore, dashboardTab));
-        markPendingTab(dashboardTab.id);
-        router.push(buildWorkspaceHref(DASHBOARD_PATH, dashboardTab.id));
+        setStore(activateWorkspaceTab(nextStore, dashboardTab));
+        router.replace(buildWorkspaceHref(DASHBOARD_PATH, dashboardTab.id));
         return;
       }
 
       const fallbackTab = remainingTabs[Math.max(Math.min(closingTabIndex, remainingTabs.length - 1), 0)] ?? remainingTabs[0];
-      markPendingTab(fallbackTab.id);
-      router.push(buildWorkspaceHref(fallbackTab.pathname, fallbackTab.id));
+      setStore(setActiveWorkspaceTab(nextStore, fallbackTab.id));
+      router.replace(buildWorkspaceHref(fallbackTab.pathname, fallbackTab.id));
     },
-    [currentTabId, markPendingTab, router],
+    [currentTabId, router],
   );
 
   const openWorkspaceInNewTab = useCallback(
@@ -304,21 +299,21 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
       const singletonTab = findSingletonTabByPath(nextTab.pathname);
       if (singletonTab) {
-        markPendingTab(singletonTab.id);
-        router.push(buildWorkspaceHref(singletonTab.pathname, singletonTab.id));
+        setStore((current) => setActiveWorkspaceTab(current, singletonTab.id));
+        router.replace(buildWorkspaceHref(singletonTab.pathname, singletonTab.id));
         return;
       }
 
-      let nextStore = upsertWorkspaceTab(storeRef.current, nextTab);
+      let nextStore = activateWorkspaceTab(storeRef.current, nextTab);
       if (opts.cloneCurrent !== false && currentTabId) {
         nextStore = cloneWorkspaceTabState(nextStore, currentTabId, nextTabId);
+        nextStore = setActiveWorkspaceTab(nextStore, nextTabId);
       }
 
       setStore(nextStore);
-      markPendingTab(nextTabId);
-      router.push(buildWorkspaceHref(nextTab.pathname, nextTabId));
+      router.replace(buildWorkspaceHref(nextTab.pathname, nextTabId));
     },
-    [currentTabId, findSingletonTabByPath, markPendingTab, router],
+    [currentTabId, findSingletonTabByPath, router],
   );
 
   const openWorkspaceInBrowserTab = useCallback(
@@ -396,57 +391,56 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
   const navigateWithinWorkspace = useCallback(
     (nextPathname: string) => {
-      const tabId = pendingActiveTabIdRef.current ?? urlTabId;
+      const tabId = storeRef.current.activeTabId;
       if (!tabId) {
-        router.push(nextPathname);
+        router.replace(nextPathname);
         return;
       }
 
       const existingTab = storeRef.current.tabs.find((candidate) => candidate.id === tabId);
       if (existingTab) {
         setStore((current) =>
-          upsertWorkspaceTab(current, {
-            ...existingTab,
-            pathname: normalizeWorkspacePathname(nextPathname),
-          }),
+          setActiveWorkspaceTab(
+            upsertWorkspaceTab(current, {
+              ...existingTab,
+              pathname: normalizeWorkspacePathname(nextPathname),
+            }),
+            tabId,
+          ),
         );
       }
 
-      markPendingTab(tabId);
-      router.push(buildWorkspaceHref(nextPathname, tabId));
+      router.replace(buildWorkspaceHref(nextPathname, tabId));
     },
-    [markPendingTab, router, urlTabId],
+    [router],
   );
 
-  const readScopedState = useCallback(
-    <T,>(scope: string, tabId?: string | null): T | null => {
-      const resolvedTabId = tabId ?? pendingActiveTabIdRef.current ?? urlTabId;
-      if (!resolvedTabId) {
-        return null;
-      }
+  const readScopedState = useCallback(<T,>(scope: string, tabId?: string | null): T | null => {
+    const resolvedTabId = tabId ?? storeRef.current.activeTabId;
+    if (!resolvedTabId) {
+      return null;
+    }
 
-      return getWorkspaceScopedState<T>(storeRef.current, resolvedTabId, scope);
-    },
-    [urlTabId],
-  );
+    return getWorkspaceScopedState<T>(storeRef.current, resolvedTabId, scope);
+  }, []);
 
   const writeScopedState = useCallback((scope: string, value: unknown, tabId?: string | null) => {
-    const resolvedTabId = tabId ?? pendingActiveTabIdRef.current ?? urlTabId;
+    const resolvedTabId = tabId ?? storeRef.current.activeTabId;
     if (!resolvedTabId) {
       return;
     }
 
     setStore((current) => setWorkspaceScopedState(current, resolvedTabId, scope, value));
-  }, [urlTabId]);
+  }, []);
 
   const clearScopedState = useCallback((scope: string, tabId?: string | null) => {
-    const resolvedTabId = tabId ?? pendingActiveTabIdRef.current ?? urlTabId;
+    const resolvedTabId = tabId ?? storeRef.current.activeTabId;
     if (!resolvedTabId) {
       return;
     }
 
     setStore((current) => clearWorkspaceScopedState(current, resolvedTabId, scope));
-  }, [urlTabId]);
+  }, []);
 
   const value = useMemo<WorkspaceManagerContextValue>(
     () => ({

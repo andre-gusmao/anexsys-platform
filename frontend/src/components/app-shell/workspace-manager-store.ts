@@ -9,6 +9,7 @@ export type WorkspaceTabState = Record<string, unknown>;
 
 export type WorkspaceStore = {
   tabs: WorkspaceTab[];
+  activeTabId: string | null;
   stateByTabId: Record<string, WorkspaceTabState>;
 };
 
@@ -27,8 +28,17 @@ export function normalizeWorkspacePathname(pathname: string): string {
 export function createEmptyWorkspaceStore(): WorkspaceStore {
   return {
     tabs: [],
+    activeTabId: null,
     stateByTabId: {},
   };
+}
+
+export function resolveActiveWorkspaceTabId(tabs: WorkspaceTab[], activeTabId?: string | null): string | null {
+  if (activeTabId && tabs.some((tab) => tab.id === activeTabId)) {
+    return activeTabId;
+  }
+
+  return tabs[0]?.id ?? null;
 }
 
 export function createWorkspaceTab(input: {
@@ -53,11 +63,12 @@ export function normalizeWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
   const tabs = store.tabs.map((tab) => createWorkspaceTab(tab)).filter(isMeaningfulWorkspaceTab);
   const validTabIds = new Set(tabs.map((tab) => tab.id));
   const stateByTabId = Object.fromEntries(
-    Object.entries(store.stateByTabId).filter(([tabId]) => validTabIds.has(tabId)),
+    Object.entries(store.stateByTabId ?? {}).filter(([tabId]) => validTabIds.has(tabId)),
   );
 
   return {
     tabs,
+    activeTabId: resolveActiveWorkspaceTabId(tabs, store.activeTabId),
     stateByTabId,
   };
 }
@@ -80,11 +91,23 @@ export function upsertWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): Wo
   });
 }
 
+export function setActiveWorkspaceTab(store: WorkspaceStore, tabId: string | null): WorkspaceStore {
+  return normalizeWorkspaceStore({
+    ...store,
+    activeTabId: tabId,
+  });
+}
+
+export function activateWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): WorkspaceStore {
+  return setActiveWorkspaceTab(upsertWorkspaceTab(store, tab), tab.id);
+}
+
 export function removeWorkspaceTab(store: WorkspaceStore, tabId: string): WorkspaceStore {
   const remainingState = { ...store.stateByTabId };
   delete remainingState[tabId];
   return normalizeWorkspaceStore({
     tabs: store.tabs.filter((tab) => tab.id !== tabId),
+    activeTabId: store.activeTabId === tabId ? null : store.activeTabId,
     stateByTabId: remainingState,
   });
 }

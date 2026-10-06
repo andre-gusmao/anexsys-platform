@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  activateWorkspaceTab,
   buildWorkspaceHref,
   clearWorkspaceScopedState,
   cloneWorkspaceTabState,
@@ -12,9 +13,32 @@ import {
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
+  setActiveWorkspaceTab,
   setWorkspaceScopedState,
   upsertWorkspaceTab,
 } from '../../frontend/src/components/app-shell/workspace-manager-store';
+
+test('activates a workspace tab independently of the current route', () => {
+  let store = createEmptyWorkspaceStore();
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }));
+  store = activateWorkspaceTab(store, createWorkspaceTab({ id: 'tab-contas', pathname: '/admin/tenants', label: 'Contas' }));
+
+  assert.equal(store.activeTabId, 'tab-contas');
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-dashboard', 'tab-contas'],
+  );
+
+  store = setActiveWorkspaceTab(store, 'tab-dashboard');
+  assert.equal(store.activeTabId, 'tab-dashboard');
+
+  store = normalizeWorkspaceStore({
+    tabs: store.tabs,
+    activeTabId: null,
+    stateByTabId: store.stateByTabId,
+  });
+  assert.equal(store.activeTabId, 'tab-dashboard');
+});
 
 test('creates, updates, clones, and removes workspace tabs', () => {
   let store = createEmptyWorkspaceStore();
@@ -67,6 +91,7 @@ test('ignores unnamed or empty workspace tabs', () => {
   store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-2', pathname: '/customers', label: '   ' }));
   store = normalizeWorkspaceStore({
     tabs: [...store.tabs, { id: 'tab-3', pathname: '', label: 'Dashboard', subtitle: null }],
+    activeTabId: 'tab-1',
     stateByTabId: {
       'tab-1': { valid: true },
       'tab-2': { invalid: true },
