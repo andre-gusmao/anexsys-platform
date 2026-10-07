@@ -54,7 +54,7 @@ describe('ServiceOrderService', () => {
     assert.equal(created.serviceOrder.commercialResponsibleActorId, 'user-1');
     assert.equal(created.serviceOrder.promisedDeliveryDate, '2026-10-01');
     assert.equal(created.serviceOrder.promisedDeliveryTime, '18:00');
-    assert.equal(created.serviceOrder.orderNo, 'AA0002');
+    assert.equal(created.serviceOrder.orderNo, 'AAA000002');
     assert.equal(created.items[0]?.itemType, 'uniform');
     assert.equal(created.items[0]?.description, 'Jacket');
     assert.equal(created.items[0]?.discountValue, '10.00');

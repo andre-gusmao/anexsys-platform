@@ -1,7 +1,7 @@
 export const DEFAULT_MAX_PIECES_PER_BAG = 5;
 
 const LETTERS = 26;
-const DIGITS_PER_PAIR = 9999;
+const DIGITS_PER_BLOCK = 999999;
 
 export function formatServiceOrderNo(groupSeq: number, versionSuffix?: string | null): string {
   const base = formatServiceOrderPlate(groupSeq);
@@ -14,15 +14,17 @@ export function formatServiceOrderPlate(groupSeq: number): string {
   }
 
   const index = groupSeq - 1;
-  const letterIndex = Math.floor(index / DIGITS_PER_PAIR);
-  if (letterIndex >= LETTERS * LETTERS) {
-    throw new Error('A numeração da OS esgotou as combinações AA0001 a ZZ9999.');
+  const letterIndex = Math.floor(index / DIGITS_PER_BLOCK);
+  const letterSpace = LETTERS * LETTERS * LETTERS;
+  if (letterIndex >= letterSpace) {
+    throw new Error('A numeração da OS esgotou as combinações AAA000001 a ZZZ999999.');
   }
 
-  const first = String.fromCharCode(65 + Math.floor(letterIndex / LETTERS));
-  const second = String.fromCharCode(65 + (letterIndex % LETTERS));
-  const digits = String((index % DIGITS_PER_PAIR) + 1).padStart(4, '0');
-  return `${first}${second}${digits}`;
+  const first = String.fromCharCode(65 + Math.floor(letterIndex / (LETTERS * LETTERS)));
+  const second = String.fromCharCode(65 + Math.floor((letterIndex % (LETTERS * LETTERS)) / LETTERS));
+  const third = String.fromCharCode(65 + (letterIndex % LETTERS));
+  const digits = String((index % DIGITS_PER_BLOCK) + 1).padStart(6, '0');
+  return `${first}${second}${third}${digits}`;
 }
 
 export function withVersionSuffix(orderNo: string, versionSuffix: string): string {
