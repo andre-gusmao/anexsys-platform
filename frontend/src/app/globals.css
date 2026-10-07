@@ -171,6 +171,12 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  align-items: end;
+}
+
+.os-people-row .field,
+.os-people-row .smart-lookup {
+  min-width: 0;
 }
 
 .os-pay-row {

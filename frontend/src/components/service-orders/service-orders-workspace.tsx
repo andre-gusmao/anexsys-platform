@@ -1599,7 +1599,6 @@ export function ServiceOrdersWorkspace() {
                         <SmartLookup
                           allowClear={false}
                           canCreate={false}
-                          compact
                           disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
                           emptyMessage="Nenhum atendente encontrado."
                           entityType="employees"
