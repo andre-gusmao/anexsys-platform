@@ -31,7 +31,7 @@ describe('ServiceOrderService', () => {
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
       { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
-      { async suggestDeliveryDate() { return '2026-10-01'; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; }, async suggestDeliveryDate() { return '2026-10-01'; } } as never,
       { async record(payload: Record<string, unknown>) { audits.push(payload); }, async listByEntity() { return []; } } as never,
     );
 
@@ -51,6 +51,7 @@ describe('ServiceOrderService', () => {
 
     assert.equal(created.serviceOrder.commercialResponsibleActorId, 'user-1');
     assert.equal(created.serviceOrder.promisedDeliveryDate, '2026-10-01');
+    assert.equal(created.serviceOrder.promisedDeliveryTime, '18:00');
     assert.equal(created.items[0]?.itemType, 'uniform');
     assert.equal(created.items[0]?.description, 'Jacket');
     assert.equal(created.items[0]?.discountValue, '10.00');
@@ -66,7 +67,7 @@ describe('ServiceOrderService', () => {
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
       { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
-      { async suggestDeliveryDate() { return '2026-10-01'; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; }, async suggestDeliveryDate() { return '2026-10-01'; } } as never,
       { async record() {}, async listByEntity() { return []; } } as never,
     );
 
@@ -98,7 +99,7 @@ describe('ServiceOrderService', () => {
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-2' }; } } as never,
       { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
-      { async suggestDeliveryDate() { return '2026-10-01'; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; }, async suggestDeliveryDate() { return '2026-10-01'; } } as never,
       {} as never,
     );
 

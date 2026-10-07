@@ -73,11 +73,14 @@ export class ServiceOrderService {
 
     const openedAt = dto.deliveryCommitmentSourceAt ? new Date(dto.deliveryCommitmentSourceAt) : new Date();
     const deliveryCommitmentSourceAt = dto.deliveryCommitmentSourceAt ? new Date(dto.deliveryCommitmentSourceAt) : openedAt;
-    const promisedDeliveryDate = await this.deliveryDateService.suggestDeliveryDate(
+    const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
       dto.tenantId,
       dto.branchId,
       deliveryCommitmentSourceAt,
+      { deliveryType: dto.deliveryType, itemCount: dto.items.length },
     );
+    const promisedDeliveryDate = dto.promisedDeliveryDate ?? suggestedDelivery.promisedDeliveryDate;
+    const promisedDeliveryTime = dto.promisedDeliveryTime ?? suggestedDelivery.promisedDeliveryTime;
 
     const normalizedItems = dto.items.map((item) => this.normalizeItemInput(item));
     const normalizedDiscountValue = dto.discountValue ?? 0;
@@ -95,6 +98,7 @@ export class ServiceOrderService {
       openedAt,
       deliveryCommitmentSourceAt,
       promisedDeliveryDate,
+      promisedDeliveryTime,
       actualPickupDate: dto.actualPickupDate ?? null,
       actualDeliveryDate: dto.actualDeliveryDate ?? null,
       paymentTermsDays: dto.paymentTermsDays ?? 0,
@@ -228,9 +232,28 @@ export class ServiceOrderService {
       customer,
       commercialResponsible,
       technicalMeasurementResponsible: technicalResponsible,
+      productionTechnician: null,
+      qualityReviewer: null,
       history: auditTrail,
       timeline: [...auditTrail].reverse(),
     };
+  }
+
+  async previewDelivery(
+    tenantId: string,
+    input: { branchId: string; deliveryType?: DeliveryType; itemCount?: number; sourceAt?: string },
+  ) {
+    await this.tenantService.getById(tenantId);
+    const branch = await this.branchService.getById(input.branchId);
+    if (branch.tenantId !== tenantId) {
+      throw new DomainValidationError('Branch must belong to the same tenant.');
+    }
+    return this.deliveryDateService.suggestDelivery(
+      tenantId,
+      input.branchId,
+      input.sourceAt ? new Date(input.sourceAt) : new Date(),
+      { deliveryType: input.deliveryType, itemCount: input.itemCount },
+    );
   }
 
   async update(serviceOrderId: string, tenantId: string, dto: UpdateServiceOrderDto): Promise<ServiceOrderEntity> {
@@ -260,7 +283,9 @@ export class ServiceOrderService {
       serviceOrder.technicalMeasurementResponsibleActorId = dto.technicalMeasurementResponsibleActorId;
     }
 
-    const shouldRecalculate = dto.deliveryCommitmentSourceAt !== undefined;
+    const shouldRecalculate =
+      dto.promisedDeliveryDate === undefined &&
+      (dto.deliveryCommitmentSourceAt !== undefined || dto.deliveryType !== undefined);
     if (dto.deliveryCommitmentSourceAt !== undefined) {
       serviceOrder.deliveryCommitmentSourceAt = new Date(dto.deliveryCommitmentSourceAt);
     }
@@ -295,12 +320,21 @@ export class ServiceOrderService {
       serviceOrder.customerNotes = dto.customerNotes?.trim() || null;
     }
 
+    if (dto.promisedDeliveryDate !== undefined) {
+      serviceOrder.promisedDeliveryDate = dto.promisedDeliveryDate;
+    }
+    if (dto.promisedDeliveryTime !== undefined) {
+      serviceOrder.promisedDeliveryTime = dto.promisedDeliveryTime;
+    }
     if (shouldRecalculate) {
-      serviceOrder.promisedDeliveryDate = await this.deliveryDateService.suggestDeliveryDate(
+      const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
         tenantId,
         serviceOrder.branchId,
         serviceOrder.deliveryCommitmentSourceAt,
+        { deliveryType: serviceOrder.deliveryType },
       );
+      serviceOrder.promisedDeliveryDate = suggestedDelivery.promisedDeliveryDate;
+      serviceOrder.promisedDeliveryTime = suggestedDelivery.promisedDeliveryTime;
     }
 
     const items = await this.serviceOrderItemRepository.findByServiceOrder(serviceOrderId);
@@ -506,11 +540,14 @@ export class ServiceOrderService {
 
   async recalculateDeliveryDate(serviceOrderId: string, tenantId: string, actorUserId: string): Promise<ServiceOrderEntity> {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
-    serviceOrder.promisedDeliveryDate = await this.deliveryDateService.suggestDeliveryDate(
+    const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
       tenantId,
       serviceOrder.branchId,
       serviceOrder.deliveryCommitmentSourceAt,
+      { deliveryType: serviceOrder.deliveryType },
     );
+    serviceOrder.promisedDeliveryDate = suggestedDelivery.promisedDeliveryDate;
+    serviceOrder.promisedDeliveryTime = suggestedDelivery.promisedDeliveryTime;
     serviceOrder.updatedBy = actorUserId;
     const saved = await this.serviceOrderRepository.save(serviceOrder);
     await this.auditService.record({

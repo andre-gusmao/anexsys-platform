@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -85,6 +86,15 @@ export class CreateServiceOrderDto {
   @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;
+
+  @IsOptional()
+  @IsDateString()
+  promisedDeliveryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{2}:\d{2}$/)
+  promisedDeliveryTime?: string;
 
   @IsOptional()
   @IsString()

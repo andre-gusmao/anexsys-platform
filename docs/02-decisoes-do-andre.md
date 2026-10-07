@@ -85,7 +85,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 
 ## 3. Prazos, garantia e fluxos de entrega
 
-- **Prazo Normal**: entrega no **mesmo dia da semana da semana seguinte** (segunda para segunda, terça para terça, etc., inclusive sábado). Em feriado, antecipa ou adia. O sistema **sugere a data** pela regra, e o atendente pode **alterar**.
+- **Prazo Normal**: entrega no **mesmo dia da semana da semana seguinte** (segunda para segunda, terça para terça, etc., inclusive sábado). Em feriado, antecipa ou adia. O sistema **sugere a data e o horário** (fechamento da Filial), e o atendente pode **alterar**. Na OS, **Situação** é o status; **Saída** é essa previsão. **Técnico** e **Controle de qualidade** não são obrigatórios na abertura: o técnico assume ao ler o QR e o revisor aparece quando aprova.
 - Feriados fechados, cadastrados por Filial (a). Horário de corte (b): A (sim, depois de certa hora; horário não informado). Tipos de entrega (c): A, diferentes. Prazo padrão (d): 7.
 - **Tipos de entrega**: Normal (mesmo dia da semana seguinte); **Expresso** (até 2 horas por peça); **Urgente** (2 a 3 dias depois, foge da regra do mesmo dia da semana).
 - **Garantia**: 7 dias para reparos (cliente que não provou na hora da retirada pode voltar para refação, como reconserto, contados em dias úteis no texto das observações e "corridos" na resposta 27b). **Garantia de serviço por peça: 90 dias** (descosturou, barra se desfez), negociável no balcão; conta a partir da conclusão da peça (27 c: C).

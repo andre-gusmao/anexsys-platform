@@ -21,6 +21,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -102,6 +103,15 @@ class CreateServiceOrderBody {
   deliveryType?: DeliveryType;
 
   @IsOptional()
+  @IsDateString()
+  promisedDeliveryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{2}:\d{2}$/)
+  promisedDeliveryTime?: string;
+
+  @IsOptional()
   @IsString()
   operationalPriority?: string;
 
@@ -170,6 +180,15 @@ class UpdateServiceOrderBody {
   @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;
+
+  @IsOptional()
+  @IsDateString()
+  promisedDeliveryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{2}:\d{2}$/)
+  promisedDeliveryTime?: string;
 
   @IsOptional()
   @IsString()
@@ -265,6 +284,35 @@ export class ServiceOrdersController {
     return this.serviceOrderService.search(tenantId, {
       ...query,
       accessibleBranchIds: principal.effectiveBranchIds,
+    });
+  }
+
+  @Permissions('service_orders.read')
+  @Get('delivery-preview')
+  async previewDelivery(
+    @Query('branchId') branchId: string,
+    @Query('deliveryType') deliveryType: DeliveryType | undefined,
+    @Query('itemCount') itemCount: string | undefined,
+    @Query('sourceAt') sourceAt: string | undefined,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    if (!branchId) {
+      throw new ForbiddenException('Branch context is required.');
+    }
+    if (!principal.effectiveBranchIds.includes(branchId)) {
+      throw new ForbiddenException('Requested branch is outside the authenticated branch scope.');
+    }
+
+    return this.serviceOrderService.previewDelivery(tenantId, {
+      branchId,
+      deliveryType,
+      itemCount: itemCount ? Number(itemCount) : 1,
+      sourceAt,
     });
   }
 

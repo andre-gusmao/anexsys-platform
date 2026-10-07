@@ -29,6 +29,7 @@ type ServiceOrderRecord = {
   orderNo: string;
   openedAt: string;
   promisedDeliveryDate: string;
+  promisedDeliveryTime?: string | null;
   deliveryType: "Standard" | "Priority" | "Express";
   operationalPriority: string | null;
   status: string;
@@ -36,6 +37,13 @@ type ServiceOrderRecord = {
   paymentTermsDays?: number;
   commercialNotes?: string | null;
   customerNotes?: string | null;
+  commercialResponsibleActorId?: string;
+};
+
+type ActorSummary = {
+  id: string;
+  displayName: string;
+  email?: string | null;
 };
 
 type ServiceOrderDetail = {
@@ -51,6 +59,9 @@ type ServiceOrderDetail = {
     phone: string | null;
     email: string | null;
   };
+  commercialResponsible?: ActorSummary | null;
+  productionTechnician?: ActorSummary | null;
+  qualityReviewer?: ActorSummary | null;
   items: PersistedServiceOrderItem[];
 };
 
@@ -79,9 +90,44 @@ type ServiceOrderHeaderForm = {
   customerId: string;
   deliveryType: "Standard" | "Priority" | "Express";
   operationalPriority: string;
+  promisedDeliveryDate: string;
+  promisedDeliveryTime: string;
+  attendantId: string;
   commercialNotes: string;
   customerNotes: string;
 };
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function toDateInput(value: string | null | undefined) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function toTimeInput(value: string | null | undefined, fromDate?: string | null) {
+  if (value && /^\d{2}:\d{2}/.test(value)) {
+    return value.slice(0, 5);
+  }
+  if (!fromDate) return "";
+  const date = new Date(fromDate);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function nowDateInput() {
+  const now = new Date();
+  return `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
+}
+
+function nowTimeInput() {
+  const now = new Date();
+  return `${padDatePart(now.getHours())}:${padDatePart(now.getMinutes())}`;
+}
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -90,11 +136,14 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
-function createEmptyHeaderForm(): ServiceOrderHeaderForm {
+function createEmptyHeaderForm(attendantId = ""): ServiceOrderHeaderForm {
   return {
     customerId: "",
     deliveryType: "Standard",
     operationalPriority: "",
+    promisedDeliveryDate: "",
+    promisedDeliveryTime: "",
+    attendantId,
     commercialNotes: "",
     customerNotes: "",
   };
@@ -105,6 +154,9 @@ function mapDetailsToHeaderForm(details: ServiceOrderDetail): ServiceOrderHeader
     customerId: details.serviceOrder.customerId,
     deliveryType: details.serviceOrder.deliveryType,
     operationalPriority: details.serviceOrder.operationalPriority ?? "",
+    promisedDeliveryDate: toDateInput(details.serviceOrder.promisedDeliveryDate),
+    promisedDeliveryTime: toTimeInput(details.serviceOrder.promisedDeliveryTime, details.serviceOrder.openedAt),
+    attendantId: details.serviceOrder.commercialResponsibleActorId ?? details.commercialResponsible?.id ?? "",
     commercialNotes: details.serviceOrder.commercialNotes ?? "",
     customerNotes: details.serviceOrder.customerNotes ?? "",
   };
@@ -133,8 +185,10 @@ export function ServiceOrdersWorkspace() {
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
   const canWriteCustomers = hasAnyPermission("customers.write");
+  const canReadUsers = hasAnyPermission("users.read");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
+  const [users, setUsers] = useState<ActorSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -143,7 +197,10 @@ export function ServiceOrdersWorkspace() {
   const [activeOrderId, setActiveOrderId] = useWorkspaceScopedState<string | null>("service-orders.activeOrderId", null);
   const [showCreateForm, setShowCreateForm] = useWorkspaceScopedState("service-orders.showCreateForm", false);
   const [details, setDetails] = useState<ServiceOrderDetail | null>(null);
-  const [headerForm, setHeaderForm] = useWorkspaceScopedState<ServiceOrderHeaderForm>("service-orders.headerForm", createEmptyHeaderForm());
+  const [headerForm, setHeaderForm] = useWorkspaceScopedState<ServiceOrderHeaderForm>(
+    "service-orders.headerForm",
+    createEmptyHeaderForm(),
+  );
   const [itemRows, setItemRows] = useWorkspaceScopedState<ServiceOrderItemGridRow[]>("service-orders.itemRows", [createEmptyServiceOrderItemGridRow(1)]);
   const latestDetailRequestId = useRef(0);
 
@@ -187,6 +244,29 @@ export function ServiceOrdersWorkspace() {
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab, selectedCustomerId],
   );
+
+  const attendantLookupOptions = useMemo<SmartLookupOption[]>(() => {
+    const options = users.map((user) => ({
+      id: user.id,
+      label: user.displayName,
+      hint: user.email ?? undefined,
+    }));
+    const currentUser = session?.user;
+    if (currentUser && !options.some((option) => option.id === currentUser.id)) {
+      options.unshift({ id: currentUser.id, label: currentUser.displayName, hint: currentUser.email });
+    }
+    if (
+      details?.commercialResponsible &&
+      !options.some((option) => option.id === details.commercialResponsible?.id)
+    ) {
+      options.unshift({
+        id: details.commercialResponsible.id,
+        label: details.commercialResponsible.displayName,
+        hint: details.commercialResponsible.email ?? undefined,
+      });
+    }
+    return options;
+  }, [details?.commercialResponsible, session?.user, users]);
 
   const customerLookupOptions = useMemo<SmartLookupOption[]>(() => {
     const options = customers.map((customer) => ({
@@ -329,6 +409,19 @@ export function ServiceOrdersWorkspace() {
     }
   }, [apiJson, canReadCustomers, canWrite]);
 
+  const loadUsers = useCallback(async () => {
+    if (!canReadUsers) {
+      setUsers(session?.user ? [{ id: session.user.id, displayName: session.user.displayName, email: session.user.email }] : []);
+      return;
+    }
+    try {
+      const response = await apiJson<ActorSummary[]>("/users");
+      setUsers(response);
+    } catch {
+      setUsers(session?.user ? [{ id: session.user.id, displayName: session.user.displayName, email: session.user.email }] : []);
+    }
+  }, [apiJson, canReadUsers, session?.user]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadOrders();
@@ -342,6 +435,50 @@ export function ServiceOrdersWorkspace() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadCustomers, session?.tenantId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadUsers();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadUsers, session?.tenantId]);
+
+  useEffect(() => {
+    if (!headerForm.attendantId && session?.user?.id) {
+      setHeaderForm((current) => ({ ...current, attendantId: session.user?.id ?? current.attendantId }));
+    }
+  }, [headerForm.attendantId, session?.user?.id, setHeaderForm]);
+
+  useEffect(() => {
+    if (!canRead || !session?.activeBranchId) {
+      return;
+    }
+    if (!showCreateForm) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({
+            branchId: session.activeBranchId ?? "",
+            deliveryType: headerForm.deliveryType,
+            itemCount: String(visibleItemRows.length || 1),
+          });
+          const suggestion = await apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
+            `/service-orders/delivery-preview?${params.toString()}`,
+          );
+          setHeaderForm((current) => ({
+            ...current,
+            promisedDeliveryDate: suggestion.promisedDeliveryDate,
+            promisedDeliveryTime: suggestion.promisedDeliveryTime,
+          }));
+        } catch {
+          /* a atendente ainda pode preencher a saída na mão */
+        }
+      })();
+    }, 200);
+    return () => window.clearTimeout(timeoutId);
+  }, [apiJson, canRead, headerForm.deliveryType, session?.activeBranchId, setHeaderForm, showCreateForm, visibleItemRows.length]);
 
   useEffect(() => {
     if (!focusServiceOrderId || focusServiceOrderId === activeOrderId || showCreateForm) {
@@ -370,10 +507,10 @@ export function ServiceOrdersWorkspace() {
     setShowCreateForm(true);
     setDetails(null);
     setActiveOrderId(null);
-    setHeaderForm(createEmptyHeaderForm());
+    setHeaderForm(createEmptyHeaderForm(session?.user?.id ?? ""));
     setItemRows([createEmptyServiceOrderItemGridRow(1)]);
     setMessage(null);
-  }, [setActiveOrderId, setHeaderForm, setItemRows, setShowCreateForm]);
+  }, [session?.user?.id, setActiveOrderId, setHeaderForm, setItemRows, setShowCreateForm]);
 
   const openCreateWorkspace = useCallback(() => {
     const targetPath = "/service-orders?workspaceMode=new";
@@ -475,6 +612,9 @@ export function ServiceOrdersWorkspace() {
           branchId: session.activeBranchId,
           customerId: headerForm.customerId,
           deliveryType: headerForm.deliveryType,
+          promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
+          promisedDeliveryTime: headerForm.promisedDeliveryTime || undefined,
+          commercialResponsibleActorId: headerForm.attendantId || session?.user?.id || undefined,
           operationalPriority: headerForm.operationalPriority || undefined,
           commercialNotes: headerForm.commercialNotes || undefined,
           customerNotes: headerForm.customerNotes || undefined,
@@ -522,6 +662,9 @@ export function ServiceOrdersWorkspace() {
         body: JSON.stringify({
           customerId: headerForm.customerId,
           deliveryType: headerForm.deliveryType,
+          promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
+          promisedDeliveryTime: headerForm.promisedDeliveryTime || undefined,
+          commercialResponsibleActorId: headerForm.attendantId || undefined,
           operationalPriority: headerForm.operationalPriority || undefined,
           commercialNotes: headerForm.commercialNotes || null,
           customerNotes: headerForm.customerNotes || null,
@@ -692,106 +835,188 @@ export function ServiceOrdersWorkspace() {
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
-                <h4>Cabeçalho</h4>
-                <div className="detail-grid">
-                  <div className="detail-field">
-                    <span>Empresa</span>
-                    <strong>{activeCompany?.displayName ?? "Escolha a Empresa no contexto"}</strong>
-                  </div>
-                  <div className="detail-field">
-                    <span>Filial</span>
-                    <strong>{activeBranch?.label ?? "Escolha a Filial no contexto"}</strong>
-                  </div>
-                  <div className="detail-field">
+                <h4>Dados da ordem de serviço</h4>
+                <p>Número, cliente, situação, entrada e a previsão de saída.</p>
+                <div className="os-header-grid">
+                  <label className="field">
                     <span>Número</span>
-                    <strong>{selectedOrder?.orderNo ?? "Gerado ao salvar"}</strong>
+                    <input disabled value={selectedOrder?.orderNo ?? "Gerado ao salvar"} />
+                  </label>
+                  <div className="field">
+                    <SmartLookup
+                      allowClear={false}
+                      canCreate={canWriteCustomers}
+                      createLabel="Cadastrar"
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder) || !canReadCustomers}
+                      emptyMessage={
+                        loadingCustomers
+                          ? "Carregando clientes…"
+                          : canReadCustomers
+                            ? "Nenhum cliente encontrado."
+                            : "A busca de cliente depende da permissão de Clientes."
+                      }
+                      entityType="customers"
+                      label="Cliente"
+                      onChange={(option) => setHeaderForm((current) => ({ ...current, customerId: option?.id ?? "" }))}
+                      onCreate={openCreateCustomerFromLookup}
+                      onOpen={() => {
+                        void loadCustomers();
+                      }}
+                      options={customerLookupOptions}
+                      searchPlaceholder="Digite o nome do cliente"
+                      value={headerForm.customerId}
+                    />
+                    <div className="button-row">
+                      <button
+                        className="button-secondary"
+                        disabled={!selectedCustomerId}
+                        onClick={() => openRelatedCustomerWorkspace()}
+                        type="button"
+                      >
+                        Abrir cliente
+                      </button>
+                      <button
+                        className="button-secondary"
+                        disabled={!selectedCustomerId}
+                        onClick={() => openRelatedCustomerWorkspace("measurements")}
+                        type="button"
+                      >
+                        Abrir medidas
+                      </button>
+                    </div>
                   </div>
-                  <div className="detail-field">
-                    <span>Status</span>
-                    <strong>{selectedOrder ? osStatusLabel(selectedOrder.status) : "Rascunho"}</strong>
+                  <label className="field">
+                    <span>Situação</span>
+                    <input disabled value={selectedOrder ? osStatusLabel(selectedOrder.status) : "Aberta"} />
+                  </label>
+                  <div className="field">
+                    <span>Entrada</span>
+                    <div className="os-datetime">
+                      <input
+                        disabled
+                        type="date"
+                        value={selectedOrder ? toDateInput(selectedOrder.openedAt) : nowDateInput()}
+                      />
+                      <input
+                        disabled
+                        type="time"
+                        value={selectedOrder ? toTimeInput(null, selectedOrder.openedAt) : nowTimeInput()}
+                      />
+                    </div>
                   </div>
-                  <div className="detail-field">
-                    <span>Aberta em</span>
-                    <strong>{selectedOrder ? formatDate(selectedOrder.openedAt) : "Gerada ao salvar"}</strong>
+                  <div className="field">
+                    <span>Saída</span>
+                    <div className="os-datetime">
+                      <input
+                        disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                        required
+                        type="date"
+                        value={headerForm.promisedDeliveryDate}
+                        onChange={(event) =>
+                          setHeaderForm((current) => ({ ...current, promisedDeliveryDate: event.target.value }))
+                        }
+                      />
+                      <input
+                        disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                        required
+                        type="time"
+                        value={headerForm.promisedDeliveryTime}
+                        onChange={(event) =>
+                          setHeaderForm((current) => ({ ...current, promisedDeliveryTime: event.target.value }))
+                        }
+                      />
+                    </div>
                   </div>
-                  <div className="detail-field">
-                    <span>Entrega prometida</span>
-                    <strong>{selectedOrder ? formatDate(selectedOrder.promisedDeliveryDate) : "Calculada ao salvar"}</strong>
-                  </div>
+                  <label className="field">
+                    <span>Tipo de entrega</span>
+                    <select
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      value={headerForm.deliveryType}
+                      onChange={(event) => {
+                        const deliveryType = event.target.value as ServiceOrderHeaderForm["deliveryType"];
+                        setHeaderForm((current) => ({ ...current, deliveryType }));
+                        if (!showCreateForm && session?.activeBranchId) {
+                          const params = new URLSearchParams({
+                            branchId: session.activeBranchId,
+                            deliveryType,
+                            itemCount: String(visibleItemRows.length || 1),
+                          });
+                          void apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
+                            `/service-orders/delivery-preview?${params.toString()}`,
+                          )
+                            .then((suggestion) => {
+                              setHeaderForm((current) => ({
+                                ...current,
+                                promisedDeliveryDate: suggestion.promisedDeliveryDate,
+                                promisedDeliveryTime: suggestion.promisedDeliveryTime,
+                              }));
+                            })
+                            .catch(() => undefined);
+                        }
+                      }}
+                    >
+                      <option value="Standard">Normal</option>
+                      <option value="Priority">Urgente</option>
+                      <option value="Express">Expresso</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Empresa / Filial</span>
+                    <input
+                      disabled
+                      value={`${activeCompany?.displayName ?? "Empresa"} · ${activeBranch?.label ?? "Filial"}`}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Prioridade</span>
+                    <input
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      placeholder="Opcional"
+                      value={headerForm.operationalPriority}
+                      onChange={(event) =>
+                        setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))
+                      }
+                    />
+                  </label>
                 </div>
               </div>
 
-              <div className="field">
-                <SmartLookup
-                  allowClear={false}
-                  canCreate={canWriteCustomers}
-                  createLabel="Cadastrar"
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder) || !canReadCustomers}
-                  emptyMessage={
-                    loadingCustomers
-                      ? "Carregando clientes…"
-                      : canReadCustomers
-                        ? "Nenhum cliente encontrado."
-                        : "A busca de cliente depende da permissão de Clientes."
-                  }
-                  entityType="customers"
-                  label="Cliente"
-                  onChange={(option) => setHeaderForm((current) => ({ ...current, customerId: option?.id ?? "" }))}
-                  onCreate={openCreateCustomerFromLookup}
-                  onOpen={() => {
-                    void loadCustomers();
-                  }}
-                  options={customerLookupOptions}
-                  searchPlaceholder="Digite o nome do cliente"
-                  value={headerForm.customerId}
-                />
-                <div className="button-row">
-                  <button
-                    className="button-secondary"
-                    disabled={!selectedCustomerId}
-                    onClick={() => openRelatedCustomerWorkspace()}
-                    type="button"
-                  >
-                    Abrir cliente
-                  </button>
-                  <button
-                    className="button-secondary"
-                    disabled={!selectedCustomerId}
-                    onClick={() => openRelatedCustomerWorkspace("measurements")}
-                    type="button"
-                  >
-                    Abrir medidas
-                  </button>
+              <div className="mini-section">
+                <h4>Responsáveis pela ordem de serviço</h4>
+                <p>O técnico e o controle de qualidade entram depois, pelo QR. Não são obrigatórios agora.</p>
+                <div className="os-header-grid">
+                  <div className="field">
+                    <SmartLookup
+                      allowClear={false}
+                      canCreate={false}
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      emptyMessage="Nenhum atendente encontrado."
+                      entityType="employees"
+                      label="Atendente"
+                      onChange={(option) => setHeaderForm((current) => ({ ...current, attendantId: option?.id ?? "" }))}
+                      options={attendantLookupOptions}
+                      searchPlaceholder="Quem está abrindo a OS"
+                      value={headerForm.attendantId || session?.user?.id || ""}
+                    />
+                  </div>
+                  <label className="field">
+                    <span>Técnico</span>
+                    <input
+                      disabled
+                      placeholder="Assume ao ler o QR"
+                      value={details?.productionTechnician?.displayName ?? ""}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Controle de qualidade</span>
+                    <input
+                      disabled
+                      placeholder="Preenche ao revisar e aprovar"
+                      value={details?.qualityReviewer?.displayName ?? ""}
+                    />
+                  </label>
                 </div>
               </div>
-
-              <label className="field">
-                <span>Tipo de entrega</span>
-                <select
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  value={headerForm.deliveryType}
-                  onChange={(event) =>
-                    setHeaderForm((current) => ({
-                      ...current,
-                      deliveryType: event.target.value as ServiceOrderHeaderForm["deliveryType"],
-                    }))
-                  }
-                >
-                  <option value="Standard">Normal</option>
-                  <option value="Priority">Urgente</option>
-                  <option value="Express">Expresso</option>
-                </select>
-              </label>
-
-              <label className="field">
-                <span>Informação operacional</span>
-                <input
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  placeholder="Prioridade ou contexto curto da execução"
-                  value={headerForm.operationalPriority}
-                  onChange={(event) => setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))}
-                />
-              </label>
 
               <label className="field">
                 <span>Observações comerciais</span>

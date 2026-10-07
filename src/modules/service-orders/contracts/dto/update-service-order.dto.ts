@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Matches, Min } from 'class-validator';
 import { DeliveryType, SurchargeMethod } from 'src/shared/domain/enums';
 
 export class UpdateServiceOrderDto {
@@ -36,6 +36,15 @@ export class UpdateServiceOrderDto {
   @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;
+
+  @IsOptional()
+  @IsDateString()
+  promisedDeliveryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{2}:\d{2}$/)
+  promisedDeliveryTime?: string | null;
 
   @IsOptional()
   @IsString()
