@@ -55,8 +55,10 @@ describe('ServiceOrderService', () => {
     assert.equal(created.serviceOrder.promisedDeliveryDate, '2026-10-01');
     assert.equal(created.serviceOrder.promisedDeliveryTime, '18:00');
     assert.equal(created.serviceOrder.orderNo, 'AAA000002');
+    assert.equal(created.serviceOrder.bagClosed, false);
     assert.equal(created.items[0]?.itemType, 'uniform');
     assert.equal(created.items[0]?.description, 'Jacket');
+    assert.equal(created.items[0]?.quantity, '1.0000');
     assert.equal(created.items[0]?.discountValue, '10.00');
     assert.equal(audits[0]?.action, 'service_order.created');
   });
@@ -246,6 +248,7 @@ describe('ServiceOrderService', () => {
       groupSeq: 2,
       versionSuffix: null,
       orderNo: '00002',
+      bagClosed: true,
       status: 'open',
       deliveryCommitmentSourceAt: new Date('2026-10-07T10:00:00.000Z'),
       promisedDeliveryDate: '2026-10-14',
@@ -290,8 +293,112 @@ describe('ServiceOrderService', () => {
     const spawned = await service.spawnNextVersion('tenant-1', 'so-1', 'user-1');
     assert.equal(saved[0]?.orderNo, '00002-A');
     assert.equal(saved[0]?.versionSuffix, 'A');
+    assert.equal(saved[0]?.bagClosed, false);
     assert.equal(saved[0]?.customerId, 'customer-1');
     assert.equal(saved[0]?.customerNotes, 'Garantia 90 dias');
     assert.equal(spawned.serviceOrder.orderNo, '00002-A');
+  });
+
+  it('rejects spawning the next version before the bag is closed', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return { id: 'so-1', tenantId: 'tenant-1', bagClosed: false };
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () => service.spawnNextVersion('tenant-1', 'so-1', 'user-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /Feche a sacola/);
+        return true;
+      },
+    );
+  });
+
+  it('closes the bag, locks the version and refuses later piece edits', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      bagClosed: false,
+      status: 'open',
+      orderNo: 'AAA000001',
+      groupId: 'so-1',
+    };
+    const saved: Array<Record<string, unknown>> = [];
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return saved[0] ?? source;
+        },
+        async findByGroupId() {
+          return [saved[0] ?? source];
+        },
+        async save(payload: Record<string, unknown>) {
+          saved.push({ ...source, ...payload });
+          return saved[saved.length - 1];
+        },
+      } as never,
+      {
+        async findByServiceOrder() {
+          return [{ id: 'item-1', itemNo: 1, status: 'open', isDeleted: false, quantity: '1.0000', unitPrice: '40.00', discountValue: '0.00' }];
+        },
+      } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const closed = await service.closeBag('tenant-1', 'so-1', 'user-1');
+    assert.equal(saved[0]?.bagClosed, true);
+    assert.equal(closed.serviceOrder.bagClosed, true);
+
+    await assert.rejects(
+      () => service.closeBag('tenant-1', 'so-1', 'user-1'),
+      DomainValidationError,
+    );
+    await assert.rejects(
+      () =>
+        service.update('so-1', 'tenant-1', {
+          actorUserId: 'user-1',
+          customerNotes: 'nao pode',
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /já está fechada/);
+        return true;
+      },
+    );
+    await assert.rejects(
+      () =>
+        service.addItem({
+          tenantId: 'tenant-1',
+          branchId: 'branch-1',
+          serviceOrderId: 'so-1',
+          actorUserId: 'user-1',
+          itemType: 'Calça',
+          description: 'Bainha',
+          quantity: 1,
+        }),
+      DomainValidationError,
+    );
   });
 });

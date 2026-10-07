@@ -429,6 +429,22 @@ export class ServiceOrdersController {
   }
 
   @Permissions('service_orders.write')
+  @Post(':serviceOrderId/close-bag')
+  async closeBag(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.closeBag(tenantId, serviceOrderId, principal.userId);
+  }
+
+  @Permissions('service_orders.write')
   @Patch(':serviceOrderId')
   async update(
     @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,

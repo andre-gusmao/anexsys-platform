@@ -57,6 +57,7 @@ type ServiceOrderRecord = {
   commercialResponsibleActorId?: string;
   actualDeliveryDate?: string | null;
   actualDeliveryTime?: string | null;
+  bagClosed?: boolean;
 };
 
 type ActorSummary = {
@@ -245,7 +246,8 @@ export function ServiceOrdersWorkspace() {
   });
   const isFormWorkspace = workspaceMode === "new" || Boolean(focusServiceOrderId);
   const isListWorkspace = !isFormWorkspace;
-  const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
+  const bagClosed = Boolean(selectedOrder?.bagClosed);
+  const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled" && !bagClosed;
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
   const openRelatedCustomerWorkspace = useCallback(
@@ -875,9 +877,8 @@ export function ServiceOrdersWorkspace() {
       if (!row.itemType.trim() || !row.description.trim()) {
         return "Cada peça precisa de produto e serviço antes de salvar.";
       }
-      const quantity = Number(row.quantity);
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        return "A quantidade de cada peça precisa ser maior que zero.";
+      if (Number(row.quantity) !== 1) {
+        return "Cada linha é uma peça. A quantidade fica em 1.";
       }
     }
 
@@ -992,7 +993,7 @@ export function ServiceOrdersWorkspace() {
       const persisted = await persistCurrentServiceOrder(true);
       await loadOrders(persisted.id);
       navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(persisted.id)}`);
-      setMessage("OS salva. O cabeçalho e as peças foram gravados e a nova OS já está selecionada.");
+      setMessage("OS salva como rascunho. A sacola ainda não foi fechada e a OP ainda não foi gerada.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
@@ -1012,7 +1013,7 @@ export function ServiceOrdersWorkspace() {
     try {
       const persisted = await persistCurrentServiceOrder(false);
       await loadOrders(persisted.id);
-      setMessage("OS atualizada. O cabeçalho e as peças desta versão foram gravados.");
+      setMessage("OS atualizada como rascunho. A sacola ainda não foi fechada e a OP ainda não foi gerada.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
@@ -1025,6 +1026,31 @@ export function ServiceOrdersWorkspace() {
     }
   }
 
+  async function persistAndCloseBag() {
+    const persisted = await persistCurrentServiceOrder(true);
+    const closed = await apiJson<ServiceOrderDetail>(`/service-orders/${persisted.id}/close-bag`, {
+      method: "POST",
+    });
+    const opView = await printProductionOrder(closed.serviceOrder.id);
+    return {
+      id: closed.serviceOrder.id,
+      orderNo: closed.serviceOrder.orderNo,
+      productionNo: opView.productionNo,
+    };
+  }
+
+  async function openNextVersionFrom(serviceOrderId: string) {
+    const next = await apiJson<ServiceOrderDetail>(`/service-orders/${serviceOrderId}/next-version`, {
+      method: "POST",
+    });
+    const nextId = next.serviceOrder.id;
+    setShowCreateForm(false);
+    setActiveOrderId(nextId);
+    await loadOrders(nextId);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(nextId)}`);
+    return next;
+  }
+
   async function handleCloseBag() {
     if (!canWrite) {
       return;
@@ -1033,24 +1059,65 @@ export function ServiceOrdersWorkspace() {
     setSaving(true);
     setMessage(null);
     try {
-      const persisted = await persistCurrentServiceOrder(true);
-      await printProductionOrder(persisted.id);
-      const next = await apiJson<ServiceOrderDetail>(`/service-orders/${persisted.id}/next-version`, {
-        method: "POST",
-      });
-      const nextId = next.serviceOrder.id;
-      setShowCreateForm(false);
-      setActiveOrderId(nextId);
-      await loadOrders(nextId);
-      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(nextId)}`);
+      const closed = await persistAndCloseBag();
+      await loadOrders(closed.id);
       setMessage(
-        `Sacola fechada. A OP da ${persisted.orderNo} foi enviada para impressão e já pode ir no bolso transparente. Aberta a versão ${next.serviceOrder.orderNo}, com o mesmo cabeçalho e grade nova. Se não houver mais peças, clique em Cancelar para descartar esta versão vazia.`,
+        `Sacola fechada. A OP ${closed.productionNo} da ${closed.orderNo} foi enviada para impressão e já pode ir no bolso transparente. Esta versão ficou travada. Se ainda houver peças, use Continuar em nova versão.`,
       );
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
           "A sacola não pôde ser fechada. Confira as peças, grave de novo e tente fechar outra vez.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCloseAndContinue() {
+    if (!canWrite) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const closed = await persistAndCloseBag();
+      const next = await openNextVersionFrom(closed.id);
+      setMessage(
+        `Sacola fechada. A OP ${closed.productionNo} da ${closed.orderNo} foi enviada para impressão. Aberta a versão ${next.serviceOrder.orderNo}, com o mesmo cabeçalho e grade nova.`,
+      );
+    } catch (error) {
+      setMessage(
+        formatWorkspaceMessage(
+          error,
+          "A sacola não pôde ser fechada. Confira as peças, grave de novo e tente fechar outra vez.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleContinueClosedVersion() {
+    if (!canWrite || !selectedOrder?.bagClosed) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const next = await openNextVersionFrom(selectedOrder.id);
+      setMessage(
+        `Aberta a versão ${next.serviceOrder.orderNo}, com o mesmo cabeçalho e grade nova. A versão anterior continua travada.`,
+      );
+    } catch (error) {
+      setMessage(
+        formatWorkspaceMessage(
+          error,
+          "A próxima versão não pôde ser aberta. Confira se a sacola já está fechada e tente de novo.",
         ),
       );
     } finally {
@@ -1226,10 +1293,12 @@ export function ServiceOrdersWorkspace() {
               <h3>{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h3>
               <p>
                 {showCreateForm
-                  ? `A Empresa e a Filial vêm do contexto ativo. Cada versão aceita até ${maxPiecesPerBag} peças. A sacola é só o transporte físico.`
-                  : selectedOrder
-                    ? `Cada versão aceita até ${maxPiecesPerBag} peças. Feche a sacola para imprimir a OP e abrir a próxima versão ligada.`
-                    : "Abra uma OS na grade ou cadastre uma nova."}
+                  ? `A Empresa e a Filial vêm do contexto ativo. Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho; fechar a sacola trava e imprime a OP.`
+                  : selectedOrder?.bagClosed
+                    ? `Sacola fechada. Esta versão está travada. Se ainda houver peças, continue em nova versão.`
+                    : selectedOrder
+                      ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola trava e imprime a OP. Fechar e continuar abre a próxima versão.`
+                      : "Abra uma OS na grade ou cadastre uma nova."}
               </p>
               {!showCreateForm && details?.groupVersions && details.groupVersions.length > 1 ? (
                 <p className="table-subtle">
@@ -1492,8 +1561,8 @@ export function ServiceOrdersWorkspace() {
                   <div className="workspace-toolbar__copy">
                     <h4>Serviços e mão de obra</h4>
                     <p>
-                      Produto e serviço na mesma linha, depois o complemento. Até {maxPiecesPerBag} peças nesta
-                      versão. Sem mínimo: a última sacola pode ter só o que restou.
+                      Cada linha é uma peça (quantidade 1). Até {maxPiecesPerBag} peças nesta versão. Sem mínimo: a
+                      última sacola pode ter só o que restou.
                     </p>
                   </div>
                 </div>
@@ -1613,17 +1682,10 @@ export function ServiceOrdersWorkspace() {
                             <td>
                               <input
                                 className="os-item-input"
-                                disabled={!editable}
-                                inputMode="decimal"
-                                min="0.0001"
-                                step="0.0001"
-                                type="number"
-                                value={row.quantity}
-                                onChange={(event) =>
-                                  setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { quantity: event.target.value }),
-                                  )
-                                }
+                                disabled
+                                readOnly
+                                title="Cada linha é uma peça"
+                                value="1"
                               />
                             </td>
                             <td>
@@ -1725,6 +1787,29 @@ export function ServiceOrdersWorkspace() {
                       >
                         Fechar sacola
                       </button>
+                      <button
+                        className="button"
+                        disabled={saving || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseAndContinue();
+                        }}
+                        type="button"
+                      >
+                        Fechar e continuar
+                      </button>
+                    </div>
+                  ) : bagClosed && canWrite ? (
+                    <div className="button-row">
+                      <button
+                        className="button"
+                        disabled={saving}
+                        onClick={() => {
+                          void handleContinueClosedVersion();
+                        }}
+                        type="button"
+                      >
+                        Continuar em nova versão
+                      </button>
                     </div>
                   ) : (
                     <span />
@@ -1812,9 +1897,48 @@ export function ServiceOrdersWorkspace() {
                       >
                         Fechar sacola
                       </button>
+                      <button
+                        className="button"
+                        disabled={saving || !canWrite || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseAndContinue();
+                        }}
+                        type="button"
+                      >
+                        Fechar e continuar
+                      </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
                       </button>
+                    </>
+                  ) : selectedOrder && bagClosed ? (
+                    <>
+                      <button
+                        className="button"
+                        disabled={saving || !canWrite}
+                        onClick={() => {
+                          void handleContinueClosedVersion();
+                        }}
+                        type="button"
+                      >
+                        Continuar em nova versão
+                      </button>
+                      <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                        Cancelar
+                      </button>
+                      {canWriteFinance ? (
+                        <button
+                          className="button"
+                          disabled={saving || selectedOrder.status === "cancelled"}
+                          onClick={() => {
+                            void openPay(selectedOrder);
+                          }}
+                          type="button"
+                        >
+                          Pagar
+                        </button>
+                      ) : null}
+                      <RowOverflowMenu items={buildOsRowMenu(selectedOrder)} label={`Opções da OS ${selectedOrder.orderNo}`} />
                     </>
                   ) : selectedOrder ? (
                     <>
@@ -1830,6 +1954,16 @@ export function ServiceOrdersWorkspace() {
                         type="button"
                       >
                         Fechar sacola
+                      </button>
+                      <button
+                        className="button"
+                        disabled={saving || !canEditSelectedOrder || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseAndContinue();
+                        }}
+                        type="button"
+                      >
+                        Fechar e continuar
                       </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar

@@ -60,7 +60,7 @@ function buildPayload(row: ServiceOrderItemGridRow): ItemPayload {
     serviceId: row.serviceId || undefined,
     description: row.description.trim(),
     complement: row.complement.trim() || undefined,
-    quantity: Number(row.quantity),
+    quantity: 1,
     unitPrice: parseOptionalNumber(row.unitPrice),
     discountValue: parseOptionalNumber(row.discountValue),
   };
@@ -123,7 +123,7 @@ export function mapServiceOrderItemsToGridRows(items: PersistedServiceOrderItem[
       serviceId: item.serviceId ?? "",
       description: item.description,
       complement: item.complement ?? "",
-      quantity: item.quantity,
+      quantity: "1",
       unitPrice: item.unitPrice ?? "",
       discountValue: item.discountValue ?? "",
       status: item.status,

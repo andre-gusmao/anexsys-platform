@@ -31,6 +31,9 @@ export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'version_suffix', type: 'varchar', length: 2, nullable: true })
   versionSuffix!: string | null;
 
+  @Column({ name: 'bag_closed', type: 'boolean', default: false })
+  bagClosed!: boolean;
+
   @Column({ name: 'opened_at', type: 'timestamptz' })
   openedAt!: Date;
 

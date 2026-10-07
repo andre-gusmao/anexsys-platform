@@ -114,6 +114,7 @@ export class ServiceOrderService {
       groupId: orderId,
       groupSeq,
       versionSuffix: null,
+      bagClosed: false,
       openedAt,
       deliveryCommitmentSourceAt,
       promisedDeliveryDate,
@@ -328,6 +329,9 @@ export class ServiceOrderService {
 
   async spawnNextVersion(tenantId: string, sourceServiceOrderId: string, actorUserId: string) {
     const source = await this.getById(sourceServiceOrderId, tenantId);
+    if (!source.bagClosed) {
+      throw new DomainValidationError('Feche a sacola antes de abrir a próxima versão.');
+    }
     const groupId = source.groupId ?? source.id;
     const siblings = await this.serviceOrderRepository.findByGroupId(tenantId, groupId);
     const members = siblings.length > 0 ? siblings : [source];
@@ -348,6 +352,7 @@ export class ServiceOrderService {
       groupId,
       groupSeq,
       versionSuffix,
+      bagClosed: false,
       openedAt: new Date(),
       deliveryCommitmentSourceAt: source.deliveryCommitmentSourceAt,
       promisedDeliveryDate: source.promisedDeliveryDate,
@@ -389,6 +394,39 @@ export class ServiceOrderService {
     return this.getDetails(tenantId, saved.id);
   }
 
+  async closeBag(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
+      throw new DomainValidationError('Ordens de serviço canceladas não podem fechar sacola.');
+    }
+    if (serviceOrder.bagClosed) {
+      throw new DomainValidationError('Esta sacola já está fechada. Use Continuar em nova versão se ainda houver peças.');
+    }
+
+    const items = (await this.serviceOrderItemRepository.findByServiceOrder(serviceOrderId)).filter(
+      (item) => item.status !== ServiceOrderItemStatus.CANCELLED && !item.isDeleted,
+    );
+    if (items.length === 0) {
+      throw new DomainValidationError('Inclua pelo menos uma peça antes de fechar a sacola.');
+    }
+
+    serviceOrder.bagClosed = true;
+    serviceOrder.updatedBy = actorUserId;
+    const saved = await this.serviceOrderRepository.save(serviceOrder);
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: 'service_order.bag.closed',
+      eventType: 'service_order.write',
+      metadata: { orderNo: saved.orderNo, itemCount: items.length },
+    });
+
+    return this.getDetails(tenantId, saved.id);
+  }
+
   async previewDelivery(
     tenantId: string,
     input: { branchId: string; deliveryType?: DeliveryType; itemCount?: number; sourceAt?: string },
@@ -412,6 +450,7 @@ export class ServiceOrderService {
     if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
       throw new DomainValidationError('Cancelled service orders cannot be edited.');
     }
+    this.assertHeaderWritableWhenBagClosed(serviceOrder, dto);
 
     if (dto.customerId) {
       const customer = await this.customerService.getById(dto.customerId, tenantId);
@@ -528,6 +567,7 @@ export class ServiceOrderService {
     if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
       throw new DomainValidationError('Cancelled service orders cannot receive new items.');
     }
+    this.assertBagOpen(serviceOrder);
 
     const openItems = (await this.serviceOrderItemRepository.findByServiceOrder(dto.serviceOrderId)).filter(
       (existing) => existing.status !== ServiceOrderItemStatus.CANCELLED && !existing.isDeleted,
@@ -623,11 +663,12 @@ export class ServiceOrderService {
     if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
       throw new DomainValidationError('Cancelled service orders cannot be edited.');
     }
+    this.assertBagOpen(serviceOrder);
 
     const catalog = await this.resolveCatalogFields(tenantId, dto.actorUserId, {
       itemType: dto.itemType?.trim() || item.itemType,
       description: dto.description?.trim() || item.description,
-      quantity: dto.quantity === undefined ? Number(item.quantity) : dto.quantity,
+      quantity: 1,
       unitPrice: dto.unitPrice === undefined ? (item.unitPrice === null ? null : Number(item.unitPrice)) : dto.unitPrice,
       discountValue: dto.discountValue === undefined ? Number(item.discountValue ?? 0) : dto.discountValue ?? 0,
       deliveryType: dto.deliveryType === undefined ? item.deliveryType : dto.deliveryType,
@@ -774,7 +815,7 @@ export class ServiceOrderService {
     return {
       itemType: item.itemType.trim(),
       description: item.description.trim(),
-      quantity: item.quantity,
+      quantity: 1,
       unitPrice: item.unitPrice ?? null,
       discountValue: item.discountValue ?? 0,
       deliveryType: item.deliveryType ?? null,
@@ -823,6 +864,39 @@ export class ServiceOrderService {
       productId,
       serviceId,
     };
+  }
+
+  private assertBagOpen(serviceOrder: ServiceOrderEntity): void {
+    if (serviceOrder.bagClosed) {
+      throw new DomainValidationError(
+        'Esta sacola já está fechada. Use Continuar em nova versão se ainda houver peças.',
+      );
+    }
+  }
+
+  private assertHeaderWritableWhenBagClosed(
+    serviceOrder: ServiceOrderEntity,
+    dto: UpdateServiceOrderDto,
+  ): void {
+    if (!serviceOrder.bagClosed) {
+      return;
+    }
+
+    const allowedWhenClosed = new Set([
+      'actualPickupDate',
+      'actualDeliveryDate',
+      'actualDeliveryTime',
+      'actorUserId',
+    ]);
+    const blocked = Object.entries(dto)
+      .filter(([, value]) => value !== undefined)
+      .map(([key]) => key)
+      .filter((key) => !allowedWhenClosed.has(key));
+    if (blocked.length > 0) {
+      throw new DomainValidationError(
+        'Esta sacola já está fechada. Use Continuar em nova versão se ainda houver peças.',
+      );
+    }
   }
 
   private assertItemCount(itemCount: number, maxPiecesPerBag = DEFAULT_MAX_PIECES_PER_BAG) {

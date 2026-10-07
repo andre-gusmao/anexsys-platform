@@ -71,6 +71,10 @@ async function main() {
       ADD COLUMN IF NOT EXISTS actual_delivery_time varchar(5)
     `);
     await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      ADD COLUMN IF NOT EXISTS bag_closed boolean NOT NULL DEFAULT false
+    `);
+    await client.query(`
       UPDATE service_orders
       SET group_id = id
       WHERE group_id IS NULL
@@ -86,7 +90,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço e versões da sacola).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola e trava).');
   } finally {
     await client.end();
   }
