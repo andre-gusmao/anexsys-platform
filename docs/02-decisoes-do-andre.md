@@ -383,5 +383,7 @@ Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 - Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**.
 - Até **5 peças** por OS.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
-- Não entrou endereço de entrega, frete nem “exibir valor na impressão” da Ordem de Produção (a OP continua sem preço).
+- A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
+- A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (OS com valor / OP sem valor) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
+- Não entrou endereço de entrega nem frete.
 - **Pagar** fica no rodapé da OS e na grade, ao lado de Alterar / Inativar / Excluir. O botão **registra** o valor recebido na maquininha ou em dinheiro. Não processa cartão daqui e não abre QR Pix.

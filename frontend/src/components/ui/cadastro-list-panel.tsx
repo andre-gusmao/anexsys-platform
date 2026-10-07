@@ -9,6 +9,7 @@ import {
 } from "@/components/customers/customer-list";
 import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
 import type { SmartLookupOption } from "@/components/ui/lookup-suggestions";
+import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 
 const PAGE_SIZES = CUSTOMER_LIST_PAGE_SIZES;
 
@@ -88,6 +89,7 @@ type CadastroListPanelProps<T extends { id: string }> = {
   canInactivate?: (row: T) => boolean;
   onPay?: (row: T) => void;
   canPay?: (row: T) => boolean;
+  rowMenu?: (row: T) => RowMenuItem[];
   excelFileName: string;
   buildExcelCsv: (rows: T[]) => string;
   emailFileName?: string;
@@ -118,6 +120,7 @@ export function CadastroListPanel<T extends { id: string }>({
   canInactivate,
   onPay,
   canPay,
+  rowMenu,
   excelFileName,
   buildExcelCsv,
   emailFileName,
@@ -449,9 +452,10 @@ export function CadastroListPanel<T extends { id: string }>({
                           Pagar
                         </button>
                       ) : null}
+                      {rowMenu ? <RowOverflowMenu items={rowMenu(row)} label={`Opções de ${rowLabel(row)}`} /> : null}
                     </div>
                   ) : (
-                    "—"
+                    rowMenu ? <RowOverflowMenu items={rowMenu(row)} label={`Opções de ${rowLabel(row)}`} /> : "—"
                   )}
                 </td>
               </tr>

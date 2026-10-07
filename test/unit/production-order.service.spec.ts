@@ -266,7 +266,7 @@ describe('ProductionOrderService', () => {
           return {
             serviceOrder: { id: 'service-order-1', orderNo: 'SO-1' },
             customer: { id: 'customer-1', legalName: 'Customer One' },
-            items: [{ id: 'item-1', itemType: 'shirt', description: 'Blue Shirt', quantity: '2.0000' }],
+            items: [{ id: 'item-1', itemType: 'shirt', description: 'Blue Shirt', complement: 'Punho esquerdo', quantity: '2.0000', unitPrice: '80.00' }],
           };
         },
       } as never,
@@ -282,5 +282,7 @@ describe('ProductionOrderService', () => {
     assert.equal(printView.indicators.includes('[ REWORK ]'), true);
     assert.equal('totalValue' in printView, false);
     assert.equal('discountValue' in printView, false);
+    assert.equal('unitPrice' in printView.items[0], false);
+    assert.equal(printView.items[0]?.complement, 'Punho esquerdo');
   });
 });

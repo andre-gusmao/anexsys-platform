@@ -93,7 +93,9 @@ export class ProductionOrderService {
     const measurements = await this.measurementService.listByCustomer(input.tenantId, serviceOrderDetails.customer.id);
     const measurementsSnapshot = this.buildMeasurementsSnapshot(measurements.latestByLabel);
     const plannedQuantity = serviceOrderDetails.items.reduce((sum, item) => sum + Number(item.quantity), 0);
-    const pieceDescription = serviceOrderDetails.items.map((item) => item.description).join(', ');
+    const pieceDescription = serviceOrderDetails.items
+      .map((item) => [item.itemType, item.description, item.complement].filter(Boolean).join(' · '))
+      .join('; ');
 
     const order = this.productionOrderRepository.create({
       id: randomUUID(),
@@ -113,7 +115,7 @@ export class ProductionOrderService {
       producedQuantity: this.formatQuantity(0),
       scheduledStartAt: null,
       scheduledEndAt: null,
-      instructions: serviceOrderDetails.serviceOrder.commercialNotes,
+      instructions: pieceDescription,
       pieceDescription,
       measurementsSnapshot,
       observations: serviceOrderDetails.serviceOrder.customerNotes,
@@ -189,6 +191,20 @@ export class ProductionOrderService {
     }
 
     return this.productionOrderRepository.search(tenantId, filters);
+  }
+
+  async getByServiceOrder(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, accessibleBranchIds);
+    return this.productionOrderRepository.findByServiceOrder(serviceOrderId);
+  }
+
+  async getDetailsByServiceOrder(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {
+    const order = await this.getByServiceOrder(tenantId, serviceOrderId, accessibleBranchIds);
+    if (!order) {
+      return null;
+    }
+    return this.getDetails(tenantId, order.id);
   }
 
   async getById(productionOrderId: string, tenantId: string): Promise<ProductionOrderEntity> {
@@ -758,8 +774,15 @@ export class ProductionOrderService {
         id: item.id,
         itemType: item.itemType,
         description: item.description,
+        complement: item.complement ?? null,
         quantity: item.quantity,
       })),
+      qrCode: details.activeQrCode
+        ? {
+            codeValue: details.activeQrCode.codeValue,
+            reissueNo: details.activeQrCode.reissueNo,
+          }
+        : null,
     };
   }
 

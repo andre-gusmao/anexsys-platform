@@ -8,8 +8,18 @@ import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
+import {
+  buildOsWhatsAppMessage,
+  openEmailResend,
+  openWhatsAppResend,
+  printProductionOrderDocument,
+  printServiceOrderDocument,
+  type OpPrintView,
+  type OsPrintView,
+} from "@/components/service-orders/os-documents";
 import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
+import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
   addServiceOrderItemGridRow,
   buildCreateServiceOrderItemsPayload,
@@ -202,6 +212,8 @@ export function ServiceOrdersWorkspace() {
   const canReadUsers = hasAnyPermission("users.read");
   const canReadFinance = hasAnyPermission("finance.read");
   const canWriteFinance = hasAnyPermission("finance.write");
+  const canReadProduction = hasAnyPermission("production_orders.read");
+  const canWriteProduction = hasAnyPermission("production_orders.write");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
   const [products, setProducts] = useState<CatalogLookupRecord[]>([]);
@@ -504,6 +516,136 @@ export function ServiceOrdersWorkspace() {
       }
     },
     [apiJson, canReadFinance, canWriteFinance],
+  );
+
+  const companyName = activeCompany?.displayName ?? "ANEXSYS";
+
+  const printServiceOrder = useCallback(
+    async (serviceOrderId: string) => {
+      try {
+        const view = await apiJson<OsPrintView>(`/service-orders/${serviceOrderId}/print-view`);
+        printServiceOrderDocument(view, companyName);
+        setMessage(`OS ${view.orderNo} enviada para impressão, com valores.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A OS não pôde ser impressa."));
+      }
+    },
+    [apiJson, companyName],
+  );
+
+  const printProductionOrder = useCallback(
+    async (serviceOrderId: string) => {
+      try {
+        let productionOrderId = "";
+        try {
+          const existing = await apiJson<{ productionOrder: { id: string } }>(`/service-orders/${serviceOrderId}/production-order`);
+          productionOrderId = existing.productionOrder.id;
+        } catch {
+          if (!canWriteProduction) {
+            throw new Error("Esta OS ainda não tem Ordem de Produção.");
+          }
+          const created = await apiJson<{ productionOrder: { id: string } }>(
+            `/service-orders/${serviceOrderId}/production-order/generate`,
+            { method: "POST" },
+          );
+          productionOrderId = created.productionOrder.id;
+        }
+        const view = await apiJson<OpPrintView>(`/production-orders/${productionOrderId}/print-view`);
+        printProductionOrderDocument(view, companyName);
+        setMessage(`Ordem de produção ${view.productionNo} enviada para impressão, sem valores.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A Ordem de Produção não pôde ser impressa."));
+      }
+    },
+    [apiJson, canWriteProduction, companyName],
+  );
+
+  const resendWhatsApp = useCallback(
+    async (serviceOrderId: string) => {
+      try {
+        const view = await apiJson<OsPrintView>(`/service-orders/${serviceOrderId}/print-view`);
+        openWhatsAppResend(
+          view.customer.phone,
+          buildOsWhatsAppMessage({
+            customerName: view.customer.legalName,
+            companyName,
+            orderNo: view.orderNo,
+          }),
+        );
+        setMessage(`WhatsApp da OS ${view.orderNo} aberto para reenvio.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O WhatsApp não pôde ser aberto para reenvio."));
+      }
+    },
+    [apiJson, companyName],
+  );
+
+  const resendEmail = useCallback(
+    async (serviceOrderId: string) => {
+      try {
+        const view = await apiJson<OsPrintView>(`/service-orders/${serviceOrderId}/print-view`);
+        openEmailResend(
+          view.customer.email,
+          `Ordem de serviço ${view.orderNo}`,
+          buildOsWhatsAppMessage({
+            customerName: view.customer.legalName,
+            companyName,
+            orderNo: view.orderNo,
+          }),
+        );
+        setMessage(`E-mail da OS ${view.orderNo} aberto para reenvio.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O e-mail não pôde ser aberto para reenvio."));
+      }
+    },
+    [apiJson, companyName],
+  );
+
+  const buildOsRowMenu = useCallback(
+    (row: Pick<ServiceOrderRecord, "id" | "orderNo">): RowMenuItem[] => [
+      {
+        id: "print",
+        label: "Imprimir",
+        children: [
+          {
+            id: "print-os",
+            label: "Ordem de serviço (com valores)",
+            onSelect: () => {
+              void printServiceOrder(row.id);
+            },
+          },
+          {
+            id: "print-op",
+            label: "Ordem de produção (sem valores)",
+            disabled: !canReadProduction && !canWriteProduction,
+            onSelect: () => {
+              void printProductionOrder(row.id);
+            },
+          },
+        ],
+      },
+      {
+        id: "resend",
+        label: "Reenviar",
+        children: [
+          {
+            id: "whatsapp",
+            label: "Por WhatsApp",
+            onSelect: () => {
+              void resendWhatsApp(row.id);
+            },
+          },
+          {
+            id: "email",
+            label: "Por e-mail",
+            onSelect: () => {
+              void resendEmail(row.id);
+            },
+          },
+        ],
+      },
+    ],
+    [canReadProduction, canWriteProduction, printProductionOrder, printServiceOrder, resendEmail, resendWhatsApp],
   );
 
   useEffect(() => {
@@ -905,6 +1047,7 @@ export function ServiceOrdersWorkspace() {
               : undefined
           }
           canPay={(row) => row.status !== "cancelled"}
+          rowMenu={buildOsRowMenu}
           records={orders}
           rowLabel={(row) => row.orderNo}
           searchKey="name"
@@ -1454,6 +1597,7 @@ export function ServiceOrdersWorkspace() {
                           Pagar
                         </button>
                       ) : null}
+                      <RowOverflowMenu items={buildOsRowMenu(selectedOrder)} label={`Opções da OS ${selectedOrder.orderNo}`} />
                     </>
                   ) : null}
                 </div>

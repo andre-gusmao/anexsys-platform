@@ -229,6 +229,49 @@ export class ServiceOrderService {
     return serviceOrder;
   }
 
+  async getPrintView(tenantId: string, serviceOrderId: string) {
+    const details = await this.getDetails(tenantId, serviceOrderId);
+    const items = details.items
+      .filter((item) => item.status !== ServiceOrderItemStatus.CANCELLED && !item.isDeleted)
+      .map((item) => {
+        const quantity = Number(item.quantity);
+        const unitPrice = item.unitPrice === null ? null : Number(item.unitPrice);
+        const discountValue = Number(item.discountValue ?? 0);
+        const subtotal = unitPrice === null ? null : Math.max(quantity * unitPrice - discountValue, 0);
+        return {
+          id: item.id,
+          itemNo: item.itemNo,
+          productName: item.itemType,
+          serviceName: item.description,
+          complement: item.complement,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discountValue: item.discountValue,
+          subtotal: subtotal === null ? null : this.formatMoney(subtotal),
+        };
+      });
+
+    return {
+      documentType: 'service_order' as const,
+      serviceOrderId: details.serviceOrder.id,
+      orderNo: details.serviceOrder.orderNo,
+      status: details.serviceOrder.status,
+      openedAt: details.serviceOrder.openedAt,
+      promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
+      promisedDeliveryTime: details.serviceOrder.promisedDeliveryTime,
+      deliveryType: details.serviceOrder.deliveryType,
+      customer: {
+        id: details.customer.id,
+        legalName: details.customer.legalName,
+        phone: details.customer.phone,
+        email: details.customer.email,
+      },
+      items,
+      totalValue: details.serviceOrder.totalValue,
+      customerNotes: details.serviceOrder.customerNotes,
+    };
+  }
+
   async getDetails(tenantId: string, serviceOrderId: string) {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
     const [items, customer, commercialResponsible, technicalResponsible, auditTrail] = await Promise.all([

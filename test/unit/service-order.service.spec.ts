@@ -119,6 +119,28 @@ describe('ServiceOrderService', () => {
     );
   });
 
+  it('prints the service order with values and keeps internal notes out', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      { async findById() { return { id: 'so-1', tenantId: 'tenant-1', customerId: 'customer-1', commercialResponsibleActorId: 'user-1', technicalMeasurementResponsibleActorId: 'user-1', orderNo: 'OS-1', status: 'open', openedAt: '2026-10-07T10:00:00.000Z', promisedDeliveryDate: '2026-10-14', promisedDeliveryTime: '18:00', deliveryType: DeliveryType.STANDARD, totalValue: '90.00', customerNotes: 'Garantia 90 dias', commercialNotes: 'nao imprimir' }; } } as never,
+      { async findByServiceOrder() { return [{ id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', complement: 'Barra 4 cm', quantity: '1', unitPrice: '90.00', discountValue: '0.00', status: 'open', isDeleted: false }]; } } as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', legalName: 'Maria Silva', phone: '11988887777', email: 'maria@test.com' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-14', promisedDeliveryTime: '18:00' }; } } as never,
+      { async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const printView = await service.getPrintView('tenant-1', 'so-1');
+    assert.equal(printView.orderNo, 'OS-1');
+    assert.equal(printView.totalValue, '90.00');
+    assert.equal(printView.items[0]?.subtotal, '90.00');
+    assert.equal(printView.customerNotes, 'Garantia 90 dias');
+    assert.equal('commercialNotes' in printView, false);
+  });
+
   it('rejects more than five pieces on a service order', async () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,
