@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyFilialListFilters, buildFilialExcelCsv } from '../../frontend/src/components/admin/filial-list';
 import { applyContaListFilters, buildContaExcelCsv } from '../../frontend/src/components/admin/conta-list';
-import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from '../../frontend/src/components/service-orders/os-list';
+import { applyOsListFilters, buildOsExcelCsv, canSendToQuality, osDeliveryTypeLabel, osStatusLabel } from '../../frontend/src/components/service-orders/os-list';
 import { applyMeasurementListFilters, buildMeasurementExcelCsv } from '../../frontend/src/components/measurements/measurement-list';
 import {
   applyAccessCommunityListFilters,
@@ -51,6 +51,9 @@ test('filters OS by number and status', () => {
   assert.equal(osStatusLabel('cancelled'), 'Cancelada');
   assert.equal(osStatusLabel('quality'), 'Controle de qualidade');
   assert.equal(osStatusLabel('ready_for_pickup'), 'Pronto para retirada');
+  assert.equal(canSendToQuality('open', true), true);
+  assert.equal(canSendToQuality('quality', true), false);
+  assert.equal(canSendToQuality('open', false), false);
 });
 
 test('filters measurement catalog records by name, code and status', () => {

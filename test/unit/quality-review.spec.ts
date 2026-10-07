@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   activeCorrectiveVersion,
+  belongsToQualityQueue,
   currentReviewItemIds,
   currentRoundFinished,
   deriveReviewPhase,
@@ -46,4 +47,11 @@ test('finishes a round only when every current piece is approved or rejected', (
   assert.equal(currentRoundFinished([{ decision: 'approved' }, { decision: 'pending' }]), false);
   assert.equal(currentRoundFinished([{ decision: 'approved' }, { decision: 'rejected' }]), true);
   assert.equal(deriveReviewPhase({ allItemsApproved: true, reworkWaitingReturn: true }), 'ready');
+});
+
+test('quality queue only includes closed bags with status quality', () => {
+  assert.equal(belongsToQualityQueue('quality', true), true);
+  assert.equal(belongsToQualityQueue('open', true), false);
+  assert.equal(belongsToQualityQueue('quality', false), false);
+  assert.equal(belongsToQualityQueue('ready_for_pickup', true), false);
 });

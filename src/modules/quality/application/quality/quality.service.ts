@@ -32,6 +32,7 @@ import { CustomerRejectionRepository } from '../../infrastructure/persistence/re
 import { QualityRecordRepository } from '../../infrastructure/persistence/repositories/quality-record.repository';
 import {
   activeCorrectiveVersion,
+  belongsToQualityQueue,
   currentReviewItemIds,
   currentRoundFinished,
   deriveReviewPhase,
@@ -256,7 +257,7 @@ export class QualityService {
     const reviews = [];
     for (const productionOrder of productionOrders) {
       const details = await this.productionOrderService.getDetails(tenantId, productionOrder.id);
-      if (!details.serviceOrder.bagClosed) {
+      if (!belongsToQualityQueue(details.serviceOrder.status, details.serviceOrder.bagClosed)) {
         continue;
       }
       reviews.push({
@@ -277,6 +278,23 @@ export class QualityService {
   async getReview(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {
     const built = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
     return built.review;
+  }
+
+  async enqueue(tenantId: string, serviceOrderId: string, actorUserId: string, accessibleBranchIds: string[]) {
+    const built = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+    if (built.review.serviceOrder.status === ServiceOrderStatus.READY_FOR_PICKUP) {
+      throw new DomainValidationError('Esta OS já foi aprovada na qualidade.');
+    }
+    if (built.review.serviceOrder.status === ServiceOrderStatus.CANCELLED) {
+      throw new DomainValidationError('OS cancelada não entra no controle de qualidade.');
+    }
+    await this.serviceOrderService.applyQualityStatus(
+      serviceOrderId,
+      tenantId,
+      ServiceOrderStatus.QUALITY,
+      actorUserId,
+    );
+    return this.getReview(tenantId, serviceOrderId, accessibleBranchIds);
   }
 
   async decideItem(

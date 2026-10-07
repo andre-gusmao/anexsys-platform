@@ -421,6 +421,8 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 ## 17. Controle de qualidade peça a peça (07/10/2026)
 
 - Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com Produto, Serviço, Serviço a realizar, marca/modelo/série.
+- A lista mostra **somente** OS com status **Controle de qualidade**. O botão da grade é **Revisar**, não Alterar.
+- Enquanto o QR de produção não existir, a OS entra nessa lista pelo menu **Enviar para qualidade** (sacola fechada). Fechar a sacola **não** manda sozinho para a qualidade.
 - Dois botões por peça: **Aprovado** e **Reprovado** (motivo em texto livre).
 - Se **todas** as peças da OS estão aprovadas, o status vai para **Pronto para retirada**.
 - Se uma ou várias são reprovadas, a **OS original permanece em Controle de qualidade**. O sistema imprime uma **nova versão da OP só com as peças reprovadas**, com o **motivo da reprovação** em cada linha para o técnico refazer o ponto exato.

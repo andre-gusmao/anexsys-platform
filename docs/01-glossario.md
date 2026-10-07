@@ -34,7 +34,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Abrir sacola** | Destrava a versão fechada para corrigir erro ou incluir peça que o cliente pediu de volta | `POST /service-orders/:id/open-bag` |
 | **Abrir nova versão** | Só aparece na grade de itens, com a sacola fechada. Marca a intenção; o rodapé avisa o número. A próxima versão nasce ao **Salvar**, em **outra aba**, já editável | `POST /service-orders/:id/next-version` |
 | **Versão da OS** | Continuação ligada da mesma OS quando o cliente trouxe mais peças do que o limite. A primeira é `AAA000001`; as seguintes são `AAA000001-A`, `AAA000001-B` | `service_orders.group_id` / `version_suffix` |
-| **Controle de qualidade** | Tela em que o revisor abre a OS original e aprova ou reprova **peça a peça**, sem valores. 100% aprovado avança a OS para Pronto para retirada | `quality-reviews` |
+| **Controle de qualidade** | Tela em que o revisor abre a OS original e aprova ou reprova **peça a peça**, sem valores. A lista só mostra OS com esse status; o botão é **Revisar**. 100% aprovado avança a OS para Pronto para retirada | `quality-reviews` |
 | **Refação** | Peças reprovadas voltam à esteira numa **nova versão da OP**. A OS original **permanece em Controle de qualidade**. Não confundir com versão da OS (sacola) | `production_order_versions` + `rework_cases` |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
 | **QR code** | Código impresso na Ordem de Produção. **Um por OS** (não por peça). O funcionário lê com o celular para mudar o status | `qr code` |

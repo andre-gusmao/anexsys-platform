@@ -88,7 +88,7 @@ export function QualityWorkspace() {
     setLoading(true);
     try {
       const response = await apiJson<QualityListRecord[]>("/quality-reviews");
-      setRecords(response.filter((record) => record.bagClosed !== false));
+      setRecords(response.filter((record) => record.status === "quality" && record.bagClosed !== false));
     } catch (error) {
       setMessage(describeWorkspaceError(error));
     } finally {
@@ -232,28 +232,15 @@ export function QualityWorkspace() {
             { id: "version", label: "Versão OP", render: (row) => String(row.versionNo) },
           ]}
           defaultColumnIds={["name", "status", "version"]}
-          emptyFilters={{ name: "", status: "" }}
-          emptyMessage="Nenhuma OS com Ordem de Produção para revisar."
+          emptyFilters={{ name: "" }}
+          emptyMessage="Nenhuma OS em Controle de qualidade. Com a sacola fechada, use Enviar para qualidade no menu da OS."
           excelFileName="qualidade.csv"
-          filterFields={[
-            { id: "name", label: "Número", lookup: true, placeholder: "Número da OS" },
-            {
-              id: "status",
-              kind: "select",
-              label: "Status",
-              options: [
-                { value: "", label: "Todos" },
-                { value: "quality", label: "Controle de qualidade" },
-                { value: "ready_for_pickup", label: "Pronto para retirada" },
-                { value: "open", label: "Aberta" },
-                { value: "approved", label: "Aprovada" },
-              ],
-            },
-          ]}
+          filterFields={[{ id: "name", label: "Número", lookup: true, placeholder: "Número da OS" }]}
           hideCreate
           loading={loading}
           onCreate={() => undefined}
           onEdit={openReview}
+          editLabel="Revisar"
           records={records}
           rowLabel={(row) => row.orderNo}
           searchKey="name"

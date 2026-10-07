@@ -92,3 +92,7 @@ export function deriveReviewPhase(input: { allItemsApproved: boolean; reworkWait
 export function currentRoundFinished(currentItems: Array<{ decision: QualityPieceDecision }>): boolean {
   return currentItems.length > 0 && currentItems.every((item) => item.decision === 'approved' || item.decision === 'rejected');
 }
+
+export function belongsToQualityQueue(status: string, bagClosed: boolean): boolean {
+  return bagClosed && status === 'quality';
+}
