@@ -4,6 +4,7 @@ import { applyFilialListFilters, buildFilialExcelCsv } from '../../frontend/src/
 import { applyContaListFilters, buildContaExcelCsv } from '../../frontend/src/components/admin/conta-list';
 import { applyOsListFilters, buildOsExcelCsv } from '../../frontend/src/components/service-orders/os-list';
 import { applyMeasurementListFilters, buildMeasurementExcelCsv } from '../../frontend/src/components/measurements/measurement-list';
+import { applyAccessUserListFilters, buildAccessUserExcelCsv } from '../../frontend/src/components/admin/access-list';
 
 test('filters filiais by name, code and status', () => {
   const filiais = [
@@ -45,4 +46,15 @@ test('filters measurement catalog records by name and code', () => {
   assert.deepEqual(applyMeasurementListFilters(records, { name: 'cent', code: '' }).map((item) => item.id), ['2']);
   assert.deepEqual(applyMeasurementListFilters(records, { name: '', code: 'busto' }).map((item) => item.id), ['1']);
   assert.match(buildMeasurementExcelCsv([records[0]]), /Busto/);
+});
+
+test('filters access users by name, email and status', () => {
+  const users = [
+    { id: '1', email: 'ana@atelier.com', displayName: 'Ana Silva', defaultBranchId: null, status: 'active' as const },
+    { id: '2', email: 'bruno@atelier.com', displayName: 'Bruno Costa', defaultBranchId: null, status: 'inactive' as const },
+  ];
+  assert.deepEqual(applyAccessUserListFilters(users, { name: 'bruno', email: '', status: '' }).map((item) => item.id), ['2']);
+  assert.deepEqual(applyAccessUserListFilters(users, { name: '', email: 'ana@', status: '' }).map((item) => item.id), ['1']);
+  assert.deepEqual(applyAccessUserListFilters(users, { name: '', email: '', status: 'inactive' }).map((item) => item.id), ['2']);
+  assert.match(buildAccessUserExcelCsv([users[0]]), /Ana Silva/);
 });

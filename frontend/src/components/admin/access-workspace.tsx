@@ -1,14 +1,24 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import {
+  applyAccessUserListFilters,
+  buildAccessUserEmailCsv,
+  buildAccessUserExcelCsv,
+  userStatusLabel,
+  type AccessUserListRecord,
+} from "@/components/admin/access-list";
+import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
+import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import {
   MasterDataDuplicateGuard,
   normalizeEmailValue,
 } from "@/components/ui/master-data-duplicate-guard";
 import { SearchAutocomplete } from "@/components/ui/search-autocomplete";
-import { WorkspaceFlash } from "@/components/ui/workspace-flash";
+import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type BranchRecord = {
@@ -183,6 +193,14 @@ function matchesSearch(values: Array<string | null | undefined>, query: string) 
 }
 
 export function AccessWorkspace() {
+  const searchParams = useWorkspaceSearchParams();
+  const { isMobile } = useWorkspaceViewportMode();
+  const workspaceMode = searchParams.get("workspaceMode");
+  const focusUserId = searchParams.get("focusUserId");
+  const prefillName = searchParams.get("prefillName") ?? "";
+  const isUserFormWorkspace = workspaceMode === "new" || Boolean(focusUserId);
+  const isListWorkspace = !isUserFormWorkspace;
+  const { closeWorkspace } = useWorkspaceManager();
   const { hasAnyPermission, apiJson } = useSession();
   const canReadUsers = hasAnyPermission("users.read");
   const canWriteUsers = hasAnyPermission("users.write");
@@ -232,9 +250,17 @@ export function AccessWorkspace() {
   const [assignBranchScopeId, setAssignBranchScopeId] = useState("");
   const [assignBranchScopeType, setAssignBranchScopeType] = useState<"member" | "manager" | "admin">("member");
 
-  const filteredUsers = useMemo(
-    () => users.filter((user) => matchesSearch([user.displayName, user.email, user.status], searchQuery)),
-    [searchQuery, users],
+  const userListRecords = useMemo<AccessUserListRecord[]>(
+    () =>
+      users.map((user) => ({
+        ...user,
+        defaultBranchLabel: branches.find((branch) => branch.id === user.defaultBranchId)?.displayName,
+      })),
+    [branches, users],
+  );
+  const userLookupOptions = useMemo(
+    () => users.map((user) => ({ id: user.id, label: user.displayName, hint: user.email })),
+    [users],
   );
   const filteredRoles = useMemo(
     () => roles.filter((role) => matchesSearch([role.displayName, role.code, role.description], searchQuery)),
@@ -262,7 +288,19 @@ export function AccessWorkspace() {
     return communities.map((community) => ({ id: community.id, label: community.displayName, hint: community.code }));
   }, [activeTab, communities, permissions, roles, users]);
 
-  const activeUser = useMemo(() => users.find((record) => record.id === activeUserId) ?? null, [activeUserId, users]);
+  const activeUser = useMemo(
+    () => users.find((record) => record.id === (focusUserId || activeUserId)) ?? null,
+    [activeUserId, focusUserId, users],
+  );
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+    label:
+      workspaceMode === "new"
+        ? "Usuário: Novo"
+        : activeUser && isUserFormWorkspace
+          ? `Usuário: ${activeUser.displayName}`
+          : "Usuários e Acessos",
+    subtitle: workspaceMode === "new" ? "Novo cadastro" : isUserFormWorkspace ? activeUser?.email ?? null : null,
+  });
   const activeRole = useMemo(() => roles.find((record) => record.id === activeRoleId) ?? null, [activeRoleId, roles]);
   const activePermission = useMemo(
     () => permissions.find((record) => record.id === activePermissionId) ?? null,
@@ -283,7 +321,7 @@ export function AccessWorkspace() {
         canReadPermissions ? apiJson<PermissionRecord[]>("/permissions") : Promise.resolve([]),
         canReadCommunities ? apiJson<CommunityRecord[]>("/communities") : Promise.resolve([]),
       ]);
-      const resolvedActiveUser = userRecords.find((record) => record.id === activeUserId) ?? userRecords[0] ?? null;
+      const resolvedActiveUser = userRecords.find((record) => record.id === (focusUserId || activeUserId)) ?? null;
       const resolvedActiveRole = roleRecords.find((record) => record.id === activeRoleId) ?? roleRecords[0] ?? null;
       const resolvedActivePermission =
         permissionRecords.find((record) => record.id === activePermissionId) ?? permissionRecords[0] ?? null;
@@ -312,29 +350,30 @@ export function AccessWorkspace() {
       }
       setMessage(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Usuários e acessos não puderam ser carregados.");
+      setMessage(describeWorkspaceError(error, "Usuários e acessos não puderam ser carregados."));
     } finally {
       setLoading(false);
     }
   }, [
+    activeCommunityId,
+    activePermissionId,
+    activeRoleId,
+    activeUserId,
     apiJson,
     canReadCommunities,
     canReadPermissions,
     canReadRoles,
     canReadUsers,
+    focusUserId,
     hasAnyPermission,
-    showCreateCommunity,
-    showCreatePermission,
-    showCreateRole,
-    showCreateUser,
-    activeCommunityId,
-    activePermissionId,
-    activeRoleId,
-    activeUserId,
     setActiveCommunityId,
     setActivePermissionId,
     setActiveRoleId,
     setActiveUserId,
+    showCreateCommunity,
+    showCreatePermission,
+    showCreateRole,
+    showCreateUser,
   ]);
 
   const loadUserSummary = useCallback(
@@ -374,12 +413,109 @@ export function AccessWorkspace() {
     setUserDuplicateMatch(null);
   }, []);
 
-  const handleSelectUser = useCallback((user: UserRecord) => {
-    setActiveUserId(user.id);
+  const openCreateWorkspace = useCallback(
+    (name?: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (name?.trim()) {
+        params.set("prefillName", name.trim());
+      }
+      const targetPath = `/admin/access?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, "Usuário: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openEditWorkspace = useCallback(
+    (user: Pick<UserRecord, "id" | "displayName" | "email">) => {
+      const targetPath = `/admin/access?focusUserId=${encodeURIComponent(user.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, `Usuário: ${user.displayName}`, {
+        cloneCurrent: false,
+        subtitle: user.email || null,
+      });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const closeFormWorkspace = useCallback(() => {
+    if (!currentTabId || isMobile) {
+      navigateWithinWorkspace("/admin/access");
+      return;
+    }
+    const closingTabId = currentTabId;
+    openWorkspaceInNewTab("/admin/access", "Usuários e Acessos", { cloneCurrent: false });
+    window.setTimeout(() => {
+      closeWorkspace(closingTabId);
+    }, 0);
+  }, [closeWorkspace, currentTabId, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
+
+  const handleInactivateUser = useCallback(
+    async (user: AccessUserListRecord) => {
+      if (user.status === "inactive") {
+        return;
+      }
+      if (!window.confirm(`Inativar ${user.displayName}? O usuário deixa de entrar no sistema.`)) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const updated = await apiJson<UserRecord>(`/users/${user.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "inactive" }),
+        });
+        setUsers((current) => current.map((record) => (record.id === updated.id ? updated : record)));
+        setMessage(`${user.displayName} foi inativado.`);
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, "O usuário não pôde ser inativado."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson],
+  );
+
+  useEffect(() => {
+    if (workspaceMode !== "new") {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setShowCreateUser(true);
+      setActiveUserId(null);
+      setUserForm({ ...emptyUserForm(), displayName: prefillName.trim() });
+      clearUserDuplicate();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [clearUserDuplicate, prefillName, setActiveUserId, workspaceMode]);
+
+  useEffect(() => {
+    if (!focusUserId || workspaceMode === "new") {
+      return;
+    }
+    const user = users.find((item) => item.id === focusUserId);
+    if (!user) {
+      return;
+    }
     setShowCreateUser(false);
+    setActiveUserId(user.id);
     setUserForm(mapUserToForm(user));
     clearUserDuplicate();
-  }, [clearUserDuplicate, setActiveUserId]);
+  }, [clearUserDuplicate, focusUserId, setActiveUserId, users, workspaceMode]);
+
+  useEffect(() => {
+    if (!isListWorkspace) {
+      return;
+    }
+    setShowCreateUser(false);
+  }, [isListWorkspace]);
 
   const handleUserEmailBlur = useCallback(() => {
     const normalizedEmail = normalizeEmailValue(userForm.email);
@@ -418,9 +554,10 @@ export function AccessWorkspace() {
       setActiveUserId(created.id);
       setShowCreateUser(false);
       setUserForm(mapUserToForm(created));
+      navigateWithinWorkspace(`/admin/access?focusUserId=${encodeURIComponent(created.id)}`);
       setMessage("Usuário criado com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "O usuário não pôde ser criado.");
+      setMessage(describeWorkspaceError(error, "O usuário não pôde ser criado."));
     } finally {
       setSaving(false);
     }
@@ -450,7 +587,7 @@ export function AccessWorkspace() {
       setMessage("Usuário atualizado com sucesso.");
       await loadUserSummary(updated.id);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "O usuário não pôde ser atualizado.");
+      setMessage(describeWorkspaceError(error, "O usuário não pôde ser atualizado."));
     } finally {
       setSaving(false);
     }
@@ -699,126 +836,92 @@ export function AccessWorkspace() {
 
   return (
     <>
-      <section className="hero-card">
-        <div className="eyebrow">Administração</div>
-        <h1 className="title">Usuários e Acessos</h1>
-        <p>Administre usuários, roles, permissions e communities sem sair do fluxo operacional.</p>
-      </section>
+      {isUserFormWorkspace ? (
+        <section className="hero-card">
+          <div className="eyebrow">Administração</div>
+          <h1 className="title">{workspaceMode === "new" ? "Novo usuário" : activeUser?.displayName ?? "Usuário"}</h1>
+          <p>
+            {workspaceMode === "new"
+              ? "Cadastre o usuário em uma aba interna. A lista de Usuários permanece aberta."
+              : "Altere o usuário e vincule papéis, filiais e communities sem perder a lista."}
+          </p>
+        </section>
+      ) : activeTab !== "users" ? (
+        <section className="hero-card">
+          <div className="eyebrow">Administração</div>
+          <h1 className="title">Usuários e Acessos</h1>
+          <p>Administre usuários, roles, permissions e communities sem sair do fluxo operacional.</p>
+        </section>
+      ) : null}
 
       {message ? <WorkspaceFlash message={message} /> : null}
 
-      <section className="mini-card">
-        <div className="workspace-toolbar">
-          <div className="workspace-toolbar__copy">
-            <h3>Navegação operacional</h3>
-            <p>Escolha o domínio de administração e trabalhe no mesmo contexto.</p>
-          </div>
-          <div className="button-row">
-            {(["users", "roles", "permissions", "communities"] as AccessTab[]).map((tab) => (
-              <button
-                key={tab}
-                className={activeTab === tab ? "button" : "button-secondary"}
-                onClick={() => setActiveTab(tab)}
-                type="button"
-              >
-                {tab === "users" ? "Usuários" : tab === "roles" ? "Roles" : tab === "permissions" ? "Permissions" : "Communities"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="filters-grid">
-          <label className="field">
-            <span>Pesquisar</span>
-            <SearchAutocomplete
-              canCreate={
-                activeTab === "users"
-                  ? canWriteUsers
-                  : activeTab === "roles"
-                    ? canWriteRoles
-                    : activeTab === "permissions"
-                      ? canWritePermissions
-                      : canWriteCommunities
-              }
-              onChange={setSearchQuery}
-              onCreate={(name) => {
-                if (activeTab === "users") {
-                  setShowCreateUser(true);
-                  setUserForm({ ...emptyUserForm(), displayName: name });
-                  return;
-                }
-                if (activeTab === "roles") {
-                  setShowCreateRole(true);
-                  setRoleForm({ ...emptyRoleForm(), displayName: name });
-                  return;
-                }
-                if (activeTab === "permissions") {
-                  setShowCreatePermission(true);
-                  setPermissionForm({ ...emptyPermissionForm(), displayName: name });
-                  return;
-                }
-                setShowCreateCommunity(true);
-                setCommunityForm({ ...emptyCommunityForm(), displayName: name });
-              }}
-              options={accessLookupOptions}
-              placeholder="Digite para localizar"
-              value={searchQuery}
-            />
-          </label>
-        </div>
-      </section>
-
-      {activeTab === "users" ? (
-        <section className="workspace-split">
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Usuários</h3>
-                <p>{loading ? "Carregando…" : `${filteredUsers.length} registro(s)`}</p>
-              </div>
-              {canWriteUsers ? (
+      {isListWorkspace ? (
+        <section className="mini-card">
+          <div className="workspace-toolbar">
+            <div className="workspace-toolbar__copy">
+              <h3>Navegação operacional</h3>
+              <p>Escolha o domínio de administração e trabalhe no mesmo contexto.</p>
+            </div>
+            <div className="button-row">
+              {(["users", "roles", "permissions", "communities"] as AccessTab[]).map((tab) => (
                 <button
-                  className="button"
-                  onClick={() => {
-                    setShowCreateUser(true);
-                    setUserForm(emptyUserForm());
-                    clearUserDuplicate();
-                  }}
+                  key={tab}
+                  className={activeTab === tab ? "button" : "button-secondary"}
+                  onClick={() => setActiveTab(tab)}
                   type="button"
                 >
-                  Novo usuário
+                  {tab === "users" ? "Usuários" : tab === "roles" ? "Roles" : tab === "permissions" ? "Permissions" : "Communities"}
                 </button>
-              ) : null}
+              ))}
             </div>
-            <ListTable
-              columns={["Usuário", "Status", "Filial padrão"]}
-              emptyMessage="Nenhum usuário encontrado."
-              rows={filteredUsers.map((user) => ({
-                id: user.id,
-                active: user.id === activeUserId,
-                cells: [
-                  <div key={`${user.id}-summary`}>
-                    <strong>{user.displayName}</strong>
-                    <div className="table-subtle">{user.email}</div>
-                  </div>,
-                  <span key={`${user.id}-status`} className={`status-chip status-chip--${user.status === "inactive" ? "inactive" : "active"}`}>
-                    {user.status}
-                  </span>,
-                  branches.find((branch) => branch.id === user.defaultBranchId)?.displayName ?? "—",
-                ],
-                onClick: () => {
-                  handleSelectUser(user);
-                },
-              }))}
-            />
-          </article>
+          </div>
+          {activeTab !== "users" ? (
+            <div className="filters-grid">
+              <label className="field">
+                <span>Pesquisar</span>
+                <SearchAutocomplete
+                  canCreate={
+                    activeTab === "roles" ? canWriteRoles : activeTab === "permissions" ? canWritePermissions : canWriteCommunities
+                  }
+                  onChange={setSearchQuery}
+                  onCreate={(name) => {
+                    if (activeTab === "roles") {
+                      setShowCreateRole(true);
+                      setRoleForm({ ...emptyRoleForm(), displayName: name });
+                      return;
+                    }
+                    if (activeTab === "permissions") {
+                      setShowCreatePermission(true);
+                      setPermissionForm({ ...emptyPermissionForm(), displayName: name });
+                      return;
+                    }
+                    setShowCreateCommunity(true);
+                    setCommunityForm({ ...emptyCommunityForm(), displayName: name });
+                  }}
+                  options={accessLookupOptions}
+                  placeholder="Digite para localizar"
+                  value={searchQuery}
+                />
+              </label>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
-          <article className="mini-card">
+      {isUserFormWorkspace ? (
+        <section className="workspace-stack">
+          <article className="mini-card cadastro-form">
             <div className="workspace-toolbar__copy">
-              <h3>{showCreateUser ? "Criar usuário" : "Visualizar / editar usuário"}</h3>
-              <p>{showCreateUser ? "Cadastre o usuário e retorne ao mesmo fluxo." : "Visualize e ajuste o usuário selecionado."}</p>
+              <h3>{showCreateUser || workspaceMode === "new" ? "Novo usuário" : activeUser?.displayName ?? "Alterar usuário"}</h3>
+              <p>
+                {showCreateUser || workspaceMode === "new"
+                  ? "Cadastre o usuário e retorne à lista."
+                  : "Visualize e ajuste o usuário selecionado."}
+              </p>
             </div>
 
-            {showCreateUser ? (
+            {showCreateUser || workspaceMode === "new" ? (
               <form className="form-grid" onSubmit={handleCreateUser}>
                 <UserFormFields
                   duplicateGuard={
@@ -837,8 +940,8 @@ export function AccessWorkspace() {
                         setUserForm((current) => ({ ...current, email: "" }));
                         clearUserDuplicate();
                       }}
-                      onEdit={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
-                      onView={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                      onEdit={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
+                      onView={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
                       status={userDuplicateStatus}
                     />
                   }
@@ -855,9 +958,9 @@ export function AccessWorkspace() {
                 />
                 <div className="button-row">
                   <button className="button" disabled={saving || userDuplicateStatus !== "idle"} type="submit">
-                    {saving ? "Salvando…" : "Salvar usuário"}
+                    {saving ? "Salvando…" : "Salvar"}
                   </button>
-                  <button className="button-secondary" onClick={() => setShowCreateUser(false)} type="button">
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
                     Cancelar
                   </button>
                 </div>
@@ -897,8 +1000,8 @@ export function AccessWorkspace() {
                           setUserForm((current) => ({ ...current, email: activeUser.email }));
                           clearUserDuplicate();
                         }}
-                        onEdit={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
-                        onView={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                        onEdit={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
+                        onView={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
                         status={userDuplicateStatus}
                       />
                     }
@@ -915,6 +1018,9 @@ export function AccessWorkspace() {
                   <div className="button-row">
                     <button className="button" disabled={saving || !canWriteUsers || userDuplicateStatus !== "idle"} type="submit">
                       {saving ? "Salvando…" : "Salvar alterações"}
+                    </button>
+                    <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                      Cancelar
                     </button>
                   </div>
                 </form>
@@ -1010,13 +1116,78 @@ export function AccessWorkspace() {
                 </div>
               </div>
             ) : (
-              <div className="empty-state">Selecione um usuário para visualizar os detalhes.</div>
+              <div className="empty-state">O usuário desta aba não foi encontrado.</div>
             )}
           </article>
         </section>
+      ) : isListWorkspace && activeTab === "users" ? (
+        <CadastroListPanel
+          applyFilters={applyAccessUserListFilters}
+          buildEmailCsv={buildAccessUserEmailCsv}
+          buildExcelCsv={buildAccessUserExcelCsv}
+          canInactivate={(row) => row.status !== "inactive"}
+          canWrite={canWriteUsers}
+          columnStorageKey="anexsys.frontend.access-users.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "Nome",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.displayName}</strong>
+                  <div className="table-subtle">{row.email}</div>
+                </>
+              ),
+            },
+            { id: "email", label: "E-mail", render: (row) => row.email },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => (
+                <span className={`status-chip status-chip--${row.status === "inactive" ? "inactive" : "active"}`}>
+                  {userStatusLabel(row.status)}
+                </span>
+              ),
+            },
+            { id: "branch", label: "Filial padrão", render: (row) => row.defaultBranchLabel ?? "—" },
+          ]}
+          defaultColumnIds={["name", "status", "branch"]}
+          emailFileName="usuarios-emails.csv"
+          emptyFilters={{ name: "", email: "", status: "" }}
+          emptyMessage="Nenhum usuário encontrado para os filtros informados."
+          excelFileName="usuarios.csv"
+          filterFields={[
+            { id: "name", label: "Nome", lookup: true, placeholder: "Nome já cadastrado" },
+            { id: "email", label: "E-mail", placeholder: "E-mail já cadastrado" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "active", label: "Ativo" },
+                { value: "invited", label: "Convidado" },
+                { value: "inactive", label: "Inativo" },
+              ],
+            },
+          ]}
+          loading={loading}
+          onCreate={openCreateWorkspace}
+          onEdit={openEditWorkspace}
+          onInactivate={(row) => {
+            void handleInactivateUser(row);
+          }}
+          records={userListRecords}
+          rowLabel={(row) => row.displayName}
+          searchKey="name"
+          searchOptions={userLookupOptions}
+          searchPlaceholder="Buscar por nome"
+          title="Usuários"
+        />
       ) : null}
 
-      {activeTab === "roles" ? (
+      {isListWorkspace && activeTab === "roles" ? (
         <section className="workspace-split">
           <article className="mini-card">
             <div className="workspace-toolbar">
@@ -1120,7 +1291,7 @@ export function AccessWorkspace() {
         </section>
       ) : null}
 
-      {activeTab === "permissions" ? (
+      {isListWorkspace && activeTab === "permissions" ? (
         <section className="workspace-split">
           <article className="mini-card">
             <div className="workspace-toolbar">
@@ -1197,7 +1368,7 @@ export function AccessWorkspace() {
         </section>
       ) : null}
 
-      {activeTab === "communities" ? (
+      {isListWorkspace && activeTab === "communities" ? (
         <section className="workspace-split">
           <article className="mini-card">
             <div className="workspace-toolbar">
