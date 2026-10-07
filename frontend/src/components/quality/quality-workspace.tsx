@@ -13,9 +13,11 @@ import {
   type QualityListRecord,
 } from "@/components/quality/quality-list";
 import { printProductionOrderDocument, reservePrintWindow, type OpPrintView } from "@/components/service-orders/os-documents";
+import { type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { osPaymentConditionLabel } from "@/components/service-orders/service-order-workspace-view-model";
 import { osStatusLabel } from "@/components/service-orders/os-list";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 
 type QualityPiece = {
@@ -59,6 +61,7 @@ export function QualityWorkspace() {
   const { closeWorkspace } = useWorkspaceManager();
   const canRead = hasAnyPermission("quality.read");
   const canWrite = hasAnyPermission("quality.write");
+  const canReadProduction = hasAnyPermission("production_orders.read");
   const focusRecordId = searchParams.get("focusRecordId");
   const isListWorkspace = !focusRecordId;
 
@@ -136,6 +139,53 @@ export function QualityWorkspace() {
       openWorkspaceInNewTab(targetPath, `Qualidade ${row.orderNo}`, { cloneCurrent: false });
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const reprintProductionOrder = useCallback(
+    async (serviceOrderId: string, productionOrderId?: string) => {
+      try {
+        let resolvedProductionOrderId = productionOrderId ?? "";
+        if (!resolvedProductionOrderId) {
+          const existing = await apiJson<{ productionOrder: { id: string } }>(
+            `/service-orders/${serviceOrderId}/production-order`,
+          );
+          resolvedProductionOrderId = existing.productionOrder.id;
+        }
+        const view = await apiJson<OpPrintView>(`/production-orders/${resolvedProductionOrderId}/print-view`);
+        let paymentCondition = osPaymentConditionLabel(null);
+        try {
+          const summary = await apiJson<OsFinancialSummary>(`/service-orders/${serviceOrderId}/financial-summary`);
+          paymentCondition = osPaymentConditionLabel(summary.paymentStatus);
+        } catch {
+          /* a OP sai mesmo se o financeiro não puder ser lido */
+        }
+        printProductionOrderDocument(view, companyName, undefined, paymentCondition);
+        setMessage(`Ordem de produção ${view.serviceOrder.orderNo} enviada para impressão, sem valores.`);
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, "A Ordem de Produção não pôde ser reimpressa."));
+      }
+    },
+    [apiJson, companyName],
+  );
+
+  const buildQualityRowMenu = useCallback(
+    (row: Pick<QualityListRecord, "id" | "orderNo" | "productionOrderId">): RowMenuItem[] => [
+      {
+        id: "print",
+        label: "Imprimir",
+        children: [
+          {
+            id: "print-op",
+            label: "Ordem de produção (sem valores)",
+            disabled: !canReadProduction,
+            onSelect: () => {
+              void reprintProductionOrder(row.id, row.productionOrderId);
+            },
+          },
+        ],
+      },
+    ],
+    [canReadProduction, reprintProductionOrder],
   );
 
   const printReworkIfNeeded = useCallback(
@@ -254,6 +304,7 @@ export function QualityWorkspace() {
           onCreate={() => undefined}
           onEdit={openReview}
           editLabel="Revisar"
+          rowMenu={buildQualityRowMenu}
           records={records}
           rowLabel={(row) => row.orderNo}
           searchKey="name"
@@ -296,6 +347,14 @@ export function QualityWorkspace() {
               >
                 Voltar
               </button>
+              <RowOverflowMenu
+                items={buildQualityRowMenu({
+                  id: review.serviceOrder.id,
+                  orderNo: review.serviceOrder.orderNo,
+                  productionOrderId: review.productionOrder.id,
+                })}
+                label={`Opções da OP ${review.serviceOrder.orderNo}`}
+              />
             </div>
           </div>
 

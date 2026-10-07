@@ -421,7 +421,7 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 ## 17. Controle de qualidade peça a peça (07/10/2026)
 
 - Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com Produto, Serviço, Serviço a realizar, marca/modelo/série.
-- O botão da grade é **Revisar**, não Alterar.
+- O botão da grade é **Revisar**, não Alterar. A reimpressão da OP fica no **⋮** de cada linha, no mesmo padrão da grade da OS, para o caso da impressão falhar.
 - Enquanto o QR não existir, a lista mostra as **OP com sacola fechada** (mesmo com status Aberta), para homologar o fluxo. Quando as leituras de QR existirem, a lista passará a trazer só o status **Controle de qualidade**.
 - Dois botões por peça: **Aprovado** e **Reprovado** (motivo em texto livre).
 - Se **todas** as peças da OS estão aprovadas, o status vai para **Pronto para retirada**.

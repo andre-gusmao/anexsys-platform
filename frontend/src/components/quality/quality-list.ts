@@ -8,6 +8,7 @@ export type QualityListRecord = {
   promisedDeliveryDate: string;
   versionNo: number;
   bagClosed?: boolean;
+  productionOrderId?: string;
   productionNo?: string;
 };
 
