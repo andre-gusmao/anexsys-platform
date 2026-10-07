@@ -325,6 +325,41 @@ export function CompaniesWorkspace() {
     }
   }
 
+  const handleInactivateConta = useCallback(
+    async (company: Pick<CompanyRecord, "id" | "displayName" | "status">) => {
+      if (company.status === "inactive") {
+        return;
+      }
+      if (company.id !== session?.tenantId) {
+        setMessage("Só é possível inativar a Conta do contexto ativo.");
+        return;
+      }
+      if (!window.confirm(`Inativar ${company.displayName}? Ela some do combo, mas continua na lista.`)) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(`/tenants/${company.id}/dependency-check?action=deactivate`);
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return;
+        }
+        const updatedResponse = await apiJson<CompanyApiRecord>(`/tenants/${company.id}/deactivate`, { method: "POST" });
+        const updated = normalizeCompanyRecord(updatedResponse, 0, { fallbackId: company.id });
+        setCompanies((current) => current.map((record) => (record.id === company.id ? updated : record)));
+        setMessage(`${company.displayName} foi inativada.`);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "A conta não pôde ser inativada.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, session?.tenantId],
+  );
+
   if (!canRead) {
     return (
       <section className="mini-card">
@@ -399,8 +434,12 @@ export function CompaniesWorkspace() {
             },
           ]}
           loading={loading}
+          canInactivate={(row) => row.status !== "inactive" && row.id === session?.tenantId}
           onCreate={openCreateWorkspace}
           onEdit={openEditWorkspace}
+          onInactivate={(row) => {
+            void handleInactivateConta(row);
+          }}
           records={companies}
           rowLabel={(row) => row.displayName}
           searchKey="name"

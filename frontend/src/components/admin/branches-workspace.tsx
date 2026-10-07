@@ -315,6 +315,36 @@ export function BranchesWorkspace() {
     }
   }
 
+  const handleInactivateBranch = useCallback(
+    async (branch: BranchRecord) => {
+      if (branch.status === "inactive") {
+        return;
+      }
+      if (!window.confirm(`Inativar ${branch.displayName}? Ela some do combo, mas continua na lista.`)) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(`/branches/${branch.id}/dependency-check?action=deactivate`);
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return;
+        }
+        const updated = await apiJson<BranchRecord>(`/branches/${branch.id}/deactivate`, { method: "POST" });
+        setBranches((current) => current.map((record) => (record.id === updated.id ? updated : record)));
+        setMessage(`${branch.displayName} foi inativada.`);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "A filial não pôde ser inativada.");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson],
+  );
+
   if (!canRead) {
     return (
       <section className="mini-card">
@@ -390,8 +420,12 @@ export function BranchesWorkspace() {
             },
           ]}
           loading={loading}
+          canInactivate={(row) => row.status !== "inactive"}
           onCreate={openCreateWorkspace}
           onEdit={openEditWorkspace}
+          onInactivate={(row) => {
+            void handleInactivateBranch(row);
+          }}
           records={branches}
           rowLabel={(row) => row.displayName}
           searchKey="name"

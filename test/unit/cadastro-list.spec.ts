@@ -4,7 +4,16 @@ import { applyFilialListFilters, buildFilialExcelCsv } from '../../frontend/src/
 import { applyContaListFilters, buildContaExcelCsv } from '../../frontend/src/components/admin/conta-list';
 import { applyOsListFilters, buildOsExcelCsv } from '../../frontend/src/components/service-orders/os-list';
 import { applyMeasurementListFilters, buildMeasurementExcelCsv } from '../../frontend/src/components/measurements/measurement-list';
-import { applyAccessUserListFilters, buildAccessUserExcelCsv } from '../../frontend/src/components/admin/access-list';
+import {
+  applyAccessCommunityListFilters,
+  applyAccessPermissionListFilters,
+  applyAccessRoleListFilters,
+  applyAccessUserListFilters,
+  buildAccessCommunityExcelCsv,
+  buildAccessPermissionExcelCsv,
+  buildAccessRoleExcelCsv,
+  buildAccessUserExcelCsv,
+} from '../../frontend/src/components/admin/access-list';
 
 test('filters filiais by name, code and status', () => {
   const filiais = [
@@ -58,4 +67,26 @@ test('filters access users by name, email and status', () => {
   assert.deepEqual(applyAccessUserListFilters(users, { name: '', email: 'ana@', status: '' }).map((item) => item.id), ['1']);
   assert.deepEqual(applyAccessUserListFilters(users, { name: '', email: '', status: 'inactive' }).map((item) => item.id), ['2']);
   assert.match(buildAccessUserExcelCsv([users[0]]), /Ana Silva/);
+});
+
+test('filters access roles, permissions and communities', () => {
+  const roles = [
+    { id: '1', code: 'ADMIN', displayName: 'Administrador', description: null, status: 'active' as const, isSystemManaged: true },
+    { id: '2', code: 'ATEND', displayName: 'Atendente', description: null, status: 'inactive' as const, isSystemManaged: false },
+  ];
+  const permissions = [
+    { id: '1', code: 'users.read', displayName: 'Ler usuários', description: null },
+    { id: '2', code: 'roles.write', displayName: 'Escrever papéis', description: null },
+  ];
+  const communities = [
+    { id: '1', code: 'COSTURA', displayName: 'Costura', description: null, status: 'active' as const },
+    { id: '2', code: 'CORTE', displayName: 'Corte', description: null, status: 'inactive' as const },
+  ];
+  assert.deepEqual(applyAccessRoleListFilters(roles, { name: 'atend', code: '', status: '' }).map((item) => item.id), ['2']);
+  assert.deepEqual(applyAccessRoleListFilters(roles, { name: '', code: '', status: 'inactive' }).map((item) => item.id), ['2']);
+  assert.deepEqual(applyAccessPermissionListFilters(permissions, { name: 'papéis', code: '' }).map((item) => item.id), ['2']);
+  assert.deepEqual(applyAccessCommunityListFilters(communities, { name: '', code: 'corte', status: '' }).map((item) => item.id), ['2']);
+  assert.match(buildAccessRoleExcelCsv([roles[0]]), /Administrador/);
+  assert.match(buildAccessPermissionExcelCsv([permissions[0]]), /users.read/);
+  assert.match(buildAccessCommunityExcelCsv([communities[0]]), /Costura/);
 });
