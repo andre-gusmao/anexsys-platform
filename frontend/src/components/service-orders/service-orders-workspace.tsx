@@ -34,6 +34,7 @@ import {
   getVisibleServiceOrderItemGridRows,
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
+  osPaymentConditionLabel,
   removeServiceOrderItemGridRow,
   runClosedBagCommit,
   updateServiceOrderItemGridRow,
@@ -218,6 +219,7 @@ export function ServiceOrdersWorkspace() {
   const [services, setServices] = useState<CatalogLookupRecord[]>([]);
   const [users, setUsers] = useState<ActorSummary[]>([]);
   const [payTarget, setPayTarget] = useState<{ orderNo: string; summary: OsFinancialSummary } | null>(null);
+  const [paymentSummary, setPaymentSummary] = useState<OsFinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -401,6 +403,20 @@ export function ServiceOrdersWorkspace() {
           const mapped = mapServiceOrderItemsToGridRows(response.items);
           setItemRows(mapped.length > 0 ? mapped : [createEmptyServiceOrderItemGridRow(1)]);
         }
+        if (canReadFinance || canWriteFinance) {
+          try {
+            const summary = await apiJson<OsFinancialSummary>(`/service-orders/${serviceOrderId}/financial-summary`);
+            if (latestDetailRequestId.current === requestId) {
+              setPaymentSummary(summary);
+            }
+          } catch {
+            if (latestDetailRequestId.current === requestId) {
+              setPaymentSummary(null);
+            }
+          }
+        } else {
+          setPaymentSummary(null);
+        }
         if (focusServiceOrderId !== serviceOrderId || workspaceMode === "new") {
           navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(serviceOrderId)}`);
         }
@@ -418,7 +434,7 @@ export function ServiceOrdersWorkspace() {
         }
       }
     },
-    [apiJson, focusServiceOrderId, navigateWithinWorkspace, setHeaderForm, setItemRows, showCreateForm, workspaceMode],
+    [apiJson, canReadFinance, canWriteFinance, focusServiceOrderId, navigateWithinWorkspace, setHeaderForm, setItemRows, showCreateForm, workspaceMode],
   );
 
   const loadOrders = useCallback(
@@ -586,10 +602,18 @@ export function ServiceOrdersWorkspace() {
         productionOrderId = created.productionOrder.id;
       }
       const view = await apiJson<OpPrintView>(`/production-orders/${productionOrderId}/print-view`);
-      printProductionOrderDocument(view, companyName, reservedWindow);
+      let paymentCondition = osPaymentConditionLabel(paymentSummary?.paymentStatus);
+      try {
+        const summary = await apiJson<OsFinancialSummary>(`/service-orders/${serviceOrderId}/financial-summary`);
+        paymentCondition = osPaymentConditionLabel(summary.paymentStatus);
+        setPaymentSummary(summary);
+      } catch {
+        /* a OP sai mesmo se o financeiro não puder ser lido; parcial e em aberto = Pago na retirada */
+      }
+      printProductionOrderDocument(view, companyName, reservedWindow, paymentCondition);
       return view;
     },
-    [apiJson, canWriteProduction, companyName],
+    [apiJson, canWriteProduction, companyName, paymentSummary?.paymentStatus],
   );
 
   const resendWhatsApp = useCallback(
@@ -779,12 +803,14 @@ export function ServiceOrdersWorkspace() {
     setShowCreateForm(false);
     setActiveOrderId(null);
     setDetails(null);
+    setPaymentSummary(null);
   }, [isListWorkspace, setActiveOrderId, setShowCreateForm]);
 
   const openCreateForm = useCallback(() => {
     setShowCreateForm(true);
     setDetails(null);
     setActiveOrderId(null);
+    setPaymentSummary(null);
     setHeaderForm(createEmptyHeaderForm(session?.user?.id ?? ""));
     setItemRows([createEmptyServiceOrderItemGridRow(1)]);
     setMessage(null);
@@ -884,6 +910,9 @@ export function ServiceOrdersWorkspace() {
       if (!row.itemType.trim() || !row.description.trim()) {
         return "Cada peça precisa de produto e serviço antes de salvar.";
       }
+      if (!row.brand.trim() || !row.model.trim() || !row.serialNo.trim()) {
+        return "Cada peça precisa de marca, modelo e série.";
+      }
       if (Number(row.quantity) !== 1) {
         return "Cada linha é uma peça. A quantidade fica em 1.";
       }
@@ -968,6 +997,9 @@ export function ServiceOrdersWorkspace() {
           serviceId: item.serviceId,
           description: item.description,
           complement: item.complement,
+          brand: item.brand,
+          model: item.model,
+          serialNo: item.serialNo,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discountValue: item.discountValue,
@@ -1311,6 +1343,7 @@ export function ServiceOrdersWorkspace() {
             onClose={() => setPayTarget(null)}
             onPaid={(summary) => {
               setPayTarget({ orderNo: payTarget.orderNo, summary });
+              setPaymentSummary(summary);
               setMessage(
                 Number(summary.outstandingBalance) <= 0
                   ? `Pagamento da OS ${payTarget.orderNo} registrado. A OS está quitada.`
@@ -1597,7 +1630,7 @@ export function ServiceOrdersWorkspace() {
                   <div className="workspace-toolbar__copy">
                     <h4>Serviços e mão de obra</h4>
                     <p>
-                      Cada linha é uma peça (quantidade 1). Até {maxPiecesPerBag} peças nesta versão. Fechar trava;
+                      Cada linha é uma peça (quantidade 1). Marca, modelo e série são obrigatórios. Até {maxPiecesPerBag} peças nesta versão. Fechar trava;
                       Abrir sacola desfaz. Salvar com a sacola fechada imprime a OP.
                     </p>
                   </div>
@@ -1613,7 +1646,9 @@ export function ServiceOrdersWorkspace() {
                         <th>Produto</th>
                         <th>Serviço</th>
                         <th>Complemento</th>
-                        <th>Qtd</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Série</th>
                         <th>Valor</th>
                         <th>Desconto</th>
                         <th>Subtotal</th>
@@ -1718,10 +1753,43 @@ export function ServiceOrdersWorkspace() {
                             <td>
                               <input
                                 className="os-item-input"
-                                disabled
-                                readOnly
-                                title="Cada linha é uma peça"
-                                value="1"
+                                disabled={!editable}
+                                placeholder="Marca"
+                                required
+                                value={row.brand}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { brand: event.target.value }),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className="os-item-input"
+                                disabled={!editable}
+                                placeholder="Modelo"
+                                required
+                                value={row.model}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { model: event.target.value }),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className="os-item-input"
+                                disabled={!editable}
+                                placeholder="Série"
+                                required
+                                value={row.serialNo}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { serialNo: event.target.value }),
+                                  )
+                                }
                               />
                             </td>
                             <td>
@@ -1792,7 +1860,7 @@ export function ServiceOrdersWorkspace() {
                       })}
                       {visibleItemRows.length === 0 ? (
                         <tr>
-                          <td colSpan={8}>
+                          <td colSpan={10}>
                             <div className="empty-state">Nenhuma peça na grade. Use Adicionar peça para continuar.</div>
                           </td>
                         </tr>
@@ -1868,6 +1936,10 @@ export function ServiceOrdersWorkspace() {
                     <span>Valor total</span>
                     <input disabled value={formatOsMoney(Number(selectedOrder?.totalValue ?? laborTotal))} />
                   </label>
+                  <label className="field">
+                    <span>Condição</span>
+                    <input disabled value={osPaymentConditionLabel(paymentSummary?.paymentStatus)} />
+                  </label>
                 </div>
               </div>
 
@@ -1906,6 +1978,7 @@ export function ServiceOrdersWorkspace() {
                   onClose={() => setPayTarget(null)}
                   onPaid={(summary) => {
                     setPayTarget({ orderNo: selectedOrder.orderNo, summary });
+                    setPaymentSummary(summary);
                     setMessage(
                       Number(summary.outstandingBalance) <= 0
                         ? "Pagamento registrado. A OS está quitada."

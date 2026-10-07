@@ -30,15 +30,32 @@ export type OsPrintView = {
 
 export type OpPrintView = {
   productionNo: string;
-  serviceOrder: { orderNo: string };
-  customer: { legalName: string };
+  serviceOrder: {
+    orderNo: string;
+    openedAt?: string;
+    promisedDeliveryDate?: string;
+    promisedDeliveryTime?: string | null;
+  };
+  customer: {
+    legalName: string;
+    phone?: string | null;
+    email?: string | null;
+    cpfCnpj?: string | null;
+    street?: string | null;
+    number?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postalCode?: string | null;
+  };
   pieceDescription: string | null;
   instructions: string | null;
   items: Array<{
     itemType: string;
     description: string;
     complement?: string | null;
-    quantity: string;
+    brand?: string | null;
+    model?: string | null;
+    serialNo?: string | null;
   }>;
   qrCode: { codeValue: string; reissueNo: number } | null;
 };
@@ -80,7 +97,85 @@ export function reservePrintWindow() {
   return popup;
 }
 
-function writePrintWindow(popup: Window | null, title: string, body: string) {
+const DEFAULT_PRINT_CSS = `
+  body { font-family: Arial, Helvetica, sans-serif; color: #162033; margin: 24px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p, td, th { font-size: 13px; }
+  .muted { color: #667085; margin: 0 0 16px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th, td { border-bottom: 1px solid #d7dfeb; text-align: left; padding: 8px 6px; vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #667085; }
+  .total { font-size: 18px; text-align: right; }
+  .notes { border: 1px solid #d7dfeb; padding: 12px; white-space: pre-wrap; }
+  .qr { margin-top: 24px; text-align: center; }
+  .qr strong { display: block; font-size: 20px; letter-spacing: .08em; margin-top: 8px; }
+  @media print { button { display: none; } body { margin: 12px; } }
+`;
+
+const OP_A5_PRINT_CSS = `
+  @page { size: A5 portrait; margin: 8mm; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #162033; background: #fff; }
+  .op-sheet {
+    box-sizing: border-box;
+    width: 148mm;
+    min-height: 210mm;
+    padding: 8mm;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .op-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .op-company { font-size: 13px; font-weight: 700; margin: 0; }
+  .op-entry { font-size: 11px; color: #667085; text-align: right; margin: 0; }
+  .op-entry strong { display: block; color: #162033; font-size: 12px; }
+  .op-title {
+    margin: 0;
+    padding: 6px 0;
+    border-top: 2px solid #162033;
+    border-bottom: 2px solid #162033;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .op-customer { font-size: 12px; margin: 0; }
+  .op-customer strong { font-size: 14px; }
+  .op-items { display: grid; gap: 8px; }
+  .op-item { padding-bottom: 8px; border-bottom: 1px solid #d7dfeb; }
+  .op-item__line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+  .op-item__product { font-size: 12px; color: #344054; }
+  .op-item__service { font-size: 16px; font-weight: 700; line-height: 1.2; }
+  .op-item__equip, .op-item__complement { font-size: 11px; color: #667085; margin-top: 2px; }
+  .op-pay {
+    margin: 4px 0 0;
+    padding: 8px 10px;
+    border: 1px solid #162033;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .op-shelf {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    padding-top: 10px;
+    border-top: 2px solid #162033;
+  }
+  .op-shelf__label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #667085; }
+  .op-shelf__when { display: flex; align-items: flex-end; gap: 4px; line-height: .85; }
+  .op-shelf__day { font-size: 92px; font-weight: 900; letter-spacing: -.06em; }
+  .op-shelf__month { font-size: 28px; font-weight: 700; padding-bottom: 10px; }
+  .op-shelf__qr { text-align: center; }
+  .op-shelf__os { display: block; font-size: 20px; font-weight: 800; letter-spacing: .04em; margin-bottom: 6px; }
+  .op-shelf__qr img { display: block; width: 28mm; height: 28mm; margin: 0 auto; }
+  @media print { body { margin: 0; } }
+`;
+
+function writePrintWindow(popup: Window | null, title: string, body: string, css = DEFAULT_PRINT_CSS) {
   if (!popup) {
     throw new Error(
       "O navegador bloqueou a janela de impressão. Permita pop-ups para este site e reimprima a OP pelo menu ⋮.",
@@ -93,18 +188,7 @@ function writePrintWindow(popup: Window | null, title: string, body: string) {
     <meta charset="utf-8" />
     <title>${escapeHtml(title)}</title>
     <style>
-      body { font-family: Arial, Helvetica, sans-serif; color: #162033; margin: 24px; }
-      h1 { font-size: 22px; margin: 0 0 6px; }
-      p, td, th { font-size: 13px; }
-      .muted { color: #667085; margin: 0 0 16px; }
-      table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-      th, td { border-bottom: 1px solid #d7dfeb; text-align: left; padding: 8px 6px; vertical-align: top; }
-      th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #667085; }
-      .total { font-size: 18px; text-align: right; }
-      .notes { border: 1px solid #d7dfeb; padding: 12px; white-space: pre-wrap; }
-      .qr { margin-top: 24px; text-align: center; }
-      .qr strong { display: block; font-size: 20px; letter-spacing: .08em; margin-top: 8px; }
-      @media print { button { display: none; } body { margin: 12px; } }
+      ${css}
     </style>
   </head>
   <body>
@@ -115,8 +199,88 @@ function writePrintWindow(popup: Window | null, title: string, body: string) {
   popup.document.close();
 }
 
-function openPrintWindow(title: string, body: string, reservedWindow?: Window | null) {
-  writePrintWindow(reservedWindow === undefined ? reservePrintWindow() : reservedWindow, title, body);
+function openPrintWindow(title: string, body: string, reservedWindow?: Window | null, css?: string) {
+  writePrintWindow(reservedWindow === undefined ? reservePrintWindow() : reservedWindow, title, body, css);
+}
+
+export function opShelfDateParts(promisedDeliveryDate?: string | null) {
+  if (!promisedDeliveryDate) {
+    return { day: "—", month: "—" };
+  }
+  const isoDate = promisedDeliveryDate.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+    return { day: isoDate.slice(8, 10), month: isoDate.slice(5, 7) };
+  }
+  const parsed = new Date(promisedDeliveryDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return { day: "—", month: "—" };
+  }
+  return {
+    day: String(parsed.getDate()).padStart(2, "0"),
+    month: String(parsed.getMonth() + 1).padStart(2, "0"),
+  };
+}
+
+function formatCustomerAddress(customer: OpPrintView["customer"]) {
+  return [customer.street, customer.number, customer.city, customer.state, customer.postalCode]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function buildProductionOrderPrintHtml(
+  view: OpPrintView,
+  companyName: string,
+  paymentCondition = "Pago na retirada",
+) {
+  const shelf = opShelfDateParts(view.serviceOrder.promisedDeliveryDate);
+  const qr = view.qrCode?.codeValue ?? "";
+  const orderNo = view.serviceOrder.orderNo;
+  const address = formatCustomerAddress(view.customer);
+  const items = view.items
+    .map((item) => {
+      const equipment = [item.brand, item.model, item.serialNo].map((part) => part?.trim()).filter(Boolean).join(" · ");
+      return `<div class="op-item">
+        <div class="op-item__line">
+          <span class="op-item__product">${escapeHtml(item.itemType)}</span>
+          <span class="op-item__service">${escapeHtml(item.description)}</span>
+        </div>
+        ${item.complement ? `<div class="op-item__complement">${escapeHtml(item.complement)}</div>` : ""}
+        ${equipment ? `<div class="op-item__equip">${escapeHtml(equipment)}</div>` : ""}
+      </div>`;
+    })
+    .join("");
+
+  return `<article class="op-sheet">
+    <header class="op-head">
+      <p class="op-company">${escapeHtml(companyName)}</p>
+      <p class="op-entry">Entrada<strong>${escapeHtml(formatDate(view.serviceOrder.openedAt))}</strong></p>
+    </header>
+    <h1 class="op-title">Ordem de produção</h1>
+    <p class="op-customer">Cliente: <strong>${escapeHtml(view.customer.legalName)}</strong>
+      ${address ? `<br />${escapeHtml(address)}` : ""}
+      ${view.customer.phone ? `<br />${escapeHtml(view.customer.phone)}` : ""}
+    </p>
+    <section class="op-items">${items}</section>
+    <p class="op-pay">${escapeHtml(paymentCondition)}</p>
+    <footer class="op-shelf">
+      <div>
+        <span class="op-shelf__label">Previsão de entrega</span>
+        <div class="op-shelf__when">
+          <span class="op-shelf__day">${escapeHtml(shelf.day)}</span>
+          <span class="op-shelf__month">/${escapeHtml(shelf.month)}</span>
+        </div>
+      </div>
+      <div class="op-shelf__qr">
+        <strong class="op-shelf__os">${escapeHtml(orderNo)}</strong>
+        ${
+          qr
+            ? `<img alt="QR da OS ${escapeHtml(orderNo)}" height="120" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qr)}" width="120" />`
+            : ""
+        }
+      </div>
+    </footer>
+  </article>`;
 }
 
 export function printServiceOrderDocument(view: OsPrintView, companyName: string, reservedWindow?: Window | null) {
@@ -151,32 +315,17 @@ export function printServiceOrderDocument(view: OsPrintView, companyName: string
   );
 }
 
-export function printProductionOrderDocument(view: OpPrintView, companyName: string, reservedWindow?: Window | null) {
-  const rows = view.items
-    .map(
-      (item) => `<tr>
-        <td>${escapeHtml(item.itemType)}</td>
-        <td>${escapeHtml(item.description)}</td>
-        <td>${escapeHtml(item.complement)}</td>
-        <td>${escapeHtml(item.quantity)}</td>
-      </tr>`,
-    )
-    .join("");
-  const qr = view.qrCode?.codeValue ?? "";
-
+export function printProductionOrderDocument(
+  view: OpPrintView,
+  companyName: string,
+  reservedWindow?: Window | null,
+  paymentCondition = "Pago na retirada",
+) {
   openPrintWindow(
     `OP ${view.productionNo}`,
-    `<p class="muted">${escapeHtml(companyName)}</p>
-     <h1>Ordem de produção ${escapeHtml(view.productionNo)}</h1>
-     <p>OS ${escapeHtml(view.serviceOrder.orderNo)} · Cliente: <strong>${escapeHtml(view.customer.legalName)}</strong></p>
-     <p>Este documento não mostra valores. É o papel da sacola para o técnico.</p>
-     <table>
-       <thead><tr><th>Produto</th><th>Serviço</th><th>Complemento</th><th>Qtd</th></tr></thead>
-       <tbody>${rows}</tbody>
-     </table>
-     ${view.pieceDescription ? `<p>${escapeHtml(view.pieceDescription)}</p>` : ""}
-     ${qr ? `<div class="qr"><img alt="QR da OS" height="180" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qr)}" width="180" /><strong>${escapeHtml(qr)}</strong></div>` : ""}`,
+    buildProductionOrderPrintHtml(view, companyName, paymentCondition),
     reservedWindow,
+    OP_A5_PRINT_CSS,
   );
 }
 

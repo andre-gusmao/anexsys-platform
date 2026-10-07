@@ -51,6 +51,15 @@ class CreateServiceOrderItemBody {
   @IsString()
   complement?: string;
 
+  @IsString()
+  brand!: string;
+
+  @IsString()
+  model!: string;
+
+  @IsString()
+  serialNo!: string;
+
   @Type(() => Number)
   @IsNumber()
   @Min(0.0001)
@@ -251,6 +260,18 @@ class UpdateServiceOrderItemBody {
   @IsOptional()
   @IsString()
   complement?: string | null;
+
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNo?: string;
 
   @Type(() => Number)
   @IsOptional()

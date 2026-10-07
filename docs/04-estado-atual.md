@@ -1,6 +1,6 @@
 # Estado atual do ANEXSYS
 
-**Atualizado em:** 05/10/2026
+**Atualizado em:** 07/10/2026
 **Substitui:** `PROJECT_IMPLEMENTATION_STATUS`, `CURRENT_APPLICATION_STATUS`, `CURRENT_REPOSITORY_STATUS`, `REPOSITORY_CODE_AUDIT_V1` e os relatórios de sprint (todos em `docs/arquivo/`), que se contradizem.
 
 **Como ler:** cada item diz se algo foi **demonstrado numa tela**, **testado com banco de dados** e **aceito pelo André**. Hoje **nada foi aceito formalmente** pelo André como pronto; essa coluna começa vazia.
@@ -11,9 +11,9 @@
 |---|---|---|---|---|
 | Login e acesso (Conta, Empresa, Filial, usuários, papéis, permissões) | Existe | Existe: login, escolha de Conta e Filial, **Contas / Empresas / Filiais**, horário da Filial, comunidades congeladas | Unitários passam; integração **43/43** (39 do Ciclo 0 + 4 do espelho no Ciclo 1) | Só o André cria Contas. Usuário novo sem Filial. Isolamento no banco (D2) |
 | Clientes e medidas | Existe | Existe | Unitários e integração passam | WhatsApp obrigatório; endereço (incluindo CEP) obrigatório no cadastro; sem consentimento ainda |
-| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Número tipo placa (`AAA000001`). Quantidade 1 por linha. **Salvar** aberto = rascunho; fechado = imprime OP. **Fechar sacola** só trava (**Abrir sacola** desfaz). **Abrir nova versão** + Salvar abre `AAA000001-A` em outra aba. Quadro Previsão de entrega separado da Saída real. Faltam aprovar e recalcular prazo na tela |
+| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Número tipo placa (`AAA000001`). Quantidade 1 por linha. **Marca, modelo e série obrigatórios**. Condição **Pago** / **Pago na retirada**. **Salvar** aberto = rascunho; fechado = imprime OP. **Fechar sacola** só trava (**Abrir sacola** desfaz). **Abrir nova versão** + Salvar abre `AAA000001-A` em outra aba. Quadro Previsão de entrega separado da Saída real. Faltam aprovar e recalcular prazo na tela |
 | Motor de data de entrega | Existe (domingo fechado por padrão) | Parcial | Unitários passam | Falta Normal/Expresso/Urgente |
-| Ordem de Produção, QR por ordem, diário | Existe | **Não existe** | Unitários e integração passam | Só 6 estados fixos. QR com código previsível em parte |
+| Ordem de Produção, QR por ordem, diário | Existe | Impressão A5 a partir da OS | Unitários passam | Papel A5: cabeçalho + face da prateleira (dia grande / mês pequeno, OS em cima do QR). Sem preço e sem quantidade. Tela de OP ainda não existe. QR previsível em parte |
 | Qualidade, retrabalho, garantia | Existe | **Não existe** | Unitários e integração passam | |
 | Financeiro | Existe | **Não existe** | Idem | Maquininha só como interface, sem integração real |
 | Fiscal | Só esqueleto | **Não existe** | Idem | Nenhum adaptador real |

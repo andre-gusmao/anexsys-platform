@@ -264,9 +264,9 @@ describe('ProductionOrderService', () => {
       {
         async getDetails() {
           return {
-            serviceOrder: { id: 'service-order-1', orderNo: 'SO-1' },
+            serviceOrder: { id: 'service-order-1', orderNo: 'SO-1', openedAt: '2026-10-03T10:00:00.000Z', promisedDeliveryDate: '2026-10-18', promisedDeliveryTime: '18:00' },
             customer: { id: 'customer-1', legalName: 'Customer One' },
-            items: [{ id: 'item-1', itemType: 'shirt', description: 'Blue Shirt', complement: 'Punho esquerdo', quantity: '2.0000', unitPrice: '80.00' }],
+            items: [{ id: 'item-1', itemType: 'shirt', description: 'Blue Shirt', complement: 'Punho esquerdo', brand: 'Levi', model: '501', serialNo: 'SN-1', quantity: '2.0000', unitPrice: '80.00' }],
           };
         },
       } as never,
@@ -283,6 +283,12 @@ describe('ProductionOrderService', () => {
     assert.equal('totalValue' in printView, false);
     assert.equal('discountValue' in printView, false);
     assert.equal('unitPrice' in printView.items[0], false);
+    assert.equal('quantity' in printView.items[0], false);
     assert.equal(printView.items[0]?.complement, 'Punho esquerdo');
+    assert.equal(printView.items[0]?.brand, 'Levi');
+    assert.equal(printView.items[0]?.model, '501');
+    assert.equal(printView.items[0]?.serialNo, 'SN-1');
+    assert.equal(printView.serviceOrder.openedAt, '2026-10-03T10:00:00.000Z');
+    assert.equal(printView.serviceOrder.promisedDeliveryDate, '2026-10-18');
   });
 });

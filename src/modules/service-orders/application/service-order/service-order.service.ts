@@ -158,6 +158,9 @@ export class ServiceOrderService {
           serviceId: item.serviceId,
           description: item.description,
           complement: item.complement,
+          brand: item.brand,
+          model: item.model,
+          serialNo: item.serialNo,
           quantity: this.formatQuantity(item.quantity),
           unitPrice: item.unitPrice === null ? null : this.formatMoney(item.unitPrice),
           discountValue: this.formatMoney(item.discountValue),
@@ -255,6 +258,9 @@ export class ServiceOrderService {
           productName: item.itemType,
           serviceName: item.description,
           complement: item.complement,
+          brand: item.brand,
+          model: item.model,
+          serialNo: item.serialNo,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discountValue: item.discountValue,
@@ -630,6 +636,9 @@ export class ServiceOrderService {
             serviceId: item.serviceId,
             description: item.description,
             complement: item.complement,
+            brand: item.brand,
+            model: item.model,
+            serialNo: item.serialNo,
             quantity: this.formatQuantity(item.quantity),
             unitPrice: item.unitPrice === null ? null : this.formatMoney(item.unitPrice),
             discountValue: this.formatMoney(item.discountValue),
@@ -703,12 +712,18 @@ export class ServiceOrderService {
       productId: dto.productId === undefined ? item.productId : dto.productId,
       serviceId: dto.serviceId === undefined ? item.serviceId : dto.serviceId,
       complement: dto.complement === undefined ? item.complement : dto.complement?.trim() || null,
+      brand: (dto.brand === undefined ? item.brand : dto.brand).trim(),
+      model: (dto.model === undefined ? item.model : dto.model).trim(),
+      serialNo: (dto.serialNo === undefined ? item.serialNo : dto.serialNo).trim(),
     });
     item.itemType = catalog.itemType;
     item.productId = catalog.productId;
     item.serviceId = catalog.serviceId;
     item.description = catalog.description;
     item.complement = catalog.complement;
+    item.brand = catalog.brand;
+    item.model = catalog.model;
+    item.serialNo = catalog.serialNo;
     item.quantity = this.formatQuantity(catalog.quantity);
     item.unitPrice = catalog.unitPrice === null ? null : this.formatMoney(catalog.unitPrice);
     item.discountValue =
@@ -835,7 +850,7 @@ export class ServiceOrderService {
   private normalizeItemInput(
     item: Pick<
       CreateServiceOrderItemInputDto,
-      'itemType' | 'description' | 'quantity' | 'unitPrice' | 'discountValue' | 'deliveryType' | 'operationalPriority' | 'productId' | 'serviceId' | 'complement'
+      'itemType' | 'description' | 'quantity' | 'unitPrice' | 'discountValue' | 'deliveryType' | 'operationalPriority' | 'productId' | 'serviceId' | 'complement' | 'brand' | 'model' | 'serialNo'
     >,
   ) {
     return {
@@ -849,6 +864,9 @@ export class ServiceOrderService {
       productId: item.productId ?? null,
       serviceId: item.serviceId ?? null,
       complement: item.complement?.trim() || null,
+      brand: (item.brand ?? '').trim(),
+      model: (item.model ?? '').trim(),
+      serialNo: (item.serialNo ?? '').trim(),
     };
   }
 
@@ -880,6 +898,15 @@ export class ServiceOrderService {
     }
     if (!description) {
       throw new DomainValidationError('Cada peça precisa de um serviço.');
+    }
+    if (!item.brand) {
+      throw new DomainValidationError('Cada peça precisa da marca.');
+    }
+    if (!item.model) {
+      throw new DomainValidationError('Cada peça precisa do modelo.');
+    }
+    if (!item.serialNo) {
+      throw new DomainValidationError('Cada peça precisa da série.');
     }
 
     return {

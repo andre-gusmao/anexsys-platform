@@ -753,10 +753,21 @@ export class ProductionOrderService {
       serviceOrder: {
         id: details.serviceOrder.id,
         orderNo: details.serviceOrder.orderNo,
+        openedAt: details.serviceOrder.openedAt,
+        promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
+        promisedDeliveryTime: details.serviceOrder.promisedDeliveryTime ?? null,
       },
       customer: {
         id: details.customer.id,
         legalName: details.customer.legalName,
+        phone: details.customer.phone ?? null,
+        email: details.customer.email ?? null,
+        cpfCnpj: details.customer.cpfCnpj ?? null,
+        street: details.customer.street ?? null,
+        number: details.customer.number ?? null,
+        city: details.customer.city ?? null,
+        state: details.customer.state ?? null,
+        postalCode: details.customer.postalCode ?? null,
       },
       delivery,
       indicators,
@@ -775,7 +786,9 @@ export class ProductionOrderService {
         itemType: item.itemType,
         description: item.description,
         complement: item.complement ?? null,
-        quantity: item.quantity,
+        brand: item.brand ?? '',
+        model: item.model ?? '',
+        serialNo: item.serialNo ?? '',
       })),
       qrCode: details.activeQrCode
         ? {

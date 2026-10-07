@@ -20,6 +20,18 @@ function buildDataSource() {
   };
 }
 
+function piece(overrides: Record<string, unknown> = {}) {
+  return {
+    itemType: 'uniform',
+    description: 'Jacket',
+    quantity: 1,
+    brand: 'Levi',
+    model: '501',
+    serialNo: 'SN-1',
+    ...overrides,
+  };
+}
+
 describe('ServiceOrderService', () => {
   it('creates a service order with default commercial responsibility and calculated totals', async () => {
     const audits: Array<Record<string, unknown>> = [];
@@ -47,7 +59,7 @@ describe('ServiceOrderService', () => {
       deliverySurchargeValue: 15,
       discountValue: 5,
       items: [
-        { itemType: 'uniform', description: 'Jacket', quantity: 2, unitPrice: 50, discountValue: 10 },
+        piece({ quantity: 2, unitPrice: 50, discountValue: 10 }),
       ],
     });
 
@@ -59,6 +71,9 @@ describe('ServiceOrderService', () => {
     assert.equal(created.items[0]?.itemType, 'uniform');
     assert.equal(created.items[0]?.description, 'Jacket');
     assert.equal(created.items[0]?.quantity, '1.0000');
+    assert.equal(created.items[0]?.brand, 'Levi');
+    assert.equal(created.items[0]?.model, '501');
+    assert.equal(created.items[0]?.serialNo, 'SN-1');
     assert.equal(created.items[0]?.discountValue, '10.00');
     assert.equal(audits[0]?.action, 'service_order.created');
   });
@@ -83,7 +98,7 @@ describe('ServiceOrderService', () => {
       customerId: 'customer-1',
       actorUserId: 'user-1',
       promisedDeliveryTime: '18:00:00',
-      items: [{ itemType: 'uniform', description: 'Calça', quantity: 1, unitPrice: 40 }],
+      items: [piece({ itemType: 'uniform', description: 'Calça', unitPrice: 40 })],
     });
 
     assert.equal(created.serviceOrder.promisedDeliveryTime, '18:00');
@@ -109,12 +124,15 @@ describe('ServiceOrderService', () => {
       customerId: 'customer-1',
       actorUserId: 'user-1',
       items: [
-        { itemType: '  uniform  ', description: '  Jacket  ', quantity: 2, unitPrice: undefined, discountValue: undefined, deliveryType: undefined, operationalPriority: '   ' },
+        piece({ itemType: '  uniform  ', description: '  Jacket  ', quantity: 2, unitPrice: undefined, discountValue: undefined, deliveryType: undefined, operationalPriority: '   ', brand: '  Levi  ', model: '  501  ', serialNo: '  SN-1  ' }),
       ],
     });
 
     assert.equal(created.items[0]?.itemType, 'uniform');
     assert.equal(created.items[0]?.description, 'Jacket');
+    assert.equal(created.items[0]?.brand, 'Levi');
+    assert.equal(created.items[0]?.model, '501');
+    assert.equal(created.items[0]?.serialNo, 'SN-1');
     assert.equal(created.items[0]?.unitPrice, null);
     assert.equal(created.items[0]?.discountValue, '0.00');
     assert.equal(created.items[0]?.deliveryType, null);
@@ -143,9 +161,40 @@ describe('ServiceOrderService', () => {
           branchId: 'branch-1',
           customerId: 'customer-1',
           actorUserId: 'user-1',
-          items: [{ itemType: 'uniform', description: 'Jacket', quantity: 1 }],
+          items: [piece()],
         }),
       DomainValidationError,
+    );
+  });
+
+  it('rejects a piece without brand, model or serial number', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      { create(payload: Record<string, unknown>) { return payload; } } as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; } } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.create({
+          tenantId: 'tenant-1',
+          branchId: 'branch-1',
+          customerId: 'customer-1',
+          actorUserId: 'user-1',
+          items: [piece({ brand: '   ' })],
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /marca/);
+        return true;
+      },
     );
   });
 
@@ -153,7 +202,7 @@ describe('ServiceOrderService', () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,
       { async findById() { return { id: 'so-1', tenantId: 'tenant-1', customerId: 'customer-1', commercialResponsibleActorId: 'user-1', technicalMeasurementResponsibleActorId: 'user-1', orderNo: 'OS-1', status: 'open', openedAt: '2026-10-07T10:00:00.000Z', promisedDeliveryDate: '2026-10-14', promisedDeliveryTime: '18:00', deliveryType: DeliveryType.STANDARD, totalValue: '90.00', customerNotes: 'Garantia 90 dias', commercialNotes: 'nao imprimir' }; }, async findByGroupId() { return []; } } as never,
-      { async findByServiceOrder() { return [{ id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', complement: 'Barra 4 cm', quantity: '1', unitPrice: '90.00', discountValue: '0.00', status: 'open', isDeleted: false }]; } } as never,
+      { async findByServiceOrder() { return [{ id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', complement: 'Barra 4 cm', brand: 'Levi', model: '501', serialNo: 'SN-1', quantity: '1', unitPrice: '90.00', discountValue: '0.00', status: 'open', isDeleted: false }]; } } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'customer-1', legalName: 'Maria Silva', phone: '11988887777', email: 'maria@test.com' }; } } as never,
@@ -167,6 +216,9 @@ describe('ServiceOrderService', () => {
     assert.equal(printView.orderNo, 'OS-1');
     assert.equal(printView.totalValue, '90.00');
     assert.equal(printView.items[0]?.subtotal, '90.00');
+    assert.equal(printView.items[0]?.brand, 'Levi');
+    assert.equal(printView.items[0]?.model, '501');
+    assert.equal(printView.items[0]?.serialNo, 'SN-1');
     assert.equal(printView.customerNotes, 'Garantia 90 dias');
     assert.equal('commercialNotes' in printView, false);
   });
@@ -192,10 +244,10 @@ describe('ServiceOrderService', () => {
           branchId: 'branch-1',
           customerId: 'customer-1',
           actorUserId: 'user-1',
-          items: Array.from({ length: 6 }, (_, index) => ({
+          items: Array.from({ length: 6 }, (_, index) => piece({
             itemType: `Peca ${index + 1}`,
             description: 'Bainha',
-            quantity: 1,
+            serialNo: `SN-${index + 1}`,
           })),
         }),
       (error: unknown) => {
@@ -227,10 +279,10 @@ describe('ServiceOrderService', () => {
           branchId: 'branch-1',
           customerId: 'customer-1',
           actorUserId: 'user-1',
-          items: Array.from({ length: 4 }, (_, index) => ({
+          items: Array.from({ length: 4 }, (_, index) => piece({
             itemType: `Peca ${index + 1}`,
             description: 'Bainha',
-            quantity: 1,
+            serialNo: `SN-${index + 1}`,
           })),
         }),
       DomainValidationError,

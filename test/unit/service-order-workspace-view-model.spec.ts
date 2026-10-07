@@ -8,6 +8,7 @@ import {
   canAddServiceOrderItemGridRow,
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
+  osPaymentConditionLabel,
   removeServiceOrderItemGridRow,
   runClosedBagCommit,
   updateServiceOrderItemGridRow,
@@ -23,6 +24,9 @@ test('maps persisted items into visible editable grid rows', () => {
       serviceId: 'service-1',
       description: 'Original Hem',
       complement: 'Azul marinho',
+      brand: 'Levi',
+      model: '501',
+      serialNo: 'SN-1',
       quantity: '1.0000',
       unitPrice: '25.00',
       discountValue: '0.00',
@@ -50,6 +54,9 @@ test('maps persisted items into visible editable grid rows', () => {
       serviceId: 'service-1',
       description: 'Original Hem',
       complement: 'Azul marinho',
+      brand: 'Levi',
+      model: '501',
+      serialNo: 'SN-1',
       quantity: '1',
       unitPrice: '25.00',
       discountValue: '0.00',
@@ -69,6 +76,9 @@ test('builds create payload for all visible item rows', () => {
     serviceId: 'service-2',
     description: 'Hem Adjustment',
     complement: 'Na lateral',
+    brand: 'Zara',
+    model: 'Festa',
+    serialNo: 'SN-9',
     quantity: '2',
     unitPrice: '80',
     discountValue: '10',
@@ -81,6 +91,9 @@ test('builds create payload for all visible item rows', () => {
       serviceId: 'service-2',
       description: 'Hem Adjustment',
       complement: 'Na lateral',
+      brand: 'Zara',
+      model: 'Festa',
+      serialNo: 'SN-9',
       quantity: 1,
       unitPrice: 80,
       discountValue: 10,
@@ -123,6 +136,9 @@ test('creates update and remove plans for existing rows and create plan for new 
         serviceId: undefined,
         description: 'Left cuff only',
         complement: undefined,
+        brand: '',
+        model: '',
+        serialNo: '',
         quantity: 1,
         unitPrice: undefined,
         discountValue: undefined,
@@ -136,6 +152,9 @@ test('creates update and remove plans for existing rows and create plan for new 
         serviceId: undefined,
         description: 'Keep original appearance',
         complement: undefined,
+        brand: '',
+        model: '',
+        serialNo: '',
         quantity: 1,
         unitPrice: 25,
         discountValue: 0,
@@ -260,6 +279,13 @@ test('does not spawn a version when the next-version mark is off', async () => {
   assert.equal(result.next, null);
   assert.equal(result.printed?.productionNo, 'OP-1');
   assert.equal(result.printError, null);
+});
+
+test('labels payment as paid only when the OS is fully settled', () => {
+  assert.equal(osPaymentConditionLabel('paid'), 'Pago');
+  assert.equal(osPaymentConditionLabel('partial'), 'Pago na retirada');
+  assert.equal(osPaymentConditionLabel('pending'), 'Pago na retirada');
+  assert.equal(osPaymentConditionLabel(null), 'Pago na retirada');
 });
 
 test('fails the save when print is blocked and no next version was requested', async () => {

@@ -23,6 +23,18 @@ export class UpdateServiceOrderItemDto {
   @IsString()
   complement?: string | null;
 
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNo?: string;
+
   @Type(() => Number)
   @IsOptional()
   @IsNumber()

@@ -30,6 +30,15 @@ export class CreateServiceOrderItemDto {
   @IsString()
   complement?: string;
 
+  @IsString()
+  brand!: string;
+
+  @IsString()
+  model!: string;
+
+  @IsString()
+  serialNo!: string;
+
   @Type(() => Number)
   @IsNumber()
   @Min(0.0001)

@@ -388,13 +388,14 @@ A conexão bancária depende de contrato com o banco ou intermediário; detalha-
 
 Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 
-- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**.
+- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**, **marca**, **modelo** e **série** — os três últimos **obrigatórios**, porque o ANEXSYS não é só costura.
 - Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
 - A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (OS com valor / OP sem valor) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
 - Não entrou endereço de entrega nem frete.
 - **Pagar** fica no rodapé da OS e na grade, ao lado de Alterar / Inativar / Excluir. O botão **registra** o valor recebido na maquininha ou em dinheiro. Não processa cartão daqui e não abre QR Pix.
+- **Condição** na OS e na OP: **Pago** só com a OS quitada; parcial ou em aberto = **Pago na retirada**.
 
 ## 15. Como o André valida no VS Code (07/10/2026)
 
@@ -404,3 +405,12 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 2. Terminal do servidor: `Ctrl+C` e `npm run start:dev` de novo. É isso que atualiza o banco (colunas novas, produto, serviço, horário de saída, versões da OS e limite de peças).
 3. Se a tela mudou: no terminal da tela, `Ctrl+C` e `npm run frontend:dev` de novo.
 4. Só então atualizar o navegador em `http://127.0.0.1:3001`.
+
+## 16. Ordem de Produção impressa A5 (07/10/2026)
+
+- A bandeja **A5 é da impressora**. O papel já nasce no tamanho A5 (`@page A5`) para caber no bolso da sacola.
+- Duas faces na mesma folha: **cabeçalho** (balcão/técnico) e **prateleira** (câmera da esteira).
+- **Entrada** pequena no topo. **Previsão sai do cabeçalho** e vira o bloco enorme embaixo: **dia grande, mês pequeno e numérico** (`18` `/10`).
+- Número da OS (placa) **em cima do QR**.
+- Produto e serviço **na mesma linha**; descrição do serviço **maior**; **sem quantidade e sem preço**.
+- Marca, modelo e série vêm da linha da peça na OS.

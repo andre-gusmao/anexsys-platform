@@ -31,6 +31,15 @@ export class ServiceOrderItemEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'complement', type: 'text', nullable: true })
   complement!: string | null;
 
+  @Column({ name: 'brand', type: 'varchar', length: 120, default: '' })
+  brand!: string;
+
+  @Column({ name: 'model', type: 'varchar', length: 120, default: '' })
+  model!: string;
+
+  @Column({ name: 'serial_no', type: 'varchar', length: 120, default: '' })
+  serialNo!: string;
+
   @Column({ name: 'quantity', type: 'numeric', precision: 18, scale: 4 })
   quantity!: string;
 

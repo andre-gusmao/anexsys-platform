@@ -75,6 +75,18 @@ async function main() {
       ADD COLUMN IF NOT EXISTS bag_closed boolean NOT NULL DEFAULT false
     `);
     await client.query(`
+      ALTER TABLE IF EXISTS service_order_items
+      ADD COLUMN IF NOT EXISTS brand varchar(120) NOT NULL DEFAULT ''
+    `);
+    await client.query(`
+      ALTER TABLE IF EXISTS service_order_items
+      ADD COLUMN IF NOT EXISTS model varchar(120) NOT NULL DEFAULT ''
+    `);
+    await client.query(`
+      ALTER TABLE IF EXISTS service_order_items
+      ADD COLUMN IF NOT EXISTS serial_no varchar(120) NOT NULL DEFAULT ''
+    `);
+    await client.query(`
       UPDATE service_orders
       SET group_id = id
       WHERE group_id IS NULL
@@ -90,7 +102,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola e trava).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo e série).');
   } finally {
     await client.end();
   }

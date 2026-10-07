@@ -11,6 +11,9 @@ export type PersistedServiceOrderItem = {
   serviceId?: string | null;
   description: string;
   complement?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  serialNo?: string | null;
   quantity: string;
   unitPrice: string | null;
   discountValue: string | null;
@@ -26,6 +29,9 @@ export type ServiceOrderItemGridRow = {
   serviceId: string;
   description: string;
   complement: string;
+  brand: string;
+  model: string;
+  serialNo: string;
   quantity: string;
   unitPrice: string;
   discountValue: string;
@@ -41,6 +47,9 @@ type ItemPayload = {
   serviceId?: string;
   description: string;
   complement?: string;
+  brand: string;
+  model: string;
+  serialNo: string;
   quantity: number;
   unitPrice?: number;
   discountValue?: number;
@@ -60,6 +69,9 @@ function buildPayload(row: ServiceOrderItemGridRow): ItemPayload {
     serviceId: row.serviceId || undefined,
     description: row.description.trim(),
     complement: row.complement.trim() || undefined,
+    brand: row.brand.trim(),
+    model: row.model.trim(),
+    serialNo: row.serialNo.trim(),
     quantity: 1,
     unitPrice: parseOptionalNumber(row.unitPrice),
     discountValue: parseOptionalNumber(row.discountValue),
@@ -86,6 +98,9 @@ function rowsMatch(left: ServiceOrderItemGridRow, right: ServiceOrderItemGridRow
     && left.serviceId === right.serviceId
     && left.description.trim() === right.description.trim()
     && left.complement.trim() === right.complement.trim()
+    && left.brand.trim() === right.brand.trim()
+    && left.model.trim() === right.model.trim()
+    && left.serialNo.trim() === right.serialNo.trim()
     && numericFieldEquals(left.quantity, right.quantity, false)
     && numericFieldEquals(left.unitPrice, right.unitPrice, true)
     && numericFieldEquals(left.discountValue, right.discountValue, true);
@@ -101,6 +116,9 @@ export function createEmptyServiceOrderItemGridRow(itemNo: number): ServiceOrder
     serviceId: "",
     description: "",
     complement: "",
+    brand: "",
+    model: "",
+    serialNo: "",
     quantity: "1",
     unitPrice: "",
     discountValue: "",
@@ -123,6 +141,9 @@ export function mapServiceOrderItemsToGridRows(items: PersistedServiceOrderItem[
       serviceId: item.serviceId ?? "",
       description: item.description,
       complement: item.complement ?? "",
+      brand: item.brand ?? "",
+      model: item.model ?? "",
+      serialNo: item.serialNo ?? "",
       quantity: "1",
       unitPrice: item.unitPrice ?? "",
       discountValue: item.discountValue ?? "",
@@ -169,6 +190,9 @@ export function updateServiceOrderItemGridRow(
       | "serviceId"
       | "description"
       | "complement"
+      | "brand"
+      | "model"
+      | "serialNo"
       | "quantity"
       | "unitPrice"
       | "discountValue"
@@ -196,6 +220,10 @@ export function calculateServiceOrderItemSubtotal(row: Pick<ServiceOrderItemGrid
 
 export function calculateServiceOrderLaborTotal(rows: ServiceOrderItemGridRow[]) {
   return getVisibleServiceOrderItemGridRows(rows).reduce((sum, row) => sum + calculateServiceOrderItemSubtotal(row), 0);
+}
+
+export function osPaymentConditionLabel(paymentStatus?: string | null) {
+  return paymentStatus === "paid" ? "Pago" : "Pago na retirada";
 }
 
 export function formatOsMoney(value: number) {
