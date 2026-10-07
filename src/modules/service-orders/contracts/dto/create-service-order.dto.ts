@@ -105,7 +105,7 @@ export class CreateServiceOrderDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{2}:\d{2}$/)
+  @Matches(/^\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/)
   promisedDeliveryTime?: string;
 
   @IsOptional()

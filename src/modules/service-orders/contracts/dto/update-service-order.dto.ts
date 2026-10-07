@@ -43,7 +43,7 @@ export class UpdateServiceOrderDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{2}:\d{2}$/)
+  @Matches(/^\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/)
   promisedDeliveryTime?: string | null;
 
   @IsOptional()

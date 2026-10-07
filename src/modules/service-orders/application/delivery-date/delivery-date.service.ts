@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { requireClockTime } from './clock-time';
 import { addDays } from './utils';
 import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
 import { DEFAULT_BRANCH_TIMEZONE } from 'src/modules/company/application/company.defaults';
@@ -178,11 +179,11 @@ export class DeliveryDateService {
   }
 
   private openingTime(days: HoursDay[], dateOnly: string): string {
-    return this.dayHours(days, dateOnly)?.opensAt ?? '09:30';
+    return requireClockTime(this.dayHours(days, dateOnly)?.opensAt, '09:30');
   }
 
   private closingTime(days: HoursDay[], dateOnly: string): string {
-    return this.dayHours(days, dateOnly)?.closesAt ?? '18:00';
+    return requireClockTime(this.dayHours(days, dateOnly)?.closesAt, '18:00');
   }
 
   private toMinutes(value: string): number {

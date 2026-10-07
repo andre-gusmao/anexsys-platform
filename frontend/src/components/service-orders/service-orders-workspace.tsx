@@ -694,7 +694,7 @@ export function ServiceOrdersWorkspace() {
           setHeaderForm((current) => ({
             ...current,
             promisedDeliveryDate: suggestion.promisedDeliveryDate,
-            promisedDeliveryTime: suggestion.promisedDeliveryTime,
+            promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
           }));
         } catch {
           /* a atendente ainda pode preencher a saída na mão */
@@ -837,7 +837,7 @@ export function ServiceOrdersWorkspace() {
           customerId: headerForm.customerId,
           deliveryType: headerForm.deliveryType,
           promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
-          promisedDeliveryTime: headerForm.promisedDeliveryTime || undefined,
+          promisedDeliveryTime: toTimeInput(headerForm.promisedDeliveryTime) || undefined,
           commercialResponsibleActorId: headerForm.attendantId || session?.user?.id || undefined,
           operationalPriority: headerForm.operationalPriority || undefined,
           commercialNotes: headerForm.commercialNotes || undefined,
@@ -887,7 +887,7 @@ export function ServiceOrdersWorkspace() {
           customerId: headerForm.customerId,
           deliveryType: headerForm.deliveryType,
           promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
-          promisedDeliveryTime: headerForm.promisedDeliveryTime || undefined,
+          promisedDeliveryTime: toTimeInput(headerForm.promisedDeliveryTime) || undefined,
           commercialResponsibleActorId: headerForm.attendantId || undefined,
           operationalPriority: headerForm.operationalPriority || undefined,
           commercialNotes: headerForm.commercialNotes || null,
@@ -1179,7 +1179,10 @@ export function ServiceOrdersWorkspace() {
                         type="time"
                         value={headerForm.promisedDeliveryTime}
                         onChange={(event) =>
-                          setHeaderForm((current) => ({ ...current, promisedDeliveryTime: event.target.value }))
+                          setHeaderForm((current) => ({
+                            ...current,
+                            promisedDeliveryTime: toTimeInput(event.target.value),
+                          }))
                         }
                       />
                     </div>
@@ -1205,7 +1208,7 @@ export function ServiceOrdersWorkspace() {
                               setHeaderForm((current) => ({
                                 ...current,
                                 promisedDeliveryDate: suggestion.promisedDeliveryDate,
-                                promisedDeliveryTime: suggestion.promisedDeliveryTime,
+                                promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
                               }));
                             })
                             .catch(() => undefined);

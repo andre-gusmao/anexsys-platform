@@ -5,11 +5,14 @@ import { defaultOperatingHours } from 'src/modules/company/application/company.d
 import { DeliveryType } from 'src/shared/domain/enums';
 import { DeliveryDateService } from 'src/modules/service-orders/application/delivery-date/delivery-date.service';
 
-function hoursService() {
+function hoursService(closesAt?: string) {
   const service = new BranchHoursService(
     {
       async listByBranch() {
-        return defaultOperatingHours().map((day) => ({ ...day }));
+        return defaultOperatingHours().map((day) => ({
+          ...day,
+          closesAt: closesAt && day.closesAt ? closesAt : day.closesAt,
+        }));
       },
     } as never,
     {
@@ -86,6 +89,23 @@ describe('DeliveryDateService', () => {
       { deliveryType: DeliveryType.PRIORITY },
     );
     assert.equal(promised.promisedDeliveryDate, '2026-09-24');
+    assert.equal(promised.promisedDeliveryTime, '18:00');
+  });
+
+  it('cuts branch closing time with seconds down to HH:MM', async () => {
+    const service = new DeliveryDateService(
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1', timezone: 'America/Sao_Paulo' }; } } as never,
+      { async findApplicable() { return []; } } as never,
+      hoursService('18:00:00'),
+    );
+
+    const promised = await service.suggestDelivery(
+      'tenant-1',
+      'branch-1',
+      new Date('2026-09-21T12:00:00.000Z'),
+      { deliveryType: DeliveryType.PRIORITY },
+    );
     assert.equal(promised.promisedDeliveryTime, '18:00');
   });
 

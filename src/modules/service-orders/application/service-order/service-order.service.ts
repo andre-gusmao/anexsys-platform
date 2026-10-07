@@ -21,6 +21,7 @@ import { SearchServiceOrdersDto } from '../../contracts/dto/search-service-order
 import { UpdateServiceOrderDto } from '../../contracts/dto/update-service-order.dto';
 import { UpdateServiceOrderItemDto } from '../../contracts/dto/update-service-order-item.dto';
 import { AtelierCatalogService } from '../atelier-catalog/atelier-catalog.service';
+import { normalizeClockTime } from '../delivery-date/clock-time';
 import { DeliveryDateService } from '../delivery-date/delivery-date.service';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
@@ -87,7 +88,8 @@ export class ServiceOrderService {
       { deliveryType: dto.deliveryType, itemCount: dto.items.length },
     );
     const promisedDeliveryDate = dto.promisedDeliveryDate ?? suggestedDelivery.promisedDeliveryDate;
-    const promisedDeliveryTime = dto.promisedDeliveryTime ?? suggestedDelivery.promisedDeliveryTime;
+    const promisedDeliveryTime =
+      normalizeClockTime(dto.promisedDeliveryTime) ?? suggestedDelivery.promisedDeliveryTime;
 
     const normalizedItems: Array<Awaited<ReturnType<ServiceOrderService['resolveCatalogFields']>>> = [];
     for (const item of dto.items) {
@@ -380,7 +382,7 @@ export class ServiceOrderService {
       serviceOrder.promisedDeliveryDate = dto.promisedDeliveryDate;
     }
     if (dto.promisedDeliveryTime !== undefined) {
-      serviceOrder.promisedDeliveryTime = dto.promisedDeliveryTime;
+      serviceOrder.promisedDeliveryTime = normalizeClockTime(dto.promisedDeliveryTime);
     }
     if (shouldRecalculate) {
       const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
@@ -390,7 +392,7 @@ export class ServiceOrderService {
         { deliveryType: serviceOrder.deliveryType },
       );
       serviceOrder.promisedDeliveryDate = suggestedDelivery.promisedDeliveryDate;
-      serviceOrder.promisedDeliveryTime = suggestedDelivery.promisedDeliveryTime;
+      serviceOrder.promisedDeliveryTime = normalizeClockTime(suggestedDelivery.promisedDeliveryTime);
     }
 
     const items = await this.serviceOrderItemRepository.findByServiceOrder(serviceOrderId);
@@ -627,7 +629,7 @@ export class ServiceOrderService {
       { deliveryType: serviceOrder.deliveryType },
     );
     serviceOrder.promisedDeliveryDate = suggestedDelivery.promisedDeliveryDate;
-    serviceOrder.promisedDeliveryTime = suggestedDelivery.promisedDeliveryTime;
+    serviceOrder.promisedDeliveryTime = normalizeClockTime(suggestedDelivery.promisedDeliveryTime);
     serviceOrder.updatedBy = actorUserId;
     const saved = await this.serviceOrderRepository.save(serviceOrder);
     await this.auditService.record({
