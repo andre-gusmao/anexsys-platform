@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
@@ -1058,6 +1058,43 @@ export function ServiceOrdersWorkspace() {
     }
   }
 
+  const canMutateItems = showCreateForm || canEditSelectedOrder;
+
+  function focusItemRow(localId: string) {
+    window.requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(`[data-os-item-row="${localId}"]`);
+      row?.querySelector<HTMLInputElement>("input:not([disabled])")?.focus();
+    });
+  }
+
+  function addPieceRow() {
+    if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
+      setMessage(
+        `Esta versão aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`,
+      );
+      return false;
+    }
+    const nextItemNo = itemRows.reduce((maxItemNo, row) => Math.max(maxItemNo, row.itemNo), 0) + 1;
+    setItemRows((current) => addServiceOrderItemGridRow(current, maxPiecesPerBag));
+    focusItemRow(`draft-${nextItemNo}`);
+    return true;
+  }
+
+  function handleDiscountTab(event: KeyboardEvent<HTMLInputElement>, localId: string) {
+    if (event.key !== "Tab" || event.shiftKey) {
+      return;
+    }
+    const lastVisible = visibleItemRows[visibleItemRows.length - 1];
+    if (lastVisible?.localId !== localId) {
+      return;
+    }
+    if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
+      return;
+    }
+    event.preventDefault();
+    addPieceRow();
+  }
+
   if (!canRead) {
     return (
       <section className="mini-card">
@@ -1480,7 +1517,7 @@ export function ServiceOrdersWorkspace() {
                         const editable = saving ? false : showCreateForm || row.isEditing;
                         const canMutateRow = showCreateForm || canEditSelectedOrder;
                         return (
-                          <tr key={row.localId}>
+                          <tr data-os-item-row={row.localId} key={row.localId}>
                             <td>
                               <SmartLookup
                                 compact
@@ -1559,6 +1596,7 @@ export function ServiceOrdersWorkspace() {
                             </td>
                             <td>
                               <input
+                                className="os-item-input"
                                 disabled={!editable}
                                 placeholder="Azul marinho, só na lateral"
                                 value={row.complement}
@@ -1571,6 +1609,7 @@ export function ServiceOrdersWorkspace() {
                             </td>
                             <td>
                               <input
+                                className="os-item-input"
                                 disabled={!editable}
                                 inputMode="decimal"
                                 min="0.0001"
@@ -1586,6 +1625,7 @@ export function ServiceOrdersWorkspace() {
                             </td>
                             <td>
                               <input
+                                className="os-item-input"
                                 disabled={!editable}
                                 inputMode="decimal"
                                 min="0"
@@ -1601,6 +1641,7 @@ export function ServiceOrdersWorkspace() {
                             </td>
                             <td>
                               <input
+                                className="os-item-input"
                                 disabled={!editable}
                                 inputMode="decimal"
                                 min="0"
@@ -1612,23 +1653,25 @@ export function ServiceOrdersWorkspace() {
                                     updateServiceOrderItemGridRow(current, row.localId, { discountValue: event.target.value }),
                                   )
                                 }
+                                onKeyDown={(event) => handleDiscountTab(event, row.localId)}
                               />
                             </td>
                             <td>{formatOsMoney(calculateServiceOrderItemSubtotal(row))}</td>
                             <td>
-                              <div className="button-row">
+                              <div className="os-item-actions">
                                 {canMutateRow ? (
                                   <button
                                     className="button-ghost"
                                     disabled={saving}
-                                    onClick={() =>
+                                    onClick={() => {
                                       setItemRows((current) =>
-                                        updateServiceOrderItemGridRow(current, row.localId, { isEditing: !row.isEditing }),
-                                      )
-                                    }
+                                        updateServiceOrderItemGridRow(current, row.localId, { isEditing: true }),
+                                      );
+                                      focusItemRow(row.localId);
+                                    }}
                                     type="button"
                                   >
-                                    {showCreateForm || row.isEditing ? "Concluir" : "Alterar"}
+                                    Editar
                                   </button>
                                 ) : null}
                                 {canMutateRow ? (
@@ -1657,23 +1700,29 @@ export function ServiceOrdersWorkspace() {
                   </table>
                 </div>
                 <div className="os-items-footer">
-                  {(showCreateForm || canEditSelectedOrder) ? (
-                    <button
-                      className="os-add-item"
-                      disabled={saving || !canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)}
-                      onClick={() => {
-                        if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
-                          setMessage(
-                            `Esta versão aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`,
-                          );
-                          return;
-                        }
-                        setItemRows((current) => addServiceOrderItemGridRow(current, maxPiecesPerBag));
-                      }}
-                      type="button"
-                    >
-                      + Adicionar peça
-                    </button>
+                  {canMutateItems ? (
+                    <div className="button-row">
+                      <button
+                        className="os-add-item"
+                        disabled={saving || !canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)}
+                        onClick={() => {
+                          addPieceRow();
+                        }}
+                        type="button"
+                      >
+                        + Adicionar peça
+                      </button>
+                      <button
+                        className="button"
+                        disabled={saving || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseBag();
+                        }}
+                        type="button"
+                      >
+                        Fechar sacola
+                      </button>
+                    </div>
                   ) : (
                     <span />
                   )}

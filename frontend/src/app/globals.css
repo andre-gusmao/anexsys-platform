@@ -303,8 +303,26 @@ textarea {
   min-width: 220px;
 }
 
+.os-items-table .data-table input.os-item-input,
+.os-items-table .data-table .os-item-input {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--foreground);
+  border-radius: 12px;
+  padding: 0 14px;
+}
+
 .os-items-table .data-table input[type="number"] {
-  min-width: 88px;
+  min-width: 96px;
+}
+
+.os-item-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .os-pay-panel {
