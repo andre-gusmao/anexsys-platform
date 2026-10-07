@@ -2012,6 +2012,45 @@ textarea {
   }
 }
 
+.qc-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qc-approve {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.qc-approve:hover {
+  background: #05603a;
+}
+
+.qc-reject {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.qc-reason {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  min-width: 240px;
+}
+
+.qc-reason textarea {
+  min-height: 72px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.qc-form .workspace-toolbar {
+  align-items: flex-start;
+}
+
 @media (max-width: 767px) {
   .workspace-tabs {
     display: none;

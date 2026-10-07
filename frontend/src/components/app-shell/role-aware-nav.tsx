@@ -115,6 +115,12 @@ const navSections: NavSection[] = [
         hint: "Gestão operacional de ordens",
         requiredPermissions: ["service_orders.read"],
       },
+      {
+        href: "/quality",
+        label: "Controle de qualidade",
+        hint: "Revisa peça a peça e gera OP de refação",
+        requiredPermissions: ["quality.read"],
+      },
     ],
   },
 ];

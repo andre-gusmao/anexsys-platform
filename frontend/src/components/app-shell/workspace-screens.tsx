@@ -12,6 +12,7 @@ import { WorkspacePaneProvider } from "@/components/app-shell/workspace-pane";
 import { CustomerWorkspace } from "@/components/customers/customer-workspace";
 import { AtelierCatalogWorkspace } from "@/components/catalog/atelier-catalog-workspace";
 import { MeasurementMasterDataWorkspace } from "@/components/measurements/measurement-master-data-workspace";
+import { QualityWorkspace } from "@/components/quality/quality-workspace";
 import { ServiceOrdersWorkspace } from "@/components/service-orders/service-orders-workspace";
 
 function AccessWorkspaceScreen() {
@@ -47,6 +48,7 @@ const workspaceScreens: Record<string, ComponentType> = {
   "/products": ProductsWorkspaceScreen,
   "/services": ServicesWorkspaceScreen,
   "/service-orders": ServiceOrdersWorkspace,
+  "/quality": QualityWorkspace,
 };
 
 export function resolveWorkspaceScreen(pathname: string): ComponentType | null {

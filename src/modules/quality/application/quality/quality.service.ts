@@ -8,7 +8,9 @@ import { TenantService } from 'src/modules/tenant/application/tenant/tenant.serv
 import {
   CustomerRejectionStatus,
   QualityInspectionResult,
+  QualityInspectionType,
   QualityReleaseDecision,
+  ServiceOrderStatus,
 } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
@@ -28,6 +30,16 @@ import { CustomerRejectionEntity } from '../../infrastructure/persistence/entiti
 import { QualityRecordEntity } from '../../infrastructure/persistence/entities/quality-record.entity';
 import { CustomerRejectionRepository } from '../../infrastructure/persistence/repositories/customer-rejection.repository';
 import { QualityRecordRepository } from '../../infrastructure/persistence/repositories/quality-record.repository';
+import {
+  activeCorrectiveVersion,
+  currentReviewItemIds,
+  currentRoundFinished,
+  deriveReviewPhase,
+  isReworkWaitingReturn,
+  latestQualityRecordByItem,
+  pieceReviewState,
+  type QualityReviewPhase,
+} from './quality-review';
 
 @Injectable()
 export class QualityService {
@@ -234,6 +246,226 @@ export class QualityService {
     });
     await this.auditService.record({ tenantId, branchId: saved.branchId, actorUserId: dto.actorUserId, entityType: 'quality_record', entityId: saved.id, action: 'quality_record.warranty_execution.requested', eventType: 'quality.workflow', metadata: { warrantyExecutionId: warrantyExecution.id } });
     return { qualityRecord: saved, warrantyExecution };
+  }
+
+  async searchReviews(tenantId: string, filters: { q?: string; accessibleBranchIds: string[] }) {
+    const productionOrders = await this.productionOrderService.search(tenantId, {
+      q: filters.q,
+      accessibleBranchIds: filters.accessibleBranchIds,
+    });
+    const reviews = [];
+    for (const productionOrder of productionOrders) {
+      const details = await this.productionOrderService.getDetails(tenantId, productionOrder.id);
+      if (!details.serviceOrder.bagClosed) {
+        continue;
+      }
+      reviews.push({
+        id: details.serviceOrder.id,
+        serviceOrderId: details.serviceOrder.id,
+        orderNo: details.serviceOrder.orderNo,
+        status: details.serviceOrder.status,
+        bagClosed: details.serviceOrder.bagClosed,
+        promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
+        customerName: details.customer.legalName,
+        productionOrderId: productionOrder.id,
+        versionNo: activeCorrectiveVersion(details.versions)?.versionNo ?? 1,
+      });
+    }
+    return reviews;
+  }
+
+  async getReview(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {
+    const built = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+    return built.review;
+  }
+
+  async decideItem(
+    tenantId: string,
+    serviceOrderId: string,
+    serviceOrderItemId: string,
+    actorUserId: string,
+    accessibleBranchIds: string[],
+    decision: 'approved' | 'rejected',
+    reason?: string | null,
+  ) {
+    const built = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+    const item = built.review.items.find((row) => row.id === serviceOrderItemId);
+    if (!item) {
+      throw new DomainValidationError('Esta peça não pertence à Ordem de Produção da OS.');
+    }
+    if (!item.canDecide) {
+      throw new DomainValidationError('Esta peça não está disponível para revisão nesta versão.');
+    }
+    if (decision === 'rejected' && !reason?.trim()) {
+      throw new DomainValidationError('Informe o motivo da reprovação.');
+    }
+
+    const inspectionType = built.activeVersion
+      ? QualityInspectionType.POST_REWORK
+      : QualityInspectionType.FINAL;
+    let recordId = item.qualityRecordId;
+    const latest = built.latestByItem.get(serviceOrderItemId);
+    if (!recordId || latest?.releaseDecision !== QualityReleaseDecision.PENDING) {
+      const created = await this.createRecord({
+        tenantId,
+        actorUserId,
+        productionOrderId: built.review.productionOrder.id,
+        serviceOrderItemId,
+        inspectionType,
+      });
+      recordId = created.id;
+    }
+    if (decision === 'approved') {
+      await this.approve(recordId, tenantId, { actorUserId });
+    } else {
+      await this.reject(recordId, tenantId, { actorUserId, notes: reason?.trim() });
+    }
+    await this.serviceOrderService.applyQualityStatus(
+      serviceOrderId,
+      tenantId,
+      ServiceOrderStatus.QUALITY,
+      actorUserId,
+    );
+
+    const afterDecision = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+    if (currentRoundFinished(afterDecision.review.items.filter((row) => row.inCurrentRound))) {
+      return this.completeRound(tenantId, serviceOrderId, actorUserId, accessibleBranchIds);
+    }
+    return { review: afterDecision.review, printView: null as null, issuedRework: false };
+  }
+
+  async startReturn(tenantId: string, serviceOrderId: string, actorUserId: string, accessibleBranchIds: string[]) {
+    const built = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+    if (built.review.phase !== 'rework_issued') {
+      throw new DomainValidationError('Só é possível revisar o retorno quando há peças em refação.');
+    }
+    const currentIds = built.review.items.filter((row) => row.inCurrentRound).map((row) => row.id);
+    for (const serviceOrderItemId of currentIds) {
+      await this.createRecord({
+        tenantId,
+        actorUserId,
+        productionOrderId: built.review.productionOrder.id,
+        serviceOrderItemId,
+        inspectionType: QualityInspectionType.POST_REWORK,
+      });
+    }
+    await this.serviceOrderService.applyQualityStatus(
+      serviceOrderId,
+      tenantId,
+      ServiceOrderStatus.QUALITY,
+      actorUserId,
+    );
+    return this.getReview(tenantId, serviceOrderId, accessibleBranchIds);
+  }
+
+  private async completeRound(
+    tenantId: string,
+    serviceOrderId: string,
+    actorUserId: string,
+    accessibleBranchIds: string[],
+  ) {
+    const built = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+    const currentItems = built.review.items.filter((row) => row.inCurrentRound);
+    const rejected = currentItems.filter((row) => row.decision === 'rejected');
+    if (rejected.length === 0) {
+      await this.serviceOrderService.applyQualityStatus(
+        serviceOrderId,
+        tenantId,
+        ServiceOrderStatus.READY_FOR_PICKUP,
+        actorUserId,
+      );
+      const ready = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+      return { review: ready.review, printView: null as null, issuedRework: false };
+    }
+
+    const reasons = rejected
+      .map((row) => row.reason?.trim())
+      .filter((value): value is string => Boolean(value))
+      .join('; ');
+    const qualityRecordId = rejected[0]?.qualityRecordId ?? undefined;
+    await this.reworkService.create({
+      tenantId,
+      actorUserId,
+      productionOrderId: built.review.productionOrder.id,
+      affectedServiceOrderItemIds: rejected.map((row) => row.id),
+      reworkReason: reasons || 'Reprovado na qualidade',
+      qualityRecordId,
+    });
+    const afterRework = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
+    const printView = await this.productionOrderService.getPrintView(tenantId, built.review.productionOrder.id);
+    return { review: afterRework.review, printView, issuedRework: true };
+  }
+
+  private async buildReview(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {
+    const details = await this.productionOrderService.getDetailsByServiceOrder(
+      tenantId,
+      serviceOrderId,
+      accessibleBranchIds,
+    );
+    if (!details) {
+      throw new EntityNotFoundError('Esta OS ainda não tem Ordem de Produção.');
+    }
+    if (!details.serviceOrder.bagClosed) {
+      throw new DomainValidationError('Feche a sacola antes de revisar a qualidade.');
+    }
+
+    const records = await this.qualityRecordRepository.findByProductionOrder(details.productionOrder.id);
+    const latestByItem = latestQualityRecordByItem(records);
+    const activeVersion = activeCorrectiveVersion(details.versions);
+    const allItemIds = details.items.map((item) => item.id);
+    const currentIds = new Set(currentReviewItemIds(allItemIds, activeVersion));
+    const reworkWaitingReturn = isReworkWaitingReturn(activeVersion, latestByItem, [...currentIds]);
+
+    const items = details.items.map((item) => {
+      const latest = latestByItem.get(item.id);
+      const inCurrentRound = currentIds.has(item.id);
+      const state = pieceReviewState(latest, inCurrentRound, reworkWaitingReturn);
+      return {
+        id: item.id,
+        itemType: item.itemType,
+        description: item.description,
+        complement: item.complement ?? null,
+        brand: item.brand ?? '',
+        model: item.model ?? '',
+        serialNo: item.serialNo ?? '',
+        inCurrentRound,
+        decision: state.decision,
+        canDecide: state.canDecide,
+        reason: latest?.notes ?? null,
+        qualityRecordId: latest?.id ?? null,
+      };
+    });
+
+    const allItemsApproved = items.length > 0 && items.every((item) => item.decision === 'approved');
+    const phase: QualityReviewPhase = details.serviceOrder.status === ServiceOrderStatus.READY_FOR_PICKUP
+      ? 'ready'
+      : deriveReviewPhase({ allItemsApproved, reworkWaitingReturn });
+
+    return {
+      latestByItem,
+      activeVersion,
+      review: {
+        serviceOrder: {
+          id: details.serviceOrder.id,
+          orderNo: details.serviceOrder.orderNo,
+          status: details.serviceOrder.status,
+          openedAt: details.serviceOrder.openedAt,
+          promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
+          bagClosed: details.serviceOrder.bagClosed,
+        },
+        customer: {
+          legalName: details.customer.legalName,
+          phone: details.customer.phone ?? null,
+        },
+        productionOrder: {
+          id: details.productionOrder.id,
+          productionNo: details.productionOrder.productionNo,
+        },
+        phase,
+        versionNo: activeVersion?.versionNo ?? 1,
+        items,
+      },
+    };
   }
 
   async listByProductionOrder(tenantId: string, productionOrderId: string) {

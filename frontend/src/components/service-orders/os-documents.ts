@@ -58,6 +58,7 @@ export type OpPrintView = {
     serialNo?: string | null;
   }>;
   qrCode: { codeValue: string; reissueNo: number } | null;
+  version?: { versionNo: number; versionReason: string } | null;
 };
 
 function escapeHtml(value: string | null | undefined) {
@@ -143,6 +144,16 @@ export const OP_A5_PRINT_CSS = `
     text-transform: uppercase;
   }
   .op-title__no { font-size: 16px; letter-spacing: .04em; font-weight: 800; }
+  .op-banner {
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid #162033;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    text-align: center;
+  }
   .op-customer { font-size: 12px; margin: 0; }
   .op-customer strong { font-size: 14px; }
   .op-items { width: 100%; border-collapse: collapse; margin: 0; }
@@ -284,6 +295,11 @@ export function buildProductionOrderPrintHtml(
       <p class="op-entry">Entrada<strong>${escapeHtml(formatDate(view.serviceOrder.openedAt))}</strong></p>
     </header>
     <h1 class="op-title"><span>Ordem de produção</span><strong class="op-title__no">${escapeHtml(orderNo)}</strong></h1>
+    ${
+      view.version?.versionReason === "rework"
+        ? `<p class="op-banner">Refação · versão ${escapeHtml(String(view.version.versionNo))}</p>`
+        : ""
+    }
     <p class="op-customer">Cliente: <strong>${escapeHtml(view.customer.legalName)}</strong>
       ${address ? `<br />${escapeHtml(address)}` : ""}
       ${view.customer.phone ? `<br />${escapeHtml(view.customer.phone)}` : ""}

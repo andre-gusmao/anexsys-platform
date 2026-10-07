@@ -101,4 +101,21 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   );
   assert.match(paidHtml, />Pago</);
   assert.doesNotMatch(paidHtml, /Pagar na retirada/);
+
+  const reworkHtml = buildProductionOrderPrintHtml(
+    {
+      productionNo: 'OP-1',
+      serviceOrder: { orderNo: 'AAA000001', promisedDeliveryDate: '2026-10-18' },
+      customer: { legalName: 'Sandra Legramanti' },
+      pieceDescription: null,
+      instructions: null,
+      items: [{ itemType: 'Saia', description: 'Ajuste de cintura', complement: 'sem cor' }],
+      qrCode: null,
+      version: { versionNo: 2, versionReason: 'rework' },
+    },
+    'Atelier',
+    'Pagar na retirada',
+  );
+  assert.match(reworkHtml, /Refação · versão 2/);
+  assert.match(reworkHtml, /Ajuste de cintura/);
 });

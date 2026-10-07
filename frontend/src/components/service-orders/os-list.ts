@@ -33,6 +33,8 @@ export function osStatusLabel(status: string) {
   if (status === "approved") return "Aprovada";
   if (status === "cancelled") return "Cancelada";
   if (status === "draft") return "Rascunho";
+  if (status === "quality") return "Controle de qualidade";
+  if (status === "ready_for_pickup") return "Pronto para retirada";
   return status;
 }
 

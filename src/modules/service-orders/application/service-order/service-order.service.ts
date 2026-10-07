@@ -777,6 +777,35 @@ export class ServiceOrderService {
     return saved;
   }
 
+  async applyQualityStatus(
+    serviceOrderId: string,
+    tenantId: string,
+    status: ServiceOrderStatus.QUALITY | ServiceOrderStatus.READY_FOR_PICKUP,
+    actorUserId: string,
+  ): Promise<ServiceOrderEntity> {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
+      throw new DomainValidationError('Cancelled service orders cannot enter quality review.');
+    }
+    if (serviceOrder.status === status) {
+      return serviceOrder;
+    }
+    serviceOrder.status = status;
+    serviceOrder.updatedBy = actorUserId;
+    const saved = await this.serviceOrderRepository.save(serviceOrder);
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: status === ServiceOrderStatus.READY_FOR_PICKUP ? 'service_order.ready_for_pickup' : 'service_order.quality.started',
+      eventType: 'service_order.workflow',
+      metadata: { status: saved.status },
+    });
+    return saved;
+  }
+
   async cancel(serviceOrderId: string, tenantId: string, actorUserId: string): Promise<ServiceOrderEntity> {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
     if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {

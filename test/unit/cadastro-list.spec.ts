@@ -49,6 +49,8 @@ test('filters OS by number and status', () => {
   assert.match(buildOsExcelCsv([orders[0]]), /Aberta/);
   assert.equal(osDeliveryTypeLabel('Priority'), 'Urgente');
   assert.equal(osStatusLabel('cancelled'), 'Cancelada');
+  assert.equal(osStatusLabel('quality'), 'Controle de qualidade');
+  assert.equal(osStatusLabel('ready_for_pickup'), 'Pronto para retirada');
 });
 
 test('filters measurement catalog records by name, code and status', () => {

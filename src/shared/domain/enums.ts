@@ -82,6 +82,8 @@ export enum ServiceOrderStatus {
   OPEN = 'open',
   APPROVED = 'approved',
   CANCELLED = 'cancelled',
+  QUALITY = 'quality',
+  READY_FOR_PICKUP = 'ready_for_pickup',
 }
 
 export enum ServiceOrderItemStatus {

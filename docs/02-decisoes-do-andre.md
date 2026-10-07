@@ -417,3 +417,13 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - Grade em **linhas de tabela** (Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo. **Sem quantidade e sem preço**.
 - Marca, modelo e série saem **pequenos**, sem destaque, só o que foi preenchido.
 - **Pagar na retirada** se houver saldo; **Pago** se quitado.
+
+## 17. Controle de qualidade peça a peça (07/10/2026)
+
+- Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com Produto, Serviço, Serviço a realizar, marca/modelo/série.
+- Dois botões por peça: **Aprovado** e **Reprovado** (motivo em texto livre).
+- Se **todas** as peças da OS estão aprovadas, o status vai para **Pronto para retirada**.
+- Se uma ou várias são reprovadas, a **OS original permanece em Controle de qualidade**. O sistema imprime uma **nova versão da OP só com as peças reprovadas**.
+- Quando a sacola volta, o revisor puxa a **mesma OS**. A tela mostra a versão da refação. Aprova ou reprova de novo. Nova reprovação gera a versão 3, e assim por diante.
+- Isto **não** é a versão da OS (`AAA000001-A`, que é sacola). É versão da **OP** de refação.
+- Leitura de QR no celular e catálogo completo de status (Em produção, Aguardando qualidade) continuam no Ciclo 4.

@@ -1311,6 +1311,8 @@ export function ServiceOrdersWorkspace() {
                 { value: "", label: "Todos" },
                 { value: "open", label: "Aberta" },
                 { value: "approved", label: "Aprovada" },
+                { value: "quality", label: "Controle de qualidade" },
+                { value: "ready_for_pickup", label: "Pronto para retirada" },
                 { value: "cancelled", label: "Cancelada" },
               ],
             },

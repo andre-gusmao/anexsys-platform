@@ -247,6 +247,7 @@ describe('ProductionOrderService', () => {
               versionNo: 2,
               isActive: true,
               versionReason: ProductionOrderVersionReason.REWORK,
+              affectedServiceOrderItemIds: ['item-1'],
               deliveryType: DeliveryType.EXPRESS,
               operationalPriority: 'rush',
               pieceDescription: 'Blue Shirt',

@@ -781,7 +781,10 @@ export class ProductionOrderService {
             versionReason: activeVersion.versionReason,
           }
         : null,
-      items: details.items.map((item) => ({
+      items: (activeVersion?.affectedServiceOrderItemIds?.length
+        ? details.items.filter((item) => activeVersion.affectedServiceOrderItemIds?.includes(item.id))
+        : details.items
+      ).map((item) => ({
         id: item.id,
         itemType: item.itemType,
         description: item.description,

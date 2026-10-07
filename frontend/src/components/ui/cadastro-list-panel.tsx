@@ -82,6 +82,7 @@ type CadastroListPanelProps<T extends { id: string }> = {
   searchPlaceholder: string;
   searchOptions: SmartLookupOption[];
   onCreate: (prefillName?: string) => void;
+  hideCreate?: boolean;
   onEdit: (row: T) => void;
   onDelete?: (row: T) => void;
   onDeleteMany?: (rows: T[]) => void;
@@ -113,6 +114,7 @@ export function CadastroListPanel<T extends { id: string }>({
   searchPlaceholder,
   searchOptions,
   onCreate,
+  hideCreate = false,
   onEdit,
   onDelete,
   onDeleteMany,
@@ -207,7 +209,7 @@ export function CadastroListPanel<T extends { id: string }>({
 
       <div className="cadastro-toolbar" ref={toolbarRef}>
         <div className="cadastro-toolbar__left">
-          {canWrite ? (
+          {canWrite && !hideCreate ? (
             <button className="button" onClick={() => onCreate()} type="button">
               + Adicionar
             </button>
@@ -302,7 +304,7 @@ export function CadastroListPanel<T extends { id: string }>({
             }}
           >
             <SearchAutocomplete
-              canCreate={canWrite}
+              canCreate={canWrite && !hideCreate}
               compact
               onChange={(value) => setFilters((current) => ({ ...current, [searchKey]: value }))}
               onCreate={(name) => onCreate(name)}
@@ -340,7 +342,7 @@ export function CadastroListPanel<T extends { id: string }>({
                 <span>{field.label}</span>
                 {field.lookup ? (
                   <SearchAutocomplete
-                    canCreate={canWrite}
+                    canCreate={canWrite && !hideCreate}
                     onChange={(value) => setFilters((current) => ({ ...current, [field.id]: value }))}
                     onCreate={(name) => onCreate(name)}
                     options={searchOptions}

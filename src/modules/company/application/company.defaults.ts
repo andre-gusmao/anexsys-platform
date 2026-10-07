@@ -69,7 +69,14 @@ export const ATELIER_ROLES = [
     code: 'QUALIDADE',
     displayName: 'Qualidade',
     description: 'Revisa e reprova peças.',
-    permissions: ['quality.read', 'quality.write', 'rework.read', 'rework.write', 'production_orders.read'],
+    permissions: [
+      'quality.read',
+      'quality.write',
+      'rework.read',
+      'rework.write',
+      'production_orders.read',
+      'service_orders.read',
+    ],
   },
   {
     code: 'GERENTE',

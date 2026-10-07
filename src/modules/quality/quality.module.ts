@@ -10,6 +10,7 @@ import { WarrantyModule } from 'src/modules/warranty/warranty.module';
 import { QualityService } from './application/quality/quality.service';
 import { CustomerRejectionsController } from './http/customer-rejections.controller';
 import { ProductionOrderQualityController, QualityRecordsController } from './http/quality-records.controller';
+import { QualityReviewsController } from './http/quality-reviews.controller';
 import { CustomerRejectionEntity } from './infrastructure/persistence/entities/customer-rejection.entity';
 import { QualityRecordEntity } from './infrastructure/persistence/entities/quality-record.entity';
 import { CustomerRejectionRepository } from './infrastructure/persistence/repositories/customer-rejection.repository';
@@ -26,7 +27,7 @@ import { QualityRecordRepository } from './infrastructure/persistence/repositori
     ReworkModule,
     WarrantyModule,
   ],
-  controllers: [QualityRecordsController, ProductionOrderQualityController, CustomerRejectionsController],
+  controllers: [QualityRecordsController, ProductionOrderQualityController, CustomerRejectionsController, QualityReviewsController],
   providers: [QualityService, QualityRecordRepository, CustomerRejectionRepository],
   exports: [QualityService],
 })
