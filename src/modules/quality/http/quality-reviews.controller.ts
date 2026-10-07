@@ -77,22 +77,6 @@ export class QualityReviewsController {
   }
 
   @Permissions('quality.write')
-  @Post(':serviceOrderId/enqueue')
-  async enqueue(
-    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
-    @CurrentTenantId() tenantId: string | null,
-    @CurrentRequest() request: PlatformRequest,
-  ) {
-    const principal = request.requestContext.authenticatedPrincipal;
-    if (!tenantId || !principal) {
-      throw new UnauthorizedException('Authenticated tenant context is required.');
-    }
-    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
-    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
-    return this.qualityService.enqueue(tenantId, serviceOrderId, principal.userId, principal.effectiveBranchIds);
-  }
-
-  @Permissions('quality.write')
   @Post(':serviceOrderId/start-return')
   async startReturn(
     @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,

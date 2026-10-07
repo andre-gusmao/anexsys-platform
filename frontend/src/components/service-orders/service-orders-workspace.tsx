@@ -18,7 +18,7 @@ import {
   type OpPrintView,
   type OsPrintView,
 } from "@/components/service-orders/os-documents";
-import { applyOsListFilters, buildOsExcelCsv, canSendToQuality, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
+import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
@@ -216,7 +216,6 @@ export function ServiceOrdersWorkspace() {
   const canWriteFinance = hasAnyPermission("finance.write");
   const canReadProduction = hasAnyPermission("production_orders.read");
   const canWriteProduction = hasAnyPermission("production_orders.write");
-  const canWriteQuality = hasAnyPermission("quality.write");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
   const [products, setProducts] = useState<CatalogLookupRecord[]>([]);
@@ -670,21 +669,8 @@ export function ServiceOrdersWorkspace() {
     [apiJson, companyName],
   );
 
-  const enqueueQuality = useCallback(
-    async (serviceOrderId: string, orderNo: string) => {
-      try {
-        await apiJson(`/quality-reviews/${serviceOrderId}/enqueue`, { method: "POST" });
-        await loadOrders();
-        setMessage(`OS ${orderNo} enviada para Controle de qualidade.`);
-      } catch (error) {
-        setMessage(formatWorkspaceMessage(error, "A OS não pôde ser enviada para a qualidade."));
-      }
-    },
-    [apiJson, loadOrders],
-  );
-
   const buildOsRowMenu = useCallback(
-    (row: Pick<ServiceOrderRecord, "id" | "orderNo" | "status" | "bagClosed">): RowMenuItem[] => [
+    (row: Pick<ServiceOrderRecord, "id" | "orderNo">): RowMenuItem[] => [
       {
         id: "print",
         label: "Imprimir",
@@ -732,28 +718,8 @@ export function ServiceOrdersWorkspace() {
           },
         ],
       },
-      ...(canWriteQuality && canSendToQuality(row.status, row.bagClosed)
-        ? [
-            {
-              id: "enqueue-quality",
-              label: "Enviar para qualidade",
-              onSelect: () => {
-                void enqueueQuality(row.id, row.orderNo);
-              },
-            },
-          ]
-        : []),
     ],
-    [
-      canReadProduction,
-      canWriteProduction,
-      canWriteQuality,
-      enqueueQuality,
-      printProductionOrder,
-      printServiceOrder,
-      resendEmail,
-      resendWhatsApp,
-    ],
+    [canReadProduction, canWriteProduction, printProductionOrder, printServiceOrder, resendEmail, resendWhatsApp],
   );
 
   useEffect(() => {

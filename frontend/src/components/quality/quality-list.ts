@@ -8,6 +8,7 @@ export type QualityListRecord = {
   promisedDeliveryDate: string;
   versionNo: number;
   bagClosed?: boolean;
+  productionNo?: string;
 };
 
 export function qualityPhaseLabel(phase: string) {
@@ -30,7 +31,9 @@ export function applyQualityListFilters(records: QualityListRecord[], filters: R
   return records.filter((record) => {
     if (
       nameQuery &&
-      ![record.orderNo, record.customerName, record.status].some((value) => value.toLowerCase().includes(nameQuery))
+      ![record.orderNo, record.customerName, record.status, record.productionNo ?? ""].some((value) =>
+        value.toLowerCase().includes(nameQuery),
+      )
     ) {
       return false;
     }

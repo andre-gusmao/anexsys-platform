@@ -216,16 +216,23 @@ describe('QualityService', () => {
     assert.equal(response.printView.items[0]?.rejectionReason, 'Barra curta');
   });
 
-  it('lists only closed bags that already have quality status', async () => {
-    const detailsById: Record<string, { serviceOrder: Record<string, unknown>; customer: { legalName: string }; versions: unknown[] }> = {
+  it('lists closed-bag production orders even when the OS is still open', async () => {
+    const detailsById: Record<string, { serviceOrder: Record<string, unknown>; customer: { legalName: string }; productionOrder?: { productionNo: string }; versions: unknown[] }> = {
+      'po-open-bag': {
+        serviceOrder: { id: 'so-draft', orderNo: 'AAA000005', status: 'open', bagClosed: false, promisedDeliveryDate: '2026-10-18' },
+        customer: { legalName: 'Rascunho' },
+        versions: [],
+      },
       'po-open': {
         serviceOrder: { id: 'so-open', orderNo: 'AAA000006', status: 'open', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
         customer: { legalName: 'Regiane' },
+        productionOrder: { productionNo: 'PO-6' },
         versions: [],
       },
       'po-quality': {
         serviceOrder: { id: 'so-quality', orderNo: 'AAA000007', status: 'quality', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
         customer: { legalName: 'Isabel' },
+        productionOrder: { productionNo: 'PO-7' },
         versions: [],
       },
     };
@@ -234,7 +241,11 @@ describe('QualityService', () => {
       {} as never,
       {
         async search() {
-          return [{ id: 'po-open' }, { id: 'po-quality' }];
+          return [
+            { id: 'po-open-bag', productionNo: 'PO-5' },
+            { id: 'po-open', productionNo: 'PO-6' },
+            { id: 'po-quality', productionNo: 'PO-7' },
+          ];
         },
         async getDetails(_tenant: string, id: string) {
           return detailsById[id];
@@ -249,52 +260,8 @@ describe('QualityService', () => {
     );
 
     const reviews = await service.searchReviews('tenant-1', { accessibleBranchIds: ['branch-1'] });
-    assert.deepEqual(reviews.map((review) => review.orderNo), ['AAA000007']);
-    assert.equal(reviews[0]?.status, 'quality');
-  });
-
-  it('enqueues a closed OS into quality status', async () => {
-    const statuses: string[] = [];
-    const details = {
-      productionOrder: { id: 'production-1', productionNo: 'PO-1' },
-      serviceOrder: {
-        id: 'so-1',
-        orderNo: 'AAA000001',
-        status: 'open',
-        bagClosed: true,
-        openedAt: '2026-10-03T10:00:00.000Z',
-        promisedDeliveryDate: '2026-10-18',
-      },
-      customer: { legalName: 'Sandra', phone: null },
-      items: [
-        { id: 'item-1', itemType: 'Calça', description: 'Bainha', complement: 'teste', brand: 'Zara', model: '', serialNo: '' },
-      ],
-      versions: [],
-    };
-    const service = new QualityService(
-      { async findByProductionOrder() { return []; } } as never,
-      {} as never,
-      {
-        async getDetailsByServiceOrder() {
-          return details;
-        },
-      } as never,
-      {
-        async applyQualityStatus(_id: string, _tenant: string, status: string) {
-          statuses.push(status);
-          details.serviceOrder.status = status;
-          return details.serviceOrder;
-        },
-      } as never,
-      {} as never,
-      {} as never,
-      { async record() {}, async listByEntity() { return []; } } as never,
-      {} as never,
-      {} as never,
-    );
-
-    const review = await service.enqueue('tenant-1', 'so-1', 'user-1', ['branch-1']);
-    assert.deepEqual(statuses, ['quality']);
-    assert.equal(review.serviceOrder.status, 'quality');
+    assert.deepEqual(reviews.map((review) => review.orderNo), ['AAA000006', 'AAA000007']);
+    assert.equal(reviews[0]?.status, 'open');
+    assert.equal(reviews[1]?.status, 'quality');
   });
 });

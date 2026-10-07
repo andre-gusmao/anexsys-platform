@@ -38,10 +38,6 @@ export function osStatusLabel(status: string) {
   return status;
 }
 
-export function canSendToQuality(status: string, bagClosed?: boolean) {
-  return Boolean(bagClosed) && status !== "quality" && status !== "ready_for_pickup" && status !== "cancelled";
-}
-
 export function applyOsListFilters(orders: OsListRecord[], filters: Record<string, string>): OsListRecord[] {
   const nameQuery = (filters.name ?? "").trim().toLowerCase();
   const statusQuery = (filters.status ?? "").trim();

@@ -88,7 +88,7 @@ export function QualityWorkspace() {
     setLoading(true);
     try {
       const response = await apiJson<QualityListRecord[]>("/quality-reviews");
-      setRecords(response.filter((record) => record.status === "quality" && record.bagClosed !== false));
+      setRecords(response.filter((record) => record.bagClosed !== false));
     } catch (error) {
       setMessage(describeWorkspaceError(error));
     } finally {
@@ -214,7 +214,7 @@ export function QualityWorkspace() {
           columns={[
             {
               id: "name",
-              label: "OS",
+              label: "OP",
               locked: true,
               render: (row) => (
                 <>
@@ -232,10 +232,23 @@ export function QualityWorkspace() {
             { id: "version", label: "Versão OP", render: (row) => String(row.versionNo) },
           ]}
           defaultColumnIds={["name", "status", "version"]}
-          emptyFilters={{ name: "" }}
-          emptyMessage="Nenhuma OS em Controle de qualidade. Com a sacola fechada, use Enviar para qualidade no menu da OS."
+          emptyFilters={{ name: "", status: "" }}
+          emptyMessage="Nenhuma Ordem de Produção com sacola fechada para revisar."
           excelFileName="qualidade.csv"
-          filterFields={[{ id: "name", label: "Número", lookup: true, placeholder: "Número da OS" }]}
+          filterFields={[
+            { id: "name", label: "Número", lookup: true, placeholder: "Número da OS / OP" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "open", label: "Aberta" },
+                { value: "quality", label: "Controle de qualidade" },
+                { value: "ready_for_pickup", label: "Pronto para retirada" },
+              ],
+            },
+          ]}
           hideCreate
           loading={loading}
           onCreate={() => undefined}
@@ -245,7 +258,7 @@ export function QualityWorkspace() {
           rowLabel={(row) => row.orderNo}
           searchKey="name"
           searchOptions={records.map((record) => ({ id: record.id, label: record.orderNo, hint: record.customerName }))}
-          searchPlaceholder="Buscar por número da OS"
+          searchPlaceholder="Buscar por número da OP"
           title="Controle de qualidade"
         />
       ) : null}
