@@ -745,6 +745,10 @@ export class ProductionOrderService {
     const effectivePriority = activeVersion?.operationalPriority ?? details.productionOrder.operationalPriority;
     const delivery = this.buildDeliveryBadge(details.productionOrder.customerDeliveryTargetDate);
     const indicators = this.buildPrintIndicators(effectiveDeliveryType, activeVersion?.versionReason ?? null);
+    const rejectionReasons =
+      activeVersion?.versionReason === ProductionOrderVersionReason.REWORK
+        ? await this.latestRejectionReasons(productionOrderId)
+        : new Map<string, string>();
 
     return {
       productionOrderId: details.productionOrder.id,
@@ -792,6 +796,7 @@ export class ProductionOrderService {
         brand: item.brand ?? '',
         model: item.model ?? '',
         serialNo: item.serialNo ?? '',
+        rejectionReason: rejectionReasons.get(item.id) ?? null,
       })),
       qrCode: details.activeQrCode
         ? {
@@ -935,6 +940,38 @@ export class ProductionOrderService {
       dayNumber: date.slice(8, 10),
       month,
     };
+  }
+
+  private async latestRejectionReasons(productionOrderId: string): Promise<Map<string, string>> {
+    const reasons = new Map<string, string>();
+    if (typeof this.dataSource.query !== 'function') {
+      return reasons;
+    }
+    try {
+      const rows = (await this.dataSource.query(
+        `
+          SELECT service_order_item_id AS "serviceOrderItemId", notes
+          FROM quality_records
+          WHERE production_order_id = $1
+            AND service_order_item_id IS NOT NULL
+            AND notes IS NOT NULL
+            AND BTRIM(notes) <> ''
+            AND release_decision IN ('rejected', 'rework_requested')
+          ORDER BY inspection_at DESC, created_at DESC
+        `,
+        [productionOrderId],
+      )) as Array<{ serviceOrderItemId?: string; notes?: string }>;
+      for (const row of rows ?? []) {
+        const itemId = row.serviceOrderItemId?.trim();
+        const notes = row.notes?.trim();
+        if (itemId && notes && !reasons.has(itemId)) {
+          reasons.set(itemId, notes);
+        }
+      }
+    } catch {
+      return reasons;
+    }
+    return reasons;
   }
 
   private buildPrintIndicators(deliveryType: DeliveryType, versionReason: ProductionOrderVersionReason | null): string[] {

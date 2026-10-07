@@ -180,7 +180,7 @@ describe('QualityService', () => {
           return details;
         },
         async getPrintView() {
-          return { items: [{ itemType: 'Saia' }], version: { versionNo: 2, versionReason: 'rework' } };
+          return { items: [{ id: 'item-2', itemType: 'Saia' }], version: { versionNo: 2, versionReason: 'rework' } };
         },
       } as never,
       {
@@ -213,5 +213,6 @@ describe('QualityService', () => {
     assert.equal(response.review.phase, 'rework_issued');
     assert.deepEqual(reworkCalls[0]?.affectedServiceOrderItemIds, ['item-2']);
     assert.equal(details.serviceOrder.status, 'quality');
+    assert.equal(response.printView.items[0]?.rejectionReason, 'Barra curta');
   });
 });

@@ -56,6 +56,7 @@ export type OpPrintView = {
     brand?: string | null;
     model?: string | null;
     serialNo?: string | null;
+    rejectionReason?: string | null;
   }>;
   qrCode: { codeValue: string; reissueNo: number } | null;
   version?: { versionNo: number; versionReason: string } | null;
@@ -180,6 +181,22 @@ export const OP_A5_PRINT_CSS = `
   .op-items th:nth-child(3),
   .op-items td:nth-child(3) { width: 58%; }
   .op-item__work { font-size: 13px; line-height: 1.35; }
+  .op-item__rework {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .op-item__rework-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #667085;
+    margin-bottom: 1px;
+  }
   .op-item__equip {
     display: block;
     margin-top: 2px;
@@ -281,10 +298,15 @@ export function buildProductionOrderPrintHtml(
   const items = view.items
     .map((item) => {
       const equipment = [item.brand, item.model, item.serialNo].map((part) => part?.trim()).filter(Boolean).join(" · ");
+      const rejection = item.rejectionReason?.trim();
       return `<tr>
         <td>${escapeHtml(item.itemType)}${equipment ? `<span class="op-item__equip">${escapeHtml(equipment)}</span>` : ""}</td>
         <td>${escapeHtml(item.description)}</td>
-        <td class="op-item__work">${escapeHtml(item.complement)}</td>
+        <td class="op-item__work">${escapeHtml(item.complement)}${
+          rejection
+            ? `<span class="op-item__rework"><span class="op-item__rework-label">Refazer</span>${escapeHtml(rejection)}</span>`
+            : ""
+        }</td>
       </tr>`;
     })
     .join("");

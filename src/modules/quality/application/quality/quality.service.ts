@@ -393,7 +393,18 @@ export class QualityService {
     });
     const afterRework = await this.buildReview(tenantId, serviceOrderId, accessibleBranchIds);
     const printView = await this.productionOrderService.getPrintView(tenantId, built.review.productionOrder.id);
-    return { review: afterRework.review, printView, issuedRework: true };
+    const reasonById = new Map(rejected.map((row) => [row.id, row.reason?.trim() || '']));
+    return {
+      review: afterRework.review,
+      printView: {
+        ...printView,
+        items: printView.items.map((item: { id?: string; rejectionReason?: string | null }) => ({
+          ...item,
+          rejectionReason: item.rejectionReason || (item.id ? reasonById.get(item.id) : null) || null,
+        })),
+      },
+      issuedRework: true,
+    };
   }
 
   private async buildReview(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {

@@ -5,6 +5,9 @@ import { ProductionOrderService } from 'src/modules/production-orders/applicatio
 
 function buildDataSource() {
   return {
+    async query() {
+      return [{ serviceOrderItemId: 'item-1', notes: 'ficou torto, alinhar a parte' }];
+    },
     async transaction(callback: (manager: any) => Promise<unknown>) {
       const manager = {
         create(_entity: unknown, payload: Record<string, unknown>) {
@@ -289,6 +292,7 @@ describe('ProductionOrderService', () => {
     assert.equal(printView.items[0]?.brand, 'Levi');
     assert.equal(printView.items[0]?.model, '501');
     assert.equal(printView.items[0]?.serialNo, 'SN-1');
+    assert.equal(printView.items[0]?.rejectionReason, 'ficou torto, alinhar a parte');
     assert.equal(printView.serviceOrder.openedAt, '2026-10-03T10:00:00.000Z');
     assert.equal(printView.serviceOrder.promisedDeliveryDate, '2026-10-18');
   });

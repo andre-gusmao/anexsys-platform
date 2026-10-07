@@ -109,7 +109,14 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
       customer: { legalName: 'Sandra Legramanti' },
       pieceDescription: null,
       instructions: null,
-      items: [{ itemType: 'Saia', description: 'Ajuste de cintura', complement: 'sem cor' }],
+      items: [
+        {
+          itemType: 'Saia',
+          description: 'Ajuste de cintura',
+          complement: 'sem cor',
+          rejectionReason: 'ficou torto, alinhar a parte',
+        },
+      ],
       qrCode: null,
       version: { versionNo: 2, versionReason: 'rework' },
     },
@@ -118,4 +125,6 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   );
   assert.match(reworkHtml, /Refação · versão 2/);
   assert.match(reworkHtml, /Ajuste de cintura/);
+  assert.match(reworkHtml, /Refazer/);
+  assert.match(reworkHtml, /ficou torto, alinhar a parte/);
 });
