@@ -30,12 +30,21 @@ export function floorActionLabel(action: FloorAction) {
   return "Terminei a refação";
 }
 
+export function isProductionFloorAction(action: FloorAction | null): action is Exclude<FloorAction, "open_review"> {
+  return action !== null && action !== "open_review";
+}
+
+export function productionFloorAction(status: string, bagClosed: boolean): Exclude<FloorAction, "open_review"> | null {
+  const action = nextFloorAction(status, bagClosed);
+  return isProductionFloorAction(action) ? action : null;
+}
+
 export function floorActionHint(action: FloorAction) {
-  if (action === "pick_up") return "Passo provisório até o QR: a técnica pega a sacola e a OS vai para Em produção.";
-  if (action === "finish_production") return "Passo provisório até o QR: a técnica terminou e a OS vai para Aguardando controle de qualidade.";
-  if (action === "open_review") return "Passo provisório até o QR: o revisor tira a sacola da esteira e abre o Controle de qualidade.";
-  if (action === "pick_up_rework") return "Passo provisório até o QR: a técnica pega as peças reprovadas para refação.";
-  return "Passo provisório até o QR: a refação terminou e a OS volta para Aguardando controle de qualidade.";
+  if (action === "pick_up") return "Pegue a sacola da esteira. A OS vai para Em produção. A leitura do QR, quando existir, dispara o mesmo passo.";
+  if (action === "finish_production") return "Quando terminar, devolva a sacola. A OS vai para Aguardando controle de qualidade.";
+  if (action === "open_review") return "O revisor abre a sacola no Controle de qualidade.";
+  if (action === "pick_up_rework") return "Pegue as peças reprovadas para refação.";
+  return "Quando a refação terminar, a OS volta para Aguardando controle de qualidade.";
 }
 
 export function floorActionSuccessMessage(action: FloorAction, orderNo: string) {

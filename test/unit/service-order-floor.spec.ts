@@ -6,7 +6,7 @@ import {
   nextFloorAction,
 } from '../../src/modules/service-orders/application/service-order/service-order-floor';
 
-test('floor steps follow the production sequence without QR', () => {
+test('floor steps follow the production sequence for the manual Pegar sacola path', () => {
   assert.equal(nextFloorAction('open', false), null);
   assert.equal(nextFloorAction('open', true), 'pick_up');
   assert.equal(floorActionResultStatus('pick_up'), 'in_production');

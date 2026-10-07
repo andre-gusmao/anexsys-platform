@@ -85,6 +85,7 @@ type CadastroListPanelProps<T extends { id: string }> = {
   hideCreate?: boolean;
   onEdit: (row: T) => void;
   editLabel?: string;
+  editLabelForRow?: (row: T) => string;
   onDelete?: (row: T) => void;
   onDeleteMany?: (rows: T[]) => void;
   onInactivate?: (row: T) => void;
@@ -118,6 +119,7 @@ export function CadastroListPanel<T extends { id: string }>({
   hideCreate = false,
   onEdit,
   editLabel = "Alterar",
+  editLabelForRow,
   onDelete,
   onDeleteMany,
   onInactivate,
@@ -428,7 +430,7 @@ export function CadastroListPanel<T extends { id: string }>({
                     <div className="table-actions">
                       {canWrite ? (
                         <button className="button-secondary" onClick={() => onEdit(row)} type="button">
-                          {editLabel}
+                          {editLabelForRow?.(row) ?? editLabel}
                         </button>
                       ) : null}
                       {canWrite && onDelete ? (

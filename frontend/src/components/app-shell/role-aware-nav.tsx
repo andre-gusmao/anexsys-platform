@@ -116,6 +116,13 @@ const navSections: NavSection[] = [
         requiredPermissions: ["service_orders.read"],
       },
       {
+        href: "/pick-bag",
+        label: "Pegar sacola",
+        hint: "Esteira manual: pegar, terminar e refação",
+        requiredPermissions: ["production_orders.read", "service_orders.read"],
+        permissionMatch: "any",
+      },
+      {
         href: "/quality",
         label: "Controle de qualidade",
         hint: "Revisa peça a peça e gera OP de refação",
