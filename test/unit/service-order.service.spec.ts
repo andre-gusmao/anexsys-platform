@@ -400,5 +400,37 @@ describe('ServiceOrderService', () => {
         }),
       DomainValidationError,
     );
+
+    const reopened = await service.reopenBag('tenant-1', 'so-1', 'user-1');
+    assert.equal(saved[saved.length - 1]?.bagClosed, false);
+    assert.equal(reopened.serviceOrder.bagClosed, false);
+  });
+
+  it('rejects reopening a bag that is already open', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return { id: 'so-1', tenantId: 'tenant-1', bagClosed: false, status: 'open' };
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () => service.reopenBag('tenant-1', 'so-1', 'user-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /já está aberta/);
+        return true;
+      },
+    );
   });
 });

@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | Login e acesso (Conta, Empresa, Filial, usuários, papéis, permissões) | Existe | Existe: login, escolha de Conta e Filial, **Contas / Empresas / Filiais**, horário da Filial, comunidades congeladas | Unitários passam; integração **43/43** (39 do Ciclo 0 + 4 do espelho no Ciclo 1) | Só o André cria Contas. Usuário novo sem Filial. Isolamento no banco (D2) |
 | Clientes e medidas | Existe | Existe | Unitários e integração passam | WhatsApp obrigatório; endereço (incluindo CEP) obrigatório no cadastro; sem consentimento ainda |
-| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Número tipo placa (`AAA000001`). Quantidade 1 por linha. **Salvar** é rascunho. **Fechar sacola** trava e imprime a OP. **Fechar e continuar** abre `AAA000001-A`. Quadro Previsão de entrega separado da Saída real. Faltam aprovar e recalcular prazo na tela |
+| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Número tipo placa (`AAA000001`). Quantidade 1 por linha. **Salvar** aberto = rascunho; fechado = imprime OP. **Fechar sacola** só trava (**Abrir sacola** desfaz). **Abrir nova versão** + Salvar abre `AAA000001-A` em outra aba. Quadro Previsão de entrega separado da Saída real. Faltam aprovar e recalcular prazo na tela |
 | Motor de data de entrega | Existe (domingo fechado por padrão) | Parcial | Unitários passam | Falta Normal/Expresso/Urgente |
 | Ordem de Produção, QR por ordem, diário | Existe | **Não existe** | Unitários e integração passam | Só 6 estados fixos. QR com código previsível em parte |
 | Qualidade, retrabalho, garantia | Existe | **Não existe** | Unitários e integração passam | |

@@ -231,6 +231,7 @@ export function ServiceOrdersWorkspace() {
   const [itemRows, setItemRows] = useWorkspaceScopedState<ServiceOrderItemGridRow[]>("service-orders.itemRows", [createEmptyServiceOrderItemGridRow(1)]);
   const [maxPiecesPerBag, setMaxPiecesPerBag] = useState(MAX_SERVICE_ORDER_ITEMS);
   const [previewOrderNo, setPreviewOrderNo] = useState("—");
+  const [wantsNextVersion, setWantsNextVersion] = useState(false);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -248,6 +249,10 @@ export function ServiceOrdersWorkspace() {
   const isListWorkspace = !isFormWorkspace;
   const bagClosed = Boolean(selectedOrder?.bagClosed);
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled" && !bagClosed;
+
+  useEffect(() => {
+    setWantsNextVersion(false);
+  }, [selectedOrder?.id, showCreateForm]);
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
   const openRelatedCustomerWorkspace = useCallback(
@@ -987,13 +992,17 @@ export function ServiceOrdersWorkspace() {
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (bagClosed) {
+      await handleClosedBagSave();
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
       const persisted = await persistCurrentServiceOrder(true);
       await loadOrders(persisted.id);
       navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(persisted.id)}`);
-      setMessage("OS salva como rascunho. A sacola ainda não foi fechada e a OP ainda não foi gerada.");
+      setMessage("OS salva como rascunho. A sacola ainda está aberta e a OP ainda não foi gerada.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
@@ -1008,12 +1017,16 @@ export function ServiceOrdersWorkspace() {
 
   async function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (bagClosed) {
+      await handleClosedBagSave();
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
       const persisted = await persistCurrentServiceOrder(false);
       await loadOrders(persisted.id);
-      setMessage("OS atualizada como rascunho. A sacola ainda não foi fechada e a OP ainda não foi gerada.");
+      setMessage("OS atualizada como rascunho. A sacola ainda está aberta e a OP ainda não foi gerada.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
@@ -1031,24 +1044,32 @@ export function ServiceOrdersWorkspace() {
     const closed = await apiJson<ServiceOrderDetail>(`/service-orders/${persisted.id}/close-bag`, {
       method: "POST",
     });
-    const opView = await printProductionOrder(closed.serviceOrder.id);
-    return {
-      id: closed.serviceOrder.id,
-      orderNo: closed.serviceOrder.orderNo,
-      productionNo: opView.productionNo,
-    };
+    return closed;
   }
 
-  async function openNextVersionFrom(serviceOrderId: string) {
-    const next = await apiJson<ServiceOrderDetail>(`/service-orders/${serviceOrderId}/next-version`, {
+  async function openNextVersionInNewTab(sourceServiceOrderId: string) {
+    const next = await apiJson<ServiceOrderDetail>(`/service-orders/${sourceServiceOrderId}/next-version`, {
       method: "POST",
     });
-    const nextId = next.serviceOrder.id;
-    setShowCreateForm(false);
-    setActiveOrderId(nextId);
-    await loadOrders(nextId);
-    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(nextId)}`);
+    openServiceOrderWorkspace(next.serviceOrder);
     return next;
+  }
+
+  async function commitClosedBag(serviceOrder: ServiceOrderRecord) {
+    const opView = await printProductionOrder(serviceOrder.id);
+    if (!wantsNextVersion) {
+      return {
+        printed: opView,
+        nextOrderNo: null as string | null,
+      };
+    }
+
+    const next = await openNextVersionInNewTab(serviceOrder.id);
+    setWantsNextVersion(false);
+    return {
+      printed: opView,
+      nextOrderNo: next.serviceOrder.orderNo,
+    };
   }
 
   async function handleCloseBag() {
@@ -1060,9 +1081,10 @@ export function ServiceOrdersWorkspace() {
     setMessage(null);
     try {
       const closed = await persistAndCloseBag();
-      await loadOrders(closed.id);
+      setWantsNextVersion(false);
+      await loadOrders(closed.serviceOrder.id);
       setMessage(
-        `Sacola fechada. A OP ${closed.productionNo} da ${closed.orderNo} foi enviada para impressão e já pode ir no bolso transparente. Esta versão ficou travada. Se ainda houver peças, use Continuar em nova versão.`,
+        "Sacola fechada. Esta versão ficou travada. Se errou, use Abrir sacola. Para imprimir a OP, clique em Salvar. Se ainda houver peças, marque Abrir nova versão e depois Salvar.",
       );
     } catch (error) {
       setMessage(
@@ -1076,32 +1098,7 @@ export function ServiceOrdersWorkspace() {
     }
   }
 
-  async function handleCloseAndContinue() {
-    if (!canWrite) {
-      return;
-    }
-
-    setSaving(true);
-    setMessage(null);
-    try {
-      const closed = await persistAndCloseBag();
-      const next = await openNextVersionFrom(closed.id);
-      setMessage(
-        `Sacola fechada. A OP ${closed.productionNo} da ${closed.orderNo} foi enviada para impressão. Aberta a versão ${next.serviceOrder.orderNo}, com o mesmo cabeçalho e grade nova.`,
-      );
-    } catch (error) {
-      setMessage(
-        formatWorkspaceMessage(
-          error,
-          "A sacola não pôde ser fechada. Confira as peças, grave de novo e tente fechar outra vez.",
-        ),
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleContinueClosedVersion() {
+  async function handleOpenBag() {
     if (!canWrite || !selectedOrder?.bagClosed) {
       return;
     }
@@ -1109,15 +1106,44 @@ export function ServiceOrdersWorkspace() {
     setSaving(true);
     setMessage(null);
     try {
-      const next = await openNextVersionFrom(selectedOrder.id);
+      await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/open-bag`, {
+        method: "POST",
+      });
+      setWantsNextVersion(false);
+      await loadOrders(selectedOrder.id);
+      setMessage("Sacola reaberta. Você pode corrigir as peças ou incluir a que o cliente pediu.");
+    } catch (error) {
       setMessage(
-        `Aberta a versão ${next.serviceOrder.orderNo}, com o mesmo cabeçalho e grade nova. A versão anterior continua travada.`,
+        formatWorkspaceMessage(
+          error,
+          "A sacola não pôde ser reaberta. Tente de novo.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleClosedBagSave() {
+    if (!canWrite || !selectedOrder?.bagClosed) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const result = await commitClosedBag(selectedOrder);
+      await loadOrders(selectedOrder.id);
+      setMessage(
+        result.nextOrderNo
+          ? `OP ${result.printed.productionNo} da ${selectedOrder.orderNo} enviada para impressão. A versão ${result.nextOrderNo} abriu em outra aba, já editável.`
+          : `OP ${result.printed.productionNo} da ${selectedOrder.orderNo} enviada para impressão e já pode ir no bolso transparente.`,
       );
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "A próxima versão não pôde ser aberta. Confira se a sacola já está fechada e tente de novo.",
+          "A Ordem de Produção não pôde ser impressa. Confira a sacola e tente salvar de novo.",
         ),
       );
     } finally {
@@ -1293,11 +1319,11 @@ export function ServiceOrdersWorkspace() {
               <h3>{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h3>
               <p>
                 {showCreateForm
-                  ? `A Empresa e a Filial vêm do contexto ativo. Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho; fechar a sacola trava e imprime a OP.`
+                  ? `A Empresa e a Filial vêm do contexto ativo. Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola só trava.`
                   : selectedOrder?.bagClosed
-                    ? `Sacola fechada. Esta versão está travada. Se ainda houver peças, continue em nova versão.`
+                    ? `Sacola fechada. Esta versão está travada. Se errou, abra a sacola. Salvar imprime a OP. Marque Abrir nova versão se ainda houver peças.`
                     : selectedOrder
-                      ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola trava e imprime a OP. Fechar e continuar abre a próxima versão.`
+                      ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola trava; a OP só sai ao salvar depois.`
                       : "Abra uma OS na grade ou cadastre uma nova."}
               </p>
               {!showCreateForm && details?.groupVersions && details.groupVersions.length > 1 ? (
@@ -1561,8 +1587,8 @@ export function ServiceOrdersWorkspace() {
                   <div className="workspace-toolbar__copy">
                     <h4>Serviços e mão de obra</h4>
                     <p>
-                      Cada linha é uma peça (quantidade 1). Até {maxPiecesPerBag} peças nesta versão. Sem mínimo: a
-                      última sacola pode ter só o que restou.
+                      Cada linha é uma peça (quantidade 1). Até {maxPiecesPerBag} peças nesta versão. Fechar trava;
+                      Abrir sacola desfaz. Salvar com a sacola fechada imprime a OP.
                     </p>
                   </div>
                 </div>
@@ -1787,16 +1813,6 @@ export function ServiceOrdersWorkspace() {
                       >
                         Fechar sacola
                       </button>
-                      <button
-                        className="button"
-                        disabled={saving || visibleItemRows.length === 0}
-                        onClick={() => {
-                          void handleCloseAndContinue();
-                        }}
-                        type="button"
-                      >
-                        Fechar e continuar
-                      </button>
                     </div>
                   ) : bagClosed && canWrite ? (
                     <div className="button-row">
@@ -1804,11 +1820,20 @@ export function ServiceOrdersWorkspace() {
                         className="button"
                         disabled={saving}
                         onClick={() => {
-                          void handleContinueClosedVersion();
+                          void handleOpenBag();
                         }}
                         type="button"
                       >
-                        Continuar em nova versão
+                        Abrir sacola
+                      </button>
+                      <button
+                        aria-pressed={wantsNextVersion}
+                        className={wantsNextVersion ? "button" : "button-secondary"}
+                        disabled={saving}
+                        onClick={() => setWantsNextVersion((current) => !current)}
+                        type="button"
+                      >
+                        Abrir nova versão
                       </button>
                     </div>
                   ) : (
@@ -1897,31 +1922,33 @@ export function ServiceOrdersWorkspace() {
                       >
                         Fechar sacola
                       </button>
-                      <button
-                        className="button"
-                        disabled={saving || !canWrite || visibleItemRows.length === 0}
-                        onClick={() => {
-                          void handleCloseAndContinue();
-                        }}
-                        type="button"
-                      >
-                        Fechar e continuar
-                      </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
                       </button>
                     </>
                   ) : selectedOrder && bagClosed ? (
                     <>
+                      <button className="button" disabled={saving || !canWrite} type="submit">
+                        {saving ? "Salvando…" : "Salvar"}
+                      </button>
                       <button
                         className="button"
                         disabled={saving || !canWrite}
                         onClick={() => {
-                          void handleContinueClosedVersion();
+                          void handleOpenBag();
                         }}
                         type="button"
                       >
-                        Continuar em nova versão
+                        Abrir sacola
+                      </button>
+                      <button
+                        aria-pressed={wantsNextVersion}
+                        className={wantsNextVersion ? "button" : "button-secondary"}
+                        disabled={saving || !canWrite}
+                        onClick={() => setWantsNextVersion((current) => !current)}
+                        type="button"
+                      >
+                        Abrir nova versão
                       </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
@@ -1954,16 +1981,6 @@ export function ServiceOrdersWorkspace() {
                         type="button"
                       >
                         Fechar sacola
-                      </button>
-                      <button
-                        className="button"
-                        disabled={saving || !canEditSelectedOrder || visibleItemRows.length === 0}
-                        onClick={() => {
-                          void handleCloseAndContinue();
-                        }}
-                        type="button"
-                      >
-                        Fechar e continuar
                       </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar

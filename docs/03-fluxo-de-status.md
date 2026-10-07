@@ -19,7 +19,7 @@ e vai por WhatsApp     papel)                 impressa no bolso          termina
 1. **Atendimento e abertura da OS.** O atendente cadastra o cliente (nome e WhatsApp obrigatórios), as peças e os serviços. A OS nasce com o status **Em aberto** (público). Não há etiqueta nem leitura de QR nesta etapa. O sistema envia a **primeira mensagem de WhatsApp** com o **link público** de acompanhamento e aprovação.
 2. **Medição das roupas.** Acontece no atendimento. **Não é status**, não gera QR e não manda WhatsApp.
 3. **Aprovação do cliente.** O cliente **assina** "concordo com o serviço e o preço" no link público. **Não é status**: a OS continua **Em aberto**. A medida usada fica travada na aprovação.
-4. **Sacola e esteira.** A sacola é só o transporte físico. Cada **versão da OS** aceita até o limite parametrizado (padrão 5) e cada linha é uma peça. **Fechar sacola** trava a versão e deixa a **Ordem de Produção** pronta para o bolso transparente. **Fechar e continuar** abre a próxima versão ligada. A sacola vai para a esteira "a fazer", por ordem de chegada.
+4. **Sacola e esteira.** A sacola é só o transporte físico. Cada **versão da OS** aceita até o limite parametrizado (padrão 5) e cada linha é uma peça. **Fechar sacola** trava a versão. **Salvar** com a sacola fechada imprime a **Ordem de Produção** para o bolso transparente. **Abrir nova versão** + **Salvar** abre a próxima versão ligada em outra aba. A sacola vai para a esteira "a fazer", por ordem de chegada.
 5. **Produção.** O técnico pega a sacola e **lê o QR**. O status passa a **Em produção** (público), com **data, hora e técnico** registrados (produtividade). Costura, ajuste, acabamento e passadoria acontecem **dentro** deste status. Ao terminar, o técnico lê o QR de novo e leva a sacola à esteira de finalizadas. O status passa a **Aguardando controle de qualidade** (público).
 6. **Controle de qualidade.** O revisor tira a sacola da esteira e **lê o QR**: **Controle de qualidade** (público). **Aprova** (vai para Pronto para retirada) ou **reprova** (vai para Reprovado pela qualidade).
 7. **Pronto para retirada.** Status **público**. Sai a **segunda mensagem de WhatsApp**.
@@ -74,7 +74,7 @@ Há **dois prazos diferentes**, ambos contados **da retirada pelo cliente** (dec
 
 ## 7. O que a produção mede
 
-- Cada **versão da OS** guarda as peças até o limite parametrizado (padrão 5), uma peça por linha. Mais peças: **Fechar e continuar** na versão ligada, ou **Continuar em nova versão** se a sacola já estiver fechada. O **grau de dificuldade de 1 a 4** é definido **por serviço** (valor padrão no catálogo). **A OS mostra a maior** dificuldade entre os serviços, e o **atendente pode ajustar**.
+- Cada **versão da OS** guarda as peças até o limite parametrizado (padrão 5), uma peça por linha. Mais peças: fecha a sacola, marca **Abrir nova versão** e **Salvar**. Se errou, **Abrir sacola**. O **grau de dificuldade de 1 a 4** é definido **por serviço** (valor padrão no catálogo). **A OS mostra a maior** dificuldade entre os serviços, e o **atendente pode ajustar**.
 - **Tempos médios por grau:** grau 1 = 30 minutos, grau 2 = 60, grau 3 = 90, grau 4 = 180. **Os graus são configuráveis** (aumentar ou diminuir graus, mudar tempos) na tela de parâmetros.
 - Isso permite estimar o **tempo médio**, dimensionar a **grade de técnicos** e calcular o **bônus por produtividade**.
 - O **diário de bordo** mostra a **descrição do serviço** de cada peça, no lugar do caderno.

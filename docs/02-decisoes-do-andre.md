@@ -50,7 +50,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 1. **Atendimento / OS aberta**: gera a OS; não gera etiqueta nem leitura de QR. A OS é enviada ao cliente por WhatsApp com status **Em aberto (público)**. O cliente recebe um link para acompanhar e para aprovar.
 2. **Medição das roupas**: não gera etiqueta, não lê QR, sem WhatsApp. É a etapa que origina a abertura da OS.
 3. **Aprovação do cliente**: o status continua Em aberto; a aprovação não é status, é uma **assinatura "concordo com o serviço e preço"**, registrada por escrito.
-4. **Sacola física**: a sacola é **só o transporte**. O sistema limita as peças **por versão da OS** (parâmetro da Conta, padrão 5). Cada linha é uma peça. A atendente registra até o limite, aperta **Fechar sacola** (trava e imprime a OP) ou **Fechar e continuar** (o mesmo e abre `AAA000001-A`, `AAA000001-B`) com o mesmo cabeçalho e grade nova. A última versão pode ter só o que restou (sem mínimo). A sacola vai para a esteira de "a fazer". Quando o técnico lê o QR, o status vai para **Em produção (público)**.
+4. **Sacola física**: a sacola é **só o transporte**. O sistema limita as peças **por versão da OS** (parâmetro da Conta, padrão 5). Cada linha é uma peça. A atendente registra até o limite e aperta **Fechar sacola** (trava; pode **Abrir sacola** se errou). **Salvar** com a sacola fechada imprime a OP. Se ainda houver peças, marca **Abrir nova versão** e **Salvar** abre `AAA000001-A` em outra aba. A última versão pode ter só o que restou (sem mínimo). A sacola vai para a esteira de "a fazer". Quando o técnico lê o QR, o status vai para **Em produção (público)**.
 5. Não existe essa etapa (numeração do André).
 6. **Acabamento/passadoria**: ao terminar, o técnico lê o QR, leva a sacola para a esteira de finalizadas e o status vai para **Aguardando controle de qualidade (público)**.
 7. **Revisão de qualidade**: o revisor tira a sacola da esteira, lê o QR e o status vai para **Controle de qualidade (público)**. Aprova (vai para Pronto para retirada) ou reprova.
@@ -175,12 +175,13 @@ Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[AS
 
 **Versões da OS e Fechar sacola**
 - A sacola **não é um objeto do sistema**. É o saco físico que leva as peças e a OP no bolso transparente.
-- Cada versão da OS aceita até o **limite parametrizado da Conta** (padrão **5**). **Cada linha é uma peça** (quantidade sempre 1, não editável). Exemplo: 13 peças viram `AAA000001` (5) → Fechar e continuar / imprimir OP → `AAA000001-A` (5) → Fechar e continuar / imprimir OP → `AAA000001-B` (3) → Fechar sacola.
+- Cada versão da OS aceita até o **limite parametrizado da Conta** (padrão **5**). **Cada linha é uma peça** (quantidade sempre 1, não editável). Exemplo: 13 peças viram `AAA000001` (5) → Fechar → Abrir nova versão → Salvar (imprime OP e abre `-A`) → de novo até `AAA000001-B` (3) → Fechar → Salvar (só imprime).
 - **Número da OS:** três letras e seis dígitos, como placa (`AAA000001` … `AAA999999`, depois `AAB000001`). Não reinicia no dia. A versão da sacola só acrescenta `-A`, `-B`.
-- **Salvar** grava só o rascunho: não trava e não gera OP.
-- **Fechar sacola** grava, **trava** a versão e gera a Ordem de Produção (uma OP por versão) para o bolso transparente. **Não** abre a próxima versão e **não** adivinha se ainda há peças.
-- **Fechar e continuar** faz o mesmo e abre a próxima versão **ligada**, reaproveitando cliente, prazo, tipo de entrega e observações. A grade de itens começa vazia.
-- Numa sacola já fechada, **Continuar em nova versão** abre a próxima versão ligada.
+- **Salvar** com a sacola aberta grava só o rascunho: não trava e não gera OP.
+- **Fechar sacola** grava e **trava** a versão. O botão vira **Abrir sacola**. **Não** imprime e **não** cria outra OS.
+- **Abrir sacola** destrava para corrigir ou incluir peça.
+- **Abrir nova versão** só aparece depois de fechar. É uma marca. A próxima versão nasce no **Salvar**, em **outra aba**, já editável, com o mesmo cabeçalho e grade vazia.
+- **Salvar** com a sacola fechada imprime a Ordem de Produção (popup de impressão). Se **Abrir nova versão** estiver marcado, também abre a próxima versão ligada.
 - Sem mínimo de peças na última versão.
 - **[ASSUMIDO]** As versões ligadas formam um **grupo**: o cliente recebe **um só link**, **um só aviso** de OS aberta, e o pagamento pode ser único. Cada versão tem sua sacola física, sua Ordem de Produção e seu QR.
 
@@ -388,7 +389,7 @@ A conexão bancária depende de contrato com o banco ou intermediário; detalha-
 Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 
 - Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**.
-- Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava e imprime a OP. **Fechar e continuar** abre a próxima versão ligada (`AAA000001-A`).
+- Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
 - A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (OS com valor / OP sem valor) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.

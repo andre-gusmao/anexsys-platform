@@ -29,9 +29,9 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Serviço** | O que se faz numa peça (bainha, ajuste de cintura). O catálogo tem preço padrão, com ajuste manual na OS por quem tem permissão | `atelier service` / `service order item` |
 | **Ordem de Produção** | Documento **impresso** que acompanha as peças numa sacola. Traz o **QR code**, a quantidade de peças e a descrição dos serviços. **Nunca mostra preço** — valores ficam só na OS | `production order` |
 | **Sacola** | Embalagem **física** só para transportar as peças. O sistema não controla a sacola: controla o **limite de peças por versão da OS**. A OP impressa vai no bolso transparente | `bag` (apenas apoio físico) |
-| **Fechar sacola** | Ação na OS: grava a versão, **trava** as peças e deixa a **Ordem de Produção** pronta para o bolso transparente. **Não** abre a próxima versão | `POST /service-orders/:id/close-bag` |
-| **Fechar e continuar** | Fecha a sacola (trava + OP) e abre a **próxima versão ligada** (AAA000001-A, AAA000001-B) com o mesmo cabeçalho e grade nova | `POST /service-orders/:id/close-bag` + `POST /service-orders/:id/next-version` |
-| **Continuar em nova versão** | Atalho de segurança numa sacola **já fechada**: abre a próxima versão ligada sem adivinhar se ainda há peças | `POST /service-orders/:id/next-version` |
+| **Fechar sacola** | Ação na OS: grava a versão e **trava** as peças. **Não** imprime e **não** abre a próxima versão. O botão vira **Abrir sacola** | `POST /service-orders/:id/close-bag` |
+| **Abrir sacola** | Destrava a versão fechada para corrigir erro ou incluir peça que o cliente pediu de volta | `POST /service-orders/:id/open-bag` |
+| **Abrir nova versão** | Só aparece com a sacola fechada. Marca a intenção; a próxima versão nasce ao **Salvar**, em **outra aba**, já editável | `POST /service-orders/:id/next-version` |
 | **Versão da OS** | Continuação ligada da mesma OS quando o cliente trouxe mais peças do que o limite. A primeira é `AAA000001`; as seguintes são `AAA000001-A`, `AAA000001-B` | `service_orders.group_id` / `version_suffix` |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
 | **QR code** | Código impresso na Ordem de Produção. **Um por OS** (não por peça). O funcionário lê com o celular para mudar o status | `qr code` |

@@ -400,7 +400,7 @@ export class ServiceOrderService {
       throw new DomainValidationError('Ordens de serviço canceladas não podem fechar sacola.');
     }
     if (serviceOrder.bagClosed) {
-      throw new DomainValidationError('Esta sacola já está fechada. Use Continuar em nova versão se ainda houver peças.');
+      throw new DomainValidationError('Esta sacola já está fechada. Use Abrir sacola se precisar corrigir.');
     }
 
     const items = (await this.serviceOrderItemRepository.findByServiceOrder(serviceOrderId)).filter(
@@ -422,6 +422,32 @@ export class ServiceOrderService {
       action: 'service_order.bag.closed',
       eventType: 'service_order.write',
       metadata: { orderNo: saved.orderNo, itemCount: items.length },
+    });
+
+    return this.getDetails(tenantId, saved.id);
+  }
+
+  async reopenBag(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
+      throw new DomainValidationError('Ordens de serviço canceladas não podem reabrir sacola.');
+    }
+    if (!serviceOrder.bagClosed) {
+      throw new DomainValidationError('Esta sacola já está aberta.');
+    }
+
+    serviceOrder.bagClosed = false;
+    serviceOrder.updatedBy = actorUserId;
+    const saved = await this.serviceOrderRepository.save(serviceOrder);
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: 'service_order.bag.reopened',
+      eventType: 'service_order.write',
+      metadata: { orderNo: saved.orderNo },
     });
 
     return this.getDetails(tenantId, saved.id);
@@ -869,7 +895,7 @@ export class ServiceOrderService {
   private assertBagOpen(serviceOrder: ServiceOrderEntity): void {
     if (serviceOrder.bagClosed) {
       throw new DomainValidationError(
-        'Esta sacola já está fechada. Use Continuar em nova versão se ainda houver peças.',
+        'Esta sacola já está fechada. Use Abrir sacola se precisar corrigir.',
       );
     }
   }
@@ -894,7 +920,7 @@ export class ServiceOrderService {
       .filter((key) => !allowedWhenClosed.has(key));
     if (blocked.length > 0) {
       throw new DomainValidationError(
-        'Esta sacola já está fechada. Use Continuar em nova versão se ainda houver peças.',
+        'Esta sacola já está fechada. Use Abrir sacola se precisar corrigir.',
       );
     }
   }
