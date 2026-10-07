@@ -14,6 +14,7 @@ import {
   openWhatsAppResend,
   printProductionOrderDocument,
   printServiceOrderDocument,
+  reservePrintWindow,
   type OpPrintView,
   type OsPrintView,
 } from "@/components/service-orders/os-documents";
@@ -34,6 +35,7 @@ import {
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
   removeServiceOrderItemGridRow,
+  runClosedBagCommit,
   updateServiceOrderItemGridRow,
   type PersistedServiceOrderItem,
   type ServiceOrderItemGridRow,
@@ -568,7 +570,7 @@ export function ServiceOrdersWorkspace() {
   );
 
   const printProductionOrder = useCallback(
-    async (serviceOrderId: string) => {
+    async (serviceOrderId: string, reservedWindow?: Window | null) => {
       let productionOrderId = "";
       try {
         const existing = await apiJson<{ productionOrder: { id: string } }>(`/service-orders/${serviceOrderId}/production-order`);
@@ -584,7 +586,7 @@ export function ServiceOrdersWorkspace() {
         productionOrderId = created.productionOrder.id;
       }
       const view = await apiJson<OpPrintView>(`/production-orders/${productionOrderId}/print-view`);
-      printProductionOrderDocument(view, companyName);
+      printProductionOrderDocument(view, companyName, reservedWindow);
       return view;
     },
     [apiJson, canWriteProduction, companyName],
@@ -1055,20 +1057,19 @@ export function ServiceOrdersWorkspace() {
     return next;
   }
 
-  async function commitClosedBag(serviceOrder: ServiceOrderRecord) {
-    const opView = await printProductionOrder(serviceOrder.id);
-    if (!wantsNextVersion) {
-      return {
-        printed: opView,
-        nextOrderNo: null as string | null,
-      };
+  async function commitClosedBag(serviceOrder: ServiceOrderRecord, reservedWindow?: Window | null) {
+    const result = await runClosedBagCommit({
+      wantsNextVersion,
+      spawnNext: () => openNextVersionInNewTab(serviceOrder.id),
+      print: () => printProductionOrder(serviceOrder.id, reservedWindow),
+    });
+    if (result.next) {
+      setWantsNextVersion(false);
     }
-
-    const next = await openNextVersionInNewTab(serviceOrder.id);
-    setWantsNextVersion(false);
     return {
-      printed: opView,
-      nextOrderNo: next.serviceOrder.orderNo,
+      printed: result.printed,
+      nextOrderNo: result.next?.serviceOrder.orderNo ?? null,
+      printError: result.printError,
     };
   }
 
@@ -1131,15 +1132,24 @@ export function ServiceOrdersWorkspace() {
 
     setSaving(true);
     setMessage(null);
+    const reservedPrintWindow = reservePrintWindow();
     try {
-      const result = await commitClosedBag(selectedOrder);
+      const result = await commitClosedBag(selectedOrder, reservedPrintWindow);
       await loadOrders(selectedOrder.id);
+      if (result.nextOrderNo && result.printError) {
+        reservedPrintWindow?.close();
+        setMessage(
+          `A versão ${result.nextOrderNo} abriu em outra aba, já editável. A impressão da OP foi bloqueada pelo navegador. Permita pop-ups e reimprima pelo menu ⋮.`,
+        );
+        return;
+      }
       setMessage(
         result.nextOrderNo
-          ? `OP ${result.printed.productionNo} da ${selectedOrder.orderNo} enviada para impressão. A versão ${result.nextOrderNo} abriu em outra aba, já editável.`
-          : `OP ${result.printed.productionNo} da ${selectedOrder.orderNo} enviada para impressão e já pode ir no bolso transparente.`,
+          ? `OP ${result.printed?.productionNo} da ${selectedOrder.orderNo} enviada para impressão. A versão ${result.nextOrderNo} abriu em outra aba, já editável.`
+          : `OP ${result.printed?.productionNo} da ${selectedOrder.orderNo} enviada para impressão e já pode ir no bolso transparente.`,
       );
     } catch (error) {
+      reservedPrintWindow?.close();
       setMessage(
         formatWorkspaceMessage(
           error,

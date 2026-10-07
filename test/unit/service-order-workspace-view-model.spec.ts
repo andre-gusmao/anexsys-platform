@@ -9,6 +9,7 @@ import {
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
   removeServiceOrderItemGridRow,
+  runClosedBagCommit,
   updateServiceOrderItemGridRow,
 } from '../../frontend/src/components/service-orders/service-order-workspace-view-model';
 
@@ -223,4 +224,56 @@ test('respects a parametrized piece limit when adding rows', () => {
   assert.equal(rows.length, 3);
   assert.equal(canAddServiceOrderItemGridRow(rows, 3), false);
   assert.equal(canAddServiceOrderItemGridRow(rows, 5), true);
+});
+
+test('opens the next version even when printing is blocked', async () => {
+  const calls: string[] = [];
+  const result = await runClosedBagCommit({
+    wantsNextVersion: true,
+    async spawnNext() {
+      calls.push('spawn');
+      return { orderNo: 'AAA000001-A' };
+    },
+    async print() {
+      calls.push('print');
+      throw new Error('O navegador bloqueou a janela de impressão.');
+    },
+  });
+
+  assert.deepEqual(calls, ['spawn', 'print']);
+  assert.equal(result.next?.orderNo, 'AAA000001-A');
+  assert.equal(result.printed, null);
+  assert.match(String(result.printError), /bloqueou/);
+});
+
+test('does not spawn a version when the next-version mark is off', async () => {
+  const result = await runClosedBagCommit({
+    wantsNextVersion: false,
+    async spawnNext() {
+      throw new Error('não deveria abrir versão');
+    },
+    async print() {
+      return { productionNo: 'OP-1' };
+    },
+  });
+
+  assert.equal(result.next, null);
+  assert.equal(result.printed?.productionNo, 'OP-1');
+  assert.equal(result.printError, null);
+});
+
+test('fails the save when print is blocked and no next version was requested', async () => {
+  await assert.rejects(
+    () =>
+      runClosedBagCommit({
+        wantsNextVersion: false,
+        async spawnNext() {
+          return { orderNo: 'AAA000001-A' };
+        },
+        async print() {
+          throw new Error('O navegador bloqueou a janela de impressão.');
+        },
+      }),
+    /bloqueou/,
+  );
 });

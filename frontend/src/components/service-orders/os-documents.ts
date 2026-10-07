@@ -66,11 +66,27 @@ function formatDateTime(dateValue: string | null | undefined, timeValue?: string
   return date;
 }
 
-function openPrintWindow(title: string, body: string) {
-  const popup = window.open("", "_blank", "noopener,noreferrer,width=900,height=1100");
-  if (!popup) {
-    throw new Error("O navegador bloqueou a janela de impressão. Permita pop-ups para reimprimir.");
+export function reservePrintWindow() {
+  if (typeof window === "undefined") {
+    return null;
   }
+  const popup = window.open("", "_blank", "width=900,height=1100");
+  if (!popup) {
+    return null;
+  }
+  popup.opener = null;
+  popup.document.write("<!doctype html><title>Preparando impressão…</title><body><p>Preparando a Ordem de Produção…</p></body>");
+  popup.document.close();
+  return popup;
+}
+
+function writePrintWindow(popup: Window | null, title: string, body: string) {
+  if (!popup) {
+    throw new Error(
+      "O navegador bloqueou a janela de impressão. Permita pop-ups para este site e reimprima a OP pelo menu ⋮.",
+    );
+  }
+  popup.document.open();
   popup.document.write(`<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -99,7 +115,11 @@ function openPrintWindow(title: string, body: string) {
   popup.document.close();
 }
 
-export function printServiceOrderDocument(view: OsPrintView, companyName: string) {
+function openPrintWindow(title: string, body: string, reservedWindow?: Window | null) {
+  writePrintWindow(reservedWindow === undefined ? reservePrintWindow() : reservedWindow, title, body);
+}
+
+export function printServiceOrderDocument(view: OsPrintView, companyName: string, reservedWindow?: Window | null) {
   const rows = view.items
     .map(
       (item) => `<tr>
@@ -127,10 +147,11 @@ export function printServiceOrderDocument(view: OsPrintView, companyName: string
      </table>
      <p class="total">Valor total ${escapeHtml(view.totalValue ? formatOsMoney(Number(view.totalValue)) : "R$ 0,00")}</p>
      ${view.customerNotes ? `<div class="notes"><strong>Observação</strong><br />${escapeHtml(view.customerNotes)}</div>` : ""}`,
+    reservedWindow,
   );
 }
 
-export function printProductionOrderDocument(view: OpPrintView, companyName: string) {
+export function printProductionOrderDocument(view: OpPrintView, companyName: string, reservedWindow?: Window | null) {
   const rows = view.items
     .map(
       (item) => `<tr>
@@ -155,6 +176,7 @@ export function printProductionOrderDocument(view: OpPrintView, companyName: str
      </table>
      ${view.pieceDescription ? `<p>${escapeHtml(view.pieceDescription)}</p>` : ""}
      ${qr ? `<div class="qr"><img alt="QR da OS" height="180" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qr)}" width="180" /><strong>${escapeHtml(qr)}</strong></div>` : ""}`,
+    reservedWindow,
   );
 }
 

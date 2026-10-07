@@ -234,3 +234,21 @@ export function buildServiceOrderItemMutationPlan(
 
   return { create, update, remove };
 }
+
+export async function runClosedBagCommit<TPrint, TNext>(input: {
+  wantsNextVersion: boolean;
+  print: () => Promise<TPrint>;
+  spawnNext: () => Promise<TNext>;
+}): Promise<{ printed: TPrint | null; next: TNext | null; printError: unknown | null }> {
+  const next = input.wantsNextVersion ? await input.spawnNext() : null;
+
+  try {
+    const printed = await input.print();
+    return { printed, next, printError: null };
+  } catch (printError) {
+    if (!next) {
+      throw printError;
+    }
+    return { printed: null, next, printError };
+  }
+}
