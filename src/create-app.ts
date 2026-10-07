@@ -7,7 +7,11 @@ import { DomainExceptionFilter } from './platform/http/domain-exception.filter';
 
 export async function createNestApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
-  await applyPendingMigrations(app.get(DataSource));
+  try {
+    await applyPendingMigrations(app.get(DataSource));
+  } catch (error) {
+    console.warn('Não foi possível atualizar o banco da OS na subida.', error);
+  }
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(

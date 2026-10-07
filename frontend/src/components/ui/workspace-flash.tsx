@@ -22,6 +22,8 @@ const ERROR_HINTS = [
   "inválid",
   "não encontrado",
   "erro",
+  "incompleto",
+  "não existe",
 ];
 
 const SUCCESS_HINTS = [
@@ -49,6 +51,7 @@ const SUCCESS_HINTS = [
 
 const DEV_RESTART_HINT =
   /cannot read properties of undefined|getAllAndOverride|assertAllowed|internal server error/i;
+const MISSING_SCHEMA_HINT = /coluna .+ não existe|column .+ does not exist/i;
 
 export function inferFlashTone(message: string): FlashTone {
   const normalized = message.toLowerCase();
@@ -63,6 +66,9 @@ export function inferFlashTone(message: string): FlashTone {
 
 export function describeWorkspaceError(error: unknown, fallback: string): string {
   const raw = error instanceof Error ? error.message : "";
+  if (MISSING_SCHEMA_HINT.test(raw)) {
+    return "O banco local está incompleto. No VS Code, no terminal do start:dev, aperte Ctrl+C e rode npm run start:dev de novo.";
+  }
   if (DEV_RESTART_HINT.test(raw)) {
     return `${fallback.replace(/\.$/, "")}. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente de novo.`;
   }

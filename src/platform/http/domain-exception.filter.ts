@@ -57,7 +57,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
       return 'O servidor não concluiu a operação. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente de novo.';
     }
     if (/coluna .+ não existe|column .+ does not exist/i.test(raw)) {
-      return 'O banco está desatualizado. Pare o start:dev, suba de novo e tente outra vez. O servidor aplica as colunas novas na subida.';
+      return 'O banco local está incompleto. No VS Code, no terminal do start:dev, aperte Ctrl+C e rode npm run start:dev de novo.';
     }
     return raw || 'Internal server error';
   }

@@ -98,7 +98,7 @@ describe('DomainExceptionFilter', () => {
     );
 
     assert.equal(result.statusCode, 500);
-    assert.match(String((result.body as { message?: string }).message), /banco está desatualizado/);
+    assert.match(String((result.body as { message?: string }).message), /banco local está incompleto/);
     assert.match(String((result.body as { message?: string }).message), /start:dev/);
   });
 

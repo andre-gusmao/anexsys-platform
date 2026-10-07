@@ -6,7 +6,7 @@ import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane"
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
-import { WorkspaceFlash } from "@/components/ui/workspace-flash";
+import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import {
   buildOsWhatsAppMessage,
@@ -187,16 +187,7 @@ function mapDetailsToHeaderForm(details: ServiceOrderDetail): ServiceOrderHeader
 }
 
 function formatWorkspaceMessage(error: unknown, fallback: string) {
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-
-  const technicalHints = ["ECONN", "column ", "violates", "syntax error", "should not exist"];
-  if (technicalHints.some((hint) => error.message.includes(hint))) {
-    return fallback;
-  }
-
-  return error.message;
+  return describeWorkspaceError(error, fallback);
 }
 
 export function ServiceOrdersWorkspace() {
@@ -963,11 +954,11 @@ export function ServiceOrdersWorkspace() {
 
   return (
     <>
-      {!isListWorkspace ? (
+      {!isListWorkspace && !showCreateForm && !selectedOrder ? (
         <section className="hero-card">
           <div className="eyebrow">Operações</div>
-          <h1 className="title">{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h1>
-          <p>A Empresa e a Filial vêm do contexto ativo. Preencha o cabeçalho e as peças na mesma aba.</p>
+          <h1 className="title">Ordem de serviço</h1>
+          <p>A Empresa e a Filial vêm do contexto ativo. Abra uma OS na grade ou clique em Nova OS.</p>
         </section>
       ) : null}
 
@@ -1077,13 +1068,13 @@ export function ServiceOrdersWorkspace() {
       ) : null}
 
         {!isListWorkspace ? (
-        <article className="mini-card cadastro-form">
+        <article className="mini-card cadastro-form os-form">
           <div className="workspace-toolbar">
             <div className="workspace-toolbar__copy">
               <h3>{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h3>
               <p>
                 {showCreateForm
-                  ? "A Empresa e a Filial vêm do contexto ativo. Cadastre o cabeçalho e as peças sem sair desta aba."
+                  ? "A Empresa e a Filial vêm do contexto ativo. Preencha o cabeçalho e as peças nesta aba."
                   : selectedOrder
                     ? "Altere o cabeçalho e as peças sem perder a lista de OS."
                     : "Abra uma OS na grade ou cadastre uma nova."}
@@ -1108,7 +1099,7 @@ export function ServiceOrdersWorkspace() {
                     <span>Número</span>
                     <input disabled value={selectedOrder?.orderNo ?? "Gerado ao salvar"} />
                   </label>
-                  <div className="field">
+                  <div className="field os-header-grid__wide">
                     <SmartLookup
                       allowClear={false}
                       canCreate={canWriteCustomers}
