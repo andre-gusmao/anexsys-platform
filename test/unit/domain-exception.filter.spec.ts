@@ -89,6 +89,19 @@ describe('DomainExceptionFilter', () => {
     assert.match(String((result.body as { message?: string }).message), /start:dev/);
   });
 
+  it('translates a missing database column into a recoverable start:dev message', () => {
+    const { host, result } = createHost({ method: 'GET', url: '/api/v1/service-orders' });
+
+    new DomainExceptionFilter().catch(
+      new Error('coluna service_order.promised_delivery_time não existe'),
+      host as never,
+    );
+
+    assert.equal(result.statusCode, 500);
+    assert.match(String((result.body as { message?: string }).message), /banco está desatualizado/);
+    assert.match(String((result.body as { message?: string }).message), /start:dev/);
+  });
+
   it('translates a tsx customer search crash into a recoverable message', () => {
     const { host, result } = createHost({ method: 'GET', url: '/api/v1/customers' });
 

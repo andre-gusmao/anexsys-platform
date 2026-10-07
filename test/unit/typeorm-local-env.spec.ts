@@ -12,6 +12,8 @@ test('TypeORM usa DB_PASSWORD do ambiente quando não há DATABASE_URL', () => {
     const options = buildTypeOrmOptions();
     assert.equal('url' in options && Boolean(options.url), false);
     assert.equal(options.password, 'postgree');
+    assert.equal(Array.isArray(options.migrations), true);
+    assert.match(String(options.migrations?.[0]), /migrations[\\/]\*\.(ts|js)$/);
   } finally {
     if (previousUrl === undefined) {
       delete process.env.DATABASE_URL;

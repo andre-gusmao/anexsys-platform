@@ -1,10 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
+import { applyPendingMigrations } from './platform/database/typeorm/apply-pending-migrations';
 import { DomainExceptionFilter } from './platform/http/domain-exception.filter';
 
 export async function createNestApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
+  await applyPendingMigrations(app.get(DataSource));
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(

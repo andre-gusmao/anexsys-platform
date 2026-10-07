@@ -47,13 +47,19 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message:
-        exception instanceof Error && /getAllAndOverride|assertAllowed|Cannot read properties of undefined/.test(exception.message)
-          ? 'O servidor não concluiu a operação. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente de novo.'
-          : exception instanceof Error
-            ? exception.message
-            : 'Internal server error',
+      message: this.getFriendlyServerMessage(exception),
     });
+  }
+
+  private getFriendlyServerMessage(exception: unknown): string {
+    const raw = exception instanceof Error ? exception.message : '';
+    if (/getAllAndOverride|assertAllowed|Cannot read properties of undefined/.test(raw)) {
+      return 'O servidor não concluiu a operação. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente de novo.';
+    }
+    if (/coluna .+ não existe|column .+ does not exist/i.test(raw)) {
+      return 'O banco está desatualizado. Pare o start:dev, suba de novo e tente outra vez. O servidor aplica as colunas novas na subida.';
+    }
+    return raw || 'Internal server error';
   }
 
   private getFriendlyHttpMessage(

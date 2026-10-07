@@ -30,7 +30,7 @@ git checkout cursor/sidebar-combos-abas-a1bd
 git pull origin cursor/sidebar-combos-abas-a1bd
 ```
 
-Depois reinicie os dois processos (`start:dev` e `frontend:dev`). As abas ficam no navegador: um login novo (ou outro navegador) começa limpo, no Dashboard.
+Depois **pare e suba de novo** os dois processos (`start:dev` e `frontend:dev`). Só atualizar a página no navegador não atualiza o banco. O `start:dev` aplica sozinho as colunas novas (por exemplo o horário de saída da OS). As abas ficam no navegador: um login novo (ou outro navegador) começa limpo, no Dashboard.
 
 ### 1. Pré-requisitos
 
