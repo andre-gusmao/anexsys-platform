@@ -144,6 +144,38 @@ export class DependencyValidationService {
     this.assertAllowed(validation);
   }
 
+  async validateBodyPartInactivation(tenantId: string, bodyPartId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'body_part_id', bodyPartId, 'Parte do corpo', 'Inativar');
+  }
+
+  async validateBodyPartDeletion(tenantId: string, bodyPartId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'body_part_id', bodyPartId, 'Parte do corpo', 'Excluir');
+  }
+
+  async validateMeasurementUnitInactivation(tenantId: string, unitId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'measurement_unit_id', unitId, 'Unidade de medida', 'Inativar');
+  }
+
+  async validateMeasurementUnitDeletion(tenantId: string, unitId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'measurement_unit_id', unitId, 'Unidade de medida', 'Excluir');
+  }
+
+  async assertBodyPartCanInactivate(tenantId: string, bodyPartId: string): Promise<void> {
+    this.assertAllowed(await this.validateBodyPartInactivation(tenantId, bodyPartId));
+  }
+
+  async assertBodyPartCanDelete(tenantId: string, bodyPartId: string): Promise<void> {
+    this.assertAllowed(await this.validateBodyPartDeletion(tenantId, bodyPartId));
+  }
+
+  async assertMeasurementUnitCanInactivate(tenantId: string, unitId: string): Promise<void> {
+    this.assertAllowed(await this.validateMeasurementUnitInactivation(tenantId, unitId));
+  }
+
+  async assertMeasurementUnitCanDelete(tenantId: string, unitId: string): Promise<void> {
+    this.assertAllowed(await this.validateMeasurementUnitDeletion(tenantId, unitId));
+  }
+
   private async buildCustomerLifecycleResult(
     tenantId: string,
     customerId: string,
@@ -229,6 +261,30 @@ export class DependencyValidationService {
         { code: 'service-orders', label: 'Ordens de serviço', count: serviceOrders, workspacePath: '/service-orders' },
         { code: 'financial-records', label: 'Registros financeiros', count: financialRecords, workspacePath: '/service-orders' },
       ],
+    });
+  }
+
+  private async buildMeasurementCatalogResult(
+    tenantId: string,
+    column: 'body_part_id' | 'measurement_unit_id',
+    recordId: string,
+    entityLabel: string,
+    actionLabel: 'Inativar' | 'Excluir',
+  ): Promise<DependencyValidationResult> {
+    const items = await this.count(
+      `
+        SELECT COUNT(*)::int AS total
+        FROM measurement_set_items
+        WHERE tenant_id = $1
+          AND ${column} = $2
+      `,
+      [tenantId, recordId],
+    );
+
+    return this.buildResult({
+      entityLabel,
+      actionLabel,
+      blockers: [{ code: 'measurements', label: 'Medições de clientes', count: items, workspacePath: '/customers' }],
     });
   }
 

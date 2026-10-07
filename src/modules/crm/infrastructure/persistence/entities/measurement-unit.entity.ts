@@ -1,4 +1,5 @@
 import { Column, Entity } from 'typeorm';
+import { MeasurementCatalogStatus } from 'src/shared/domain/enums';
 import { SoftDeletableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'measurement_units' })
@@ -14,4 +15,7 @@ export class MeasurementUnitEntity extends SoftDeletableBusinessEntity {
 
   @Column({ name: 'sort_order', type: 'integer', default: 0 })
   sortOrder!: number;
+
+  @Column({ name: 'status', type: 'varchar', length: 30, default: MeasurementCatalogStatus.ACTIVE })
+  status!: MeasurementCatalogStatus;
 }

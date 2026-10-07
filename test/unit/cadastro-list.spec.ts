@@ -38,14 +38,15 @@ test('filters OS by number and status', () => {
   assert.match(buildOsExcelCsv([orders[0]]), /OS-100/);
 });
 
-test('filters measurement catalog records by name and code', () => {
+test('filters measurement catalog records by name, code and status', () => {
   const records = [
-    { id: '1', code: 'BUSTO', displayName: 'Busto', sortOrder: 1 },
-    { id: '2', code: 'CM', displayName: 'Centímetros', sortOrder: 0 },
+    { id: '1', code: 'BUSTO', displayName: 'Busto', sortOrder: 1, status: 'active' as const },
+    { id: '2', code: 'CM', displayName: 'Centímetros', sortOrder: 0, status: 'inactive' as const },
   ];
-  assert.deepEqual(applyMeasurementListFilters(records, { name: 'cent', code: '' }).map((item) => item.id), ['2']);
-  assert.deepEqual(applyMeasurementListFilters(records, { name: '', code: 'busto' }).map((item) => item.id), ['1']);
-  assert.match(buildMeasurementExcelCsv([records[0]]), /Busto/);
+  assert.deepEqual(applyMeasurementListFilters(records, { name: 'cent', code: '', status: '' }).map((item) => item.id), ['2']);
+  assert.deepEqual(applyMeasurementListFilters(records, { name: '', code: 'busto', status: '' }).map((item) => item.id), ['1']);
+  assert.deepEqual(applyMeasurementListFilters(records, { name: '', code: '', status: 'inactive' }).map((item) => item.id), ['2']);
+  assert.match(buildMeasurementExcelCsv([records[0]]), /Ativo/);
 });
 
 test('filters access users by name, email and status', () => {

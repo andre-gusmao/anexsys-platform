@@ -47,6 +47,11 @@ export enum CustomerStatus {
   BLOCKED = 'blocked',
 }
 
+export enum MeasurementCatalogStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
 export enum CustomerInteractionType {
   PROFILE_CREATED = 'profile_created',
   PROFILE_UPDATED = 'profile_updated',

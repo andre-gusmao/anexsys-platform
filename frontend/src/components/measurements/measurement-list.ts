@@ -16,7 +16,12 @@ export type MeasurementListRecord = {
   code: string;
   displayName: string;
   sortOrder: number;
+  status: "active" | "inactive";
 };
+
+export function measurementStatusLabel(status: MeasurementListRecord["status"]) {
+  return status === "inactive" ? "Inativo" : "Ativo";
+}
 
 export function applyMeasurementListFilters(
   records: MeasurementListRecord[],
@@ -24,6 +29,7 @@ export function applyMeasurementListFilters(
 ): MeasurementListRecord[] {
   const nameQuery = (filters.name ?? "").trim().toLowerCase();
   const codeQuery = (filters.code ?? "").trim().toLowerCase();
+  const statusQuery = (filters.status ?? "").trim();
 
   return records.filter((record) => {
     if (nameQuery && !includesNormalized(record.displayName, nameQuery) && !includesNormalized(record.code, nameQuery)) {
@@ -32,12 +38,20 @@ export function applyMeasurementListFilters(
     if (codeQuery && !includesNormalized(record.code, codeQuery)) {
       return false;
     }
+    if (statusQuery && record.status !== statusQuery) {
+      return false;
+    }
     return true;
   });
 }
 
 export function buildMeasurementExcelCsv(records: MeasurementListRecord[]) {
-  const header = ["Nome", "Código", "Ordem"];
-  const rows = records.map((record) => [record.displayName, record.code, String(record.sortOrder)]);
+  const header = ["Nome", "Código", "Ordem", "Status"];
+  const rows = records.map((record) => [
+    record.displayName,
+    record.code,
+    String(record.sortOrder),
+    measurementStatusLabel(record.status),
+  ]);
   return [header, ...rows].map((row) => row.map((cell) => csvCell(cell)).join(";")).join("\n");
 }

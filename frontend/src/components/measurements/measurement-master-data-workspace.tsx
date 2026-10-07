@@ -7,10 +7,12 @@ import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-respo
 import {
   applyMeasurementListFilters,
   buildMeasurementExcelCsv,
+  measurementStatusLabel,
   type MeasurementListRecord,
 } from "@/components/measurements/measurement-list";
 import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 import {
   MasterDataDuplicateGuard,
   normalizeBodyPartCodeValue,
@@ -44,12 +46,19 @@ function mapRecordToForm(record: MeasurementListRecord): MeasurementForm {
   };
 }
 
-function toListRecord(record: { id: string; code?: string; displayName: string; sortOrder: number }): MeasurementListRecord {
+function toListRecord(record: {
+  id: string;
+  code?: string;
+  displayName: string;
+  sortOrder: number;
+  status?: "active" | "inactive";
+}): MeasurementListRecord {
   return {
     id: record.id,
     code: record.code ?? "",
     displayName: record.displayName,
     sortOrder: record.sortOrder,
+    status: record.status === "inactive" ? "inactive" : "active",
   };
 }
 
@@ -69,6 +78,7 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
   const [form, setForm] = useWorkspaceScopedState<MeasurementForm>(`measurement-master.${mode}.form`, emptyForm());
   const [duplicateStatus, setDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
   const [duplicateMatch, setDuplicateMatch] = useState<MeasurementListRecord | null>(null);
+  const [dependencyValidation, setDependencyValidation] = useState<DependencyValidationResult | null>(null);
 
   const config = useMemo(
     () =>
@@ -201,6 +211,115 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
     }, 0);
   }, [basePath, closeWorkspace, config.title, currentTabId, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
+  const handleInactivateRecord = useCallback(
+    async (record: MeasurementListRecord) => {
+      if (record.status === "inactive") {
+        return;
+      }
+      if (
+        !window.confirm(
+          `Inativar ${record.displayName}? Some das medidas novas, mas continua nesta lista.`,
+        )
+      ) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `${config.endpoint}/${record.id}/dependency-check?action=inactivate`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return;
+        }
+        const updated = await apiJson<{
+          id: string;
+          code?: string;
+          displayName: string;
+          sortOrder: number;
+          status?: "active" | "inactive";
+        }>(`${config.endpoint}/${record.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "inactive" }),
+        });
+        setRecords((current) => current.map((item) => (item.id === updated.id ? toListRecord(updated) : item)));
+        setMessage(`${record.displayName} foi inativada.`);
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, `A ${config.entityLabel} não pôde ser inativada.`));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, config.endpoint, config.entityLabel],
+  );
+
+  const handleDeleteRecord = useCallback(
+    async (record: MeasurementListRecord, options: { skipConfirm?: boolean } = {}) => {
+      if (
+        !options.skipConfirm &&
+        !window.confirm(
+          `Excluir ${record.displayName}? Só é possível se não houver medidas de cliente. O registro some da lista.`,
+        )
+      ) {
+        return false;
+      }
+      setSaving(true);
+      setMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `${config.endpoint}/${record.id}/dependency-check?action=delete`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setMessage(validation.message);
+          return false;
+        }
+        await apiJson(`${config.endpoint}/${record.id}`, { method: "DELETE" });
+        setRecords((current) => current.filter((item) => item.id !== record.id));
+        setMessage(`${record.displayName} foi excluída da lista.`);
+        return true;
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, `A ${config.entityLabel} não pôde ser excluída.`));
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, config.endpoint, config.entityLabel],
+  );
+
+  const handleDeleteRecords = useCallback(
+    async (selected: MeasurementListRecord[]) => {
+      if (selected.length === 0) {
+        return;
+      }
+      if (
+        !window.confirm(
+          `Excluir ${selected.length} registro(s) selecionado(s)? Só é possível se não houver medidas de cliente.`,
+        )
+      ) {
+        return;
+      }
+      let deleted = 0;
+      for (const record of selected) {
+        const ok = await handleDeleteRecord(record, { skipConfirm: true });
+        if (ok) {
+          deleted += 1;
+        } else {
+          break;
+        }
+      }
+      if (deleted > 1) {
+        setMessage(`${deleted} registro(s) foram excluídos da lista.`);
+      }
+    },
+    [handleDeleteRecord],
+  );
+
   useEffect(() => {
     if (workspaceMode !== "new") {
       return;
@@ -309,12 +428,15 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
         </section>
       ) : null}
 
+      {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
+
       {message ? <WorkspaceFlash message={message} /> : null}
 
       {isListWorkspace ? (
         <CadastroListPanel
           applyFilters={applyMeasurementListFilters}
           buildExcelCsv={buildMeasurementExcelCsv}
+          canInactivate={(row) => row.status !== "inactive"}
           canWrite={canWrite}
           columnStorageKey={`anexsys.frontend.${mode}.grid-columns.v1`}
           columns={[
@@ -331,18 +453,46 @@ export function MeasurementMasterDataWorkspace({ mode }: Props) {
             },
             { id: "code", label: "Código", render: (row) => row.code || "—" },
             { id: "sortOrder", label: "Ordem", render: (row) => String(row.sortOrder) },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => (
+                <span className={`status-chip status-chip--${row.status === "inactive" ? "inactive" : "active"}`}>
+                  {measurementStatusLabel(row.status)}
+                </span>
+              ),
+            },
           ]}
-          defaultColumnIds={mode === "units" ? ["name", "code", "sortOrder"] : ["name", "sortOrder"]}
-          emptyFilters={{ name: "", code: "" }}
+          defaultColumnIds={mode === "units" ? ["name", "code", "sortOrder", "status"] : ["name", "sortOrder", "status"]}
+          emptyFilters={{ name: "", code: "", status: "" }}
           emptyMessage="Nenhum registro encontrado para os filtros informados."
           excelFileName={mode === "body-parts" ? "partes-do-corpo.csv" : "unidades-de-medida.csv"}
           filterFields={[
             { id: "name", label: "Nome", lookup: true, placeholder: "Nome já cadastrado" },
             { id: "code", label: "Código" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "active", label: "Ativo" },
+                { value: "inactive", label: "Inativo" },
+              ],
+            },
           ]}
           loading={loading}
           onCreate={openCreateWorkspace}
+          onDelete={(row) => {
+            void handleDeleteRecord(row);
+          }}
+          onDeleteMany={(rows) => {
+            void handleDeleteRecords(rows);
+          }}
           onEdit={openEditWorkspace}
+          onInactivate={(row) => {
+            void handleInactivateRecord(row);
+          }}
           records={records}
           rowLabel={(row) => row.displayName}
           searchKey="name"
