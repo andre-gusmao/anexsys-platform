@@ -200,8 +200,17 @@ textarea {
   }
 }
 
+.os-items-section {
+  overflow: visible;
+}
+
 .os-items-table {
-  overflow-x: auto;
+  overflow: visible;
+  min-height: calc(52px + (var(--os-item-limit, 5) * 76px));
+}
+
+.os-items-section .data-table-wrapper {
+  overflow: visible;
 }
 
 .os-labor-total {
@@ -1689,8 +1698,12 @@ textarea {
 }
 
 .smart-lookup--compact .smart-lookup__box {
-  border: 0;
-  border-radius: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.smart-lookup__dropdown--portal {
+  right: auto;
 }
 
 .smart-lookup--compact .smart-lookup__box input {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   filterLookupOptions,
   shouldShowCreateShortcut,
@@ -67,12 +68,35 @@ export function SmartLookup({
 }: Props) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null);
   const invalid = Boolean(required && touched && !value);
+
+  const updateMenuStyle = () => {
+    const box = boxRef.current;
+    if (!box) {
+      return;
+    }
+    const rect = box.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+    const maxHeight = Math.min(280, Math.max(openUp ? spaceAbove : spaceBelow, 160));
+    setMenuStyle({
+      position: "fixed",
+      top: openUp ? Math.max(8, rect.top - maxHeight - 4) : rect.bottom + 4,
+      left: rect.left,
+      width: Math.max(rect.width, 220),
+      maxHeight,
+      zIndex: 80,
+    });
+  };
 
   const selected = useMemo(() => options.find((option) => option.id === value) ?? null, [options, value]);
   const filteredOptions = useMemo(() => filterLookupOptions(options, query), [options, query]);
@@ -87,13 +111,30 @@ export function SmartLookup({
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || dropdownRef.current?.contains(target)) {
+        return;
       }
+      setOpen(false);
     };
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuStyle(null);
+      return;
+    }
+    updateMenuStyle();
+    const onReposition = () => updateMenuStyle();
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open, filteredOptions.length, query]);
 
   const selectOption = (option: SmartLookupOption) => {
     onChange(option);
@@ -151,7 +192,7 @@ export function SmartLookup({
       )}
 
       <div className="smart-lookup__search-row">
-        <div className="smart-lookup__box">
+        <div className="smart-lookup__box" ref={boxRef}>
           <input
             aria-autocomplete="list"
             aria-controls={listId}
@@ -188,39 +229,48 @@ export function SmartLookup({
         </div>
       </div>
 
-      {open && !quickCreateOpen ? (
-        <div className="smart-lookup__dropdown" id={listId} role="listbox">
-          {filteredOptions.length > 0 ? (
-            filteredOptions.map((option, index) => {
-              const active = option.id === value || index === highlightedIndex;
-              return (
-                <button
-                  aria-selected={option.id === value}
-                  className={`smart-lookup__option${active ? " smart-lookup__option--active" : ""}`}
-                  disabled={disabled}
-                  key={option.id}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => selectOption(option)}
-                  role="option"
-                  type="button"
-                >
-                  <span>{option.label}</span>
-                  {option.hint ? <small>{option.hint}</small> : null}
-                </button>
-              );
-            })
-          ) : (
-            <div className="smart-lookup__empty">
-              <p>{query.trim() ? emptyMessage : "Digite para ver sugestões."}</p>
-              {showCreate ? (
-                <button className="smart-lookup__create" disabled={disabled} onClick={openCreate} onMouseDown={(event) => event.preventDefault()} type="button">
-                  {createLabel}
-                </button>
-              ) : null}
-            </div>
-          )}
-        </div>
-      ) : null}
+      {open && !quickCreateOpen && menuStyle && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="smart-lookup__dropdown smart-lookup__dropdown--portal"
+              id={listId}
+              ref={dropdownRef}
+              role="listbox"
+              style={menuStyle}
+            >
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option, index) => {
+                  const active = option.id === value || index === highlightedIndex;
+                  return (
+                    <button
+                      aria-selected={option.id === value}
+                      className={`smart-lookup__option${active ? " smart-lookup__option--active" : ""}`}
+                      disabled={disabled}
+                      key={option.id}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectOption(option)}
+                      role="option"
+                      type="button"
+                    >
+                      <span>{option.label}</span>
+                      {option.hint ? <small>{option.hint}</small> : null}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="smart-lookup__empty">
+                  <p>{query.trim() ? emptyMessage : "Digite para ver sugestões."}</p>
+                  {showCreate ? (
+                    <button className="smart-lookup__create" disabled={disabled} onClick={openCreate} onMouseDown={(event) => event.preventDefault()} type="button">
+                      {createLabel}
+                    </button>
+                  ) : null}
+                </div>
+              )}
+            </div>,
+            document.body,
+          )
+        : null}
 
       {quickCreateOpen && renderQuickCreate ? (
         <div className="smart-lookup__quick-create">

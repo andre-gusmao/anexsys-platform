@@ -1487,7 +1487,7 @@ export function ServiceOrdersWorkspace() {
                 </div>
               </div>
 
-              <div className="mini-section">
+              <div className="mini-section os-items-section">
                 <div className="workspace-toolbar">
                   <div className="workspace-toolbar__copy">
                     <h4>Serviços e mão de obra</h4>
@@ -1498,7 +1498,10 @@ export function ServiceOrdersWorkspace() {
                   </div>
                 </div>
 
-                <div className="data-table-wrapper os-items-table">
+                <div
+                  className="data-table-wrapper os-items-table"
+                  style={{ ["--os-item-limit" as string]: maxPiecesPerBag }}
+                >
                   <table className="data-table">
                     <thead>
                       <tr>
