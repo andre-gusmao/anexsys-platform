@@ -294,7 +294,10 @@ export function QualityWorkspace() {
               options: [
                 { value: "", label: "Todos" },
                 { value: "open", label: "Aberta" },
+                { value: "in_production", label: "Em produção" },
+                { value: "awaiting_quality", label: "Aguardando controle de qualidade" },
                 { value: "quality", label: "Controle de qualidade" },
+                { value: "in_rework", label: "Em refação" },
                 { value: "ready_for_pickup", label: "Pronto para retirada" },
               ],
             },

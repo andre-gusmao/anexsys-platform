@@ -56,6 +56,7 @@ describe('applyPendingMigrations', () => {
       executedQueries.some((sql) => sql.includes("'quality'") && sql.includes("'ready_for_pickup'")),
       true,
     );
+    assert.equal(executedQueries.some((sql) => sql.includes("'in_production'") && sql.includes("'in_rework'")), true);
   });
 
   it('still repairs the schema when TypeORM cannot load the migration files', async () => {

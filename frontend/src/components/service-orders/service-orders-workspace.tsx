@@ -18,6 +18,14 @@ import {
   type OpPrintView,
   type OsPrintView,
 } from "@/components/service-orders/os-documents";
+import {
+  canReopenBagAfterFloor,
+  canRunFloorAction,
+  floorActionHint,
+  floorActionLabel,
+  floorActionSuccessMessage,
+  nextFloorAction,
+} from "@/components/service-orders/os-floor";
 import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
@@ -216,6 +224,7 @@ export function ServiceOrdersWorkspace() {
   const canWriteFinance = hasAnyPermission("finance.write");
   const canReadProduction = hasAnyPermission("production_orders.read");
   const canWriteProduction = hasAnyPermission("production_orders.write");
+  const canWriteQuality = hasAnyPermission("quality.write");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
   const [products, setProducts] = useState<CatalogLookupRecord[]>([]);
@@ -255,6 +264,15 @@ export function ServiceOrdersWorkspace() {
   const isListWorkspace = !isFormWorkspace;
   const bagClosed = Boolean(selectedOrder?.bagClosed);
   const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled" && !bagClosed;
+  const selectedFloorAction = selectedOrder ? nextFloorAction(selectedOrder.status, bagClosed) : null;
+  const canRunSelectedFloor =
+    selectedFloorAction !== null &&
+    canRunFloorAction(selectedFloorAction, {
+      canWriteOs: canWrite,
+      canWriteProduction,
+      canWriteQuality,
+    });
+  const canReopenSelectedBag = Boolean(selectedOrder && canWrite && bagClosed && canReopenBagAfterFloor(selectedOrder.status));
 
   useEffect(() => {
     setWantsNextVersion(false);
@@ -669,8 +687,46 @@ export function ServiceOrdersWorkspace() {
     [apiJson, companyName],
   );
 
+  const handleFloorAdvance = useCallback(
+    async (row: Pick<ServiceOrderRecord, "id" | "orderNo" | "status" | "bagClosed">) => {
+      const action = nextFloorAction(row.status, Boolean(row.bagClosed));
+      if (!action) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        await apiJson<ServiceOrderDetail>(`/service-orders/${row.id}/floor-advance`, { method: "POST" });
+        await loadOrders(row.id);
+        setMessage(floorActionSuccessMessage(action, row.orderNo));
+        if (action === "open_review") {
+          const targetPath = `/quality?focusRecordId=${encodeURIComponent(row.id)}`;
+          if (isMobile) {
+            navigateWithinWorkspace(targetPath);
+          } else {
+            openWorkspaceInNewTab(targetPath, `Qualidade ${row.orderNo}`, { cloneCurrent: false });
+          }
+        }
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O passo de produção não pôde ser avançado."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, isMobile, loadOrders, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
   const buildOsRowMenu = useCallback(
-    (row: Pick<ServiceOrderRecord, "id" | "orderNo">): RowMenuItem[] => [
+    (row: Pick<ServiceOrderRecord, "id" | "orderNo" | "status" | "bagClosed">): RowMenuItem[] => {
+      const floorAction = nextFloorAction(row.status, Boolean(row.bagClosed));
+      const canRunRowFloor =
+        floorAction !== null &&
+        canRunFloorAction(floorAction, {
+          canWriteOs: canWrite,
+          canWriteProduction,
+          canWriteQuality,
+        });
+      return [
       {
         id: "print",
         label: "Imprimir",
@@ -718,8 +774,30 @@ export function ServiceOrdersWorkspace() {
           },
         ],
       },
+      ...(canRunRowFloor && floorAction
+        ? [
+            {
+              id: "floor-advance",
+              label: floorActionLabel(floorAction),
+              onSelect: () => {
+                void handleFloorAdvance(row);
+              },
+            },
+          ]
+        : []),
+    ];
+    },
+    [
+      canReadProduction,
+      canWrite,
+      canWriteProduction,
+      canWriteQuality,
+      handleFloorAdvance,
+      printProductionOrder,
+      printServiceOrder,
+      resendEmail,
+      resendWhatsApp,
     ],
-    [canReadProduction, canWriteProduction, printProductionOrder, printServiceOrder, resendEmail, resendWhatsApp],
   );
 
   useEffect(() => {
@@ -1144,7 +1222,7 @@ export function ServiceOrdersWorkspace() {
   }
 
   async function handleOpenBag() {
-    if (!canWrite || !selectedOrder?.bagClosed) {
+    if (!canReopenSelectedBag || !selectedOrder?.bagClosed) {
       return;
     }
 
@@ -1311,7 +1389,10 @@ export function ServiceOrdersWorkspace() {
                 { value: "", label: "Todos" },
                 { value: "open", label: "Aberta" },
                 { value: "approved", label: "Aprovada" },
+                { value: "in_production", label: "Em produção" },
+                { value: "awaiting_quality", label: "Aguardando controle de qualidade" },
                 { value: "quality", label: "Controle de qualidade" },
+                { value: "in_rework", label: "Em refação" },
                 { value: "ready_for_pickup", label: "Pronto para retirada" },
                 { value: "cancelled", label: "Cancelada" },
               ],
@@ -1897,7 +1978,7 @@ export function ServiceOrdersWorkspace() {
                         Fechar sacola
                       </button>
                     </div>
-                  ) : bagClosed && canWrite ? (
+                  ) : bagClosed && canReopenSelectedBag ? (
                     <div className="button-row">
                       <button
                         className="button"
@@ -2031,6 +2112,9 @@ export function ServiceOrdersWorkspace() {
                     Ao salvar, será gerada a nova versão <strong>{nextVersionNo}</strong>. Ela abre em outra aba. Esta OS imprime a OP.
                   </p>
                 ) : null}
+                {selectedOrder && selectedFloorAction ? (
+                  <p className="os-rule-banner os-form-footer__notice">{floorActionHint(selectedFloorAction)}</p>
+                ) : null}
                 <div className="button-row">
                   {showCreateForm ? (
                     <>
@@ -2053,9 +2137,22 @@ export function ServiceOrdersWorkspace() {
                     </>
                   ) : selectedOrder && bagClosed ? (
                     <>
+                      {canRunSelectedFloor && selectedFloorAction ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => {
+                            void handleFloorAdvance(selectedOrder);
+                          }}
+                          type="button"
+                        >
+                          {floorActionLabel(selectedFloorAction)}
+                        </button>
+                      ) : null}
                       <button className="button" disabled={saving || !canWrite} type="submit">
                         {saving ? "Salvando…" : "Salvar"}
                       </button>
+                      {canReopenSelectedBag ? (
                       <button
                         className="button"
                         disabled={saving || !canWrite}
@@ -2066,6 +2163,7 @@ export function ServiceOrdersWorkspace() {
                       >
                         Abrir sacola
                       </button>
+                      ) : null}
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
                       </button>

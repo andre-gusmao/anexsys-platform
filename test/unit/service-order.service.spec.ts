@@ -511,4 +511,60 @@ describe('ServiceOrderService', () => {
       },
     );
   });
+
+  it('refuses floor advance while the bag is open', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return { id: 'so-1', tenantId: 'tenant-1', status: 'open', bagClosed: false, branchId: 'branch-1' };
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () => service.advanceFloor('tenant-1', 'so-1', 'user-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /próximo passo/);
+        return true;
+      },
+    );
+  });
+
+  it('refuses reopening the bag after production started', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return { id: 'so-1', tenantId: 'tenant-1', status: 'in_production', bagClosed: true };
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () => service.reopenBag('tenant-1', 'so-1', 'user-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /produção começou/);
+        return true;
+      },
+    );
+  });
 });

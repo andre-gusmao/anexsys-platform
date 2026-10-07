@@ -23,6 +23,12 @@ import { UpdateServiceOrderItemDto } from '../../contracts/dto/update-service-or
 import { AtelierCatalogService } from '../atelier-catalog/atelier-catalog.service';
 import { currentClockTime, normalizeClockTime } from '../delivery-date/clock-time';
 import { DeliveryDateService } from '../delivery-date/delivery-date.service';
+import {
+  canReopenBagAfterFloor,
+  floorActionAudit,
+  floorActionResultStatus,
+  nextFloorAction,
+} from './service-order-floor';
 import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, withVersionSuffix } from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
@@ -441,6 +447,9 @@ export class ServiceOrderService {
     if (!serviceOrder.bagClosed) {
       throw new DomainValidationError('Esta sacola já está aberta.');
     }
+    if (!canReopenBagAfterFloor(serviceOrder.status)) {
+      throw new DomainValidationError('Não é possível abrir a sacola depois que a produção começou.');
+    }
 
     serviceOrder.bagClosed = false;
     serviceOrder.updatedBy = actorUserId;
@@ -775,6 +784,41 @@ export class ServiceOrderService {
       metadata: { status: saved.status },
     });
     return saved;
+  }
+
+  async advanceFloor(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    const action = nextFloorAction(serviceOrder.status, serviceOrder.bagClosed);
+    if (!action) {
+      throw new DomainValidationError('Não há próximo passo de produção para esta OS.');
+    }
+    if (action === 'pick_up' || action === 'pick_up_rework') {
+      const busy = await this.serviceOrderRepository.findActiveFloorBags(
+        tenantId,
+        serviceOrder.branchId,
+        serviceOrder.id,
+      );
+      if (busy[0]) {
+        throw new DomainValidationError(
+          `Já existe uma sacola em produção (${busy[0].orderNo}). Termine ela antes de pegar outra.`,
+        );
+      }
+    }
+
+    serviceOrder.status = floorActionResultStatus(action);
+    serviceOrder.updatedBy = actorUserId;
+    const saved = await this.serviceOrderRepository.save(serviceOrder);
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: floorActionAudit(action),
+      eventType: 'service_order.workflow',
+      metadata: { status: saved.status, floorAction: action },
+    });
+    return this.getDetails(tenantId, saved.id);
   }
 
   async applyQualityStatus(

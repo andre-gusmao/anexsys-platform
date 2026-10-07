@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, Not, Repository } from 'typeorm';
 import { DeliveryType, ServiceOrderStatus } from 'src/shared/domain/enums';
 import { ServiceOrderEntity } from '../entities/service-order.entity';
 
@@ -30,6 +30,19 @@ export class ServiceOrderRepository {
 
   async findById(id: string): Promise<ServiceOrderEntity | null> {
     return this.repository.findOne({ where: { id, isDeleted: false } });
+  }
+
+  async findActiveFloorBags(tenantId: string, branchId: string, excludeId: string): Promise<ServiceOrderEntity[]> {
+    return this.repository.find({
+      where: {
+        tenantId,
+        branchId,
+        isDeleted: false,
+        id: Not(excludeId),
+        status: In([ServiceOrderStatus.IN_PRODUCTION, ServiceOrderStatus.IN_REWORK]),
+      },
+      order: { openedAt: 'DESC' },
+    });
   }
 
   async findByGroupId(tenantId: string, groupId: string): Promise<ServiceOrderEntity[]> {

@@ -30,7 +30,15 @@ import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-conte
 import { PlatformRequest } from 'src/platform/http/request-context';
 import { DeliveryType, ServiceOrderItemStatus, SurchargeMethod } from 'src/shared/domain/enums';
 import { SearchServiceOrdersDto } from '../contracts/dto/search-service-orders.dto';
+import { nextFloorAction } from '../application/service-order/service-order-floor';
 import { ServiceOrderService } from '../application/service-order/service-order.service';
+
+function canRunFloorAction(action: string, permissions: string[]) {
+  if (action === 'open_review') {
+    return permissions.includes('quality.write') || permissions.includes('service_orders.write');
+  }
+  return permissions.includes('production_orders.write') || permissions.includes('service_orders.write');
+}
 
 class CreateServiceOrderItemBody {
   @IsString()
@@ -481,6 +489,26 @@ export class ServiceOrdersController {
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
     return this.serviceOrderService.reopenBag(tenantId, serviceOrderId, principal.userId);
+  }
+
+  @Permissions('service_orders.read')
+  @Post(':serviceOrderId/floor-advance')
+  async advanceFloor(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    const action = nextFloorAction(serviceOrder.status, serviceOrder.bagClosed);
+    if (action && !canRunFloorAction(action, principal.effectivePermissions)) {
+      throw new ForbiddenException('Você não tem permissão para este passo de produção.');
+    }
+    return this.serviceOrderService.advanceFloor(tenantId, serviceOrderId, principal.userId);
   }
 
   @Permissions('service_orders.write')

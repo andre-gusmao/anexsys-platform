@@ -93,7 +93,7 @@ async function main() {
     await client.query(`
       ALTER TABLE IF EXISTS service_orders
       ADD CONSTRAINT chk_service_orders_status
-      CHECK (status IN ('open', 'approved', 'cancelled', 'quality', 'ready_for_pickup'))
+      CHECK (status IN ('open', 'approved', 'cancelled', 'in_production', 'awaiting_quality', 'quality', 'in_rework', 'ready_for_pickup'))
     `);
     await client.query(`
       UPDATE service_orders
