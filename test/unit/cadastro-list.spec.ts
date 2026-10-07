@@ -3,6 +3,7 @@ import test from 'node:test';
 import { applyFilialListFilters, buildFilialExcelCsv } from '../../frontend/src/components/admin/filial-list';
 import { applyContaListFilters, buildContaExcelCsv } from '../../frontend/src/components/admin/conta-list';
 import { applyOsListFilters, buildOsExcelCsv } from '../../frontend/src/components/service-orders/os-list';
+import { applyMeasurementListFilters, buildMeasurementExcelCsv } from '../../frontend/src/components/measurements/measurement-list';
 
 test('filters filiais by name, code and status', () => {
   const filiais = [
@@ -34,4 +35,14 @@ test('filters OS by number and status', () => {
   assert.deepEqual(applyOsListFilters(orders, { name: '', status: 'open', deliveryType: '' }).map((item) => item.id), ['1']);
   assert.deepEqual(applyOsListFilters(orders, { name: '', status: '', deliveryType: 'Express' }).map((item) => item.id), ['2']);
   assert.match(buildOsExcelCsv([orders[0]]), /OS-100/);
+});
+
+test('filters measurement catalog records by name and code', () => {
+  const records = [
+    { id: '1', code: 'BUSTO', displayName: 'Busto', sortOrder: 1 },
+    { id: '2', code: 'CM', displayName: 'Centímetros', sortOrder: 0 },
+  ];
+  assert.deepEqual(applyMeasurementListFilters(records, { name: 'cent', code: '' }).map((item) => item.id), ['2']);
+  assert.deepEqual(applyMeasurementListFilters(records, { name: '', code: 'busto' }).map((item) => item.id), ['1']);
+  assert.match(buildMeasurementExcelCsv([records[0]]), /Busto/);
 });
