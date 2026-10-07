@@ -1007,7 +1007,7 @@ export function AccessWorkspace() {
       setMessage("Papel vinculado ao usuário.");
       await loadUserSummary(activeUser.id);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A role não pôde ser vinculada.");
+      setMessage(error instanceof Error ? error.message : "O papel não pôde ser vinculado.");
     } finally {
       setSaving(false);
     }
@@ -1045,10 +1045,10 @@ export function AccessWorkspace() {
         body: JSON.stringify({ userId: activeUser.id }),
       });
       setAssignCommunityId("");
-      setMessage("Community vinculada ao usuário.");
+      setMessage("Comunidade vinculada ao usuário.");
       await loadUserSummary(activeUser.id);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A community não pôde ser vinculada ao usuário.");
+      setMessage(error instanceof Error ? error.message : "A comunidade não pôde ser vinculada ao usuário.");
     } finally {
       setSaving(false);
     }
@@ -1065,9 +1065,9 @@ export function AccessWorkspace() {
         body: JSON.stringify({ permissionId: assignPermissionToRoleId }),
       });
       setAssignPermissionToRoleId("");
-      setMessage("Permissão vinculada à role.");
+      setMessage("Permissão vinculada ao papel.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada à role.");
+      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada ao papel.");
     } finally {
       setSaving(false);
     }
@@ -1084,9 +1084,9 @@ export function AccessWorkspace() {
         body: JSON.stringify({ permissionId: assignPermissionToCommunityId }),
       });
       setAssignPermissionToCommunityId("");
-      setMessage("Permissão vinculada à community.");
+      setMessage("Permissão vinculada à comunidade.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada à community.");
+      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada à comunidade.");
     } finally {
       setSaving(false);
     }
@@ -1277,10 +1277,10 @@ export function AccessWorkspace() {
                 </form>
 
                 <div className="mini-section">
-                  <h4>Vincular role</h4>
+                  <h4>Vincular papel</h4>
                   <form className="inline-form" onSubmit={handleAssignRole}>
                     <select value={assignRoleId} onChange={(event) => setAssignRoleId(event.target.value)}>
-                      <option value="">Selecione a role</option>
+                      <option value="">Selecione o papel</option>
                       {roles.map((role) => (
                         <option key={role.id} value={role.id}>
                           {role.displayName}
@@ -1323,9 +1323,9 @@ export function AccessWorkspace() {
                       ))}
                     </select>
                     <select value={assignBranchScopeType} onChange={(event) => setAssignBranchScopeType(event.target.value as "member" | "manager" | "admin")}>
-                      <option value="member">Member</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
+                      <option value="member">Membro</option>
+                      <option value="manager">Gerente</option>
+                      <option value="admin">Administrador</option>
                     </select>
                     <button className="button-secondary" disabled={saving || !canWriteUsers} type="submit">
                       Vincular
@@ -1334,10 +1334,10 @@ export function AccessWorkspace() {
                 </div>
 
                 <div className="mini-section">
-                  <h4>Vincular community</h4>
+                  <h4>Vincular comunidade</h4>
                   <form className="inline-form" onSubmit={handleAssignCommunity}>
                     <select value={assignCommunityId} onChange={(event) => setAssignCommunityId(event.target.value)}>
-                      <option value="">Selecione a community</option>
+                      <option value="">Selecione a comunidade</option>
                       {communities.map((community) => (
                         <option key={community.id} value={community.id}>
                           {community.displayName}
@@ -1356,8 +1356,8 @@ export function AccessWorkspace() {
                     <div className="empty-state">Carregando resumo…</div>
                   ) : userSummary ? (
                     <div className="workspace-stack">
-                      <TokenBlock title="Roles" values={userSummary.roles.map((item) => `${item.displayName}${item.assignedBranchLabel ? ` · ${item.assignedBranchLabel}` : ""}`)} />
-                      <TokenBlock title="Communities" values={userSummary.communities.map((item) => item.displayName)} />
+                      <TokenBlock title="Papéis" values={userSummary.roles.map((item) => `${item.displayName}${item.assignedBranchLabel ? ` · ${item.assignedBranchLabel}` : ""}`)} />
+                      <TokenBlock title="Comunidades" values={userSummary.communities.map((item) => item.displayName)} />
                       <TokenBlock title="Escopos de filial" values={userSummary.branchScopes.map((item) => `${item.branchLabel} · ${item.scopeType}`)} />
                       <TokenBlock title="Permissões efetivas" values={userSummary.effectiveAccess.permissions} />
                     </div>
@@ -1889,7 +1889,7 @@ function QuickCreateBranch({
 
   return (
     <div className="form-grid">
-      <h4>Quick create</h4>
+      <h4>Cadastro rápido</h4>
       <label className="field">
         <span>Código</span>
         <input required value={code} onChange={(event) => setCode(event.target.value)} />
@@ -1955,7 +1955,7 @@ function RoleFormFields({ form, setForm }: { form: RoleForm; setForm: Dispatch<S
         </select>
       </label>
       <label className="field field--checkbox">
-        <span>System managed</span>
+        <span>Gerenciado pelo sistema</span>
         <input checked={form.isSystemManaged} onChange={(event) => setForm((current) => ({ ...current, isSystemManaged: event.target.checked }))} type="checkbox" />
       </label>
     </>

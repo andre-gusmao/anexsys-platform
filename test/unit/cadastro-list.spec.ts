@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyFilialListFilters, buildFilialExcelCsv } from '../../frontend/src/components/admin/filial-list';
 import { applyContaListFilters, buildContaExcelCsv } from '../../frontend/src/components/admin/conta-list';
-import { applyOsListFilters, buildOsExcelCsv } from '../../frontend/src/components/service-orders/os-list';
+import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from '../../frontend/src/components/service-orders/os-list';
 import { applyMeasurementListFilters, buildMeasurementExcelCsv } from '../../frontend/src/components/measurements/measurement-list';
 import {
   applyAccessCommunityListFilters,
@@ -45,6 +45,10 @@ test('filters OS by number and status', () => {
   assert.deepEqual(applyOsListFilters(orders, { name: '', status: 'open', deliveryType: '' }).map((item) => item.id), ['1']);
   assert.deepEqual(applyOsListFilters(orders, { name: '', status: '', deliveryType: 'Express' }).map((item) => item.id), ['2']);
   assert.match(buildOsExcelCsv([orders[0]]), /OS-100/);
+  assert.match(buildOsExcelCsv([orders[0]]), /Normal/);
+  assert.match(buildOsExcelCsv([orders[0]]), /Aberta/);
+  assert.equal(osDeliveryTypeLabel('Priority'), 'Urgente');
+  assert.equal(osStatusLabel('cancelled'), 'Cancelada');
 });
 
 test('filters measurement catalog records by name, code and status', () => {

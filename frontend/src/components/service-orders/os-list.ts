@@ -21,6 +21,21 @@ export type OsListRecord = {
   totalValue: string | null;
 };
 
+export function osDeliveryTypeLabel(type: string) {
+  if (type === "Standard") return "Normal";
+  if (type === "Priority") return "Urgente";
+  if (type === "Express") return "Expresso";
+  return type;
+}
+
+export function osStatusLabel(status: string) {
+  if (status === "open") return "Aberta";
+  if (status === "approved") return "Aprovada";
+  if (status === "cancelled") return "Cancelada";
+  if (status === "draft") return "Rascunho";
+  return status;
+}
+
 export function applyOsListFilters(orders: OsListRecord[], filters: Record<string, string>): OsListRecord[] {
   const nameQuery = (filters.name ?? "").trim().toLowerCase();
   const statusQuery = (filters.status ?? "").trim();
@@ -50,9 +65,9 @@ export function buildOsExcelCsv(orders: OsListRecord[]) {
   const rows = orders.map((order) => [
     order.orderNo,
     order.promisedDeliveryDate,
-    order.deliveryType,
+    osDeliveryTypeLabel(order.deliveryType),
     order.operationalPriority ?? "",
-    order.status,
+    osStatusLabel(order.status),
     order.totalValue ?? "",
   ]);
   return [header, ...rows].map((row) => row.map((cell) => csvCell(cell)).join(";")).join("\n");

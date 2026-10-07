@@ -8,7 +8,7 @@ import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
-import { applyOsListFilters, buildOsExcelCsv } from "@/components/service-orders/os-list";
+import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
 import {
   addServiceOrderItemGridRow,
   buildCreateServiceOrderItemsPayload,
@@ -155,8 +155,8 @@ export function ServiceOrdersWorkspace() {
   const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
   const { closeWorkspace } = useWorkspaceManager();
   const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
-    label: showCreateForm ? "OS: New" : selectedOrder ? `OS #${selectedOrder.orderNo}` : "Service Orders",
-    subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
+    label: showCreateForm ? "OS: Nova" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordens de serviço",
+    subtitle: showCreateForm ? "Novo cadastro" : selectedOrder ? osDeliveryTypeLabel(selectedOrder.deliveryType) : null,
   });
   const isFormWorkspace = workspaceMode === "new" || Boolean(focusServiceOrderId);
   const isListWorkspace = !isFormWorkspace;
@@ -211,7 +211,9 @@ export function ServiceOrdersWorkspace() {
       orders.map((order) => ({
         id: order.id,
         label: order.orderNo,
-        hint: [order.status, order.deliveryType, order.operationalPriority].filter(Boolean).join(" · ") || undefined,
+        hint: [osStatusLabel(order.status), osDeliveryTypeLabel(order.deliveryType), order.operationalPriority]
+          .filter(Boolean)
+          .join(" · ") || undefined,
       })),
     [orders],
   );
@@ -257,7 +259,7 @@ export function ServiceOrdersWorkspace() {
           return;
         }
         setMessage(
-          formatWorkspaceMessage(error, "The Service Order details could not be loaded. Review your access and try again."),
+          formatWorkspaceMessage(error, "A OS não pôde ser carregada. Confira o acesso e tente de novo."),
         );
       } finally {
         if (latestDetailRequestId.current === requestId) {
@@ -296,7 +298,7 @@ export function ServiceOrdersWorkspace() {
         setActiveOrderId(null);
         setDetails(null);
         setMessage(
-          formatWorkspaceMessage(error, "Service Orders could not be loaded. Review filters, access, and branch context."),
+          formatWorkspaceMessage(error, "As OS não puderam ser carregadas. Confira filtros, acesso e a Filial do contexto."),
         );
       } finally {
         setLoading(false);
@@ -319,7 +321,7 @@ export function ServiceOrdersWorkspace() {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "Customer lookup could not be loaded. Review access to Customers before creating a Service Order.",
+          "A busca de clientes não pôde ser carregada. Confira o acesso a Clientes antes de criar a OS.",
         ),
       );
     } finally {
@@ -380,7 +382,7 @@ export function ServiceOrdersWorkspace() {
       return;
     }
 
-    openWorkspaceInNewTab(targetPath, "OS: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    openWorkspaceInNewTab(targetPath, "OS: Nova", { cloneCurrent: false, subtitle: "Novo cadastro" });
   }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
   const openServiceOrderWorkspace = useCallback(
@@ -391,9 +393,9 @@ export function ServiceOrdersWorkspace() {
         return;
       }
 
-      openWorkspaceInNewTab(targetPath, `OS #${order.orderNo}`, {
+      openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, {
         cloneCurrent: false,
-        subtitle: order.deliveryType,
+        subtitle: order.deliveryType ? osDeliveryTypeLabel(order.deliveryType) : null,
       });
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
@@ -409,7 +411,7 @@ export function ServiceOrdersWorkspace() {
     }
 
     const closingTabId = currentTabId;
-    openWorkspaceInNewTab("/service-orders", "Service Orders", { cloneCurrent: false });
+    openWorkspaceInNewTab("/service-orders", "Ordens de serviço", { cloneCurrent: false });
     window.setTimeout(() => {
       closeWorkspace(closingTabId);
     }, 0);
@@ -429,16 +431,16 @@ export function ServiceOrdersWorkspace() {
 
   function validateItems(requireAtLeastOneItem: boolean) {
     if (requireAtLeastOneItem && visibleItemRows.length === 0) {
-      return "Add at least one item before saving the Service Order.";
+      return "Inclua pelo menos uma peça antes de salvar a OS.";
     }
 
     for (const row of visibleItemRows) {
       if (!row.itemType.trim() || !row.description.trim()) {
-        return "Each item must include Product and Service / Notes before saving.";
+        return "Cada peça precisa de produto e serviço/observação antes de salvar.";
       }
       const quantity = Number(row.quantity);
       if (!Number.isFinite(quantity) || quantity <= 0) {
-        return "Each item quantity must be greater than zero.";
+        return "A quantidade de cada peça precisa ser maior que zero.";
       }
     }
 
@@ -450,11 +452,11 @@ export function ServiceOrdersWorkspace() {
     if (!canWrite) return;
 
     if (!canPersistInContext || !session?.activeBranchId) {
-      setMessage("Select the active Branch in the header before saving the Service Order.");
+      setMessage("Escolha a Filial no contexto antes de salvar a OS.");
       return;
     }
     if (!headerForm.customerId) {
-      setMessage("Select the customer before saving the Service Order.");
+      setMessage("Escolha o cliente antes de salvar a OS.");
       return;
     }
 
@@ -484,12 +486,12 @@ export function ServiceOrdersWorkspace() {
       setActiveOrderId(createdId);
       await loadOrders(createdId);
       navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(createdId)}`);
-      setMessage("Service Order saved. The header and item grid were persisted, the grid was refreshed, and the new record is already selected.");
+      setMessage("OS salva. O cabeçalho e as peças foram gravados e a nova OS já está selecionada.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "The Service Order could not be saved. Review the active context, customer, and item grid, then try again.",
+          "A OS não pôde ser salva. Confira o contexto ativo, o cliente e as peças, e tente de novo.",
         ),
       );
     } finally {
@@ -502,7 +504,7 @@ export function ServiceOrdersWorkspace() {
     if (!selectedOrder || !canEditSelectedOrder) return;
 
     if (!headerForm.customerId) {
-      setMessage("Select the customer before updating the Service Order.");
+      setMessage("Escolha o cliente antes de atualizar a OS.");
       return;
     }
 
@@ -555,13 +557,13 @@ export function ServiceOrdersWorkspace() {
 
       await loadOrders(selectedOrder.id);
       setMessage(
-        `Service Order updated. Header synchronized and item grid applied with ${plan.create.length} addition(s), ${plan.update.length} edit(s), and ${plan.remove.length} removal(s).`,
+        `OS atualizada. Cabeçalho gravado e peças aplicadas: ${plan.create.length} inclusão(ões), ${plan.update.length} alteração(ões) e ${plan.remove.length} exclusão(ões).`,
       );
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "The Service Order could not be updated. Review the header data and item grid, then try again.",
+          "A OS não pôde ser atualizada. Confira o cabeçalho e as peças, e tente de novo.",
         ),
       );
     } finally {
@@ -572,8 +574,8 @@ export function ServiceOrdersWorkspace() {
   if (!canRead) {
     return (
       <section className="mini-card">
-        <h3>Service Orders indisponíveis</h3>
-        <p>Você não possui acesso à área operacional de Service Orders no contexto atual.</p>
+        <h3>Ordens de serviço indisponíveis</h3>
+        <p>Você não possui acesso às OS no contexto atual.</p>
       </section>
     );
   }
@@ -583,8 +585,8 @@ export function ServiceOrdersWorkspace() {
       {!isListWorkspace ? (
         <section className="hero-card">
           <div className="eyebrow">Operações</div>
-          <h1 className="title">{showCreateForm ? "Nova OS" : selectedOrder ? `OS #${selectedOrder.orderNo}` : "Ordem de serviço"}</h1>
-          <p>Estrutura operacional com contexto herdado de Company/Branch, Order Header e editable Items Grid no mesmo fluxo ANEXSYS.</p>
+          <h1 className="title">{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h1>
+          <p>A Empresa e a Filial vêm do contexto ativo. Preencha o cabeçalho e as peças na mesma aba.</p>
         </section>
       ) : null}
 
@@ -605,19 +607,21 @@ export function ServiceOrdersWorkspace() {
                 <>
                   <strong>{row.orderNo}</strong>
                   <div className="table-subtle">
-                    {row.deliveryType}
+                    {osDeliveryTypeLabel(row.deliveryType)}
                     {row.operationalPriority ? ` · ${row.operationalPriority}` : ""}
                   </div>
                 </>
               ),
             },
             { id: "delivery", label: "Entrega", render: (row) => formatDate(row.promisedDeliveryDate) },
-            { id: "type", label: "Tipo", render: (row) => row.deliveryType },
+            { id: "type", label: "Tipo", render: (row) => osDeliveryTypeLabel(row.deliveryType) },
             {
               id: "status",
               label: "Status",
               render: (row) => (
-                <span className={`status-chip status-chip--${row.status === "cancelled" ? "inactive" : "active"}`}>{row.status}</span>
+                <span className={`status-chip status-chip--${row.status === "cancelled" ? "inactive" : "active"}`}>
+                  {osStatusLabel(row.status)}
+                </span>
               ),
             },
             { id: "value", label: "Valor", render: (row) => row.totalValue ?? "—" },
@@ -645,9 +649,9 @@ export function ServiceOrdersWorkspace() {
               label: "Tipo de entrega",
               options: [
                 { value: "", label: "Todos" },
-                { value: "Standard", label: "Standard" },
-                { value: "Priority", label: "Priority" },
-                { value: "Express", label: "Express" },
+                { value: "Standard", label: "Normal" },
+                { value: "Priority", label: "Urgente" },
+                { value: "Express", label: "Expresso" },
               ],
             },
           ]}
@@ -667,52 +671,52 @@ export function ServiceOrdersWorkspace() {
         <article className="mini-card cadastro-form">
           <div className="workspace-toolbar">
             <div className="workspace-toolbar__copy">
-              <h3>{showCreateForm ? "Create Service Order" : selectedOrder ? "Service Order Header + Items Grid" : "Service Order form"}</h3>
+              <h3>{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h3>
               <p>
                 {showCreateForm
-                  ? "Company and Branch are inherited automatically from the active header context while you build the order header and items grid."
+                  ? "A Empresa e a Filial vêm do contexto ativo. Cadastre o cabeçalho e as peças sem sair desta aba."
                   : selectedOrder
-                    ? "Review the order header and keep multiple items editable without leaving the selected Service Order."
-                    : "Select a Service Order in the grid or start a new one."}
+                    ? "Altere o cabeçalho e as peças sem perder a lista de OS."
+                    : "Abra uma OS na grade ou cadastre uma nova."}
               </p>
             </div>
             {!showCreateForm && selectedOrder && canWrite ? (
               <button className="button-secondary" onClick={openCreateWorkspace} type="button">
-                New Service Order
+                Nova OS
               </button>
             ) : null}
           </div>
 
-          {detailLoading && !showCreateForm ? <div className="empty-state">Loading Service Order details…</div> : null}
+          {detailLoading && !showCreateForm ? <div className="empty-state">Carregando a OS…</div> : null}
 
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
-                <h4>Order Header</h4>
+                <h4>Cabeçalho</h4>
                 <div className="detail-grid">
                   <div className="detail-field">
-                    <span>Company</span>
-                    <strong>{activeCompany?.displayName ?? "Select Company in the header"}</strong>
+                    <span>Empresa</span>
+                    <strong>{activeCompany?.displayName ?? "Escolha a Empresa no contexto"}</strong>
                   </div>
                   <div className="detail-field">
-                    <span>Branch</span>
-                    <strong>{activeBranch?.label ?? "Select Branch in the header"}</strong>
+                    <span>Filial</span>
+                    <strong>{activeBranch?.label ?? "Escolha a Filial no contexto"}</strong>
                   </div>
                   <div className="detail-field">
-                    <span>Order Number</span>
-                    <strong>{selectedOrder?.orderNo ?? "Generated after Save"}</strong>
+                    <span>Número</span>
+                    <strong>{selectedOrder?.orderNo ?? "Gerado ao salvar"}</strong>
                   </div>
                   <div className="detail-field">
                     <span>Status</span>
-                    <strong>{selectedOrder?.status ?? "draft"}</strong>
+                    <strong>{selectedOrder ? osStatusLabel(selectedOrder.status) : "Rascunho"}</strong>
                   </div>
                   <div className="detail-field">
-                    <span>Opened At</span>
-                    <strong>{selectedOrder ? formatDate(selectedOrder.openedAt) : "Generated after Save"}</strong>
+                    <span>Aberta em</span>
+                    <strong>{selectedOrder ? formatDate(selectedOrder.openedAt) : "Gerada ao salvar"}</strong>
                   </div>
                   <div className="detail-field">
-                    <span>Promised Delivery</span>
-                    <strong>{selectedOrder ? formatDate(selectedOrder.promisedDeliveryDate) : "Calculated after Save"}</strong>
+                    <span>Entrega prometida</span>
+                    <strong>{selectedOrder ? formatDate(selectedOrder.promisedDeliveryDate) : "Calculada ao salvar"}</strong>
                   </div>
                 </div>
               </div>
@@ -762,7 +766,7 @@ export function ServiceOrdersWorkspace() {
               </div>
 
               <label className="field">
-                <span>Delivery type</span>
+                <span>Tipo de entrega</span>
                 <select
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
                   value={headerForm.deliveryType}
@@ -773,24 +777,24 @@ export function ServiceOrdersWorkspace() {
                     }))
                   }
                 >
-                  <option value="Standard">Standard</option>
-                  <option value="Priority">Priority</option>
-                  <option value="Express">Express</option>
+                  <option value="Standard">Normal</option>
+                  <option value="Priority">Urgente</option>
+                  <option value="Express">Expresso</option>
                 </select>
               </label>
 
               <label className="field">
-                <span>Operational information</span>
+                <span>Informação operacional</span>
                 <input
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  placeholder="Operational priority or short execution context"
+                  placeholder="Prioridade ou contexto curto da execução"
                   value={headerForm.operationalPriority}
                   onChange={(event) => setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))}
                 />
               </label>
 
               <label className="field">
-                <span>Commercial notes</span>
+                <span>Observações comerciais</span>
                 <textarea
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
                   rows={3}
@@ -800,7 +804,7 @@ export function ServiceOrdersWorkspace() {
               </label>
 
               <label className="field">
-                <span>Customer notes</span>
+                <span>Observações do cliente</span>
                 <textarea
                   disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
                   rows={3}
@@ -812,8 +816,8 @@ export function ServiceOrdersWorkspace() {
               <div className="mini-section">
                 <div className="workspace-toolbar">
                   <div className="workspace-toolbar__copy">
-                    <h4>Items Grid</h4>
-                    <p>Add, edit, and remove multiple items while staying inside the same Service Order.</p>
+                    <h4>Peças</h4>
+                    <p>Inclua, altere e remova várias peças sem sair desta OS.</p>
                   </div>
                   {(showCreateForm || canEditSelectedOrder) ? (
                     <button
@@ -822,7 +826,7 @@ export function ServiceOrdersWorkspace() {
                       onClick={() => setItemRows((current) => addServiceOrderItemGridRow(current))}
                       type="button"
                     >
-                      Add Item
+                      Adicionar peça
                     </button>
                   ) : null}
                 </div>
@@ -831,12 +835,12 @@ export function ServiceOrdersWorkspace() {
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Item</th>
-                        <th>Product</th>
-                        <th>Service / Notes</th>
-                        <th>Qty</th>
+                        <th>Peça</th>
+                        <th>Produto</th>
+                        <th>Serviço / observação</th>
+                        <th>Qtd</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th>Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -849,7 +853,7 @@ export function ServiceOrdersWorkspace() {
                             <td>
                               <input
                                 disabled={!editable}
-                                placeholder="Jeans, Dress, Shirt"
+                                placeholder="Calça, vestido, camisa"
                                 value={row.itemType}
                                 onChange={(event) =>
                                   setItemRows((current) =>
@@ -861,7 +865,7 @@ export function ServiceOrdersWorkspace() {
                             <td>
                               <input
                                 disabled={!editable}
-                                placeholder="Original Hem, Hem 58 cm, Left cuff only"
+                                placeholder="Bainha original, bainha 58 cm, só punho esquerdo"
                                 value={row.description}
                                 onChange={(event) =>
                                   setItemRows((current) =>
@@ -887,7 +891,7 @@ export function ServiceOrdersWorkspace() {
                             </td>
                             <td>
                               <span className={`status-chip status-chip--${row.isNew ? "active" : row.status === "cancelled" ? "inactive" : "active"}`}>
-                                {row.isNew ? "new" : row.status}
+                                {row.isNew ? "Nova" : osStatusLabel(row.status)}
                               </span>
                             </td>
                             <td>
@@ -903,7 +907,7 @@ export function ServiceOrdersWorkspace() {
                                     }
                                     type="button"
                                   >
-                                    {showCreateForm || row.isEditing ? "Finish Edit" : "Edit Item"}
+                                    {showCreateForm || row.isEditing ? "Concluir" : "Alterar"}
                                   </button>
                                 ) : null}
                                 {canMutateRow ? (
@@ -913,7 +917,7 @@ export function ServiceOrdersWorkspace() {
                                     onClick={() => setItemRows((current) => removeServiceOrderItemGridRow(current, row.localId))}
                                     type="button"
                                   >
-                                    Remove Item
+                                    Excluir
                                   </button>
                                 ) : null}
                               </div>
@@ -924,7 +928,7 @@ export function ServiceOrdersWorkspace() {
                       {visibleItemRows.length === 0 ? (
                         <tr>
                           <td colSpan={6}>
-                            <div className="empty-state">No active items in the grid. Use Add Item to continue.</div>
+                            <div className="empty-state">Nenhuma peça na grade. Use Adicionar peça para continuar.</div>
                           </td>
                         </tr>
                       ) : null}
@@ -937,26 +941,26 @@ export function ServiceOrdersWorkspace() {
                 {showCreateForm ? (
                   <>
                     <button className="button" disabled={saving || !canWrite} type="submit">
-                      {saving ? "Saving…" : "Save"}
+                      {saving ? "Salvando…" : "Salvar"}
                     </button>
                     <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
-                      Close
+                      Cancelar
                     </button>
                   </>
                 ) : selectedOrder ? (
                   <>
                     <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
-                      {saving ? "Updating…" : "Save"}
+                      {saving ? "Salvando…" : "Salvar alterações"}
                     </button>
                     <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
-                      Close
+                      Cancelar
                     </button>
                   </>
                 ) : null}
               </div>
             </form>
           ) : (
-            <div className="empty-state">Use the grid to select a Service Order or click New Service Order to start a new header with an editable items grid.</div>
+            <div className="empty-state">Abra uma OS na grade ou clique em Nova OS para começar.</div>
           )}
         </article>
         ) : null}
