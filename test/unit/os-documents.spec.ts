@@ -37,31 +37,54 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
       instructions: null,
       items: [
         {
-          itemType: 'Blusa',
-          description: 'Conserto',
-          complement: 'Preta — diminuir a alça',
+          itemType: 'Calça',
+          description: 'Bainha',
+          complement: 'teste',
           brand: 'Zara',
           model: 'Festa',
           serialNo: 'SN-22',
         },
+        { itemType: 'Saia', description: 'Ajuste lateral', complement: 'verde' },
+        { itemType: 'Saia', description: 'Ajuste de cintura', complement: 'sem cor' },
+        { itemType: 'Terno', description: 'Troca de zíper', complement: 'preto' },
+        { itemType: 'Jaqueta', description: 'Barra', complement: 'Preto' },
       ],
       qrCode: { codeValue: 'AAA000001', reissueNo: 0 },
     },
     'Atelier de costura Iza Gusmão',
-    'Pago na retirada',
+    'Pagar na retirada',
   );
 
   assert.match(html, /Entrada/);
-  assert.match(html, /AAA000001/);
-  assert.match(html, /Blusa/);
-  assert.match(html, /Conserto/);
-  assert.match(html, /Zara · Festa · SN-22/);
-  assert.match(html, /Pago na retirada/);
+  assert.match(html, /class="op-title__no">AAA000001/);
+  assert.match(html, /class="op-shelf__os">AAA000001/);
+  assert.match(html, /<th>Produto<\/th>/);
+  assert.match(html, /<th>Serviço<\/th>/);
+  assert.match(html, /<th>Serviço a realizar<\/th>/);
+  assert.match(html, /class="op-item__work">teste/);
+  assert.match(html, /Ajuste de cintura/);
+  assert.match(html, /class="op-item__equip">Zara · Festa · SN-22/);
+  assert.match(html, /Pagar na retirada/);
   assert.match(html, /class="op-shelf__day">18/);
   assert.match(html, /class="op-shelf__month">\/10/);
-  assert.match(html, /op-shelf__os/);
+  assert.doesNotMatch(html, />Complemento</);
+  assert.doesNotMatch(html, /Pago na retirada/);
   assert.doesNotMatch(html, /R\$|Qtd|quantidade|unitPrice|80,00/i);
   assert.doesNotMatch(html, /Previsão de Entrega[\s\S]*10\/10\/2026/i);
+
+  const unpaidDefault = buildProductionOrderPrintHtml(
+    {
+      productionNo: 'OP-1',
+      serviceOrder: { orderNo: 'AAA000001', promisedDeliveryDate: '2026-10-18' },
+      customer: { legalName: 'Sandra Legramanti' },
+      pieceDescription: null,
+      instructions: null,
+      items: [{ itemType: 'Blusa', description: 'Conserto' }],
+      qrCode: null,
+    },
+    'Atelier',
+  );
+  assert.match(unpaidDefault, /Pagar na retirada/);
 
   const paidHtml = buildProductionOrderPrintHtml(
     {
@@ -77,5 +100,5 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
     'Pago',
   );
   assert.match(paidHtml, />Pago</);
-  assert.doesNotMatch(paidHtml, /Pago na retirada/);
+  assert.doesNotMatch(paidHtml, /Pagar na retirada/);
 });

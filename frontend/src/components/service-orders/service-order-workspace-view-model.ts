@@ -284,7 +284,7 @@ export function calculateServiceOrderLaborTotal(rows: ServiceOrderItemGridRow[])
 }
 
 export function osPaymentConditionLabel(paymentStatus?: string | null) {
-  return paymentStatus === "paid" ? "Pago" : "Pago na retirada";
+  return paymentStatus === "paid" ? "Pago" : "Pagar na retirada";
 }
 
 export function formatOsMoney(value: number) {

@@ -13,7 +13,7 @@
 | Clientes e medidas | Existe | Existe | Unitários e integração passam | WhatsApp obrigatório; endereço (incluindo CEP) obrigatório no cadastro; sem consentimento ainda |
 | Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Formulário compacto: **Cliente** primeiro; bloco da OS em caixas (identificação, previsão, responsáveis). Sem Empresa/Filial na ficha. **Status**, Entrada e Saída na mesma linha. Bloco **Pagamento** com condição, já pago e em aberto. Marca obrigatória; modelo e série opcionais. Valor/desconto no formato de dinheiro. **Salvar** aberto = rascunho; fechado = imprime OP. **Abrir nova versão** só na grade. Faltam aprovar e recalcular prazo na tela |
 | Motor de data de entrega | Existe (domingo fechado por padrão) | Parcial | Unitários passam | Falta Normal/Expresso/Urgente |
-| Ordem de Produção, QR por ordem, diário | Existe | Impressão A5 a partir da OS | Unitários passam | Papel A5: cabeçalho + face da prateleira (dia grande / mês pequeno, OS em cima do QR). Sem preço e sem quantidade. Tela de OP ainda não existe. QR previsível em parte |
+| Ordem de Produção, QR por ordem, diário | Existe | Impressão A5 a partir da OS | Unitários passam | Papel A5: placa no cabeçalho e no QR; tabela Produto / Serviço / Serviço a realizar; marca/modelo/série pequenos; previsão enorme na prateleira; Pago ou Pagar na retirada. Sem preço e sem quantidade. Tela de OP ainda não existe |
 | Qualidade, retrabalho, garantia | Existe | **Não existe** | Unitários e integração passam | |
 | Financeiro | Existe | **Não existe** | Idem | Maquininha só como interface, sem integração real |
 | Fiscal | Só esqueleto | **Não existe** | Idem | Nenhum adaptador real |

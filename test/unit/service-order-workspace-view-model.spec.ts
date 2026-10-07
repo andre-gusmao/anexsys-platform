@@ -287,9 +287,9 @@ test('does not spawn a version when the next-version mark is off', async () => {
 
 test('labels payment as paid only when the OS is fully settled', () => {
   assert.equal(osPaymentConditionLabel('paid'), 'Pago');
-  assert.equal(osPaymentConditionLabel('partial'), 'Pago na retirada');
-  assert.equal(osPaymentConditionLabel('pending'), 'Pago na retirada');
-  assert.equal(osPaymentConditionLabel(null), 'Pago na retirada');
+  assert.equal(osPaymentConditionLabel('partial'), 'Pagar na retirada');
+  assert.equal(osPaymentConditionLabel('pending'), 'Pagar na retirada');
+  assert.equal(osPaymentConditionLabel(null), 'Pagar na retirada');
 });
 
 test('fails the save when print is blocked and no next version was requested', async () => {

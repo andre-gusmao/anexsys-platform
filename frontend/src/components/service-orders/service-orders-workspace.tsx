@@ -620,7 +620,7 @@ export function ServiceOrdersWorkspace() {
         paymentCondition = osPaymentConditionLabel(summary.paymentStatus);
         setPaymentSummary(summary);
       } catch {
-        /* a OP sai mesmo se o financeiro não puder ser lido; parcial e em aberto = Pago na retirada */
+        /* a OP sai mesmo se o financeiro não puder ser lido; parcial e em aberto = Pagar na retirada */
       }
       printProductionOrderDocument(view, companyName, reservedWindow, paymentCondition);
       return view;
@@ -1650,7 +1650,7 @@ export function ServiceOrdersWorkspace() {
                       <tr>
                         <th>Produto</th>
                         <th>Serviço</th>
-                        <th>Complemento</th>
+                        <th>Serviço a realizar</th>
                         <th>Marca</th>
                         <th>Modelo</th>
                         <th>Série</th>
@@ -1746,7 +1746,7 @@ export function ServiceOrdersWorkspace() {
                               <input
                                 className="os-item-input"
                                 disabled={!editable}
-                                placeholder="Azul marinho, só na lateral"
+                                placeholder="O que ficou combinado com o cliente"
                                 value={row.complement}
                                 onChange={(event) =>
                                   setItemRows((current) =>

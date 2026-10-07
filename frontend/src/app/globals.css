@@ -396,7 +396,8 @@ textarea {
 
 .os-items-table .data-table th:nth-child(3),
 .os-items-table .data-table td:nth-child(3) {
-  min-width: 160px;
+  min-width: 240px;
+  width: 26%;
 }
 
 .os-items-table .data-table th:nth-child(4),

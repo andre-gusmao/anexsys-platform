@@ -389,14 +389,14 @@ A conexão bancária depende de contrato com o banco ou intermediário; detalha-
 
 Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 
-- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**, **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros.
+- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **Serviço a realizar** (o combinado com o cliente; no código `complement`), **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros.
 - Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
 - A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (OS com valor / OP sem valor) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
 - Não entrou endereço de entrega nem frete.
 - **Pagar** fica no bloco **Pagamento** da OS (e no rodapé). O botão **registra** o valor recebido na maquininha ou em dinheiro. Não processa cartão daqui e não abre QR Pix. À vista/parcelado, plano de contas e gerar parcelas **não** entram nesta fase.
-- **Condição** na OS e na OP: **Pago** só com a OS quitada; parcial ou em aberto = **Pago na retirada**.
+- **Condição** na OS e na OP: **Pago** só com a OS quitada; parcial ou em aberto = **Pagar na retirada**. Integração com a forma de pagamento vem depois.
 - O formulário da OS começa pelo **Cliente**. Empresa e Filial não repetem o menu lateral. **Status** (não Situação), Entrada e Saída ficam numa linha; previsão e responsáveis em caixas no mesmo bloco. Prioridade fica na previsão.
 
 ## 15. Como o André valida no VS Code (07/10/2026)
@@ -413,6 +413,7 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - A bandeja **A5 é da impressora**. O papel já nasce no tamanho A5 (`@page A5`) para caber no bolso da sacola.
 - Duas faces na mesma folha: **cabeçalho** (balcão/técnico) e **prateleira** (câmera da esteira).
 - **Entrada** pequena no topo. **Previsão sai do cabeçalho** e vira o bloco enorme embaixo: **dia grande, mês pequeno e numérico** (`18` `/10`).
-- Número da OS (placa) **em cima do QR**.
-- Produto e serviço **na mesma linha**; descrição do serviço **maior**; **sem quantidade e sem preço**.
-- Marca (obrigatória), modelo e série (opcionais) vêm da linha da peça na OS. Só o que foi preenchido sai no papel.
+- Número da OS (placa) **no cabeçalho e em cima do QR**.
+- Grade em **linhas de tabela** (Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo. **Sem quantidade e sem preço**.
+- Marca, modelo e série saem **pequenos**, sem destaque, só o que foi preenchido.
+- **Pagar na retirada** se houver saldo; **Pago** se quitado.

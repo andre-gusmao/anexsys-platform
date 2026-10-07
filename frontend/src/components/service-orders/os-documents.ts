@@ -112,7 +112,7 @@ const DEFAULT_PRINT_CSS = `
   @media print { button { display: none; } body { margin: 12px; } }
 `;
 
-const OP_A5_PRINT_CSS = `
+export const OP_A5_PRINT_CSS = `
   @page { size: A5 portrait; margin: 8mm; }
   html, body { margin: 0; padding: 0; }
   body { font-family: Arial, Helvetica, sans-serif; color: #162033; background: #fff; }
@@ -130,23 +130,53 @@ const OP_A5_PRINT_CSS = `
   .op-entry { font-size: 11px; color: #667085; text-align: right; margin: 0; }
   .op-entry strong { display: block; color: #162033; font-size: 12px; }
   .op-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
     margin: 0;
     padding: 6px 0;
     border-top: 2px solid #162033;
     border-bottom: 2px solid #162033;
-    text-align: center;
     font-size: 14px;
     letter-spacing: .08em;
     text-transform: uppercase;
   }
+  .op-title__no { font-size: 16px; letter-spacing: .04em; font-weight: 800; }
   .op-customer { font-size: 12px; margin: 0; }
   .op-customer strong { font-size: 14px; }
-  .op-items { display: grid; gap: 8px; }
-  .op-item { padding-bottom: 8px; border-bottom: 1px solid #d7dfeb; }
-  .op-item__line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
-  .op-item__product { font-size: 12px; color: #344054; }
-  .op-item__service { font-size: 16px; font-weight: 700; line-height: 1.2; }
-  .op-item__equip, .op-item__complement { font-size: 11px; color: #667085; margin-top: 2px; }
+  .op-items { width: 100%; border-collapse: collapse; margin: 0; }
+  .op-items th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #1d4ed8;
+    text-align: left;
+    border-bottom: 1px solid #98a2b3;
+    padding: 4px 6px 6px;
+  }
+  .op-items td {
+    font-size: 12px;
+    border-bottom: 1px solid #d0d5dd;
+    padding: 7px 6px;
+    vertical-align: top;
+  }
+  .op-items th:nth-child(1),
+  .op-items td:nth-child(1) { width: 22%; }
+  .op-items th:nth-child(2),
+  .op-items td:nth-child(2) { width: 20%; }
+  .op-items th:nth-child(3),
+  .op-items td:nth-child(3) { width: 58%; }
+  .op-item__work { font-size: 13px; line-height: 1.35; }
+  .op-item__equip {
+    display: block;
+    margin-top: 2px;
+    font-size: 8px;
+    line-height: 1.2;
+    color: #98a2b3;
+    font-weight: 400;
+  }
   .op-pay {
     margin: 4px 0 0;
     padding: 8px 10px;
@@ -231,7 +261,7 @@ function formatCustomerAddress(customer: OpPrintView["customer"]) {
 export function buildProductionOrderPrintHtml(
   view: OpPrintView,
   companyName: string,
-  paymentCondition = "Pago na retirada",
+  paymentCondition = "Pagar na retirada",
 ) {
   const shelf = opShelfDateParts(view.serviceOrder.promisedDeliveryDate);
   const qr = view.qrCode?.codeValue ?? "";
@@ -240,14 +270,11 @@ export function buildProductionOrderPrintHtml(
   const items = view.items
     .map((item) => {
       const equipment = [item.brand, item.model, item.serialNo].map((part) => part?.trim()).filter(Boolean).join(" · ");
-      return `<div class="op-item">
-        <div class="op-item__line">
-          <span class="op-item__product">${escapeHtml(item.itemType)}</span>
-          <span class="op-item__service">${escapeHtml(item.description)}</span>
-        </div>
-        ${item.complement ? `<div class="op-item__complement">${escapeHtml(item.complement)}</div>` : ""}
-        ${equipment ? `<div class="op-item__equip">${escapeHtml(equipment)}</div>` : ""}
-      </div>`;
+      return `<tr>
+        <td>${escapeHtml(item.itemType)}${equipment ? `<span class="op-item__equip">${escapeHtml(equipment)}</span>` : ""}</td>
+        <td>${escapeHtml(item.description)}</td>
+        <td class="op-item__work">${escapeHtml(item.complement)}</td>
+      </tr>`;
     })
     .join("");
 
@@ -256,12 +283,21 @@ export function buildProductionOrderPrintHtml(
       <p class="op-company">${escapeHtml(companyName)}</p>
       <p class="op-entry">Entrada<strong>${escapeHtml(formatDate(view.serviceOrder.openedAt))}</strong></p>
     </header>
-    <h1 class="op-title">Ordem de produção</h1>
+    <h1 class="op-title"><span>Ordem de produção</span><strong class="op-title__no">${escapeHtml(orderNo)}</strong></h1>
     <p class="op-customer">Cliente: <strong>${escapeHtml(view.customer.legalName)}</strong>
       ${address ? `<br />${escapeHtml(address)}` : ""}
       ${view.customer.phone ? `<br />${escapeHtml(view.customer.phone)}` : ""}
     </p>
-    <section class="op-items">${items}</section>
+    <table class="op-items">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Serviço</th>
+          <th>Serviço a realizar</th>
+        </tr>
+      </thead>
+      <tbody>${items}</tbody>
+    </table>
     <p class="op-pay">${escapeHtml(paymentCondition)}</p>
     <footer class="op-shelf">
       <div>
@@ -306,7 +342,7 @@ export function printServiceOrderDocument(view: OsPrintView, companyName: string
      <p>Status: ${escapeHtml(osStatusLabel(view.status))} · Tipo: ${escapeHtml(osDeliveryTypeLabel(view.deliveryType))}</p>
      <p>Entrada: ${escapeHtml(formatDateTime(view.openedAt))} · Saída: ${escapeHtml(formatDateTime(view.promisedDeliveryDate, view.promisedDeliveryTime))}</p>
      <table>
-       <thead><tr><th>Produto</th><th>Serviço</th><th>Complemento</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
+       <thead><tr><th>Produto</th><th>Serviço</th><th>Serviço a realizar</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
        <tbody>${rows}</tbody>
      </table>
      <p class="total">Valor total ${escapeHtml(view.totalValue ? formatOsMoney(Number(view.totalValue)) : "R$ 0,00")}</p>
@@ -319,10 +355,10 @@ export function printProductionOrderDocument(
   view: OpPrintView,
   companyName: string,
   reservedWindow?: Window | null,
-  paymentCondition = "Pago na retirada",
+  paymentCondition = "Pagar na retirada",
 ) {
   openPrintWindow(
-    `OP ${view.productionNo}`,
+    `OP ${view.serviceOrder.orderNo}`,
     buildProductionOrderPrintHtml(view, companyName, paymentCondition),
     reservedWindow,
     OP_A5_PRINT_CSS,

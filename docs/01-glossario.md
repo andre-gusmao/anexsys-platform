@@ -27,7 +27,8 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Peça** | Uma peça de roupa (ou outro artigo) trazida pelo cliente. Cada linha é uma peça. **Marca é obrigatória**; modelo e série são opcionais. Cada **versão da OS** aceita até o limite parametrizado da Conta (padrão **5**). Sem mínimo: a última versão pode ter só o que restou | `service order item` |
 | **Produto** | Tipo da peça no cadastro (Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta). A atendente escolhe na linha da OS e pode cadastrar outro | `garment product` |
 | **Serviço** | O que se faz numa peça (bainha, ajuste de cintura). O catálogo tem preço padrão, com ajuste manual na OS por quem tem permissão | `atelier service` / `service order item` |
-| **Ordem de Produção** | Papel **A5** da sacola: cabeçalho (entrada, cliente, produto+serviço, marca/modelo/série, condição) e face da prateleira (dia grande, mês pequeno, número da OS em cima do QR). **Nunca mostra preço nem quantidade**. A bandeja A5 é da impressora; o layout já nasce A5 | `production order` |
+| **Serviço a realizar** | Texto livre na linha da peça: o que a atendente combinou com o cliente. É o **maior campo da OP**. No código o campo continua `complement` | `service_order_items.complement` |
+| **Ordem de Produção** | Papel **A5** da sacola: número da placa no cabeçalho e em cima do QR; grade em linhas (Produto, Serviço, Serviço a realizar); marca/modelo/série pequenos; previsão enorme na face da prateleira. **Nunca mostra preço nem quantidade**. A bandeja A5 é da impressora; o layout já nasce A5 | `production order` |
 | **Sacola** | Embalagem **física** só para transportar as peças. O sistema não controla a sacola: controla o **limite de peças por versão da OS**. A OP impressa vai no bolso transparente | `bag` (apenas apoio físico) |
 | **Fechar sacola** | Ação na OS: grava a versão e **trava** as peças. **Não** imprime e **não** abre a próxima versão. O botão vira **Abrir sacola** | `POST /service-orders/:id/close-bag` |
 | **Abrir sacola** | Destrava a versão fechada para corrigir erro ou incluir peça que o cliente pediu de volta | `POST /service-orders/:id/open-bag` |
@@ -79,7 +80,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Limite de peças por versão** | Parâmetro da Conta (padrão 5). A atendente registra até esse limite, fecha a sacola e continua na próxima versão. Não é divisão automática no meio da digitação |
 | **Sugestão de cadastro** | Nos campos de busca e nos que vêm de tabela, o sistema sugere o que já está cadastrado. Se não houver sugestão, **Cadastrar** aparece na caixinha de “Nenhum registro encontrado” |
 | **Tela de parâmetros** | Tela onde o administrador altera as regras do sistema (graus e tempos, prazos, cortes, sobretaxas, status etc.), com histórico de quem mudou e quando |
-| **Condição de pagamento** | Na OS e na OP: **Pago** só quando o financeiro está quitado; qualquer saldo (inclusive parcial) sai **Pago na retirada** |
+| **Condição de pagamento** | Na OS e na OP: **Pago** só quando o financeiro está quitado; qualquer saldo (inclusive parcial) sai **Pagar na retirada** |
 | **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |
 | **Estorno de cartão** | Devolução do pagamento feito na maquininha, pela operadora (Cielo). Só o gerente, com motivo. Não é o reembolso via Pix |
 | **Aprovação pendente** | OS cujo cliente ainda não assinou. Lista sempre visível e aviso diário ao atendente e ao gerente |
