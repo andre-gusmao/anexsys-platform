@@ -242,7 +242,6 @@ export function ServiceOrdersWorkspace() {
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
-  const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const canPersistInContext = Boolean(session?.tenantId && session?.activeBranchId);
 
   const selectedOrder = details?.serviceOrder ?? null;
@@ -1375,7 +1374,7 @@ export function ServiceOrdersWorkspace() {
               <h3>{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h3>
               <p>
                 {showCreateForm
-                  ? `A Empresa e a Filial vêm do contexto ativo. Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola só trava.`
+                  ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola só trava.`
                   : selectedOrder?.bagClosed
                     ? `Sacola fechada. Esta versão está travada. Se errou, abra a sacola. Salvar imprime a OP. Se ainda houver peças, marque Abrir nova versão na grade.`
                     : selectedOrder
@@ -1419,63 +1418,9 @@ export function ServiceOrdersWorkspace() {
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
-                <h4>Dados da ordem de serviço</h4>
-                <p>O que já vem do contexto fica em cima. O atendente preenche só o que falta.</p>
-                <div className="os-header-grid">
-                  <label className="field">
-                    <span>Número</span>
-                    <input disabled value={selectedOrder?.orderNo ?? previewOrderNo} />
-                  </label>
-                  <label className="field">
-                    <span>Situação</span>
-                    <input disabled value={selectedOrder ? osStatusLabel(selectedOrder.status) : "Aberta"} />
-                  </label>
-                  <label className="field">
-                    <span>Empresa</span>
-                    <input disabled value={activeCompany?.displayName ?? "Empresa"} />
-                  </label>
-                  <label className="field">
-                    <span>Filial</span>
-                    <input disabled value={activeBranch?.label ?? "Filial"} />
-                  </label>
-                  <div className="field">
-                    <span>Entrada</span>
-                    <div className="os-datetime">
-                      <input
-                        disabled
-                        type="date"
-                        value={selectedOrder ? toDateInput(selectedOrder.openedAt) : nowDateInput()}
-                      />
-                      <input
-                        disabled
-                        type="time"
-                        value={selectedOrder ? toTimeInput(null, selectedOrder.openedAt) : nowTimeInput()}
-                      />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <span>Saída</span>
-                    <div className="os-datetime">
-                      <input
-                        disabled
-                        type="date"
-                        value={toDateInput(selectedOrder?.actualDeliveryDate)}
-                      />
-                      <input
-                        disabled
-                        type="time"
-                        value={toTimeInput(selectedOrder?.actualDeliveryTime)}
-                      />
-                    </div>
-                    <small className="field__hint">Preenche quando o cliente assina a retirada ou o atendente registra Recebido.</small>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mini-section">
                 <h4>Cliente</h4>
-                <div className="os-header-grid">
-                  <div className="field os-header-grid__wide">
+                <div className="os-client-row">
+                  <div className="field">
                     <SmartLookup
                       allowClear={false}
                       canCreate={canWriteCustomers}
@@ -1500,141 +1445,189 @@ export function ServiceOrdersWorkspace() {
                       searchPlaceholder="Digite o nome do cliente"
                       value={headerForm.customerId}
                     />
-                    <div className="button-row">
-                      <button
-                        className="button-secondary"
-                        disabled={!selectedCustomerId}
-                        onClick={() => openRelatedCustomerWorkspace()}
-                        type="button"
-                      >
-                        Abrir cliente
-                      </button>
-                      <button
-                        className="button-secondary"
-                        disabled={!selectedCustomerId}
-                        onClick={() => openRelatedCustomerWorkspace("measurements")}
-                        type="button"
-                      >
-                        Abrir medidas
-                      </button>
-                    </div>
                   </div>
-                  <label className="field">
-                    <span>Prioridade</span>
-                    <input
-                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                      placeholder="Opcional"
-                      value={headerForm.operationalPriority}
-                      onChange={(event) =>
-                        setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="mini-section os-forecast-box">
-                <h4>Previsão de entrega</h4>
-                <p>O sistema sugere a data pela regra do tipo. O horário começa com o da gravação da OS. Os dois podem ser alterados.</p>
-                <div className="os-forecast-grid">
-                  <label className="field field--required">
-                    <span>Tipo de entrega</span>
-                    <select
-                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                      required
-                      value={headerForm.deliveryType}
-                      onChange={(event) => {
-                        const deliveryType = event.target.value as ServiceOrderHeaderForm["deliveryType"];
-                        setHeaderForm((current) => ({ ...current, deliveryType }));
-                        if (session?.activeBranchId) {
-                          const params = new URLSearchParams({
-                            branchId: session.activeBranchId,
-                            deliveryType,
-                            itemCount: String(visibleItemRows.length || 1),
-                          });
-                          void apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
-                            `/service-orders/delivery-preview?${params.toString()}`,
-                          )
-                            .then((suggestion) => {
-                              setHeaderForm((current) => ({
-                                ...current,
-                                promisedDeliveryDate: suggestion.promisedDeliveryDate,
-                                promisedDeliveryTime: current.promisedDeliveryTime || nowTimeInput(),
-                              }));
-                            })
-                            .catch(() => undefined);
-                        }
-                      }}
+                  <div className="button-row">
+                    <button
+                      className="button-secondary"
+                      disabled={!selectedCustomerId}
+                      onClick={() => openRelatedCustomerWorkspace()}
+                      type="button"
                     >
-                      <option value="Standard">Normal</option>
-                      <option value="Priority">Urgente</option>
-                      <option value="Express">Expresso</option>
-                    </select>
-                  </label>
-                  <label className="field field--required">
-                    <span>Data</span>
-                    <input
-                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                      required
-                      type="date"
-                      value={headerForm.promisedDeliveryDate}
-                      onChange={(event) =>
-                        setHeaderForm((current) => ({ ...current, promisedDeliveryDate: event.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="field field--required">
-                    <span>Horário</span>
-                    <input
-                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                      required
-                      type="time"
-                      value={headerForm.promisedDeliveryTime}
-                      onChange={(event) =>
-                        setHeaderForm((current) => ({
-                          ...current,
-                          promisedDeliveryTime: toTimeInput(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
+                      Abrir cliente
+                    </button>
+                    <button
+                      className="button-secondary"
+                      disabled={!selectedCustomerId}
+                      onClick={() => openRelatedCustomerWorkspace("measurements")}
+                      type="button"
+                    >
+                      Abrir medidas
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div className="mini-section">
-                <h4>Responsáveis pela ordem de serviço</h4>
-                <p>O técnico e o controle de qualidade entram depois, pelo QR. Não são obrigatórios agora.</p>
-                <div className="os-header-grid">
-                  <div className="field">
-                    <SmartLookup
-                      allowClear={false}
-                      canCreate={false}
-                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                      emptyMessage="Nenhum atendente encontrado."
-                      entityType="employees"
-                      label="Atendente"
-                      onChange={(option) => setHeaderForm((current) => ({ ...current, attendantId: option?.id ?? "" }))}
-                      options={attendantLookupOptions}
-                      searchPlaceholder="Quem está abrindo a OS"
-                      value={headerForm.attendantId || session?.user?.id || ""}
-                    />
+                <h4>Ordem de serviço</h4>
+                <div className="os-stack">
+                  <div className="os-box">
+                    <p className="os-box__title">Identificação</p>
+                    <div className="os-id-row">
+                      <label className="field">
+                        <span>Número</span>
+                        <input disabled value={selectedOrder?.orderNo ?? previewOrderNo} />
+                      </label>
+                      <label className="field">
+                        <span>Status</span>
+                        <input disabled value={selectedOrder ? osStatusLabel(selectedOrder.status) : "Aberta"} />
+                      </label>
+                      <div className="field">
+                        <span>Entrada</span>
+                        <div className="os-datetime">
+                          <input
+                            disabled
+                            type="date"
+                            value={selectedOrder ? toDateInput(selectedOrder.openedAt) : nowDateInput()}
+                          />
+                          <input
+                            disabled
+                            type="time"
+                            value={selectedOrder ? toTimeInput(null, selectedOrder.openedAt) : nowTimeInput()}
+                          />
+                        </div>
+                      </div>
+                      <div className="field" title="Preenche quando o cliente assina a retirada ou o atendente registra Recebido.">
+                        <span>Saída</span>
+                        <div className="os-datetime">
+                          <input
+                            disabled
+                            type="date"
+                            value={toDateInput(selectedOrder?.actualDeliveryDate)}
+                          />
+                          <input
+                            disabled
+                            type="time"
+                            value={toTimeInput(selectedOrder?.actualDeliveryTime)}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <label className="field">
-                    <span>Técnico</span>
-                    <input
-                      disabled
-                      placeholder="Assume ao ler o QR"
-                      value={details?.productionTechnician?.displayName ?? ""}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Controle de qualidade</span>
-                    <input
-                      disabled
-                      placeholder="Preenche ao revisar e aprovar"
-                      value={details?.qualityReviewer?.displayName ?? ""}
-                    />
-                  </label>
+
+                  <div className="os-box">
+                    <p className="os-box__title">Previsão de entrega</p>
+                    <div className="os-forecast-row">
+                      <label className="field field--required">
+                        <span>Tipo</span>
+                        <select
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          required
+                          value={headerForm.deliveryType}
+                          onChange={(event) => {
+                            const deliveryType = event.target.value as ServiceOrderHeaderForm["deliveryType"];
+                            setHeaderForm((current) => ({ ...current, deliveryType }));
+                            if (session?.activeBranchId) {
+                              const params = new URLSearchParams({
+                                branchId: session.activeBranchId,
+                                deliveryType,
+                                itemCount: String(visibleItemRows.length || 1),
+                              });
+                              void apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
+                                `/service-orders/delivery-preview?${params.toString()}`,
+                              )
+                                .then((suggestion) => {
+                                  setHeaderForm((current) => ({
+                                    ...current,
+                                    promisedDeliveryDate: suggestion.promisedDeliveryDate,
+                                    promisedDeliveryTime: current.promisedDeliveryTime || nowTimeInput(),
+                                  }));
+                                })
+                                .catch(() => undefined);
+                            }
+                          }}
+                        >
+                          <option value="Standard">Normal</option>
+                          <option value="Priority">Urgente</option>
+                          <option value="Express">Expresso</option>
+                        </select>
+                      </label>
+                      <label className="field field--required">
+                        <span>Data</span>
+                        <input
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          required
+                          type="date"
+                          value={headerForm.promisedDeliveryDate}
+                          onChange={(event) =>
+                            setHeaderForm((current) => ({ ...current, promisedDeliveryDate: event.target.value }))
+                          }
+                        />
+                      </label>
+                      <label className="field field--required">
+                        <span>Horário</span>
+                        <input
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          required
+                          type="time"
+                          value={headerForm.promisedDeliveryTime}
+                          onChange={(event) =>
+                            setHeaderForm((current) => ({
+                              ...current,
+                              promisedDeliveryTime: toTimeInput(event.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Prioridade</span>
+                        <input
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          placeholder="Opcional"
+                          value={headerForm.operationalPriority}
+                          onChange={(event) =>
+                            setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))
+                          }
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="os-box">
+                    <p className="os-box__title">Responsáveis</p>
+                    <div className="os-people-row">
+                      <div className="field">
+                        <SmartLookup
+                          allowClear={false}
+                          canCreate={false}
+                          compact
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          emptyMessage="Nenhum atendente encontrado."
+                          entityType="employees"
+                          label="Atendente"
+                          onChange={(option) => setHeaderForm((current) => ({ ...current, attendantId: option?.id ?? "" }))}
+                          options={attendantLookupOptions}
+                          searchPlaceholder="Quem está abrindo a OS"
+                          value={headerForm.attendantId || session?.user?.id || ""}
+                        />
+                      </div>
+                      <label className="field">
+                        <span>Técnico</span>
+                        <input
+                          disabled
+                          placeholder="Assume ao ler o QR"
+                          value={details?.productionTechnician?.displayName ?? ""}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Qualidade</span>
+                        <input
+                          disabled
+                          placeholder="Ao revisar e aprovar"
+                          value={details?.qualityReviewer?.displayName ?? ""}
+                        />
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1947,11 +1940,60 @@ export function ServiceOrdersWorkspace() {
                     <span>Valor total</span>
                     <input disabled value={formatOsMoney(Number(selectedOrder?.totalValue ?? laborTotal))} />
                   </label>
-                  <label className="field">
-                    <span>Condição</span>
-                    <input disabled value={osPaymentConditionLabel(paymentSummary?.paymentStatus)} />
-                  </label>
                 </div>
+              </div>
+
+              <div className="mini-section">
+                <h4>Pagamento</h4>
+                <div className="os-box">
+                  <div className="os-pay-row">
+                    <label className="field">
+                      <span>Condição</span>
+                      <input disabled value={osPaymentConditionLabel(paymentSummary?.paymentStatus)} />
+                    </label>
+                    <label className="field">
+                      <span>Já pago</span>
+                      <input disabled value={formatOsMoney(Number(paymentSummary?.amountPaid ?? 0))} />
+                    </label>
+                    <label className="field">
+                      <span>Em aberto</span>
+                      <input
+                        disabled
+                        value={formatOsMoney(
+                          Number(paymentSummary?.outstandingBalance ?? selectedOrder?.totalValue ?? laborTotal),
+                        )}
+                      />
+                    </label>
+                    {canWriteFinance && selectedOrder ? (
+                      <button
+                        className="button"
+                        disabled={saving || selectedOrder.status === "cancelled"}
+                        onClick={() => {
+                          void openPay(selectedOrder);
+                        }}
+                        type="button"
+                      >
+                        Pagar
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                {selectedOrder && payTarget?.summary.serviceOrderId === selectedOrder.id ? (
+                  <OsPayPanel
+                    orderNo={selectedOrder.orderNo}
+                    summary={payTarget.summary}
+                    onClose={() => setPayTarget(null)}
+                    onPaid={(summary) => {
+                      setPayTarget({ orderNo: selectedOrder.orderNo, summary });
+                      setPaymentSummary(summary);
+                      setMessage(
+                        Number(summary.outstandingBalance) <= 0
+                          ? "Pagamento registrado. A OS está quitada."
+                          : "Pagamento parcial registrado.",
+                      );
+                    }}
+                  />
+                ) : null}
               </div>
 
               <div className="mini-section">
@@ -1981,23 +2023,6 @@ export function ServiceOrdersWorkspace() {
                   </label>
                 </div>
               </div>
-
-              {selectedOrder && payTarget?.summary.serviceOrderId === selectedOrder.id ? (
-                <OsPayPanel
-                  orderNo={selectedOrder.orderNo}
-                  summary={payTarget.summary}
-                  onClose={() => setPayTarget(null)}
-                  onPaid={(summary) => {
-                    setPayTarget({ orderNo: selectedOrder.orderNo, summary });
-                    setPaymentSummary(summary);
-                    setMessage(
-                      Number(summary.outstandingBalance) <= 0
-                        ? "Pagamento registrado. A OS está quitada."
-                        : "Pagamento parcial registrado.",
-                    );
-                  }}
-                />
-              ) : null}
 
               <div className="os-form-footer">
                 {selectedOrder && bagClosed && wantsNextVersion ? (

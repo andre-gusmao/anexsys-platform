@@ -303,7 +303,7 @@ export function printServiceOrderDocument(view: OsPrintView, companyName: string
     `<p class="muted">${escapeHtml(companyName)}</p>
      <h1>Ordem de serviço ${escapeHtml(view.orderNo)}</h1>
      <p>Cliente: <strong>${escapeHtml(view.customer.legalName)}</strong></p>
-     <p>Situação: ${escapeHtml(osStatusLabel(view.status))} · Tipo: ${escapeHtml(osDeliveryTypeLabel(view.deliveryType))}</p>
+     <p>Status: ${escapeHtml(osStatusLabel(view.status))} · Tipo: ${escapeHtml(osDeliveryTypeLabel(view.deliveryType))}</p>
      <p>Entrada: ${escapeHtml(formatDateTime(view.openedAt))} · Saída: ${escapeHtml(formatDateTime(view.promisedDeliveryDate, view.promisedDeliveryTime))}</p>
      <table>
        <thead><tr><th>Produto</th><th>Serviço</th><th>Complemento</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
