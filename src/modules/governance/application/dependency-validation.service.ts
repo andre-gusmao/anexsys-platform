@@ -176,6 +176,38 @@ export class DependencyValidationService {
     this.assertAllowed(await this.validateMeasurementUnitDeletion(tenantId, unitId));
   }
 
+  async validateGarmentProductInactivation(_tenantId: string, _productId: string): Promise<DependencyValidationResult> {
+    return this.buildResult({
+      entityLabel: 'Produto',
+      actionLabel: 'Inativar',
+      blockers: [],
+    });
+  }
+
+  async validateGarmentProductDeletion(tenantId: string, productId: string): Promise<DependencyValidationResult> {
+    return this.buildAtelierCatalogResult(tenantId, 'product_id', productId, 'Produto', 'Excluir');
+  }
+
+  async validateAtelierServiceInactivation(_tenantId: string, _serviceId: string): Promise<DependencyValidationResult> {
+    return this.buildResult({
+      entityLabel: 'Serviço',
+      actionLabel: 'Inativar',
+      blockers: [],
+    });
+  }
+
+  async validateAtelierServiceDeletion(tenantId: string, serviceId: string): Promise<DependencyValidationResult> {
+    return this.buildAtelierCatalogResult(tenantId, 'service_id', serviceId, 'Serviço', 'Excluir');
+  }
+
+  async assertGarmentProductCanDelete(tenantId: string, productId: string): Promise<void> {
+    this.assertAllowed(await this.validateGarmentProductDeletion(tenantId, productId));
+  }
+
+  async assertAtelierServiceCanDelete(tenantId: string, serviceId: string): Promise<void> {
+    this.assertAllowed(await this.validateAtelierServiceDeletion(tenantId, serviceId));
+  }
+
   private async buildCustomerLifecycleResult(
     tenantId: string,
     customerId: string,
@@ -261,6 +293,31 @@ export class DependencyValidationService {
         { code: 'service-orders', label: 'Ordens de serviço', count: serviceOrders, workspacePath: '/service-orders' },
         { code: 'financial-records', label: 'Registros financeiros', count: financialRecords, workspacePath: '/service-orders' },
       ],
+    });
+  }
+
+  private async buildAtelierCatalogResult(
+    tenantId: string,
+    column: 'product_id' | 'service_id',
+    recordId: string,
+    entityLabel: string,
+    actionLabel: 'Inativar' | 'Excluir',
+  ): Promise<DependencyValidationResult> {
+    const items = await this.count(
+      `
+        SELECT COUNT(*)::int AS total
+        FROM service_order_items
+        WHERE tenant_id = $1
+          AND ${column} = $2
+          AND is_deleted = false
+      `,
+      [tenantId, recordId],
+    );
+
+    return this.buildResult({
+      entityLabel,
+      actionLabel,
+      blockers: [{ code: 'service-orders', label: 'Ordens de serviço', count: items, workspacePath: '/service-orders' }],
     });
   }
 

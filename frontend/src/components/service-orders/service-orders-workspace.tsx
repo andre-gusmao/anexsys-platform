@@ -9,13 +9,20 @@ import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import { WorkspaceFlash } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
+import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import {
   addServiceOrderItemGridRow,
   buildCreateServiceOrderItemsPayload,
   buildServiceOrderItemMutationPlan,
+  calculateServiceOrderItemSubtotal,
+  calculateServiceOrderLaborTotal,
+  canAddServiceOrderItemGridRow,
   createEmptyServiceOrderItemGridRow,
+  DEFAULT_CUSTOMER_NOTE,
+  formatOsMoney,
   getVisibleServiceOrderItemGridRows,
   mapServiceOrderItemsToGridRows,
+  MAX_SERVICE_ORDER_ITEMS,
   removeServiceOrderItemGridRow,
   updateServiceOrderItemGridRow,
   type PersistedServiceOrderItem,
@@ -71,6 +78,13 @@ type CustomerLookupRecord = {
   tradeName: string | null;
   email: string | null;
   cpfCnpj: string | null;
+};
+
+type CatalogLookupRecord = {
+  id: string;
+  displayName: string;
+  defaultPrice?: string | null;
+  status?: string;
 };
 
 type CreateServiceOrderResponse = {
@@ -145,7 +159,7 @@ function createEmptyHeaderForm(attendantId = ""): ServiceOrderHeaderForm {
     promisedDeliveryTime: "",
     attendantId,
     commercialNotes: "",
-    customerNotes: "",
+    customerNotes: DEFAULT_CUSTOMER_NOTE,
   };
 }
 
@@ -186,9 +200,14 @@ export function ServiceOrdersWorkspace() {
   const canReadCustomers = hasAnyPermission("customers.read");
   const canWriteCustomers = hasAnyPermission("customers.write");
   const canReadUsers = hasAnyPermission("users.read");
+  const canReadFinance = hasAnyPermission("finance.read");
+  const canWriteFinance = hasAnyPermission("finance.write");
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
+  const [products, setProducts] = useState<CatalogLookupRecord[]>([]);
+  const [services, setServices] = useState<CatalogLookupRecord[]>([]);
   const [users, setUsers] = useState<ActorSummary[]>([]);
+  const [payTarget, setPayTarget] = useState<{ orderNo: string; summary: OsFinancialSummary } | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -297,6 +316,36 @@ export function ServiceOrdersWorkspace() {
       })),
     [orders],
   );
+
+  const productLookupOptions = useMemo<SmartLookupOption[]>(() => {
+    const options = products
+      .filter((product) => product.status !== "inactive")
+      .map((product) => ({ id: product.id, label: product.displayName }));
+    for (const row of visibleItemRows) {
+      if (row.productId && !options.some((option) => option.id === row.productId)) {
+        options.unshift({ id: row.productId, label: row.itemType || "Produto" });
+      }
+    }
+    return options;
+  }, [products, visibleItemRows]);
+
+  const serviceLookupOptions = useMemo<SmartLookupOption[]>(() => {
+    const options = services
+      .filter((service) => service.status !== "inactive")
+      .map((service) => ({
+        id: service.id,
+        label: service.displayName,
+        hint: service.defaultPrice ? formatOsMoney(Number(service.defaultPrice)) : undefined,
+      }));
+    for (const row of visibleItemRows) {
+      if (row.serviceId && !options.some((option) => option.id === row.serviceId)) {
+        options.unshift({ id: row.serviceId, label: row.description || "Serviço", hint: undefined });
+      }
+    }
+    return options;
+  }, [services, visibleItemRows]);
+
+  const laborTotal = useMemo(() => calculateServiceOrderLaborTotal(itemRows), [itemRows]);
 
   const openCreateCustomerFromLookup = useCallback(
     (query: string) => {
@@ -422,6 +471,41 @@ export function ServiceOrdersWorkspace() {
     }
   }, [apiJson, canReadUsers, session?.user]);
 
+  const loadCatalogs = useCallback(async () => {
+    if (!canRead) {
+      setProducts([]);
+      setServices([]);
+      return;
+    }
+    try {
+      const [productResponse, serviceResponse] = await Promise.all([
+        apiJson<CatalogLookupRecord[]>("/garment-products"),
+        apiJson<CatalogLookupRecord[]>("/atelier-services"),
+      ]);
+      setProducts(productResponse);
+      setServices(serviceResponse);
+    } catch {
+      setProducts([]);
+      setServices([]);
+    }
+  }, [apiJson, canRead]);
+
+  const openPay = useCallback(
+    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (!canReadFinance && !canWriteFinance) {
+        setMessage("O pagamento depende da permissão financeira.");
+        return;
+      }
+      try {
+        const summary = await apiJson<OsFinancialSummary>(`/service-orders/${order.id}/financial-summary`);
+        setPayTarget({ orderNo: order.orderNo, summary });
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O resumo financeiro não pôde ser carregado."));
+      }
+    },
+    [apiJson, canReadFinance, canWriteFinance],
+  );
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadOrders();
@@ -442,6 +526,13 @@ export function ServiceOrdersWorkspace() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadUsers, session?.tenantId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadCatalogs();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadCatalogs, session?.tenantId]);
 
   useEffect(() => {
     if (!headerForm.attendantId && session?.user?.id) {
@@ -573,7 +664,7 @@ export function ServiceOrdersWorkspace() {
 
     for (const row of visibleItemRows) {
       if (!row.itemType.trim() || !row.description.trim()) {
-        return "Cada peça precisa de produto e serviço/observação antes de salvar.";
+        return "Cada peça precisa de produto e serviço antes de salvar.";
       }
       const quantity = Number(row.quantity);
       if (!Number.isFinite(quantity) || quantity <= 0) {
@@ -678,8 +769,13 @@ export function ServiceOrdersWorkspace() {
           method: "PATCH",
           body: JSON.stringify({
             itemType: item.itemType,
+            productId: item.productId,
+            serviceId: item.serviceId,
             description: item.description,
+            complement: item.complement,
             quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            discountValue: item.discountValue,
           }),
         });
       }
@@ -801,6 +897,14 @@ export function ServiceOrdersWorkspace() {
           loading={loading}
           onCreate={openCreateWorkspace}
           onEdit={openServiceOrderWorkspace}
+          onPay={
+            canWriteFinance
+              ? (row) => {
+                  void openPay(row);
+                }
+              : undefined
+          }
+          canPay={(row) => row.status !== "cancelled"}
           records={orders}
           rowLabel={(row) => row.orderNo}
           searchKey="name"
@@ -808,6 +912,25 @@ export function ServiceOrdersWorkspace() {
           searchPlaceholder="Buscar por número"
           title="Ordens de serviço"
         />
+      ) : null}
+
+      {isListWorkspace && payTarget ? (
+        <article className="mini-card cadastro-form">
+          <OsPayPanel
+            orderNo={payTarget.orderNo}
+            summary={payTarget.summary}
+            onClose={() => setPayTarget(null)}
+            onPaid={(summary) => {
+              setPayTarget({ orderNo: payTarget.orderNo, summary });
+              setMessage(
+                Number(summary.outstandingBalance) <= 0
+                  ? `Pagamento da OS ${payTarget.orderNo} registrado. A OS está quitada.`
+                  : `Pagamento parcial da OS ${payTarget.orderNo} registrado.`,
+              );
+              void loadOrders();
+            }}
+          />
+        </article>
       ) : null}
 
         {!isListWorkspace ? (
@@ -1018,37 +1141,23 @@ export function ServiceOrdersWorkspace() {
                 </div>
               </div>
 
-              <label className="field">
-                <span>Observações comerciais</span>
-                <textarea
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  rows={3}
-                  value={headerForm.commercialNotes}
-                  onChange={(event) => setHeaderForm((current) => ({ ...current, commercialNotes: event.target.value }))}
-                />
-              </label>
-
-              <label className="field">
-                <span>Observações do cliente</span>
-                <textarea
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  rows={3}
-                  value={headerForm.customerNotes}
-                  onChange={(event) => setHeaderForm((current) => ({ ...current, customerNotes: event.target.value }))}
-                />
-              </label>
-
               <div className="mini-section">
                 <div className="workspace-toolbar">
                   <div className="workspace-toolbar__copy">
-                    <h4>Peças</h4>
-                    <p>Inclua, altere e remova várias peças sem sair desta OS.</p>
+                    <h4>Serviços e mão de obra</h4>
+                    <p>Produto e serviço na mesma linha, depois o complemento. Até {MAX_SERVICE_ORDER_ITEMS} peças por OS.</p>
                   </div>
                   {(showCreateForm || canEditSelectedOrder) ? (
                     <button
                       className="button-secondary"
-                      disabled={saving}
-                      onClick={() => setItemRows((current) => addServiceOrderItemGridRow(current))}
+                      disabled={saving || !canAddServiceOrderItemGridRow(itemRows)}
+                      onClick={() => {
+                        if (!canAddServiceOrderItemGridRow(itemRows)) {
+                          setMessage(`A OS aceita no máximo ${MAX_SERVICE_ORDER_ITEMS} peças.`);
+                          return;
+                        }
+                        setItemRows((current) => addServiceOrderItemGridRow(current));
+                      }}
                       type="button"
                     >
                       Adicionar peça
@@ -1056,15 +1165,17 @@ export function ServiceOrdersWorkspace() {
                   ) : null}
                 </div>
 
-                <div className="data-table-wrapper">
+                <div className="data-table-wrapper os-items-table">
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Peça</th>
                         <th>Produto</th>
-                        <th>Serviço / observação</th>
+                        <th>Serviço</th>
+                        <th>Complemento</th>
                         <th>Qtd</th>
-                        <th>Status</th>
+                        <th>Valor</th>
+                        <th>Desconto</th>
+                        <th>Subtotal</th>
                         <th>Ações</th>
                       </tr>
                     </thead>
@@ -1074,27 +1185,88 @@ export function ServiceOrdersWorkspace() {
                         const canMutateRow = showCreateForm || canEditSelectedOrder;
                         return (
                           <tr key={row.localId}>
-                            <td>#{row.itemNo}</td>
                             <td>
-                              <input
+                              <SmartLookup
+                                compact
+                                canCreate={canWrite}
+                                createLabel="Cadastrar"
                                 disabled={!editable}
-                                placeholder="Calça, vestido, camisa"
-                                value={row.itemType}
-                                onChange={(event) =>
+                                entityType="products"
+                                label="Produto"
+                                onChange={(option) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { itemType: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      productId: option?.id ?? "",
+                                      itemType: option?.label ?? "",
+                                    }),
                                   )
                                 }
+                                onCreate={(query) => {
+                                  const params = new URLSearchParams();
+                                  params.set("workspaceMode", "new");
+                                  if (query.trim()) params.set("prefillName", query.trim());
+                                  const targetPath = `/products?${params.toString()}`;
+                                  if (isMobile) {
+                                    navigateWithinWorkspace(targetPath);
+                                    return;
+                                  }
+                                  openWorkspaceInNewTab(targetPath, "Produto: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+                                }}
+                                onOpen={() => {
+                                  void loadCatalogs();
+                                }}
+                                options={productLookupOptions}
+                                placeholder="Calça, saia, vestido"
+                                searchPlaceholder="Digite o produto"
+                                value={row.productId}
+                              />
+                            </td>
+                            <td>
+                              <SmartLookup
+                                compact
+                                canCreate={canWrite}
+                                createLabel="Cadastrar"
+                                disabled={!editable}
+                                entityType="services"
+                                label="Serviço"
+                                onChange={(option) => {
+                                  const selected = services.find((service) => service.id === option?.id);
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      serviceId: option?.id ?? "",
+                                      description: option?.label ?? "",
+                                      unitPrice: row.unitPrice || selected?.defaultPrice || "",
+                                    }),
+                                  );
+                                }}
+                                onCreate={(query) => {
+                                  const params = new URLSearchParams();
+                                  params.set("workspaceMode", "new");
+                                  if (query.trim()) params.set("prefillName", query.trim());
+                                  const targetPath = `/services?${params.toString()}`;
+                                  if (isMobile) {
+                                    navigateWithinWorkspace(targetPath);
+                                    return;
+                                  }
+                                  openWorkspaceInNewTab(targetPath, "Serviço: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+                                }}
+                                onOpen={() => {
+                                  void loadCatalogs();
+                                }}
+                                options={serviceLookupOptions}
+                                placeholder="Bainha, ajuste lateral"
+                                searchPlaceholder="Digite o serviço"
+                                value={row.serviceId}
                               />
                             </td>
                             <td>
                               <input
                                 disabled={!editable}
-                                placeholder="Bainha original, bainha 58 cm, só punho esquerdo"
-                                value={row.description}
+                                placeholder="Azul marinho, só na lateral"
+                                value={row.complement}
                                 onChange={(event) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { description: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, { complement: event.target.value }),
                                   )
                                 }
                               />
@@ -1115,10 +1287,36 @@ export function ServiceOrdersWorkspace() {
                               />
                             </td>
                             <td>
-                              <span className={`status-chip status-chip--${row.isNew ? "active" : row.status === "cancelled" ? "inactive" : "active"}`}>
-                                {row.isNew ? "Nova" : osStatusLabel(row.status)}
-                              </span>
+                              <input
+                                disabled={!editable}
+                                inputMode="decimal"
+                                min="0"
+                                step="0.01"
+                                type="number"
+                                value={row.unitPrice}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { unitPrice: event.target.value }),
+                                  )
+                                }
+                              />
                             </td>
+                            <td>
+                              <input
+                                disabled={!editable}
+                                inputMode="decimal"
+                                min="0"
+                                step="0.01"
+                                type="number"
+                                value={row.discountValue}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, { discountValue: event.target.value }),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>{formatOsMoney(calculateServiceOrderItemSubtotal(row))}</td>
                             <td>
                               <div className="button-row">
                                 {canMutateRow ? (
@@ -1152,7 +1350,7 @@ export function ServiceOrdersWorkspace() {
                       })}
                       {visibleItemRows.length === 0 ? (
                         <tr>
-                          <td colSpan={6}>
+                          <td colSpan={8}>
                             <div className="empty-state">Nenhuma peça na grade. Use Adicionar peça para continuar.</div>
                           </td>
                         </tr>
@@ -1160,28 +1358,106 @@ export function ServiceOrdersWorkspace() {
                     </tbody>
                   </table>
                 </div>
+                <p className="os-labor-total">Total de mão de obra {formatOsMoney(laborTotal)}</p>
               </div>
 
-              <div className="button-row">
-                {showCreateForm ? (
-                  <>
-                    <button className="button" disabled={saving || !canWrite} type="submit">
-                      {saving ? "Salvando…" : "Salvar"}
-                    </button>
-                    <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
-                      Cancelar
-                    </button>
-                  </>
-                ) : selectedOrder ? (
-                  <>
-                    <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
-                      {saving ? "Salvando…" : "Salvar alterações"}
-                    </button>
-                    <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
-                      Cancelar
-                    </button>
-                  </>
-                ) : null}
+              <div className="mini-section">
+                <h4>Total da ordem de serviço</h4>
+                <div className="os-totals-grid">
+                  <label className="field">
+                    <span>Mão de obra</span>
+                    <input disabled value={formatOsMoney(laborTotal)} />
+                  </label>
+                  <label className="field">
+                    <span>Desconto</span>
+                    <input disabled value={formatOsMoney(Math.max(laborTotal - Number(selectedOrder?.totalValue ?? laborTotal), 0))} />
+                  </label>
+                  <label className="field">
+                    <span>Valor total</span>
+                    <input disabled value={formatOsMoney(Number(selectedOrder?.totalValue ?? laborTotal))} />
+                  </label>
+                </div>
+              </div>
+
+              <div className="mini-section">
+                <h4>Observação e observação interna</h4>
+                <p className="os-rule-banner">
+                  A observação sai na OS do cliente. A observação interna não imprime e não vai para a Ordem de Produção.
+                </p>
+                <div className="os-notes-grid">
+                  <label className="field os-note-box">
+                    <span>Observação</span>
+                    <textarea
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      rows={5}
+                      value={headerForm.customerNotes}
+                      onChange={(event) => setHeaderForm((current) => ({ ...current, customerNotes: event.target.value }))}
+                    />
+                  </label>
+                  <label className="field os-note-box os-note-box--internal">
+                    <span>Observação interna</span>
+                    <textarea
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      placeholder="Uso interno, não sai na impressão"
+                      rows={5}
+                      value={headerForm.commercialNotes}
+                      onChange={(event) => setHeaderForm((current) => ({ ...current, commercialNotes: event.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {selectedOrder && payTarget?.summary.serviceOrderId === selectedOrder.id ? (
+                <OsPayPanel
+                  orderNo={selectedOrder.orderNo}
+                  summary={payTarget.summary}
+                  onClose={() => setPayTarget(null)}
+                  onPaid={(summary) => {
+                    setPayTarget({ orderNo: selectedOrder.orderNo, summary });
+                    setMessage(
+                      Number(summary.outstandingBalance) <= 0
+                        ? "Pagamento registrado. A OS está quitada."
+                        : "Pagamento parcial registrado.",
+                    );
+                  }}
+                />
+              ) : null}
+
+              <div className="os-form-footer">
+                <div className="button-row">
+                  {showCreateForm ? (
+                    <>
+                      <button className="button" disabled={saving || !canWrite} type="submit">
+                        {saving ? "Salvando…" : "Salvar"}
+                      </button>
+                      <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                        Cancelar
+                      </button>
+                    </>
+                  ) : selectedOrder ? (
+                    <>
+                      <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
+                        {saving ? "Salvando…" : "Salvar alterações"}
+                      </button>
+                      <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                        Cancelar
+                      </button>
+                      {canWriteFinance ? (
+                        <button
+                          className="button"
+                          disabled={saving || selectedOrder.status === "cancelled"}
+                          onClick={() => {
+                            void openPay(selectedOrder);
+                          }}
+                          type="button"
+                        >
+                          Pagar
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+                <strong className="os-form-footer__total">{formatOsMoney(Number(selectedOrder?.totalValue ?? laborTotal))}</strong>
               </div>
             </form>
           ) : (

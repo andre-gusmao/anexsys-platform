@@ -62,6 +62,18 @@ const navSections: NavSection[] = [
         hint: "Unidades padrão",
         requiredPermissions: ["measurements.read"],
       },
+      {
+        href: "/products",
+        label: "Produtos",
+        hint: "Calça, saia, vestido, terno",
+        requiredPermissions: ["service_orders.read"],
+      },
+      {
+        href: "/services",
+        label: "Serviços",
+        hint: "Bainha, ajuste, preço padrão",
+        requiredPermissions: ["service_orders.read"],
+      },
     ],
   },
   {
@@ -99,7 +111,7 @@ const navSections: NavSection[] = [
     items: [
       {
         href: "/service-orders",
-        label: "Service Orders",
+        label: "Ordens de serviço",
         hint: "Gestão operacional de ordens",
         requiredPermissions: ["service_orders.read"],
       },

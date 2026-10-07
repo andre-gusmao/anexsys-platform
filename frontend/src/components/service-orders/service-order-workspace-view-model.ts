@@ -1,8 +1,16 @@
+export const MAX_SERVICE_ORDER_ITEMS = 5;
+
+export const DEFAULT_CUSTOMER_NOTE =
+  "Garantia de serviço: 90 dias a partir da retirada. Reconserto em até 7 dias úteis se o cliente não provou na hora da retirada.";
+
 export type PersistedServiceOrderItem = {
   id: string;
   itemNo: number;
   itemType: string;
+  productId?: string | null;
+  serviceId?: string | null;
   description: string;
+  complement?: string | null;
   quantity: string;
   unitPrice: string | null;
   discountValue: string | null;
@@ -14,7 +22,10 @@ export type ServiceOrderItemGridRow = {
   persistedItemId: string | null;
   itemNo: number;
   itemType: string;
+  productId: string;
+  serviceId: string;
   description: string;
+  complement: string;
   quantity: string;
   unitPrice: string;
   discountValue: string;
@@ -26,7 +37,10 @@ export type ServiceOrderItemGridRow = {
 
 type ItemPayload = {
   itemType: string;
+  productId?: string;
+  serviceId?: string;
   description: string;
+  complement?: string;
   quantity: number;
   unitPrice?: number;
   discountValue?: number;
@@ -42,7 +56,10 @@ function parseOptionalNumber(value: string) {
 function buildPayload(row: ServiceOrderItemGridRow): ItemPayload {
   return {
     itemType: row.itemType.trim(),
+    productId: row.productId || undefined,
+    serviceId: row.serviceId || undefined,
     description: row.description.trim(),
+    complement: row.complement.trim() || undefined,
     quantity: Number(row.quantity),
     unitPrice: parseOptionalNumber(row.unitPrice),
     discountValue: parseOptionalNumber(row.discountValue),
@@ -65,7 +82,10 @@ function numericFieldEquals(left: string, right: string, allowEmpty: boolean) {
 
 function rowsMatch(left: ServiceOrderItemGridRow, right: ServiceOrderItemGridRow) {
   return left.itemType.trim() === right.itemType.trim()
+    && left.productId === right.productId
+    && left.serviceId === right.serviceId
     && left.description.trim() === right.description.trim()
+    && left.complement.trim() === right.complement.trim()
     && numericFieldEquals(left.quantity, right.quantity, false)
     && numericFieldEquals(left.unitPrice, right.unitPrice, true)
     && numericFieldEquals(left.discountValue, right.discountValue, true);
@@ -77,7 +97,10 @@ export function createEmptyServiceOrderItemGridRow(itemNo: number): ServiceOrder
     persistedItemId: null,
     itemNo,
     itemType: "",
+    productId: "",
+    serviceId: "",
     description: "",
+    complement: "",
     quantity: "1",
     unitPrice: "",
     discountValue: "",
@@ -96,7 +119,10 @@ export function mapServiceOrderItemsToGridRows(items: PersistedServiceOrderItem[
       persistedItemId: item.id,
       itemNo: item.itemNo,
       itemType: item.itemType,
+      productId: item.productId ?? "",
+      serviceId: item.serviceId ?? "",
       description: item.description,
+      complement: item.complement ?? "",
       quantity: item.quantity,
       unitPrice: item.unitPrice ?? "",
       discountValue: item.discountValue ?? "",
@@ -115,14 +141,34 @@ export function getVisibleServiceOrderItemGridRows(rows: ServiceOrderItemGridRow
   return rows.filter((row) => !row.isRemoved);
 }
 
+export function canAddServiceOrderItemGridRow(rows: ServiceOrderItemGridRow[]) {
+  return getVisibleServiceOrderItemGridRows(rows).length < MAX_SERVICE_ORDER_ITEMS;
+}
+
 export function addServiceOrderItemGridRow(rows: ServiceOrderItemGridRow[]) {
+  if (!canAddServiceOrderItemGridRow(rows)) {
+    return rows;
+  }
   return [...rows, createEmptyServiceOrderItemGridRow(getNextServiceOrderItemNo(rows))];
 }
 
 export function updateServiceOrderItemGridRow(
   rows: ServiceOrderItemGridRow[],
   localId: string,
-  patch: Partial<Pick<ServiceOrderItemGridRow, "itemType" | "description" | "quantity" | "unitPrice" | "discountValue" | "isEditing">>,
+  patch: Partial<
+    Pick<
+      ServiceOrderItemGridRow,
+      | "itemType"
+      | "productId"
+      | "serviceId"
+      | "description"
+      | "complement"
+      | "quantity"
+      | "unitPrice"
+      | "discountValue"
+      | "isEditing"
+    >
+  >,
 ) {
   return rows.map((row) => (row.localId === localId ? { ...row, ...patch } : row));
 }
@@ -133,6 +179,21 @@ export function removeServiceOrderItemGridRow(rows: ServiceOrderItemGridRow[], l
     if (row.isNew) return [];
     return [{ ...row, isRemoved: true, isEditing: false }];
   });
+}
+
+export function calculateServiceOrderItemSubtotal(row: Pick<ServiceOrderItemGridRow, "quantity" | "unitPrice" | "discountValue">) {
+  const quantity = parseOptionalNumber(row.quantity) ?? 0;
+  const unitPrice = parseOptionalNumber(row.unitPrice) ?? 0;
+  const discountValue = parseOptionalNumber(row.discountValue) ?? 0;
+  return Math.max(quantity * unitPrice - discountValue, 0);
+}
+
+export function calculateServiceOrderLaborTotal(rows: ServiceOrderItemGridRow[]) {
+  return getVisibleServiceOrderItemGridRows(rows).reduce((sum, row) => sum + calculateServiceOrderItemSubtotal(row), 0);
+}
+
+export function formatOsMoney(value: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
 export function buildCreateServiceOrderItemsPayload(rows: ServiceOrderItemGridRow[]) {

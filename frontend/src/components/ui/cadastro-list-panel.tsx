@@ -86,6 +86,8 @@ type CadastroListPanelProps<T extends { id: string }> = {
   onDeleteMany?: (rows: T[]) => void;
   onInactivate?: (row: T) => void;
   canInactivate?: (row: T) => boolean;
+  onPay?: (row: T) => void;
+  canPay?: (row: T) => boolean;
   excelFileName: string;
   buildExcelCsv: (rows: T[]) => string;
   emailFileName?: string;
@@ -114,6 +116,8 @@ export function CadastroListPanel<T extends { id: string }>({
   onDeleteMany,
   onInactivate,
   canInactivate,
+  onPay,
+  canPay,
   excelFileName,
   buildExcelCsv,
   emailFileName,
@@ -413,17 +417,19 @@ export function CadastroListPanel<T extends { id: string }>({
                   <td key={column.id}>{column.render(row)}</td>
                 ))}
                 <td>
-                  {canWrite ? (
+                  {canWrite || onPay ? (
                     <div className="table-actions">
-                      <button className="button-secondary" onClick={() => onEdit(row)} type="button">
-                        Alterar
-                      </button>
-                      {onDelete ? (
+                      {canWrite ? (
+                        <button className="button-secondary" onClick={() => onEdit(row)} type="button">
+                          Alterar
+                        </button>
+                      ) : null}
+                      {canWrite && onDelete ? (
                         <button className="button-secondary" onClick={() => onDelete(row)} type="button">
                           Excluir
                         </button>
                       ) : null}
-                      {onInactivate ? (
+                      {canWrite && onInactivate ? (
                         <button
                           className="button-secondary"
                           disabled={canInactivate ? !canInactivate(row) : false}
@@ -431,6 +437,16 @@ export function CadastroListPanel<T extends { id: string }>({
                           type="button"
                         >
                           Inativar
+                        </button>
+                      ) : null}
+                      {onPay ? (
+                        <button
+                          className="button-secondary"
+                          disabled={canPay ? !canPay(row) : false}
+                          onClick={() => onPay(row)}
+                          type="button"
+                        >
+                          Pagar
                         </button>
                       ) : null}
                     </div>

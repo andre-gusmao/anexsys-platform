@@ -4,7 +4,10 @@ import {
   addServiceOrderItemGridRow,
   buildCreateServiceOrderItemsPayload,
   buildServiceOrderItemMutationPlan,
+  calculateServiceOrderItemSubtotal,
+  canAddServiceOrderItemGridRow,
   mapServiceOrderItemsToGridRows,
+  MAX_SERVICE_ORDER_ITEMS,
   removeServiceOrderItemGridRow,
   updateServiceOrderItemGridRow,
 } from '../../frontend/src/components/service-orders/service-order-workspace-view-model';
@@ -15,7 +18,10 @@ test('maps persisted items into visible editable grid rows', () => {
       id: 'item-1',
       itemNo: 1,
       itemType: 'Jeans',
+      productId: 'product-1',
+      serviceId: 'service-1',
       description: 'Original Hem',
+      complement: 'Azul marinho',
       quantity: '1.0000',
       unitPrice: '25.00',
       discountValue: '0.00',
@@ -39,7 +45,10 @@ test('maps persisted items into visible editable grid rows', () => {
       persistedItemId: 'item-1',
       itemNo: 1,
       itemType: 'Jeans',
+      productId: 'product-1',
+      serviceId: 'service-1',
       description: 'Original Hem',
+      complement: 'Azul marinho',
       quantity: '1.0000',
       unitPrice: '25.00',
       discountValue: '0.00',
@@ -55,7 +64,10 @@ test('builds create payload for all visible item rows', () => {
   const rows = addServiceOrderItemGridRow([]);
   const updatedRows = updateServiceOrderItemGridRow(rows, rows[0].localId, {
     itemType: 'Party Dress',
+    productId: 'product-2',
+    serviceId: 'service-2',
     description: 'Hem Adjustment',
+    complement: 'Na lateral',
     quantity: '2',
     unitPrice: '80',
     discountValue: '10',
@@ -64,7 +76,10 @@ test('builds create payload for all visible item rows', () => {
   assert.deepEqual(buildCreateServiceOrderItemsPayload(updatedRows), [
     {
       itemType: 'Party Dress',
+      productId: 'product-2',
+      serviceId: 'service-2',
       description: 'Hem Adjustment',
+      complement: 'Na lateral',
       quantity: 2,
       unitPrice: 80,
       discountValue: 10,
@@ -103,7 +118,10 @@ test('creates update and remove plans for existing rows and create plan for new 
     create: [
       {
         itemType: 'Shirt',
+        productId: undefined,
+        serviceId: undefined,
         description: 'Left cuff only',
+        complement: undefined,
         quantity: 1,
         unitPrice: undefined,
         discountValue: undefined,
@@ -113,7 +131,10 @@ test('creates update and remove plans for existing rows and create plan for new 
       {
         itemId: 'item-1',
         itemType: 'Jeans',
+        productId: undefined,
+        serviceId: undefined,
         description: 'Keep original appearance',
+        complement: undefined,
         quantity: 1,
         unitPrice: 25,
         discountValue: 0,
@@ -177,4 +198,18 @@ test('does not emit updates for numerically equivalent values', () => {
     update: [],
     remove: [],
   });
+});
+
+test('caps the visible piece count at five and calculates the line subtotal', () => {
+  let rows = addServiceOrderItemGridRow([]);
+  for (let index = 0; index < MAX_SERVICE_ORDER_ITEMS + 2; index += 1) {
+    rows = addServiceOrderItemGridRow(rows);
+  }
+
+  assert.equal(rows.length, MAX_SERVICE_ORDER_ITEMS);
+  assert.equal(canAddServiceOrderItemGridRow(rows), false);
+  assert.equal(
+    calculateServiceOrderItemSubtotal({ quantity: '2', unitPrice: '40', discountValue: '10' }),
+    70,
+  );
 });

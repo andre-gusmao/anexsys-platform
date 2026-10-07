@@ -24,8 +24,9 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 |---|---|---|
 | **Cliente** | Pessoa atendida. Pertence à **Conta** e pode ser atendida em qualquer Empresa ou Filial dela | `customer` |
 | **Ordem de Serviço (OS)** | Documento comercial: quem é o cliente, quais peças e serviços, preço, prazo. É a "verdade" do dinheiro | `service order` |
-| **Peça** | Uma peça de roupa trazida pelo cliente. Uma OS tem **até 5 peças** (limite da sacola; a regra exata está em aberto) | ainda não existe como cadastro próprio |
-| **Serviço** | O que se faz numa peça (bainha, ajuste de cintura). Uma peça tem um ou mais serviços. O catálogo de serviços tem preço fixo, com ajuste manual por quem tem permissão | `service order item` (parcialmente) |
+| **Peça** | Uma peça de roupa trazida pelo cliente. Uma OS tem **até 5 peças** (limite da sacola) | `service order item` |
+| **Produto** | Tipo da peça no cadastro (Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta). A atendente escolhe na linha da OS e pode cadastrar outro | `garment product` |
+| **Serviço** | O que se faz numa peça (bainha, ajuste de cintura). O catálogo tem preço padrão, com ajuste manual na OS por quem tem permissão | `atelier service` / `service order item` |
 | **Ordem de Produção** | Documento **impresso** que acompanha as peças numa sacola. Traz o **QR code**, a quantidade de peças, o grau de dificuldade e a descrição dos serviços. **Nunca mostra preço** | `production order` |
 | **Sacola** | Embalagem física com as peças da OS e a Ordem de Produção num bolso transparente. **Não é controlada pelo sistema** | `bag` (apenas apoio físico) |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |

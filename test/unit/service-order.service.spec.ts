@@ -33,6 +33,7 @@ describe('ServiceOrderService', () => {
       { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
       { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; }, async suggestDeliveryDate() { return '2026-10-01'; } } as never,
       { async record(payload: Record<string, unknown>) { audits.push(payload); }, async listByEntity() { return []; } } as never,
+      {} as never,
     );
 
     const created = await service.create({
@@ -69,6 +70,7 @@ describe('ServiceOrderService', () => {
       { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
       { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; }, async suggestDeliveryDate() { return '2026-10-01'; } } as never,
       { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
     );
 
     const created = await service.create({
@@ -101,6 +103,7 @@ describe('ServiceOrderService', () => {
       { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
       { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; }, async suggestDeliveryDate() { return '2026-10-01'; } } as never,
       {} as never,
+      {} as never,
     );
 
     await assert.rejects(
@@ -111,6 +114,37 @@ describe('ServiceOrderService', () => {
           customerId: 'customer-1',
           actorUserId: 'user-1',
           items: [{ itemType: 'uniform', description: 'Jacket', quantity: 1 }],
+        }),
+      DomainValidationError,
+    );
+  });
+
+  it('rejects more than five pieces on a service order', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      { create(payload: Record<string, unknown>) { return payload; } } as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; } } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.create({
+          tenantId: 'tenant-1',
+          branchId: 'branch-1',
+          customerId: 'customer-1',
+          actorUserId: 'user-1',
+          items: Array.from({ length: 6 }, (_, index) => ({
+            itemType: `Peca ${index + 1}`,
+            description: 'Bainha',
+            quantity: 1,
+          })),
         }),
       DomainValidationError,
     );

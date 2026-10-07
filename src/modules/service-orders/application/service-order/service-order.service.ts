@@ -20,6 +20,7 @@ import { CreateServiceOrderItemDto } from '../../contracts/dto/create-service-or
 import { SearchServiceOrdersDto } from '../../contracts/dto/search-service-orders.dto';
 import { UpdateServiceOrderDto } from '../../contracts/dto/update-service-order.dto';
 import { UpdateServiceOrderItemDto } from '../../contracts/dto/update-service-order-item.dto';
+import { AtelierCatalogService } from '../atelier-catalog/atelier-catalog.service';
 import { DeliveryDateService } from '../delivery-date/delivery-date.service';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
@@ -28,6 +29,8 @@ import {
   ServiceOrderRepository,
   ServiceOrderSearchFilters,
 } from '../../infrastructure/persistence/repositories/service-order.repository';
+
+export const MAX_SERVICE_ORDER_ITEMS = 5;
 
 @Injectable()
 export class ServiceOrderService {
@@ -50,6 +53,8 @@ export class ServiceOrderService {
     private readonly deliveryDateService: DeliveryDateService,
     @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(AtelierCatalogService)
+    private readonly atelierCatalogService: AtelierCatalogService,
   ) {}
 
   async create(dto: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderEntity; items: ServiceOrderItemEntity[] }> {
@@ -71,6 +76,8 @@ export class ServiceOrderService {
       'Technical Measurement Responsible',
     );
 
+    this.assertItemCount(dto.items.length);
+
     const openedAt = dto.deliveryCommitmentSourceAt ? new Date(dto.deliveryCommitmentSourceAt) : new Date();
     const deliveryCommitmentSourceAt = dto.deliveryCommitmentSourceAt ? new Date(dto.deliveryCommitmentSourceAt) : openedAt;
     const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
@@ -82,7 +89,10 @@ export class ServiceOrderService {
     const promisedDeliveryDate = dto.promisedDeliveryDate ?? suggestedDelivery.promisedDeliveryDate;
     const promisedDeliveryTime = dto.promisedDeliveryTime ?? suggestedDelivery.promisedDeliveryTime;
 
-    const normalizedItems = dto.items.map((item) => this.normalizeItemInput(item));
+    const normalizedItems: Array<Awaited<ReturnType<ServiceOrderService['resolveCatalogFields']>>> = [];
+    for (const item of dto.items) {
+      normalizedItems.push(await this.resolveCatalogFields(dto.tenantId, dto.actorUserId, this.normalizeItemInput(item)));
+    }
     const normalizedDiscountValue = dto.discountValue ?? 0;
     const normalizedSurchargeValue = dto.deliverySurchargeValue ?? 0;
     const orderTotals = this.calculateOrderTotal(normalizedItems, normalizedDiscountValue, dto.deliverySurchargeMethod ?? null, normalizedSurchargeValue);
@@ -133,7 +143,10 @@ export class ServiceOrderService {
           serviceOrderId: persistedOrder.id,
           itemNo: index + 1,
           itemType: item.itemType,
+          productId: item.productId,
+          serviceId: item.serviceId,
           description: item.description,
+          complement: item.complement,
           quantity: this.formatQuantity(item.quantity),
           unitPrice: item.unitPrice === null ? null : this.formatMoney(item.unitPrice),
           discountValue: this.formatMoney(item.discountValue),
@@ -376,7 +389,12 @@ export class ServiceOrderService {
       throw new DomainValidationError('Cancelled service orders cannot receive new items.');
     }
 
-    const item = this.normalizeItemInput(dto);
+    const openItems = (await this.serviceOrderItemRepository.findByServiceOrder(dto.serviceOrderId)).filter(
+      (existing) => existing.status !== ServiceOrderItemStatus.CANCELLED && !existing.isDeleted,
+    );
+    this.assertItemCount(openItems.length + 1);
+
+    const item = await this.resolveCatalogFields(dto.tenantId, dto.actorUserId, this.normalizeItemInput(dto));
     let savedItem: ServiceOrderItemEntity | null = null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -401,7 +419,10 @@ export class ServiceOrderService {
             serviceOrderId: dto.serviceOrderId,
             itemNo: nextItemNo,
             itemType: item.itemType,
+            productId: item.productId,
+            serviceId: item.serviceId,
             description: item.description,
+            complement: item.complement,
             quantity: this.formatQuantity(item.quantity),
             unitPrice: item.unitPrice === null ? null : this.formatMoney(item.unitPrice),
             discountValue: this.formatMoney(item.discountValue),
@@ -462,10 +483,26 @@ export class ServiceOrderService {
       throw new DomainValidationError('Cancelled service orders cannot be edited.');
     }
 
-    item.itemType = dto.itemType?.trim() || item.itemType;
-    item.description = dto.description?.trim() || item.description;
-    item.quantity = dto.quantity === undefined ? item.quantity : this.formatQuantity(dto.quantity);
-    item.unitPrice = dto.unitPrice === undefined ? item.unitPrice : dto.unitPrice === null ? null : this.formatMoney(dto.unitPrice);
+    const catalog = await this.resolveCatalogFields(tenantId, dto.actorUserId, {
+      itemType: dto.itemType?.trim() || item.itemType,
+      description: dto.description?.trim() || item.description,
+      quantity: dto.quantity === undefined ? Number(item.quantity) : dto.quantity,
+      unitPrice: dto.unitPrice === undefined ? (item.unitPrice === null ? null : Number(item.unitPrice)) : dto.unitPrice,
+      discountValue: dto.discountValue === undefined ? Number(item.discountValue ?? 0) : dto.discountValue ?? 0,
+      deliveryType: dto.deliveryType === undefined ? item.deliveryType : dto.deliveryType,
+      operationalPriority:
+        dto.operationalPriority === undefined ? item.operationalPriority : dto.operationalPriority?.trim() || null,
+      productId: dto.productId === undefined ? item.productId : dto.productId,
+      serviceId: dto.serviceId === undefined ? item.serviceId : dto.serviceId,
+      complement: dto.complement === undefined ? item.complement : dto.complement?.trim() || null,
+    });
+    item.itemType = catalog.itemType;
+    item.productId = catalog.productId;
+    item.serviceId = catalog.serviceId;
+    item.description = catalog.description;
+    item.complement = catalog.complement;
+    item.quantity = this.formatQuantity(catalog.quantity);
+    item.unitPrice = catalog.unitPrice === null ? null : this.formatMoney(catalog.unitPrice);
     item.discountValue =
       dto.discountValue === undefined ? item.discountValue : dto.discountValue === null ? null : this.formatMoney(dto.discountValue);
     item.deliveryType = dto.deliveryType === undefined ? item.deliveryType : dto.deliveryType;
@@ -587,7 +624,12 @@ export class ServiceOrderService {
     await this.serviceOrderRepository.save(serviceOrder);
   }
 
-  private normalizeItemInput(item: Pick<CreateServiceOrderItemInputDto, 'itemType' | 'description' | 'quantity' | 'unitPrice' | 'discountValue' | 'deliveryType' | 'operationalPriority'>) {
+  private normalizeItemInput(
+    item: Pick<
+      CreateServiceOrderItemInputDto,
+      'itemType' | 'description' | 'quantity' | 'unitPrice' | 'discountValue' | 'deliveryType' | 'operationalPriority' | 'productId' | 'serviceId' | 'complement'
+    >,
+  ) {
     return {
       itemType: item.itemType.trim(),
       description: item.description.trim(),
@@ -596,7 +638,56 @@ export class ServiceOrderService {
       discountValue: item.discountValue ?? 0,
       deliveryType: item.deliveryType ?? null,
       operationalPriority: item.operationalPriority?.trim() || null,
+      productId: item.productId ?? null,
+      serviceId: item.serviceId ?? null,
+      complement: item.complement?.trim() || null,
     };
+  }
+
+  private async resolveCatalogFields(
+    tenantId: string,
+    actorUserId: string,
+    item: ReturnType<ServiceOrderService['normalizeItemInput']>,
+  ) {
+    let itemType = item.itemType;
+    let description = item.description;
+    let unitPrice = item.unitPrice;
+    const productId = item.productId;
+    const serviceId = item.serviceId;
+
+    if (productId) {
+      const product = await this.atelierCatalogService.resolveActiveProduct(tenantId, productId, actorUserId);
+      itemType = product.displayName;
+    }
+    if (serviceId) {
+      const service = await this.atelierCatalogService.resolveActiveService(tenantId, serviceId, actorUserId);
+      description = service.displayName;
+      if (unitPrice === null && service.defaultPrice !== null) {
+        unitPrice = Number(service.defaultPrice);
+      }
+    }
+
+    if (!itemType) {
+      throw new DomainValidationError('Cada peça precisa de um produto.');
+    }
+    if (!description) {
+      throw new DomainValidationError('Cada peça precisa de um serviço.');
+    }
+
+    return {
+      ...item,
+      itemType,
+      description,
+      unitPrice,
+      productId,
+      serviceId,
+    };
+  }
+
+  private assertItemCount(itemCount: number) {
+    if (itemCount > MAX_SERVICE_ORDER_ITEMS) {
+      throw new DomainValidationError(`A OS aceita no máximo ${MAX_SERVICE_ORDER_ITEMS} peças.`);
+    }
   }
 
   private normalizePersistedItem(item: ServiceOrderItemEntity) {

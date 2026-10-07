@@ -19,8 +19,17 @@ export class ServiceOrderItemEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'item_type', type: 'varchar', length: 50 })
   itemType!: string;
 
+  @Column({ name: 'product_id', type: 'uuid', nullable: true })
+  productId!: string | null;
+
+  @Column({ name: 'service_id', type: 'uuid', nullable: true })
+  serviceId!: string | null;
+
   @Column({ name: 'description', type: 'text' })
   description!: string;
+
+  @Column({ name: 'complement', type: 'text', nullable: true })
+  complement!: string | null;
 
   @Column({ name: 'quantity', type: 'numeric', precision: 18, scale: 4 })
   quantity!: string;

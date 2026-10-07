@@ -51,7 +51,9 @@ import { PickupAuthorizationEntity } from 'src/modules/pickup/infrastructure/per
 import { PickupQrCodeEntity } from 'src/modules/pickup/infrastructure/persistence/entities/pickup-qr-code.entity';
 import { PickupTokenEntity } from 'src/modules/pickup/infrastructure/persistence/entities/pickup-token.entity';
 import { TemporaryPickupCodeEntity } from 'src/modules/pickup/infrastructure/persistence/entities/temporary-pickup-code.entity';
+import { AtelierServiceEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/atelier-service.entity';
 import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
+import { GarmentProductEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/garment-product.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
 import { FirstAccessTokenEntity } from 'src/modules/identity/infrastructure/persistence/entities/first-access-token.entity';
@@ -110,6 +112,8 @@ export const typeOrmEntities = [
   CctvReferenceEntity,
   CameraSnapshotEntity,
   BusinessCalendarDayEntity,
+  GarmentProductEntity,
+  AtelierServiceEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,
   UserIdentityEntity,

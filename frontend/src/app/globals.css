@@ -136,6 +136,77 @@ textarea {
   }
 }
 
+.os-items-table {
+  overflow-x: auto;
+}
+
+.os-labor-total {
+  margin: 8px 0 0;
+  text-align: right;
+  font-weight: 700;
+}
+
+.os-totals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.os-notes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.os-rule-banner {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 244, 214, 0.9);
+  border: 1px solid rgba(184, 148, 31, 0.35);
+  color: #5c4a12;
+  font-size: 13px;
+}
+
+.os-note-box {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(15, 76, 92, 0.18);
+}
+
+.os-note-box--internal {
+  background: rgba(15, 76, 92, 0.06);
+}
+
+.os-form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.os-form-footer__total {
+  font-size: 18px;
+}
+
+.os-pay-panel {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(15, 76, 92, 0.16);
+}
+
+@media (max-width: 860px) {
+  .os-totals-grid,
+  .os-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-section-title {
   font-size: 12px;
   font-weight: 700;

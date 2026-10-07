@@ -36,8 +36,20 @@ class CreateServiceOrderItemBody {
   @IsString()
   itemType!: string;
 
+  @IsOptional()
+  @IsUUID()
+  productId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string;
+
   @IsString()
   description!: string;
+
+  @IsOptional()
+  @IsString()
+  complement?: string;
 
   @Type(() => Number)
   @IsNumber()
@@ -225,8 +237,20 @@ class UpdateServiceOrderItemBody {
   itemType?: string;
 
   @IsOptional()
+  @IsUUID()
+  productId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string | null;
+
+  @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  complement?: string | null;
 
   @Type(() => Number)
   @IsOptional()

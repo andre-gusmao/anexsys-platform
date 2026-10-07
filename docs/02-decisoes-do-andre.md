@@ -1,6 +1,6 @@
 # Decisões do André
 
-**Atualizado em:** 06/10/2026
+**Atualizado em:** 07/10/2026
 **Substitui:** as regras de negócio da documentação antiga (`docs/arquivo/`) nos pontos em que elas divergem deste documento.
 **Valor:** este é o documento **oficial** das regras de negócio. Quando outro documento discordar, vale este.
 
@@ -292,7 +292,7 @@ Modelo exato da LIO e compatibilidade com a integração remota; se o pedido apa
 
 ## 12. Navegação e cadastros (06/10/2026)
 
-Validado no ambiente local. Vale para **todos** os cadastros de uma vez: mesma lista (Adicionar, Mais ações, busca, colunas, lupa de filtro, zebrinha, paginação), Novo/Alterar em aba interna, menu lateral com submenu, e **formulário com fundo ciano**. O formulário da **OS** (cabeçalho e peças) e os textos da tela de Acesso ficam em **português**. Não homologar tela por tela. Clientes, Empresas, Filiais, Contas, OS, **Partes do corpo**, **Unidades de medida**, **Usuários**, **Papéis**, **Permissões** e **Comunidades** já usam esse padrão. Empresas, Partes do corpo, Unidades e **Usuários** têm **Alterar / Excluir / Inativar** como Clientes. **Papéis** têm Alterar e Inativar (papel de sistema não inativa). **Permissões** só Alterar — não há exclusão nem status. **Comunidades** estão congeladas: a grade segue o padrão, sem escrever. **Filiais** e **Contas** têm Alterar e Inativar na grade (a API ainda não exclui). Usuário não exclui a si mesmo nem o último usuário da Conta. Parte do corpo ou unidade com medida de cliente não pode ser inativada nem excluída. A unidade padrão da Conta (CM) também não. Combo Empresa esconde as inativas; a lista continua mostrando. A última Empresa ativa da Conta não pode ser inativada nem excluída. Só inativa a Conta do contexto ativo.
+Validado no ambiente local. Vale para **todos** os cadastros de uma vez: mesma lista (Adicionar, Mais ações, busca, colunas, lupa de filtro, zebrinha, paginação), Novo/Alterar em aba interna, menu lateral com submenu, e **formulário com fundo ciano**. O formulário da **OS** (cabeçalho e peças) e os textos da tela de Acesso ficam em **português**. Não homologar tela por tela. Clientes, Empresas, Filiais, Contas, OS, **Partes do corpo**, **Unidades de medida**, **Produtos**, **Serviços**, **Usuários**, **Papéis**, **Permissões** e **Comunidades** já usam esse padrão. Empresas, Partes do corpo, Unidades e **Usuários** têm **Alterar / Excluir / Inativar** como Clientes. **Papéis** têm Alterar e Inativar (papel de sistema não inativa). **Permissões** só Alterar — não há exclusão nem status. **Comunidades** estão congeladas: a grade segue o padrão, sem escrever. **Filiais** e **Contas** têm Alterar e Inativar na grade (a API ainda não exclui). Usuário não exclui a si mesmo nem o último usuário da Conta. Parte do corpo ou unidade com medida de cliente não pode ser inativada nem excluída. A unidade padrão da Conta (CM) também não. Combo Empresa esconde as inativas; a lista continua mostrando. A última Empresa ativa da Conta não pode ser inativada nem excluída. Só inativa a Conta do contexto ativo.
 
 **Homologação local (06/10/2026):** Atelier A, Atelier B e Atelier C estão cadastradas **na mesma Conta**, cada uma com **CNPJ diferente**. A faixa **verde** de confirmação permanece como está. Hierarquia: **Conta** (quem assina) → **Empresa** (pai, CNPJ) → **Filiais** (filhos). **Não existe Filial pai:** as unidades de uma Empresa ficam no mesmo nível. Ao cadastrar a Empresa, o sistema cria a primeira Filial filha, a **Matriz**. Você não cadastra a Matriz como se fosse outra Empresa; outras Filiais nascem em Administração → Filiais, sempre debaixo da Empresa. O código MATRIZ é único **por Empresa**. Se o banco antigo ainda travar o código na Conta inteira, a Matriz da segunda Empresa nasce com um código reserva. Duas **Contas** Ateliê A/B (isolamento do Ciclo 1) ficam para a tela de Contas, já com o mesmo padrão de lista. Mensagem de erro na tela aparece **em vermelho**, inclusive quando o texto for técnico. Confirmação fica **verde**.
 
@@ -375,3 +375,13 @@ Dois usos da mesma conexão:
 O **estorno de cartão** na maquininha Cielo continua sendo outro caminho (já previsto no Ciclo 7: gerente + motivo). Reembolso via Pix é para quando o dinheiro precisa **sair da conta** para o cliente.
 
 A conexão bancária depende de contrato com o banco ou intermediário; detalha-se na hora de construir. **Não construir agora.**
+
+## 14. Linha da OS, catálogos e Pagar (07/10/2026)
+
+Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
+
+- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**.
+- Até **5 peças** por OS.
+- **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
+- Não entrou endereço de entrega, frete nem “exibir valor na impressão” da Ordem de Produção (a OP continua sem preço).
+- **Pagar** fica no rodapé da OS e na grade, ao lado de Alterar / Inativar / Excluir. O botão **registra** o valor recebido na maquininha ou em dinheiro. Não processa cartão daqui e não abre QR Pix.

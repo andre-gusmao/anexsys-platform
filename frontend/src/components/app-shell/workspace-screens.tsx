@@ -10,6 +10,7 @@ import { useWorkspaceManager, useWorkspaceRegistration } from "@/components/app-
 import { getWorkspaceBasePath } from "@/components/app-shell/workspace-manager-store";
 import { WorkspacePaneProvider } from "@/components/app-shell/workspace-pane";
 import { CustomerWorkspace } from "@/components/customers/customer-workspace";
+import { AtelierCatalogWorkspace } from "@/components/catalog/atelier-catalog-workspace";
 import { MeasurementMasterDataWorkspace } from "@/components/measurements/measurement-master-data-workspace";
 import { ServiceOrdersWorkspace } from "@/components/service-orders/service-orders-workspace";
 
@@ -26,6 +27,14 @@ function MeasurementUnitsWorkspaceScreen() {
   return <MeasurementMasterDataWorkspace mode="units" />;
 }
 
+function ProductsWorkspaceScreen() {
+  return <AtelierCatalogWorkspace mode="products" />;
+}
+
+function ServicesWorkspaceScreen() {
+  return <AtelierCatalogWorkspace mode="services" />;
+}
+
 const workspaceScreens: Record<string, ComponentType> = {
   "/dashboard": DashboardWorkspace,
   "/admin/tenants": CompaniesWorkspace,
@@ -35,6 +44,8 @@ const workspaceScreens: Record<string, ComponentType> = {
   "/customers": CustomerWorkspace,
   "/body-parts": BodyPartsWorkspaceScreen,
   "/measurement-units": MeasurementUnitsWorkspaceScreen,
+  "/products": ProductsWorkspaceScreen,
+  "/services": ServicesWorkspaceScreen,
   "/service-orders": ServiceOrdersWorkspace,
 };
 
