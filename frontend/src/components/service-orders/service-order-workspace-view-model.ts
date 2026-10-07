@@ -55,11 +55,72 @@ type ItemPayload = {
   discountValue?: number;
 };
 
+const osMoneyAmountFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function formatOsMoneyAmount(value: number) {
+  return osMoneyAmountFormatter.format(value);
+}
+
+export function parseOsMoney(value: string) {
+  const trimmed = value.trim().replace(/R\$\s?/gi, "").replace(/\s/g, "");
+  if (!trimmed) return undefined;
+
+  const negative = trimmed.startsWith("-");
+  const body = negative ? trimmed.slice(1) : trimmed;
+  let parsed: number;
+
+  if (body.includes(",")) {
+    parsed = Number(body.replace(/\./g, "").replace(",", "."));
+  } else if (/^\d+\.\d{1,4}$/.test(body)) {
+    parsed = Number(body);
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(body)) {
+    parsed = Number(body.replace(/\./g, ""));
+  } else if (/^\d+$/.test(body)) {
+    parsed = Number(body);
+  } else {
+    return undefined;
+  }
+
+  if (!Number.isFinite(parsed)) return undefined;
+  return negative ? -parsed : parsed;
+}
+
 function parseOptionalNumber(value: string) {
-  const normalized = value.trim();
-  if (!normalized) return undefined;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  return parseOsMoney(value);
+}
+
+export function formatOsMoneyInput(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return "";
+  const parsed = typeof value === "number" ? value : parseOsMoney(String(value));
+  if (parsed === undefined) return "";
+  return formatOsMoneyAmount(parsed);
+}
+
+export function applyOsMoneyTyping(raw: string) {
+  const digits = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 12);
+  if (!digits) return "";
+  return formatOsMoneyAmount(Number(digits) / 100);
+}
+
+export function previewNextLinkedServiceOrderNo(orderNo: string, existingOrderNos: string[] = []) {
+  const base = orderNo.replace(/-[A-Z]$/i, "");
+  const used = new Set(
+    [orderNo, ...existingOrderNos]
+      .map((value) => value.match(/-([A-Z])$/i)?.[1]?.toUpperCase())
+      .filter((letter): letter is string => Boolean(letter)),
+  );
+
+  for (let index = 0; index < 26; index += 1) {
+    const letter = String.fromCharCode(65 + index);
+    if (!used.has(letter)) {
+      return `${base}-${letter}`;
+    }
+  }
+
+  return `${base}-Z`;
 }
 
 function buildPayload(row: ServiceOrderItemGridRow): ItemPayload {
@@ -145,8 +206,8 @@ export function mapServiceOrderItemsToGridRows(items: PersistedServiceOrderItem[
       model: item.model ?? "",
       serialNo: item.serialNo ?? "",
       quantity: "1",
-      unitPrice: item.unitPrice ?? "",
-      discountValue: item.discountValue ?? "",
+      unitPrice: formatOsMoneyInput(item.unitPrice),
+      discountValue: formatOsMoneyInput(item.discountValue),
       status: item.status,
       isEditing: false,
       isNew: false,

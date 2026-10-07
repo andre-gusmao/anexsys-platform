@@ -180,8 +180,9 @@ Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[AS
 - **Salvar** com a sacola aberta grava só o rascunho: não trava e não gera OP.
 - **Fechar sacola** grava e **trava** a versão. O botão vira **Abrir sacola**. **Não** imprime e **não** cria outra OS.
 - **Abrir sacola** destrava para corrigir ou incluir peça.
-- **Abrir nova versão** só aparece depois de fechar. É uma marca. A próxima versão nasce no **Salvar**, em **outra aba**, já editável, com o mesmo cabeçalho e grade vazia.
-- **Salvar** com a sacola fechada imprime a Ordem de Produção (popup de impressão). Se **Abrir nova versão** estiver marcado, também abre a próxima versão ligada.
+- **Abrir nova versão** só aparece na **grade de itens**, depois de fechar. É a marca. Não há o mesmo botão no rodapé. Quando está marcado, o rodapé avisa que **Salvar** gera a próxima versão (já com o número, ex. `AAA000001-A`) em **outra aba**.
+- **Salvar** com a sacola fechada imprime a Ordem de Produção (popup de impressão). Se **Abrir nova versão** estiver marcado na grade, também abre a próxima versão ligada.
+- **Valor** e **desconto** da peça são digitados no formato de dinheiro (centavos, `15.000,00`).
 - Sem mínimo de peças na última versão.
 - **[ASSUMIDO]** As versões ligadas formam um **grupo**: o cliente recebe **um só link**, **um só aviso** de OS aberta, e o pagamento pode ser único. Cada versão tem sua sacola física, sua Ordem de Produção e seu QR.
 

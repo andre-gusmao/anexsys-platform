@@ -260,6 +260,11 @@ textarea {
   flex-wrap: wrap;
 }
 
+.os-form-footer__notice {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
 .os-form-footer__total {
   font-size: 18px;
 }
@@ -337,8 +342,10 @@ textarea {
   box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
 }
 
-.os-items-table .data-table input[type="number"] {
-  min-width: 96px;
+.os-items-table .data-table input.os-item-input--money {
+  min-width: 112px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .os-item-actions {

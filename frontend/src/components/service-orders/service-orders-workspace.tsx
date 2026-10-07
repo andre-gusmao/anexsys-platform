@@ -23,6 +23,7 @@ import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
   addServiceOrderItemGridRow,
+  applyOsMoneyTyping,
   buildCreateServiceOrderItemsPayload,
   buildServiceOrderItemMutationPlan,
   calculateServiceOrderItemSubtotal,
@@ -31,10 +32,12 @@ import {
   createEmptyServiceOrderItemGridRow,
   DEFAULT_CUSTOMER_NOTE,
   formatOsMoney,
+  formatOsMoneyInput,
   getVisibleServiceOrderItemGridRows,
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
   osPaymentConditionLabel,
+  previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
   runClosedBagCommit,
   updateServiceOrderItemGridRow,
@@ -366,6 +369,16 @@ export function ServiceOrdersWorkspace() {
   }, [services, visibleItemRows]);
 
   const laborTotal = useMemo(() => calculateServiceOrderLaborTotal(itemRows), [itemRows]);
+  const nextVersionNo = useMemo(
+    () =>
+      selectedOrder?.orderNo
+        ? previewNextLinkedServiceOrderNo(
+            selectedOrder.orderNo,
+            (details?.groupVersions ?? []).map((version) => version.orderNo),
+          )
+        : "",
+    [details?.groupVersions, selectedOrder?.orderNo],
+  );
 
   const openCreateCustomerFromLookup = useCallback(
     (query: string) => {
@@ -1364,7 +1377,7 @@ export function ServiceOrdersWorkspace() {
                 {showCreateForm
                   ? `A Empresa e a Filial vêm do contexto ativo. Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola só trava.`
                   : selectedOrder?.bagClosed
-                    ? `Sacola fechada. Esta versão está travada. Se errou, abra a sacola. Salvar imprime a OP. Marque Abrir nova versão se ainda houver peças.`
+                    ? `Sacola fechada. Esta versão está travada. Se errou, abra a sacola. Salvar imprime a OP. Se ainda houver peças, marque Abrir nova versão na grade.`
                     : selectedOrder
                       ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola trava; a OP só sai ao salvar depois.`
                       : "Abra uma OS na grade ou cadastre uma nova."}
@@ -1713,7 +1726,7 @@ export function ServiceOrdersWorkspace() {
                                     updateServiceOrderItemGridRow(current, row.localId, {
                                       serviceId: option?.id ?? "",
                                       description: option?.label ?? "",
-                                      unitPrice: row.unitPrice || selected?.defaultPrice || "",
+                                      unitPrice: row.unitPrice || formatOsMoneyInput(selected?.defaultPrice),
                                     }),
                                   );
                                 }}
@@ -1792,32 +1805,32 @@ export function ServiceOrdersWorkspace() {
                             </td>
                             <td>
                               <input
-                                className="os-item-input"
+                                className="os-item-input os-item-input--money"
                                 disabled={!editable}
-                                inputMode="decimal"
-                                min="0"
-                                step="0.01"
-                                type="number"
+                                inputMode="numeric"
+                                placeholder="0,00"
                                 value={row.unitPrice}
                                 onChange={(event) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { unitPrice: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      unitPrice: applyOsMoneyTyping(event.target.value),
+                                    }),
                                   )
                                 }
                               />
                             </td>
                             <td>
                               <input
-                                className="os-item-input"
+                                className="os-item-input os-item-input--money"
                                 disabled={!editable}
-                                inputMode="decimal"
-                                min="0"
-                                step="0.01"
-                                type="number"
+                                inputMode="numeric"
+                                placeholder="0,00"
                                 value={row.discountValue}
                                 onChange={(event) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { discountValue: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      discountValue: applyOsMoneyTyping(event.target.value),
+                                    }),
                                   )
                                 }
                                 onKeyDown={(event) => handleDiscountTab(event, row.localId)}
@@ -1987,6 +2000,11 @@ export function ServiceOrdersWorkspace() {
               ) : null}
 
               <div className="os-form-footer">
+                {selectedOrder && bagClosed && wantsNextVersion ? (
+                  <p className="os-rule-banner os-form-footer__notice">
+                    Ao salvar, será gerada a nova versão <strong>{nextVersionNo}</strong>. Ela abre em outra aba. Esta OS imprime a OP.
+                  </p>
+                ) : null}
                 <div className="button-row">
                   {showCreateForm ? (
                     <>
@@ -2021,15 +2039,6 @@ export function ServiceOrdersWorkspace() {
                         type="button"
                       >
                         Abrir sacola
-                      </button>
-                      <button
-                        aria-pressed={wantsNextVersion}
-                        className={wantsNextVersion ? "button" : "button-secondary"}
-                        disabled={saving || !canWrite}
-                        onClick={() => setWantsNextVersion((current) => !current)}
-                        type="button"
-                      >
-                        Abrir nova versão
                       </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar

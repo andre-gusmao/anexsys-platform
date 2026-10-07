@@ -6,9 +6,13 @@ import {
   buildServiceOrderItemMutationPlan,
   calculateServiceOrderItemSubtotal,
   canAddServiceOrderItemGridRow,
+  applyOsMoneyTyping,
+  formatOsMoneyInput,
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
   osPaymentConditionLabel,
+  parseOsMoney,
+  previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
   runClosedBagCommit,
   updateServiceOrderItemGridRow,
@@ -58,8 +62,8 @@ test('maps persisted items into visible editable grid rows', () => {
       model: '501',
       serialNo: 'SN-1',
       quantity: '1',
-      unitPrice: '25.00',
-      discountValue: '0.00',
+      unitPrice: '25,00',
+      discountValue: '0,00',
       status: 'open',
       isEditing: false,
       isNew: false,
@@ -302,4 +306,20 @@ test('fails the save when print is blocked and no next version was requested', a
       }),
     /bloqueou/,
   );
+});
+
+test('types valor and desconto as Brazilian money with cents', () => {
+  assert.equal(applyOsMoneyTyping('1'), '0,01');
+  assert.equal(applyOsMoneyTyping('1500000'), '15.000,00');
+  assert.equal(applyOsMoneyTyping('15.000,00'), '15.000,00');
+  assert.equal(formatOsMoneyInput('15000.00'), '15.000,00');
+  assert.equal(parseOsMoney('15.000,00'), 15000);
+  assert.equal(parseOsMoney('15000.00'), 15000);
+  assert.equal(parseOsMoney('25,00'), 25);
+});
+
+test('previews the next linked OS number from the current plate', () => {
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001'), 'AAA000001-A');
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001-A', ['AAA000001', 'AAA000001-A']), 'AAA000001-B');
+  assert.equal(previewNextLinkedServiceOrderNo('00002', ['00002']), '00002-A');
 });

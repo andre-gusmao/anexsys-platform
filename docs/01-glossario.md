@@ -31,7 +31,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Sacola** | Embalagem **física** só para transportar as peças. O sistema não controla a sacola: controla o **limite de peças por versão da OS**. A OP impressa vai no bolso transparente | `bag` (apenas apoio físico) |
 | **Fechar sacola** | Ação na OS: grava a versão e **trava** as peças. **Não** imprime e **não** abre a próxima versão. O botão vira **Abrir sacola** | `POST /service-orders/:id/close-bag` |
 | **Abrir sacola** | Destrava a versão fechada para corrigir erro ou incluir peça que o cliente pediu de volta | `POST /service-orders/:id/open-bag` |
-| **Abrir nova versão** | Só aparece com a sacola fechada. Marca a intenção; a próxima versão nasce ao **Salvar**, em **outra aba**, já editável | `POST /service-orders/:id/next-version` |
+| **Abrir nova versão** | Só aparece na grade de itens, com a sacola fechada. Marca a intenção; o rodapé avisa o número. A próxima versão nasce ao **Salvar**, em **outra aba**, já editável | `POST /service-orders/:id/next-version` |
 | **Versão da OS** | Continuação ligada da mesma OS quando o cliente trouxe mais peças do que o limite. A primeira é `AAA000001`; as seguintes são `AAA000001-A`, `AAA000001-B` | `service_orders.group_id` / `version_suffix` |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
 | **QR code** | Código impresso na Ordem de Produção. **Um por OS** (não por peça). O funcionário lê com o celular para mudar o status | `qr code` |
