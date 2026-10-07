@@ -167,7 +167,7 @@ describe('ServiceOrderService', () => {
     );
   });
 
-  it('rejects a piece without brand, model or serial number', async () => {
+  it('rejects a piece without brand', async () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,
       { create(payload: Record<string, unknown>) { return payload; } } as never,
@@ -196,6 +196,32 @@ describe('ServiceOrderService', () => {
         return true;
       },
     );
+  });
+
+  it('saves a piece with brand and empty model and serial', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      { create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; }, async nextGroupSeq() { return 2; } } as never,
+      { async findByServiceOrder() { return []; } } as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; } } as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const created = await service.create({
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      actorUserId: 'user-1',
+      items: [piece({ model: '', serialNo: '  ' })],
+    });
+    assert.equal(created.items[0]?.brand, 'Levi');
+    assert.equal(created.items[0]?.model, '');
+    assert.equal(created.items[0]?.serialNo, '');
   });
 
   it('prints the service order with values and keeps internal notes out', async () => {

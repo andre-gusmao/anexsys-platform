@@ -902,12 +902,6 @@ export class ServiceOrderService {
     if (!item.brand) {
       throw new DomainValidationError('Cada peça precisa da marca.');
     }
-    if (!item.model) {
-      throw new DomainValidationError('Cada peça precisa do modelo.');
-    }
-    if (!item.serialNo) {
-      throw new DomainValidationError('Cada peça precisa da série.');
-    }
 
     return {
       ...item,

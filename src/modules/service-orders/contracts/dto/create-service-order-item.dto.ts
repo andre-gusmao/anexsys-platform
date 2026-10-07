@@ -33,11 +33,13 @@ export class CreateServiceOrderItemDto {
   @IsString()
   brand!: string;
 
+  @IsOptional()
   @IsString()
-  model!: string;
+  model?: string;
 
+  @IsOptional()
   @IsString()
-  serialNo!: string;
+  serialNo?: string;
 
   @Type(() => Number)
   @IsNumber()

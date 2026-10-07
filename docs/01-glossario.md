@@ -24,7 +24,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 |---|---|---|
 | **Cliente** | Pessoa atendida. Pertence à **Conta** e pode ser atendida em qualquer Empresa ou Filial dela | `customer` |
 | **Ordem de Serviço (OS)** | Documento comercial: quem é o cliente, quais peças e serviços, preço, prazo. É a "verdade" do dinheiro. Número tipo placa (`AAA000001`) e versões `-A`, `-B` | `service order` |
-| **Peça** | Uma peça de roupa (ou outro artigo) trazida pelo cliente. Cada linha é uma peça. **Marca, modelo e série são obrigatórios**. Cada **versão da OS** aceita até o limite parametrizado da Conta (padrão **5**). Sem mínimo: a última versão pode ter só o que restou | `service order item` |
+| **Peça** | Uma peça de roupa (ou outro artigo) trazida pelo cliente. Cada linha é uma peça. **Marca é obrigatória**; modelo e série são opcionais. Cada **versão da OS** aceita até o limite parametrizado da Conta (padrão **5**). Sem mínimo: a última versão pode ter só o que restou | `service order item` |
 | **Produto** | Tipo da peça no cadastro (Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta). A atendente escolhe na linha da OS e pode cadastrar outro | `garment product` |
 | **Serviço** | O que se faz numa peça (bainha, ajuste de cintura). O catálogo tem preço padrão, com ajuste manual na OS por quem tem permissão | `atelier service` / `service order item` |
 | **Ordem de Produção** | Papel **A5** da sacola: cabeçalho (entrada, cliente, produto+serviço, marca/modelo/série, condição) e face da prateleira (dia grande, mês pequeno, número da OS em cima do QR). **Nunca mostra preço nem quantidade**. A bandeja A5 é da impressora; o layout já nasce A5 | `production order` |

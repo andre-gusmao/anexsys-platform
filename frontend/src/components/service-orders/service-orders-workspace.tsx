@@ -910,8 +910,8 @@ export function ServiceOrdersWorkspace() {
       if (!row.itemType.trim() || !row.description.trim()) {
         return "Cada peça precisa de produto e serviço antes de salvar.";
       }
-      if (!row.brand.trim() || !row.model.trim() || !row.serialNo.trim()) {
-        return "Cada peça precisa de marca, modelo e série.";
+      if (!row.brand.trim()) {
+        return "Cada peça precisa da marca.";
       }
       if (Number(row.quantity) !== 1) {
         return "Cada linha é uma peça. A quantidade fica em 1.";
@@ -1630,7 +1630,7 @@ export function ServiceOrdersWorkspace() {
                   <div className="workspace-toolbar__copy">
                     <h4>Serviços e mão de obra</h4>
                     <p>
-                      Cada linha é uma peça (quantidade 1). Marca, modelo e série são obrigatórios. Até {maxPiecesPerBag} peças nesta versão. Fechar trava;
+                      Cada linha é uma peça (quantidade 1). A marca é obrigatória; modelo e série são opcionais. Até {maxPiecesPerBag} peças nesta versão. Fechar trava;
                       Abrir sacola desfaz. Salvar com a sacola fechada imprime a OP.
                     </p>
                   </div>
@@ -1769,7 +1769,6 @@ export function ServiceOrdersWorkspace() {
                                 className="os-item-input"
                                 disabled={!editable}
                                 placeholder="Modelo"
-                                required
                                 value={row.model}
                                 onChange={(event) =>
                                   setItemRows((current) =>
@@ -1783,7 +1782,6 @@ export function ServiceOrdersWorkspace() {
                                 className="os-item-input"
                                 disabled={!editable}
                                 placeholder="Série"
-                                required
                                 value={row.serialNo}
                                 onChange={(event) =>
                                   setItemRows((current) =>

@@ -388,7 +388,7 @@ A conexão bancária depende de contrato com o banco ou intermediário; detalha-
 
 Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 
-- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**, **marca**, **modelo** e **série** — os três últimos **obrigatórios**, porque o ANEXSYS não é só costura.
+- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **complemento**, **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros.
 - Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
@@ -413,4 +413,4 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - **Entrada** pequena no topo. **Previsão sai do cabeçalho** e vira o bloco enorme embaixo: **dia grande, mês pequeno e numérico** (`18` `/10`).
 - Número da OS (placa) **em cima do QR**.
 - Produto e serviço **na mesma linha**; descrição do serviço **maior**; **sem quantidade e sem preço**.
-- Marca, modelo e série vêm da linha da peça na OS.
+- Marca (obrigatória), modelo e série (opcionais) vêm da linha da peça na OS. Só o que foi preenchido sai no papel.
