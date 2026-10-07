@@ -1,9 +1,9 @@
 import { Column, Entity } from 'typeorm';
 import { UserStatus } from 'src/shared/domain/enums';
-import { MutableBusinessEntity } from 'src/shared/persistence/base.entity';
+import { SoftDeletableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'user_identities' })
-export class UserIdentityEntity extends MutableBusinessEntity {
+export class UserIdentityEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
   tenantId!: string;
 

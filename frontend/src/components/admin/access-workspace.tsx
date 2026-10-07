@@ -201,7 +201,8 @@ export function AccessWorkspace() {
   const isUserFormWorkspace = workspaceMode === "new" || Boolean(focusUserId);
   const isListWorkspace = !isUserFormWorkspace;
   const { closeWorkspace } = useWorkspaceManager();
-  const { hasAnyPermission, apiJson } = useSession();
+  const { hasAnyPermission, apiJson, session } = useSession();
+  const currentUserId = session?.user?.id ?? null;
   const canReadUsers = hasAnyPermission("users.read");
   const canWriteUsers = hasAnyPermission("users.write");
   const canReadRoles = hasAnyPermission("roles.read");
@@ -481,6 +482,59 @@ export function AccessWorkspace() {
       }
     },
     [apiJson],
+  );
+
+  const handleDeleteUser = useCallback(
+    async (user: AccessUserListRecord, options: { skipConfirm?: boolean } = {}) => {
+      if (user.id === currentUserId) {
+        setMessage("Você não pode excluir o próprio usuário.");
+        return false;
+      }
+      if (
+        !options.skipConfirm &&
+        !window.confirm(`Excluir ${user.displayName}? O usuário some da lista e deixa de entrar no sistema.`)
+      ) {
+        return false;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        await apiJson(`/users/${user.id}`, { method: "DELETE" });
+        setUsers((current) => current.filter((record) => record.id !== user.id));
+        setMessage(`${user.displayName} foi excluído da lista.`);
+        return true;
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, "O usuário não pôde ser excluído."));
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, currentUserId],
+  );
+
+  const handleDeleteUsers = useCallback(
+    async (selected: AccessUserListRecord[]) => {
+      if (selected.length === 0) {
+        return;
+      }
+      if (!window.confirm(`Excluir ${selected.length} usuário(s) selecionado(s)? Eles somem da lista e deixam de entrar.`)) {
+        return;
+      }
+      let deleted = 0;
+      for (const user of selected) {
+        const ok = await handleDeleteUser(user, { skipConfirm: true });
+        if (ok) {
+          deleted += 1;
+        } else {
+          break;
+        }
+      }
+      if (deleted > 1) {
+        setMessage(`${deleted} usuário(s) foram excluídos da lista.`);
+      }
+    },
+    [handleDeleteUser],
   );
 
   useEffect(() => {
@@ -1174,6 +1228,12 @@ export function AccessWorkspace() {
           ]}
           loading={loading}
           onCreate={openCreateWorkspace}
+          onDelete={(row) => {
+            void handleDeleteUser(row);
+          }}
+          onDeleteMany={(rows) => {
+            void handleDeleteUsers(rows);
+          }}
           onEdit={openEditWorkspace}
           onInactivate={(row) => {
             void handleInactivateUser(row);

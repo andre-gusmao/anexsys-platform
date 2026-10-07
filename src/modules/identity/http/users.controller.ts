@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Param,
@@ -237,6 +238,31 @@ export class UsersController {
     }
 
     return this.identityService.updateUser(userId, { ...body, actorUserId });
+  }
+
+  @Permissions('users.write')
+  @Delete(':userId')
+  async remove(
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    const actorUserId = principal?.userId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant context is required.');
+    }
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+
+    const user = await this.identityService.getById(userId);
+    if (user.tenantId !== tenantId) {
+      throw new ForbiddenException('Requested user is outside the authenticated tenant scope.');
+    }
+
+    await this.identityService.removeUser(userId, tenantId, actorUserId);
+    return { id: userId, deleted: true };
   }
 
   @Permissions('users.write')

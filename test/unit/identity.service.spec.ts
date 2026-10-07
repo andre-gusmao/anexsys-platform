@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { IdentityService } from 'src/modules/identity/application/identity/identity.service';
+import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 
 describe('IdentityService', () => {
   it('creates a user and stores a hashed credential', async () => {
@@ -73,5 +74,111 @@ describe('IdentityService', () => {
 
     assert.equal(user.email, 'user@example.com');
     assert.ok(transactionSaves.some((payload) => payload.passwordHash === 'hashed:super-secret-password'));
+  });
+
+  it('rejects deleting the signed-in user', async () => {
+    const service = new IdentityService(
+      { async transaction() { throw new Error('should not run'); } } as never,
+      {
+        async findById() {
+          return { id: 'user-1', tenantId: 'tenant-1', email: 'ana@atelier.com', defaultBranchId: null };
+        },
+      } as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
+      {} as never,
+      { async record() {} } as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () => service.removeUser('user-1', 'tenant-1', 'user-1'),
+      DomainValidationError,
+    );
+  });
+
+  it('rejects deleting the last remaining user of the tenant', async () => {
+    const service = new IdentityService(
+      { async transaction() { throw new Error('should not run'); } } as never,
+      {
+        async findById() {
+          return { id: 'user-2', tenantId: 'tenant-1', email: 'bruno@atelier.com', defaultBranchId: null };
+        },
+        async countLiveByTenant() {
+          return 1;
+        },
+      } as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
+      {} as never,
+      { async record() {} } as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () => service.removeUser('user-2', 'tenant-1', 'user-1'),
+      DomainValidationError,
+    );
+  });
+
+  it('soft-deletes another user of the same tenant', async () => {
+    const saved: Record<string, unknown>[] = [];
+    const service = new IdentityService(
+      {
+        async transaction<T>(callback: (manager: { save: (entity: unknown, payload: Record<string, unknown>) => Promise<Record<string, unknown>>; update: () => Promise<void>; createQueryBuilder: () => { update: () => { set: () => { where: () => { andWhere: () => { execute: () => Promise<void> } } } } } }) => Promise<T>) {
+          return callback({
+            async save(_entity, payload) {
+              saved.push(payload);
+              return payload;
+            },
+            async update() {},
+            createQueryBuilder() {
+              return {
+                update() {
+                  return {
+                    set() {
+                      return {
+                        where() {
+                          return {
+                            andWhere() {
+                              return { async execute() {} };
+                            },
+                          };
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          });
+        },
+      } as never,
+      {
+        async findById() {
+          return {
+            id: 'user-2',
+            tenantId: 'tenant-1',
+            email: 'bruno@atelier.com',
+            defaultBranchId: null,
+            isDeleted: false,
+          };
+        },
+        async countLiveByTenant() {
+          return 2;
+        },
+      } as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      {} as never,
+      {} as never,
+      { async record() {} } as never,
+      {} as never,
+    );
+
+    await service.removeUser('user-2', 'tenant-1', 'user-1');
+    assert.equal(saved[0]?.isDeleted, true);
   });
 });

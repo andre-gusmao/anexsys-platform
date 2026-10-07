@@ -20,7 +20,7 @@ export class UserIdentityRepository {
   }
 
   async findById(id: string): Promise<UserIdentityEntity | null> {
-    return this.repository.findOne({ where: { id } });
+    return this.repository.findOne({ where: { id, isDeleted: false } });
   }
 
   async findByTenantAndEmail(tenantId: string, email: string): Promise<UserIdentityEntity | null> {
@@ -28,25 +28,30 @@ export class UserIdentityRepository {
       where: {
         tenantId,
         email: email.toLowerCase(),
+        isDeleted: false,
       },
     });
   }
 
   async findActiveByEmail(email: string): Promise<UserIdentityEntity[]> {
     return this.repository.find({
-      where: { email: email.toLowerCase(), status: UserStatus.ACTIVE },
+      where: { email: email.toLowerCase(), status: UserStatus.ACTIVE, isDeleted: false },
       order: { tenantId: 'ASC', displayName: 'ASC' },
     });
   }
 
   async findByEmail(email: string): Promise<UserIdentityEntity[]> {
     return this.repository.find({
-      where: { email: email.toLowerCase() },
+      where: { email: email.toLowerCase(), isDeleted: false },
       order: { tenantId: 'ASC', displayName: 'ASC' },
     });
   }
 
   async findByTenant(tenantId: string): Promise<UserIdentityEntity[]> {
-    return this.repository.find({ where: { tenantId }, order: { displayName: 'ASC' } });
+    return this.repository.find({ where: { tenantId, isDeleted: false }, order: { displayName: 'ASC' } });
+  }
+
+  async countLiveByTenant(tenantId: string): Promise<number> {
+    return this.repository.count({ where: { tenantId, isDeleted: false } });
   }
 }
