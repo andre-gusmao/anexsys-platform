@@ -1,6 +1,6 @@
 # Leia primeiro
 
-**Atualizado em:** 05/10/2026 (noite)
+**Atualizado em:** 07/10/2026
 **Substitui:** o conjunto de documentos antigo, agora em `docs/arquivo/`.
 
 ## O que é o ANEXSYS
@@ -32,12 +32,17 @@ O sistema cobre: atendimento e **ordem de serviço (OS)**, **ordem de produção
 5. **Nada de "percentual pronto" sem critério.** Para dizer que algo está pronto, use as três perguntas: foi **demonstrado** numa tela? foi **testado com banco de dados**? foi **aceito pelo André por escrito**?
 6. **Documentos antigos não são editados.** Se algo voltar a valer, copia-se para o conjunto atual, com data.
 
-## Como o André valida cada ciclo (resumo)
+## Como o André valida (resumo)
 
-1. Recebe um **link do ambiente de testes**, um **roteiro de validação** passo a passo e um **vídeo curto**.
-2. Marca cada passo como **verde** (fez o que o roteiro diz), **amarelo** (fez, mas está confuso, feio ou lento) ou **vermelho** (não fez ou quebrou).
-3. **Qualquer vermelho reprova o ciclo.** Amarelos viram ajustes do ciclo seguinte.
-4. Os detalhes estão em `05-plano-de-continuidade.md`.
+O André valida **no próprio PC, no VS Code**. Sempre que houver algo para conferir, o aviso precisa trazer **o que clicar e o que digitar no VS Code**, não só `git pull`.
+
+1. No VS Code, terminal: `git pull`.
+2. No terminal do **servidor** (`npm run start:dev`): `Ctrl+C` para parar e de novo `npm run start:dev`. Só atualizar o navegador **não** vale.
+3. Se a tela também mudou, no terminal da **tela** (`npm run frontend:dev`): `Ctrl+C` e de novo `npm run frontend:dev`.
+4. Abrir `http://127.0.0.1:3001` e seguir o roteiro (verde / amarelo / vermelho).
+5. **Qualquer vermelho reprova.** Amarelos viram ajuste do ciclo seguinte.
+
+Os detalhes do ciclo estão em `05-plano-de-continuidade.md`.
 
 ## Situação em uma frase
 

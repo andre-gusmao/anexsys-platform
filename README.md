@@ -30,7 +30,14 @@ git checkout cursor/sidebar-combos-abas-a1bd
 git pull origin cursor/sidebar-combos-abas-a1bd
 ```
 
-Depois **pare e suba de novo** os dois processos (`start:dev` e `frontend:dev`). Só atualizar a página no navegador não atualiza o banco. O `start:dev` aplica sozinho as colunas novas (por exemplo o horário de saída da OS). As abas ficam no navegador: um login novo (ou outro navegador) começa limpo, no Dashboard.
+Depois, **no VS Code**:
+
+1. Abra o terminal que está com `npm run start:dev`.
+2. Aperte `Ctrl+C` para parar. Digite de novo `npm run start:dev` e Enter.
+3. Se a tela também mudou, faça o mesmo no terminal de `npm run frontend:dev`.
+4. Só então atualize o navegador em `http://127.0.0.1:3001`.
+
+`git pull` sozinho não atualiza o banco nem o servidor que já está no ar. O `start:dev` aplica as colunas novas (por exemplo o horário de saída da OS). As abas ficam no navegador: um login novo (ou outro navegador) começa limpo, no Dashboard.
 
 ### 1. Pré-requisitos
 

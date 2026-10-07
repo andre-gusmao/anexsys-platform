@@ -387,3 +387,12 @@ Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 - A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (OS com valor / OP sem valor) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
 - Não entrou endereço de entrega nem frete.
 - **Pagar** fica no rodapé da OS e na grade, ao lado de Alterar / Inativar / Excluir. O botão **registra** o valor recebido na maquininha ou em dinheiro. Não processa cartão daqui e não abre QR Pix.
+
+## 15. Como o André valida no VS Code (07/10/2026)
+
+O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois de cada entrega, o aviso precisa listar o que fazer no VS Code:
+
+1. Terminal: `git pull`.
+2. Terminal do servidor: `Ctrl+C` e `npm run start:dev` de novo. É isso que atualiza o banco (colunas novas, produto, serviço, horário de saída).
+3. Se a tela mudou: no terminal da tela, `Ctrl+C` e `npm run frontend:dev` de novo.
+4. Só então atualizar o navegador em `http://127.0.0.1:3001`.
