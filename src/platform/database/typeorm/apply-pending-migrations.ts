@@ -5,6 +5,7 @@ import { ServiceOrderBags1760000025000 } from './migrations/1760000025000-servic
 import { ServiceOrderActualDeliveryTime1760000026000 } from './migrations/1760000026000-service-order-actual-delivery-time';
 import { ServiceOrderBagClosed1760000027000 } from './migrations/1760000027000-service-order-bag-closed';
 import { ServiceOrderItemEquipment1760000028000 } from './migrations/1760000028000-service-order-item-equipment';
+import { ServiceOrderQualityStatus1760000029000 } from './migrations/1760000029000-service-order-quality-status';
 
 export async function applyPendingMigrations(dataSource: DataSource): Promise<void> {
   if (typeof dataSource.runMigrations === 'function') {
@@ -28,6 +29,7 @@ export async function ensureAtelierOsSchema(dataSource: DataSource): Promise<voi
     await new ServiceOrderActualDeliveryTime1760000026000().up(queryRunner);
     await new ServiceOrderBagClosed1760000027000().up(queryRunner);
     await new ServiceOrderItemEquipment1760000028000().up(queryRunner);
+    await new ServiceOrderQualityStatus1760000029000().up(queryRunner);
   } finally {
     await queryRunner.release();
   }

@@ -87,6 +87,15 @@ async function main() {
       ADD COLUMN IF NOT EXISTS serial_no varchar(120) NOT NULL DEFAULT ''
     `);
     await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      DROP CONSTRAINT IF EXISTS chk_service_orders_status
+    `);
+    await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      ADD CONSTRAINT chk_service_orders_status
+      CHECK (status IN ('open', 'approved', 'cancelled', 'quality', 'ready_for_pickup'))
+    `);
+    await client.query(`
       UPDATE service_orders
       SET group_id = id
       WHERE group_id IS NULL
@@ -102,7 +111,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo e série).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série e status da qualidade).');
   } finally {
     await client.end();
   }
