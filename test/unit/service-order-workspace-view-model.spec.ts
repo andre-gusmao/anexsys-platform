@@ -213,3 +213,14 @@ test('caps the visible piece count at five and calculates the line subtotal', ()
     70,
   );
 });
+
+test('respects a parametrized piece limit when adding rows', () => {
+  let rows = addServiceOrderItemGridRow([], 3);
+  rows = addServiceOrderItemGridRow(rows, 3);
+  rows = addServiceOrderItemGridRow(rows, 3);
+  rows = addServiceOrderItemGridRow(rows, 3);
+
+  assert.equal(rows.length, 3);
+  assert.equal(canAddServiceOrderItemGridRow(rows, 3), false);
+  assert.equal(canAddServiceOrderItemGridRow(rows, 5), true);
+});

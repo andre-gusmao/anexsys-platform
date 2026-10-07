@@ -24,11 +24,13 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 |---|---|---|
 | **Cliente** | Pessoa atendida. Pertence à **Conta** e pode ser atendida em qualquer Empresa ou Filial dela | `customer` |
 | **Ordem de Serviço (OS)** | Documento comercial: quem é o cliente, quais peças e serviços, preço, prazo. É a "verdade" do dinheiro | `service order` |
-| **Peça** | Uma peça de roupa trazida pelo cliente. Uma OS tem **até 5 peças** (limite da sacola) | `service order item` |
+| **Peça** | Uma peça de roupa trazida pelo cliente. Cada **versão da OS** aceita até o limite parametrizado da Conta (padrão **5**). Sem mínimo: a última versão pode ter só o que restou | `service order item` |
 | **Produto** | Tipo da peça no cadastro (Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta). A atendente escolhe na linha da OS e pode cadastrar outro | `garment product` |
 | **Serviço** | O que se faz numa peça (bainha, ajuste de cintura). O catálogo tem preço padrão, com ajuste manual na OS por quem tem permissão | `atelier service` / `service order item` |
 | **Ordem de Produção** | Documento **impresso** que acompanha as peças numa sacola. Traz o **QR code**, a quantidade de peças e a descrição dos serviços. **Nunca mostra preço** — valores ficam só na OS | `production order` |
-| **Sacola** | Embalagem física com as peças da OS e a Ordem de Produção num bolso transparente. **Não é controlada pelo sistema** | `bag` (apenas apoio físico) |
+| **Sacola** | Embalagem **física** só para transportar as peças. O sistema não controla a sacola: controla o **limite de peças por versão da OS**. A OP impressa vai no bolso transparente | `bag` (apenas apoio físico) |
+| **Fechar sacola** | Ação na OS: grava a versão atual, deixa a **Ordem de Produção** pronta para impressão e abre a **próxima versão ligada** (00002-A, 00002-B) com o mesmo cabeçalho e grade nova | `POST /service-orders/:id/next-version` |
+| **Versão da OS** | Continuação ligada da mesma OS quando o cliente trouxe mais peças do que o limite. A primeira é `00002`; as seguintes são `00002-A`, `00002-B` | `service_orders.group_id` / `version_suffix` |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
 | **QR code** | Código impresso na Ordem de Produção. **Um por OS** (não por peça). O funcionário lê com o celular para mudar o status | `qr code` |
 | **Grau de dificuldade** | Nota de 1 a 4 definida **por serviço** (valor padrão no catálogo). A OS mostra a **maior**, e o atendente pode ajustar. Usada para estimar tempo médio e dimensionar a equipe | ainda não existe |
@@ -71,8 +73,8 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Tipo de entrega** | **Normal**: mesmo dia da semana da semana seguinte. **Expresso**: até 2 horas por peça, só no horário de funcionamento. **Urgente**: 2 ou 3 dias úteis (sugestão 3). Cada tipo tem **sobretaxa percentual** configurável. O sistema **sugere** a data e o atendente **pode alterar** |
 | **Reconserto** | O cliente volta em até **7 dias corridos** da retirada reclamando de ajuste (curto ou largo). Cria-se **nova OS sem valor**, **vinculada à original**, mostrando o **técnico que fez a primeira vez**. Depois do prazo, a OS nova é cobrada (o gerente pode liberar sem valor, com motivo) |
 | **Garantia de serviço** | **90 dias**, contados **da retirada**, para defeito de execução (descosturou, a barra se desfez), negociável no balcão |
-| **Grupo de OS** | OS ligadas pela divisão automática (mais de 5 peças): um só link, um só aviso e um só pagamento **[assumido]** |
-| **Divisão automática** | Quando a OS passa de 5 peças, o sistema cria uma segunda OS ligada à primeira |
+| **Grupo de OS** | Versões ligadas da mesma OS (`00002`, `00002-A`, `00002-B`): um só cliente, mesmo cabeçalho reaproveitado, cada uma com sua grade, sua sacola física e sua Ordem de Produção. Um só link, um só aviso e um só pagamento **[assumido]** |
+| **Limite de peças por versão** | Parâmetro da Conta (padrão 5). A atendente registra até esse limite, fecha a sacola e continua na próxima versão. Não é divisão automática no meio da digitação |
 | **Sugestão de cadastro** | Nos campos de busca e nos que vêm de tabela, o sistema sugere o que já está cadastrado. Se não houver sugestão, **Cadastrar** aparece na caixinha de “Nenhum registro encontrado” |
 | **Tela de parâmetros** | Tela onde o administrador altera as regras do sistema (graus e tempos, prazos, cortes, sobretaxas, status etc.), com histórico de quem mudou e quando |
 | **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |

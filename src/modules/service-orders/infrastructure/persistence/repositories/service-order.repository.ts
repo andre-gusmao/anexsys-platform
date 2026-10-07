@@ -32,6 +32,22 @@ export class ServiceOrderRepository {
     return this.repository.findOne({ where: { id, isDeleted: false } });
   }
 
+  async findByGroupId(tenantId: string, groupId: string): Promise<ServiceOrderEntity[]> {
+    return this.repository.find({
+      where: { tenantId, groupId, isDeleted: false },
+      order: { versionSuffix: 'ASC', openedAt: 'ASC' },
+    });
+  }
+
+  async nextGroupSeq(tenantId: string): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder('service_order')
+      .select('COALESCE(MAX(service_order.group_seq), 0)', 'maxSeq')
+      .where('service_order.tenant_id = :tenantId', { tenantId })
+      .getRawOne<{ maxSeq: string }>();
+    return Number(result?.maxSeq ?? 0) + 1;
+  }
+
   async search(tenantId: string, filters: ServiceOrderSearchFilters): Promise<ServiceOrderEntity[]> {
     const query = this.repository
       .createQueryBuilder('service_order')

@@ -39,6 +39,7 @@ export class TenantService {
         warrantyAdjustmentPeriodDays: dto.warrantyAdjustmentPeriodDays ?? 7,
         warrantyExecutionPeriodDays: dto.warrantyExecutionPeriodDays ?? 7,
         blockDeliveryWithOutstandingBalance: dto.blockDeliveryWithOutstandingBalance ?? false,
+        maxPiecesPerBag: 5,
         isDeleted: false,
         deletedAt: null,
         deletedBy: null,
@@ -168,6 +169,7 @@ export class TenantService {
       warrantyAdjustmentPeriodDays: tenant.warrantyAdjustmentPeriodDays,
       warrantyExecutionPeriodDays: tenant.warrantyExecutionPeriodDays,
       blockDeliveryWithOutstandingBalance: tenant.blockDeliveryWithOutstandingBalance,
+      maxPiecesPerBag: tenant.maxPiecesPerBag,
     };
   }
 }

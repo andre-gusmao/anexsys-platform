@@ -25,7 +25,7 @@ describe('ServiceOrderService', () => {
     const audits: Array<Record<string, unknown>> = [];
     const service = new ServiceOrderService(
       buildDataSource() as never,
-      { create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; } } as never,
+      { create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; }, async nextGroupSeq() { return 2; } } as never,
       { async findByServiceOrder() { return []; } } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
@@ -53,6 +53,7 @@ describe('ServiceOrderService', () => {
     assert.equal(created.serviceOrder.commercialResponsibleActorId, 'user-1');
     assert.equal(created.serviceOrder.promisedDeliveryDate, '2026-10-01');
     assert.equal(created.serviceOrder.promisedDeliveryTime, '18:00');
+    assert.equal(created.serviceOrder.orderNo, '00002');
     assert.equal(created.items[0]?.itemType, 'uniform');
     assert.equal(created.items[0]?.description, 'Jacket');
     assert.equal(created.items[0]?.discountValue, '10.00');
@@ -62,7 +63,7 @@ describe('ServiceOrderService', () => {
   it('stores the promised delivery time as HH:MM when the suggestion includes seconds', async () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,
-      { create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; } } as never,
+      { create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; }, async nextGroupSeq() { return 2; } } as never,
       { async findByServiceOrder() { return []; } } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
@@ -88,7 +89,7 @@ describe('ServiceOrderService', () => {
   it('normalizes service order items before persistence and total calculation', async () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,
-      { create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; } } as never,
+      { create(payload: Record<string, unknown>) { return payload; }, async save(payload: Record<string, unknown>) { return payload; }, async nextGroupSeq() { return 2; } } as never,
       { async findByServiceOrder() { return []; } } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
@@ -148,7 +149,7 @@ describe('ServiceOrderService', () => {
   it('prints the service order with values and keeps internal notes out', async () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,
-      { async findById() { return { id: 'so-1', tenantId: 'tenant-1', customerId: 'customer-1', commercialResponsibleActorId: 'user-1', technicalMeasurementResponsibleActorId: 'user-1', orderNo: 'OS-1', status: 'open', openedAt: '2026-10-07T10:00:00.000Z', promisedDeliveryDate: '2026-10-14', promisedDeliveryTime: '18:00', deliveryType: DeliveryType.STANDARD, totalValue: '90.00', customerNotes: 'Garantia 90 dias', commercialNotes: 'nao imprimir' }; } } as never,
+      { async findById() { return { id: 'so-1', tenantId: 'tenant-1', customerId: 'customer-1', commercialResponsibleActorId: 'user-1', technicalMeasurementResponsibleActorId: 'user-1', orderNo: 'OS-1', status: 'open', openedAt: '2026-10-07T10:00:00.000Z', promisedDeliveryDate: '2026-10-14', promisedDeliveryTime: '18:00', deliveryType: DeliveryType.STANDARD, totalValue: '90.00', customerNotes: 'Garantia 90 dias', commercialNotes: 'nao imprimir' }; }, async findByGroupId() { return []; } } as never,
       { async findByServiceOrder() { return [{ id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', complement: 'Barra 4 cm', quantity: '1', unitPrice: '90.00', discountValue: '0.00', status: 'open', isDeleted: false }]; } } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
@@ -194,7 +195,102 @@ describe('ServiceOrderService', () => {
             quantity: 1,
           })),
         }),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /Feche a sacola/);
+        return true;
+      },
+    );
+  });
+
+  it('respects a parametrized piece limit smaller than the default', async () => {
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      { create(payload: Record<string, unknown>) { return payload; } } as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 3 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-01', promisedDeliveryTime: '18:00' }; } } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () =>
+        service.create({
+          tenantId: 'tenant-1',
+          branchId: 'branch-1',
+          customerId: 'customer-1',
+          actorUserId: 'user-1',
+          items: Array.from({ length: 4 }, (_, index) => ({
+            itemType: `Peca ${index + 1}`,
+            description: 'Bainha',
+            quantity: 1,
+          })),
+        }),
       DomainValidationError,
     );
+  });
+
+  it('spawns the next linked OS version with the same header and an A suffix', async () => {
+    const saved: Array<Record<string, unknown>> = [];
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      groupId: 'so-1',
+      groupSeq: 2,
+      versionSuffix: null,
+      orderNo: '00002',
+      status: 'open',
+      deliveryCommitmentSourceAt: new Date('2026-10-07T10:00:00.000Z'),
+      promisedDeliveryDate: '2026-10-14',
+      promisedDeliveryTime: '18:00',
+      paymentTermsDays: 0,
+      deliveryType: DeliveryType.STANDARD,
+      operationalPriority: null,
+      commercialResponsibleActorId: 'user-1',
+      technicalMeasurementResponsibleActorId: 'user-1',
+      deliverySurchargeMethod: null,
+      deliverySurchargeValue: null,
+      commercialNotes: 'interno',
+      customerNotes: 'Garantia 90 dias',
+    };
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById(id: string) {
+          return id === 'so-2' ? saved[0] : source;
+        },
+        async findByGroupId() {
+          return [source];
+        },
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          saved.push({ ...payload, id: 'so-2' });
+          return saved[0];
+        },
+      } as never,
+      { async findByServiceOrder() { return []; } } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const spawned = await service.spawnNextVersion('tenant-1', 'so-1', 'user-1');
+    assert.equal(saved[0]?.orderNo, '00002-A');
+    assert.equal(saved[0]?.versionSuffix, 'A');
+    assert.equal(saved[0]?.customerId, 'customer-1');
+    assert.equal(saved[0]?.customerNotes, 'Garantia 90 dias');
+    assert.equal(spawned.serviceOrder.orderNo, '00002-A');
   });
 });

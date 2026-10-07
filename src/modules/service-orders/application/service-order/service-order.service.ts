@@ -23,6 +23,7 @@ import { UpdateServiceOrderItemDto } from '../../contracts/dto/update-service-or
 import { AtelierCatalogService } from '../atelier-catalog/atelier-catalog.service';
 import { normalizeClockTime } from '../delivery-date/clock-time';
 import { DeliveryDateService } from '../delivery-date/delivery-date.service';
+import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix } from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
 import { ServiceOrderItemRepository } from '../../infrastructure/persistence/repositories/service-order-item.repository';
@@ -31,7 +32,7 @@ import {
   ServiceOrderSearchFilters,
 } from '../../infrastructure/persistence/repositories/service-order.repository';
 
-export const MAX_SERVICE_ORDER_ITEMS = 5;
+export const MAX_SERVICE_ORDER_ITEMS = DEFAULT_MAX_PIECES_PER_BAG;
 
 @Injectable()
 export class ServiceOrderService {
@@ -59,7 +60,8 @@ export class ServiceOrderService {
   ) {}
 
   async create(dto: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderEntity; items: ServiceOrderItemEntity[] }> {
-    await this.tenantService.getById(dto.tenantId);
+    const tenant = await this.tenantService.getById(dto.tenantId);
+    const maxPiecesPerBag = tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG;
     const branch = await this.branchService.getById(dto.branchId);
     if (branch.tenantId !== dto.tenantId) {
       throw new DomainValidationError('Branch must belong to the same tenant as the service order.');
@@ -77,7 +79,7 @@ export class ServiceOrderService {
       'Technical Measurement Responsible',
     );
 
-    this.assertItemCount(dto.items.length);
+    this.assertItemCount(dto.items.length, maxPiecesPerBag);
 
     const openedAt = dto.deliveryCommitmentSourceAt ? new Date(dto.deliveryCommitmentSourceAt) : new Date();
     const deliveryCommitmentSourceAt = dto.deliveryCommitmentSourceAt ? new Date(dto.deliveryCommitmentSourceAt) : openedAt;
@@ -98,15 +100,20 @@ export class ServiceOrderService {
     const normalizedDiscountValue = dto.discountValue ?? 0;
     const normalizedSurchargeValue = dto.deliverySurchargeValue ?? 0;
     const orderTotals = this.calculateOrderTotal(normalizedItems, normalizedDiscountValue, dto.deliverySurchargeMethod ?? null, normalizedSurchargeValue);
+    const orderId = randomUUID();
+    const groupSeq = await this.serviceOrderRepository.nextGroupSeq(dto.tenantId);
 
     const serviceOrder = this.serviceOrderRepository.create({
-      id: randomUUID(),
+      id: orderId,
       tenantId: dto.tenantId,
       branchId: dto.branchId,
       customerId: dto.customerId,
       workflowDefinitionId: null,
       currentStatusDefinitionId: null,
-      orderNo: this.generateOrderNo(),
+      orderNo: formatServiceOrderNo(groupSeq),
+      groupId: orderId,
+      groupSeq,
+      versionSuffix: null,
       openedAt,
       deliveryCommitmentSourceAt,
       promisedDeliveryDate,
@@ -284,6 +291,10 @@ export class ServiceOrderService {
       this.auditService.listByEntity(tenantId, 'service_order', serviceOrderId, 200),
     ]);
 
+    const groupId = serviceOrder.groupId ?? serviceOrder.id;
+    const groupVersions = await this.serviceOrderRepository.findByGroupId(tenantId, groupId);
+    const tenant = await this.tenantService.getById(tenantId);
+
     return {
       serviceOrder,
       items,
@@ -294,7 +305,82 @@ export class ServiceOrderService {
       qualityReviewer: null,
       history: auditTrail,
       timeline: [...auditTrail].reverse(),
+      groupVersions: groupVersions.map((order) => ({
+        id: order.id,
+        orderNo: order.orderNo,
+        versionSuffix: order.versionSuffix,
+      })),
+      maxPiecesPerBag: tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG,
     };
+  }
+
+  async getBagSettings(tenantId: string) {
+    const tenant = await this.tenantService.getById(tenantId);
+    return { maxPiecesPerBag: tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG };
+  }
+
+  async spawnNextVersion(tenantId: string, sourceServiceOrderId: string, actorUserId: string) {
+    const source = await this.getById(sourceServiceOrderId, tenantId);
+    const groupId = source.groupId ?? source.id;
+    const siblings = await this.serviceOrderRepository.findByGroupId(tenantId, groupId);
+    const members = siblings.length > 0 ? siblings : [source];
+    const root = members.find((order) => !order.versionSuffix) ?? source;
+    const groupSeq = source.groupSeq ?? root.groupSeq ?? (await this.serviceOrderRepository.nextGroupSeq(tenantId));
+    const versionSuffix = nextVersionSuffix(members.map((order) => order.versionSuffix));
+    const orderNo = source.groupSeq || root.groupSeq
+      ? formatServiceOrderNo(groupSeq, versionSuffix)
+      : `${root.orderNo}-${versionSuffix}`;
+
+    const nextId = randomUUID();
+    const nextOrder = this.serviceOrderRepository.create({
+      id: nextId,
+      tenantId: source.tenantId,
+      branchId: source.branchId,
+      customerId: source.customerId,
+      workflowDefinitionId: source.workflowDefinitionId,
+      currentStatusDefinitionId: null,
+      orderNo,
+      groupId,
+      groupSeq,
+      versionSuffix,
+      openedAt: new Date(),
+      deliveryCommitmentSourceAt: source.deliveryCommitmentSourceAt,
+      promisedDeliveryDate: source.promisedDeliveryDate,
+      promisedDeliveryTime: source.promisedDeliveryTime,
+      actualPickupDate: null,
+      actualDeliveryDate: null,
+      paymentTermsDays: source.paymentTermsDays,
+      deliveryType: source.deliveryType,
+      operationalPriority: source.operationalPriority,
+      commercialResponsibleActorId: source.commercialResponsibleActorId,
+      technicalMeasurementResponsibleActorId: source.technicalMeasurementResponsibleActorId,
+      deliverySurchargeMethod: source.deliverySurchargeMethod,
+      deliverySurchargeValue: source.deliverySurchargeValue,
+      commercialNotes: source.commercialNotes,
+      customerNotes: source.customerNotes,
+      status: ServiceOrderStatus.OPEN,
+      totalValue: null,
+      discountValue: null,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
+      createdBy: actorUserId,
+      updatedBy: actorUserId,
+    });
+
+    const saved = await this.serviceOrderRepository.save(nextOrder);
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: 'service_order.version.spawned',
+      eventType: 'service_order.write',
+      metadata: { sourceServiceOrderId, orderNo: saved.orderNo, versionSuffix },
+    });
+
+    return this.getDetails(tenantId, saved.id);
   }
 
   async previewDelivery(
@@ -437,7 +523,8 @@ export class ServiceOrderService {
     const openItems = (await this.serviceOrderItemRepository.findByServiceOrder(dto.serviceOrderId)).filter(
       (existing) => existing.status !== ServiceOrderItemStatus.CANCELLED && !existing.isDeleted,
     );
-    this.assertItemCount(openItems.length + 1);
+    const tenant = await this.tenantService.getById(dto.tenantId);
+    this.assertItemCount(openItems.length + 1, tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG);
 
     const item = await this.resolveCatalogFields(dto.tenantId, dto.actorUserId, this.normalizeItemInput(dto));
     let savedItem: ServiceOrderItemEntity | null = null;
@@ -729,9 +816,11 @@ export class ServiceOrderService {
     };
   }
 
-  private assertItemCount(itemCount: number) {
-    if (itemCount > MAX_SERVICE_ORDER_ITEMS) {
-      throw new DomainValidationError(`A OS aceita no máximo ${MAX_SERVICE_ORDER_ITEMS} peças.`);
+  private assertItemCount(itemCount: number, maxPiecesPerBag = DEFAULT_MAX_PIECES_PER_BAG) {
+    if (itemCount > maxPiecesPerBag) {
+      throw new DomainValidationError(
+        `Esta versão da OS aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`,
+      );
     }
   }
 

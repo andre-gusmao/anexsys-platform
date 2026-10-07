@@ -80,6 +80,8 @@ type ServiceOrderDetail = {
   productionTechnician?: ActorSummary | null;
   qualityReviewer?: ActorSummary | null;
   items: PersistedServiceOrderItem[];
+  maxPiecesPerBag?: number;
+  groupVersions?: Array<{ id: string; orderNo: string; versionSuffix: string | null }>;
 };
 
 type CustomerLookupRecord = {
@@ -224,6 +226,7 @@ export function ServiceOrdersWorkspace() {
     createEmptyHeaderForm(),
   );
   const [itemRows, setItemRows] = useWorkspaceScopedState<ServiceOrderItemGridRow[]>("service-orders.itemRows", [createEmptyServiceOrderItemGridRow(1)]);
+  const [maxPiecesPerBag, setMaxPiecesPerBag] = useState(MAX_SERVICE_ORDER_ITEMS);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -378,9 +381,13 @@ export function ServiceOrdersWorkspace() {
           return;
         }
         setDetails(response);
+        if (response.maxPiecesPerBag) {
+          setMaxPiecesPerBag(response.maxPiecesPerBag);
+        }
         if (!showCreateForm) {
           setHeaderForm(mapDetailsToHeaderForm(response));
-          setItemRows(mapServiceOrderItemsToGridRows(response.items));
+          const mapped = mapServiceOrderItemsToGridRows(response.items);
+          setItemRows(mapped.length > 0 ? mapped : [createEmptyServiceOrderItemGridRow(1)]);
         }
         if (focusServiceOrderId !== serviceOrderId || workspaceMode === "new") {
           navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(serviceOrderId)}`);
@@ -493,6 +500,20 @@ export function ServiceOrdersWorkspace() {
     }
   }, [apiJson, canRead]);
 
+  const loadBagSettings = useCallback(async () => {
+    if (!canRead) {
+      return;
+    }
+    try {
+      const settings = await apiJson<{ maxPiecesPerBag: number }>("/service-orders/settings");
+      if (settings.maxPiecesPerBag > 0) {
+        setMaxPiecesPerBag(settings.maxPiecesPerBag);
+      }
+    } catch {
+      /* o padrão da Conta continua valendo na grade */
+    }
+  }, [apiJson, canRead]);
+
   const openPay = useCallback(
     async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
       if (!canReadFinance && !canWriteFinance) {
@@ -526,27 +547,23 @@ export function ServiceOrdersWorkspace() {
 
   const printProductionOrder = useCallback(
     async (serviceOrderId: string) => {
+      let productionOrderId = "";
       try {
-        let productionOrderId = "";
-        try {
-          const existing = await apiJson<{ productionOrder: { id: string } }>(`/service-orders/${serviceOrderId}/production-order`);
-          productionOrderId = existing.productionOrder.id;
-        } catch {
-          if (!canWriteProduction) {
-            throw new Error("Esta OS ainda não tem Ordem de Produção.");
-          }
-          const created = await apiJson<{ productionOrder: { id: string } }>(
-            `/service-orders/${serviceOrderId}/production-order/generate`,
-            { method: "POST" },
-          );
-          productionOrderId = created.productionOrder.id;
+        const existing = await apiJson<{ productionOrder: { id: string } }>(`/service-orders/${serviceOrderId}/production-order`);
+        productionOrderId = existing.productionOrder.id;
+      } catch {
+        if (!canWriteProduction) {
+          throw new Error("Esta OS ainda não tem Ordem de Produção.");
         }
-        const view = await apiJson<OpPrintView>(`/production-orders/${productionOrderId}/print-view`);
-        printProductionOrderDocument(view, companyName);
-        setMessage(`Ordem de produção ${view.productionNo} enviada para impressão, sem valores.`);
-      } catch (error) {
-        setMessage(formatWorkspaceMessage(error, "A Ordem de Produção não pôde ser impressa."));
+        const created = await apiJson<{ productionOrder: { id: string } }>(
+          `/service-orders/${serviceOrderId}/production-order/generate`,
+          { method: "POST" },
+        );
+        productionOrderId = created.productionOrder.id;
       }
+      const view = await apiJson<OpPrintView>(`/production-orders/${productionOrderId}/print-view`);
+      printProductionOrderDocument(view, companyName);
+      return view;
     },
     [apiJson, canWriteProduction, companyName],
   );
@@ -610,7 +627,13 @@ export function ServiceOrdersWorkspace() {
             label: "Ordem de produção (sem valores)",
             disabled: !canReadProduction && !canWriteProduction,
             onSelect: () => {
-              void printProductionOrder(row.id);
+              void printProductionOrder(row.id)
+                .then((view) => {
+                  setMessage(`Ordem de produção ${view.productionNo} enviada para impressão, sem valores.`);
+                })
+                .catch((error) => {
+                  setMessage(formatWorkspaceMessage(error, "A Ordem de Produção não pôde ser impressa."));
+                });
             },
           },
         ],
@@ -666,6 +689,13 @@ export function ServiceOrdersWorkspace() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadCatalogs, session?.tenantId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadBagSettings();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadBagSettings, session?.tenantId]);
 
   useEffect(() => {
     if (!headerForm.attendantId && session?.user?.id) {
@@ -763,6 +793,19 @@ export function ServiceOrdersWorkspace() {
   );
 
   const closeServiceOrderWorkspace = useCallback(() => {
+    const discardEmptyLinkedVersion = () => {
+      if (
+        canWrite &&
+        selectedOrder &&
+        (details?.items.length ?? 0) === 0 &&
+        (details?.groupVersions?.length ?? 0) > 1
+      ) {
+        void apiJson(`/service-orders/${selectedOrder.id}/cancel`, { method: "POST" }).catch(() => undefined);
+      }
+    };
+
+    discardEmptyLinkedVersion();
+
     if (!currentTabId || isMobile) {
       setShowCreateForm(false);
       setActiveOrderId(null);
@@ -776,7 +819,20 @@ export function ServiceOrdersWorkspace() {
     window.setTimeout(() => {
       closeWorkspace(closingTabId);
     }, 0);
-  }, [closeWorkspace, currentTabId, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab, setActiveOrderId, setShowCreateForm]);
+  }, [
+    apiJson,
+    canWrite,
+    closeWorkspace,
+    currentTabId,
+    details?.groupVersions?.length,
+    details?.items.length,
+    isMobile,
+    navigateWithinWorkspace,
+    openWorkspaceInNewTab,
+    selectedOrder,
+    setActiveOrderId,
+    setShowCreateForm,
+  ]);
 
   useEffect(() => {
     if (workspaceMode !== "new") {
@@ -795,6 +851,10 @@ export function ServiceOrdersWorkspace() {
       return "Inclua pelo menos uma peça antes de salvar a OS.";
     }
 
+    if (visibleItemRows.length > maxPiecesPerBag) {
+      return `Esta versão da OS aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`;
+    }
+
     for (const row of visibleItemRows) {
       if (!row.itemType.trim() || !row.description.trim()) {
         return "Cada peça precisa de produto e serviço antes de salvar.";
@@ -808,28 +868,24 @@ export function ServiceOrdersWorkspace() {
     return null;
   }
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!canWrite) return;
-
-    if (!canPersistInContext || !session?.activeBranchId) {
-      setMessage("Escolha a Filial no contexto antes de salvar a OS.");
-      return;
-    }
-    if (!headerForm.customerId) {
-      setMessage("Escolha o cliente antes de salvar a OS.");
-      return;
+  async function persistCurrentServiceOrder(requireAtLeastOneItem: boolean) {
+    if (!canWrite) {
+      throw new Error("Você não tem permissão para gravar a OS.");
     }
 
-    const itemValidation = validateItems(true);
-    if (itemValidation) {
-      setMessage(itemValidation);
-      return;
-    }
+    if (showCreateForm) {
+      if (!canPersistInContext || !session?.activeBranchId) {
+        throw new Error("Escolha a Filial no contexto antes de salvar a OS.");
+      }
+      if (!headerForm.customerId) {
+        throw new Error("Escolha o cliente antes de salvar a OS.");
+      }
 
-    setSaving(true);
-    setMessage(null);
-    try {
+      const itemValidation = validateItems(requireAtLeastOneItem);
+      if (itemValidation) {
+        throw new Error(itemValidation);
+      }
+
       const created = await apiJson<CreateServiceOrderResponse>("/service-orders", {
         method: "POST",
         body: JSON.stringify({
@@ -848,8 +904,78 @@ export function ServiceOrdersWorkspace() {
       const createdId = created.serviceOrder.id;
       setShowCreateForm(false);
       setActiveOrderId(createdId);
-      await loadOrders(createdId);
-      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(createdId)}`);
+      return { id: createdId, orderNo: created.serviceOrder.orderNo };
+    }
+
+    if (!selectedOrder || !canEditSelectedOrder) {
+      throw new Error("Esta OS não pode ser alterada.");
+    }
+    if (!headerForm.customerId) {
+      throw new Error("Escolha o cliente antes de atualizar a OS.");
+    }
+
+    const itemValidation = validateItems(requireAtLeastOneItem);
+    if (itemValidation) {
+      throw new Error(itemValidation);
+    }
+
+    await apiJson<ServiceOrderRecord>(`/service-orders/${selectedOrder.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        customerId: headerForm.customerId,
+        deliveryType: headerForm.deliveryType,
+        promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
+        promisedDeliveryTime: toTimeInput(headerForm.promisedDeliveryTime) || undefined,
+        commercialResponsibleActorId: headerForm.attendantId || undefined,
+        operationalPriority: headerForm.operationalPriority || undefined,
+        commercialNotes: headerForm.commercialNotes || null,
+        customerNotes: headerForm.customerNotes || null,
+      }),
+    });
+
+    const plan = buildServiceOrderItemMutationPlan(itemRows, details?.items ?? []);
+
+    for (const item of plan.update) {
+      await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          itemType: item.itemType,
+          productId: item.productId,
+          serviceId: item.serviceId,
+          description: item.description,
+          complement: item.complement,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discountValue: item.discountValue,
+        }),
+      });
+    }
+
+    for (const item of plan.remove) {
+      await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: item.status }),
+      });
+    }
+
+    for (const item of plan.create) {
+      await apiJson(`/service-orders/${selectedOrder.id}/items`, {
+        method: "POST",
+        body: JSON.stringify(item),
+      });
+    }
+
+    return { id: selectedOrder.id, orderNo: selectedOrder.orderNo };
+  }
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    try {
+      const persisted = await persistCurrentServiceOrder(true);
+      await loadOrders(persisted.id);
+      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(persisted.id)}`);
       setMessage("OS salva. O cabeçalho e as peças foram gravados e a nova OS já está selecionada.");
     } catch (error) {
       setMessage(
@@ -865,77 +991,50 @@ export function ServiceOrdersWorkspace() {
 
   async function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedOrder || !canEditSelectedOrder) return;
-
-    if (!headerForm.customerId) {
-      setMessage("Escolha o cliente antes de atualizar a OS.");
-      return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const persisted = await persistCurrentServiceOrder(false);
+      await loadOrders(persisted.id);
+      setMessage("OS atualizada. O cabeçalho e as peças desta versão foram gravados.");
+    } catch (error) {
+      setMessage(
+        formatWorkspaceMessage(
+          error,
+          "A OS não pôde ser atualizada. Confira o cabeçalho e as peças, e tente de novo.",
+        ),
+      );
+    } finally {
+      setSaving(false);
     }
+  }
 
-    const itemValidation = validateItems(false);
-    if (itemValidation) {
-      setMessage(itemValidation);
+  async function handleCloseBag() {
+    if (!canWrite) {
       return;
     }
 
     setSaving(true);
     setMessage(null);
     try {
-      await apiJson<ServiceOrderRecord>(`/service-orders/${selectedOrder.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          customerId: headerForm.customerId,
-          deliveryType: headerForm.deliveryType,
-          promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
-          promisedDeliveryTime: toTimeInput(headerForm.promisedDeliveryTime) || undefined,
-          commercialResponsibleActorId: headerForm.attendantId || undefined,
-          operationalPriority: headerForm.operationalPriority || undefined,
-          commercialNotes: headerForm.commercialNotes || null,
-          customerNotes: headerForm.customerNotes || null,
-        }),
+      const persisted = await persistCurrentServiceOrder(true);
+      await printProductionOrder(persisted.id);
+      const next = await apiJson<ServiceOrderDetail>(`/service-orders/${persisted.id}/next-version`, {
+        method: "POST",
       });
-
-      const plan = buildServiceOrderItemMutationPlan(itemRows, details?.items ?? []);
-
-      for (const item of plan.update) {
-        await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            itemType: item.itemType,
-            productId: item.productId,
-            serviceId: item.serviceId,
-            description: item.description,
-            complement: item.complement,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            discountValue: item.discountValue,
-          }),
-        });
-      }
-
-      for (const item of plan.remove) {
-        await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ status: item.status }),
-        });
-      }
-
-      for (const item of plan.create) {
-        await apiJson(`/service-orders/${selectedOrder.id}/items`, {
-          method: "POST",
-          body: JSON.stringify(item),
-        });
-      }
-
-      await loadOrders(selectedOrder.id);
+      const nextId = next.serviceOrder.id;
+      setShowCreateForm(false);
+      setActiveOrderId(nextId);
+      await loadOrders(nextId);
+      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(nextId)}`);
       setMessage(
-        `OS atualizada. Cabeçalho gravado e peças aplicadas: ${plan.create.length} inclusão(ões), ${plan.update.length} alteração(ões) e ${plan.remove.length} exclusão(ões).`,
+        `Sacola fechada. A OP da ${persisted.orderNo} foi enviada para impressão e já pode ir no bolso transparente. Aberta a versão ${next.serviceOrder.orderNo}, com o mesmo cabeçalho e grade nova. Se não houver mais peças, clique em Cancelar para descartar esta versão vazia.`,
       );
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "A OS não pôde ser atualizada. Confira o cabeçalho e as peças, e tente de novo.",
+          "A sacola não pôde ser fechada. Confira as peças, grave de novo e tente fechar outra vez.",
         ),
       );
     } finally {
@@ -1074,11 +1173,35 @@ export function ServiceOrdersWorkspace() {
               <h3>{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h3>
               <p>
                 {showCreateForm
-                  ? "A Empresa e a Filial vêm do contexto ativo. Preencha o cabeçalho e as peças nesta aba."
+                  ? `A Empresa e a Filial vêm do contexto ativo. Cada versão aceita até ${maxPiecesPerBag} peças. A sacola é só o transporte físico.`
                   : selectedOrder
-                    ? "Altere o cabeçalho e as peças sem perder a lista de OS."
+                    ? `Cada versão aceita até ${maxPiecesPerBag} peças. Feche a sacola para imprimir a OP e abrir a próxima versão ligada.`
                     : "Abra uma OS na grade ou cadastre uma nova."}
               </p>
+              {!showCreateForm && details?.groupVersions && details.groupVersions.length > 1 ? (
+                <p className="table-subtle">
+                  Versões ligadas:{" "}
+                  {details.groupVersions.map((version, index) => (
+                    <span key={version.id}>
+                      {index > 0 ? " · " : null}
+                      {version.id === selectedOrder?.id ? (
+                        <strong>{version.orderNo}</strong>
+                      ) : (
+                        <button
+                          className="button-ghost"
+                          onClick={() => {
+                            setActiveOrderId(version.id);
+                            void loadDetails(version.id);
+                          }}
+                          type="button"
+                        >
+                          {version.orderNo}
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
             </div>
             {!showCreateForm && selectedOrder && canWrite ? (
               <button className="button-secondary" onClick={openCreateWorkspace} type="button">
@@ -1282,18 +1405,23 @@ export function ServiceOrdersWorkspace() {
                 <div className="workspace-toolbar">
                   <div className="workspace-toolbar__copy">
                     <h4>Serviços e mão de obra</h4>
-                    <p>Produto e serviço na mesma linha, depois o complemento. Até {MAX_SERVICE_ORDER_ITEMS} peças por OS.</p>
+                    <p>
+                      Produto e serviço na mesma linha, depois o complemento. Até {maxPiecesPerBag} peças nesta
+                      versão. Sem mínimo: a última sacola pode ter só o que restou.
+                    </p>
                   </div>
                   {(showCreateForm || canEditSelectedOrder) ? (
                     <button
                       className="button-secondary"
-                      disabled={saving || !canAddServiceOrderItemGridRow(itemRows)}
+                      disabled={saving || !canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)}
                       onClick={() => {
-                        if (!canAddServiceOrderItemGridRow(itemRows)) {
-                          setMessage(`A OS aceita no máximo ${MAX_SERVICE_ORDER_ITEMS} peças.`);
+                        if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
+                          setMessage(
+                            `Esta versão aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`,
+                          );
                           return;
                         }
-                        setItemRows((current) => addServiceOrderItemGridRow(current));
+                        setItemRows((current) => addServiceOrderItemGridRow(current, maxPiecesPerBag));
                       }}
                       type="button"
                     >
@@ -1567,6 +1695,16 @@ export function ServiceOrdersWorkspace() {
                       <button className="button" disabled={saving || !canWrite} type="submit">
                         {saving ? "Salvando…" : "Salvar"}
                       </button>
+                      <button
+                        className="button"
+                        disabled={saving || !canWrite || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseBag();
+                        }}
+                        type="button"
+                      >
+                        Fechar sacola
+                      </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
                       </button>
@@ -1575,6 +1713,16 @@ export function ServiceOrdersWorkspace() {
                     <>
                       <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
                         {saving ? "Salvando…" : "Salvar alterações"}
+                      </button>
+                      <button
+                        className="button"
+                        disabled={saving || !canEditSelectedOrder || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseBag();
+                        }}
+                        type="button"
+                      >
+                        Fechar sacola
                       </button>
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar

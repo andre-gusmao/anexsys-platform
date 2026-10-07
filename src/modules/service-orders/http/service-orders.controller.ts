@@ -340,6 +340,15 @@ export class ServiceOrdersController {
     });
   }
 
+  @Permissions('service_orders.read')
+  @Get('settings')
+  async settings(@CurrentTenantId() tenantId: string | null) {
+    if (!tenantId) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    return this.serviceOrderService.getBagSettings(tenantId);
+  }
+
   @Permissions('service_orders.write')
   @Post()
   async create(
@@ -392,6 +401,22 @@ export class ServiceOrdersController {
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
     return this.serviceOrderService.getDetails(tenantId, serviceOrderId);
+  }
+
+  @Permissions('service_orders.write')
+  @Post(':serviceOrderId/next-version')
+  async spawnNextVersion(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.spawnNextVersion(tenantId, serviceOrderId, principal.userId);
   }
 
   @Permissions('service_orders.write')

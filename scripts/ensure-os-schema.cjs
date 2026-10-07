@@ -50,7 +50,39 @@ async function main() {
       ALTER TABLE IF EXISTS service_order_items
       ADD COLUMN IF NOT EXISTS complement text NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto e serviço).');
+    await client.query(`
+      ALTER TABLE IF EXISTS tenants
+      ADD COLUMN IF NOT EXISTS max_pieces_per_bag integer NOT NULL DEFAULT 5
+    `);
+    await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      ADD COLUMN IF NOT EXISTS group_id uuid
+    `);
+    await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      ADD COLUMN IF NOT EXISTS group_seq integer
+    `);
+    await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      ADD COLUMN IF NOT EXISTS version_suffix varchar(2)
+    `);
+    await client.query(`
+      UPDATE service_orders
+      SET group_id = id
+      WHERE group_id IS NULL
+    `);
+    await client.query(`
+      WITH numbered AS (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY tenant_id ORDER BY created_at, id) AS seq
+        FROM service_orders
+      )
+      UPDATE service_orders AS orders
+      SET group_seq = numbered.seq
+      FROM numbered
+      WHERE orders.id = numbered.id
+        AND orders.group_seq IS NULL
+    `);
+    console.log('Banco da OS conferido (horário de saída, produto, serviço e versões da sacola).');
   } finally {
     await client.end();
   }

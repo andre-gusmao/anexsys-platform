@@ -40,6 +40,7 @@ describe('TenantService', () => {
     assert.equal(tenant.status, TenantStatus.ACTIVE);
     assert.equal(tenant.warrantyAdjustmentPeriodDays, 7);
     assert.equal(tenant.warrantyExecutionPeriodDays, 7);
+    assert.equal(tenant.maxPiecesPerBag, 5);
     assert.equal(auditCalls[0]?.action, 'tenant.created');
     assert.equal(auditCalls[0]?.newValues?.code, 'ATELIER');
   });

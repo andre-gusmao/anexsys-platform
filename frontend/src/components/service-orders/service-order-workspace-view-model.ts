@@ -141,12 +141,18 @@ export function getVisibleServiceOrderItemGridRows(rows: ServiceOrderItemGridRow
   return rows.filter((row) => !row.isRemoved);
 }
 
-export function canAddServiceOrderItemGridRow(rows: ServiceOrderItemGridRow[]) {
-  return getVisibleServiceOrderItemGridRows(rows).length < MAX_SERVICE_ORDER_ITEMS;
+export function canAddServiceOrderItemGridRow(
+  rows: ServiceOrderItemGridRow[],
+  maxItems = MAX_SERVICE_ORDER_ITEMS,
+) {
+  return getVisibleServiceOrderItemGridRows(rows).length < maxItems;
 }
 
-export function addServiceOrderItemGridRow(rows: ServiceOrderItemGridRow[]) {
-  if (!canAddServiceOrderItemGridRow(rows)) {
+export function addServiceOrderItemGridRow(
+  rows: ServiceOrderItemGridRow[],
+  maxItems = MAX_SERVICE_ORDER_ITEMS,
+) {
+  if (!canAddServiceOrderItemGridRow(rows, maxItems)) {
     return rows;
   }
   return [...rows, createEmptyServiceOrderItemGridRow(getNextServiceOrderItemNo(rows))];
