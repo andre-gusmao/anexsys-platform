@@ -39,6 +39,7 @@ type Props = {
   createLabel?: string;
   emptyMessage?: string;
   compact?: boolean;
+  required?: boolean;
   onChange: (option: SmartLookupOption | null) => void;
   onCreate?: (query: string) => void;
   onOpen?: () => void;
@@ -58,6 +59,7 @@ export function SmartLookup({
   createLabel = "Cadastrar",
   emptyMessage = "Nenhum registro encontrado.",
   compact = false,
+  required = false,
   onChange,
   onCreate,
   onOpen,
@@ -69,6 +71,8 @@ export function SmartLookup({
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const invalid = Boolean(required && touched && !value);
 
   const selected = useMemo(() => options.find((option) => option.id === value) ?? null, [options, value]);
   const filteredOptions = useMemo(() => filterLookupOptions(options, query), [options, query]);
@@ -135,7 +139,11 @@ export function SmartLookup({
   };
 
   return (
-    <div className={`smart-lookup${compact ? " smart-lookup--compact" : ""}`} data-entity={entityType} ref={rootRef}>
+    <div
+      className={`smart-lookup${compact ? " smart-lookup--compact" : ""}${required ? " smart-lookup--required" : ""}${invalid ? " is-invalid" : ""}`}
+      data-entity={entityType}
+      ref={rootRef}
+    >
       {compact ? null : (
         <div className="smart-lookup__label-row">
           <span>{label}</span>
@@ -160,12 +168,14 @@ export function SmartLookup({
                 onChange(null);
               }
             }}
+            onBlur={() => setTouched(true)}
             onFocus={() => {
               setOpen(true);
               setQuery(selected?.label ?? query);
               onOpen?.();
             }}
             onKeyDown={onKeyDown}
+            required={required}
             placeholder={searchPlaceholder ?? placeholder}
             role="combobox"
             value={displayValue}

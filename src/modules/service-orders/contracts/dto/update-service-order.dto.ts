@@ -27,6 +27,11 @@ export class UpdateServiceOrderDto {
   @IsDateString()
   actualDeliveryDate?: string;
 
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/)
+  actualDeliveryTime?: string | null;
+
   @Type(() => Number)
   @IsOptional()
   @IsNumber()

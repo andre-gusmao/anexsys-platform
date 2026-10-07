@@ -341,6 +341,15 @@ export class ServiceOrdersController {
   }
 
   @Permissions('service_orders.read')
+  @Get('next-number')
+  async nextNumber(@CurrentTenantId() tenantId: string | null) {
+    if (!tenantId) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    return this.serviceOrderService.previewNextOrderNo(tenantId);
+  }
+
+  @Permissions('service_orders.read')
   @Get('settings')
   async settings(@CurrentTenantId() tenantId: string | null) {
     if (!tenantId) {

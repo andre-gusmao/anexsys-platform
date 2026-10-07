@@ -67,6 +67,10 @@ async function main() {
       ADD COLUMN IF NOT EXISTS version_suffix varchar(2)
     `);
     await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      ADD COLUMN IF NOT EXISTS actual_delivery_time varchar(5)
+    `);
+    await client.query(`
       UPDATE service_orders
       SET group_id = id
       WHERE group_id IS NULL

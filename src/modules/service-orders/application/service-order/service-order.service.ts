@@ -21,9 +21,9 @@ import { SearchServiceOrdersDto } from '../../contracts/dto/search-service-order
 import { UpdateServiceOrderDto } from '../../contracts/dto/update-service-order.dto';
 import { UpdateServiceOrderItemDto } from '../../contracts/dto/update-service-order-item.dto';
 import { AtelierCatalogService } from '../atelier-catalog/atelier-catalog.service';
-import { normalizeClockTime } from '../delivery-date/clock-time';
+import { currentClockTime, normalizeClockTime } from '../delivery-date/clock-time';
 import { DeliveryDateService } from '../delivery-date/delivery-date.service';
-import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix } from './service-order-version';
+import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, withVersionSuffix } from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
 import { ServiceOrderItemRepository } from '../../infrastructure/persistence/repositories/service-order-item.repository';
@@ -91,7 +91,7 @@ export class ServiceOrderService {
     );
     const promisedDeliveryDate = dto.promisedDeliveryDate ?? suggestedDelivery.promisedDeliveryDate;
     const promisedDeliveryTime =
-      normalizeClockTime(dto.promisedDeliveryTime) ?? suggestedDelivery.promisedDeliveryTime;
+      normalizeClockTime(dto.promisedDeliveryTime) ?? currentClockTime(openedAt);
 
     const normalizedItems: Array<Awaited<ReturnType<ServiceOrderService['resolveCatalogFields']>>> = [];
     for (const item of dto.items) {
@@ -120,6 +120,7 @@ export class ServiceOrderService {
       promisedDeliveryTime,
       actualPickupDate: dto.actualPickupDate ?? null,
       actualDeliveryDate: dto.actualDeliveryDate ?? null,
+      actualDeliveryTime: null,
       paymentTermsDays: dto.paymentTermsDays ?? 0,
       deliveryType: dto.deliveryType ?? DeliveryType.STANDARD,
       operationalPriority: dto.operationalPriority?.trim() || null,
@@ -319,6 +320,12 @@ export class ServiceOrderService {
     return { maxPiecesPerBag: tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG };
   }
 
+  async previewNextOrderNo(tenantId: string) {
+    await this.tenantService.getById(tenantId);
+    const groupSeq = await this.serviceOrderRepository.nextGroupSeq(tenantId);
+    return { orderNo: formatServiceOrderNo(groupSeq) };
+  }
+
   async spawnNextVersion(tenantId: string, sourceServiceOrderId: string, actorUserId: string) {
     const source = await this.getById(sourceServiceOrderId, tenantId);
     const groupId = source.groupId ?? source.id;
@@ -327,9 +334,7 @@ export class ServiceOrderService {
     const root = members.find((order) => !order.versionSuffix) ?? source;
     const groupSeq = source.groupSeq ?? root.groupSeq ?? (await this.serviceOrderRepository.nextGroupSeq(tenantId));
     const versionSuffix = nextVersionSuffix(members.map((order) => order.versionSuffix));
-    const orderNo = source.groupSeq || root.groupSeq
-      ? formatServiceOrderNo(groupSeq, versionSuffix)
-      : `${root.orderNo}-${versionSuffix}`;
+    const orderNo = withVersionSuffix(root.orderNo, versionSuffix);
 
     const nextId = randomUUID();
     const nextOrder = this.serviceOrderRepository.create({
@@ -349,6 +354,7 @@ export class ServiceOrderService {
       promisedDeliveryTime: source.promisedDeliveryTime,
       actualPickupDate: null,
       actualDeliveryDate: null,
+      actualDeliveryTime: null,
       paymentTermsDays: source.paymentTermsDays,
       deliveryType: source.deliveryType,
       operationalPriority: source.operationalPriority,
@@ -438,6 +444,9 @@ export class ServiceOrderService {
     }
     if (dto.actualDeliveryDate !== undefined) {
       serviceOrder.actualDeliveryDate = dto.actualDeliveryDate;
+    }
+    if (dto.actualDeliveryTime !== undefined) {
+      serviceOrder.actualDeliveryTime = normalizeClockTime(dto.actualDeliveryTime);
     }
     if (dto.paymentTermsDays !== undefined) {
       serviceOrder.paymentTermsDays = dto.paymentTermsDays;

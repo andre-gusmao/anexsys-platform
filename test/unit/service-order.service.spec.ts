@@ -41,6 +41,7 @@ describe('ServiceOrderService', () => {
       branchId: 'branch-1',
       customerId: 'customer-1',
       actorUserId: 'user-1',
+      promisedDeliveryTime: '18:00',
       deliveryType: DeliveryType.PRIORITY,
       deliverySurchargeMethod: 'fixed' as never,
       deliverySurchargeValue: 15,
@@ -53,7 +54,7 @@ describe('ServiceOrderService', () => {
     assert.equal(created.serviceOrder.commercialResponsibleActorId, 'user-1');
     assert.equal(created.serviceOrder.promisedDeliveryDate, '2026-10-01');
     assert.equal(created.serviceOrder.promisedDeliveryTime, '18:00');
-    assert.equal(created.serviceOrder.orderNo, '00002');
+    assert.equal(created.serviceOrder.orderNo, 'AA0002');
     assert.equal(created.items[0]?.itemType, 'uniform');
     assert.equal(created.items[0]?.description, 'Jacket');
     assert.equal(created.items[0]?.discountValue, '10.00');

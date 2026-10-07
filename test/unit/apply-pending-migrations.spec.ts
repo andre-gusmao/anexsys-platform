@@ -48,6 +48,7 @@ describe('applyPendingMigrations', () => {
     assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS max_pieces_per_bag')), true);
     assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS group_id')), true);
     assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS version_suffix')), true);
+    assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS actual_delivery_time')), true);
   });
 
   it('still repairs the schema when TypeORM cannot load the migration files', async () => {

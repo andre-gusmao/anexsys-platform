@@ -55,6 +55,8 @@ type ServiceOrderRecord = {
   commercialNotes?: string | null;
   customerNotes?: string | null;
   commercialResponsibleActorId?: string;
+  actualDeliveryDate?: string | null;
+  actualDeliveryTime?: string | null;
 };
 
 type ActorSummary = {
@@ -168,7 +170,7 @@ function createEmptyHeaderForm(attendantId = ""): ServiceOrderHeaderForm {
     deliveryType: "Standard",
     operationalPriority: "",
     promisedDeliveryDate: "",
-    promisedDeliveryTime: "",
+    promisedDeliveryTime: nowTimeInput(),
     attendantId,
     commercialNotes: "",
     customerNotes: DEFAULT_CUSTOMER_NOTE,
@@ -227,6 +229,7 @@ export function ServiceOrdersWorkspace() {
   );
   const [itemRows, setItemRows] = useWorkspaceScopedState<ServiceOrderItemGridRow[]>("service-orders.itemRows", [createEmptyServiceOrderItemGridRow(1)]);
   const [maxPiecesPerBag, setMaxPiecesPerBag] = useState(MAX_SERVICE_ORDER_ITEMS);
+  const [previewOrderNo, setPreviewOrderNo] = useState("—");
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -514,6 +517,18 @@ export function ServiceOrdersWorkspace() {
     }
   }, [apiJson, canRead]);
 
+  const loadNextOrderNo = useCallback(async () => {
+    if (!canRead) {
+      return;
+    }
+    try {
+      const next = await apiJson<{ orderNo: string }>("/service-orders/next-number");
+      setPreviewOrderNo(next.orderNo);
+    } catch {
+      setPreviewOrderNo("—");
+    }
+  }, [apiJson, canRead]);
+
   const openPay = useCallback(
     async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
       if (!canReadFinance && !canWriteFinance) {
@@ -724,7 +739,7 @@ export function ServiceOrdersWorkspace() {
           setHeaderForm((current) => ({
             ...current,
             promisedDeliveryDate: suggestion.promisedDeliveryDate,
-            promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
+            promisedDeliveryTime: current.promisedDeliveryTime || nowTimeInput(),
           }));
         } catch {
           /* a atendente ainda pode preencher a saída na mão */
@@ -764,7 +779,8 @@ export function ServiceOrdersWorkspace() {
     setHeaderForm(createEmptyHeaderForm(session?.user?.id ?? ""));
     setItemRows([createEmptyServiceOrderItemGridRow(1)]);
     setMessage(null);
-  }, [session?.user?.id, setActiveOrderId, setHeaderForm, setItemRows, setShowCreateForm]);
+    void loadNextOrderNo();
+  }, [loadNextOrderNo, session?.user?.id, setActiveOrderId, setHeaderForm, setItemRows, setShowCreateForm]);
 
   const openCreateWorkspace = useCallback(() => {
     const targetPath = "/service-orders?workspaceMode=new";
@@ -1216,12 +1232,61 @@ export function ServiceOrdersWorkspace() {
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
                 <h4>Dados da ordem de serviço</h4>
-                <p>Número, cliente, situação, entrada e a previsão de saída.</p>
+                <p>O que já vem do contexto fica em cima. O atendente preenche só o que falta.</p>
                 <div className="os-header-grid">
                   <label className="field">
                     <span>Número</span>
-                    <input disabled value={selectedOrder?.orderNo ?? "Gerado ao salvar"} />
+                    <input disabled value={selectedOrder?.orderNo ?? previewOrderNo} />
                   </label>
+                  <label className="field">
+                    <span>Situação</span>
+                    <input disabled value={selectedOrder ? osStatusLabel(selectedOrder.status) : "Aberta"} />
+                  </label>
+                  <label className="field">
+                    <span>Empresa</span>
+                    <input disabled value={activeCompany?.displayName ?? "Empresa"} />
+                  </label>
+                  <label className="field">
+                    <span>Filial</span>
+                    <input disabled value={activeBranch?.label ?? "Filial"} />
+                  </label>
+                  <div className="field">
+                    <span>Entrada</span>
+                    <div className="os-datetime">
+                      <input
+                        disabled
+                        type="date"
+                        value={selectedOrder ? toDateInput(selectedOrder.openedAt) : nowDateInput()}
+                      />
+                      <input
+                        disabled
+                        type="time"
+                        value={selectedOrder ? toTimeInput(null, selectedOrder.openedAt) : nowTimeInput()}
+                      />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <span>Saída</span>
+                    <div className="os-datetime">
+                      <input
+                        disabled
+                        type="date"
+                        value={toDateInput(selectedOrder?.actualDeliveryDate)}
+                      />
+                      <input
+                        disabled
+                        type="time"
+                        value={toTimeInput(selectedOrder?.actualDeliveryTime)}
+                      />
+                    </div>
+                    <small className="field__hint">Preenche quando o cliente assina a retirada ou o atendente registra Recebido.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mini-section">
+                <h4>Cliente</h4>
+                <div className="os-header-grid">
                   <div className="field os-header-grid__wide">
                     <SmartLookup
                       allowClear={false}
@@ -1243,6 +1308,7 @@ export function ServiceOrdersWorkspace() {
                         void loadCustomers();
                       }}
                       options={customerLookupOptions}
+                      required
                       searchPlaceholder="Digite o nome do cliente"
                       value={headerForm.customerId}
                     />
@@ -1266,59 +1332,33 @@ export function ServiceOrdersWorkspace() {
                     </div>
                   </div>
                   <label className="field">
-                    <span>Situação</span>
-                    <input disabled value={selectedOrder ? osStatusLabel(selectedOrder.status) : "Aberta"} />
+                    <span>Prioridade</span>
+                    <input
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      placeholder="Opcional"
+                      value={headerForm.operationalPriority}
+                      onChange={(event) =>
+                        setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))
+                      }
+                    />
                   </label>
-                  <div className="field">
-                    <span>Entrada</span>
-                    <div className="os-datetime">
-                      <input
-                        disabled
-                        type="date"
-                        value={selectedOrder ? toDateInput(selectedOrder.openedAt) : nowDateInput()}
-                      />
-                      <input
-                        disabled
-                        type="time"
-                        value={selectedOrder ? toTimeInput(null, selectedOrder.openedAt) : nowTimeInput()}
-                      />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <span>Saída</span>
-                    <div className="os-datetime">
-                      <input
-                        disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                        required
-                        type="date"
-                        value={headerForm.promisedDeliveryDate}
-                        onChange={(event) =>
-                          setHeaderForm((current) => ({ ...current, promisedDeliveryDate: event.target.value }))
-                        }
-                      />
-                      <input
-                        disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                        required
-                        type="time"
-                        value={headerForm.promisedDeliveryTime}
-                        onChange={(event) =>
-                          setHeaderForm((current) => ({
-                            ...current,
-                            promisedDeliveryTime: toTimeInput(event.target.value),
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <label className="field">
+                </div>
+              </div>
+
+              <div className="mini-section os-forecast-box">
+                <h4>Previsão de entrega</h4>
+                <p>O sistema sugere a data pela regra do tipo. O horário começa com o da gravação da OS. Os dois podem ser alterados.</p>
+                <div className="os-forecast-grid">
+                  <label className="field field--required">
                     <span>Tipo de entrega</span>
                     <select
                       disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      required
                       value={headerForm.deliveryType}
                       onChange={(event) => {
                         const deliveryType = event.target.value as ServiceOrderHeaderForm["deliveryType"];
                         setHeaderForm((current) => ({ ...current, deliveryType }));
-                        if (!showCreateForm && session?.activeBranchId) {
+                        if (session?.activeBranchId) {
                           const params = new URLSearchParams({
                             branchId: session.activeBranchId,
                             deliveryType,
@@ -1331,7 +1371,7 @@ export function ServiceOrdersWorkspace() {
                               setHeaderForm((current) => ({
                                 ...current,
                                 promisedDeliveryDate: suggestion.promisedDeliveryDate,
-                                promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
+                                promisedDeliveryTime: current.promisedDeliveryTime || nowTimeInput(),
                               }));
                             })
                             .catch(() => undefined);
@@ -1343,21 +1383,30 @@ export function ServiceOrdersWorkspace() {
                       <option value="Express">Expresso</option>
                     </select>
                   </label>
-                  <label className="field">
-                    <span>Empresa / Filial</span>
-                    <input
-                      disabled
-                      value={`${activeCompany?.displayName ?? "Empresa"} · ${activeBranch?.label ?? "Filial"}`}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Prioridade</span>
+                  <label className="field field--required">
+                    <span>Data</span>
                     <input
                       disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                      placeholder="Opcional"
-                      value={headerForm.operationalPriority}
+                      required
+                      type="date"
+                      value={headerForm.promisedDeliveryDate}
                       onChange={(event) =>
-                        setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))
+                        setHeaderForm((current) => ({ ...current, promisedDeliveryDate: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="field field--required">
+                    <span>Horário</span>
+                    <input
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      required
+                      type="time"
+                      value={headerForm.promisedDeliveryTime}
+                      onChange={(event) =>
+                        setHeaderForm((current) => ({
+                          ...current,
+                          promisedDeliveryTime: toTimeInput(event.target.value),
+                        }))
                       }
                     />
                   </label>
@@ -1410,24 +1459,6 @@ export function ServiceOrdersWorkspace() {
                       versão. Sem mínimo: a última sacola pode ter só o que restou.
                     </p>
                   </div>
-                  {(showCreateForm || canEditSelectedOrder) ? (
-                    <button
-                      className="button-secondary"
-                      disabled={saving || !canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)}
-                      onClick={() => {
-                        if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
-                          setMessage(
-                            `Esta versão aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`,
-                          );
-                          return;
-                        }
-                        setItemRows((current) => addServiceOrderItemGridRow(current, maxPiecesPerBag));
-                      }}
-                      type="button"
-                    >
-                      Adicionar peça
-                    </button>
-                  ) : null}
                 </div>
 
                 <div className="data-table-wrapper os-items-table">
@@ -1458,6 +1489,7 @@ export function ServiceOrdersWorkspace() {
                                 disabled={!editable}
                                 entityType="products"
                                 label="Produto"
+                                required
                                 onChange={(option) =>
                                   setItemRows((current) =>
                                     updateServiceOrderItemGridRow(current, row.localId, {
@@ -1494,6 +1526,7 @@ export function ServiceOrdersWorkspace() {
                                 disabled={!editable}
                                 entityType="services"
                                 label="Serviço"
+                                required
                                 onChange={(option) => {
                                   const selected = services.find((service) => service.id === option?.id);
                                   setItemRows((current) =>
@@ -1623,7 +1656,29 @@ export function ServiceOrdersWorkspace() {
                     </tbody>
                   </table>
                 </div>
-                <p className="os-labor-total">Total de mão de obra {formatOsMoney(laborTotal)}</p>
+                <div className="os-items-footer">
+                  {(showCreateForm || canEditSelectedOrder) ? (
+                    <button
+                      className="os-add-item"
+                      disabled={saving || !canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)}
+                      onClick={() => {
+                        if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
+                          setMessage(
+                            `Esta versão aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`,
+                          );
+                          return;
+                        }
+                        setItemRows((current) => addServiceOrderItemGridRow(current, maxPiecesPerBag));
+                      }}
+                      type="button"
+                    >
+                      + Adicionar peça
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  <strong className="os-labor-total">Total de mão de obra {formatOsMoney(laborTotal)}</strong>
+                </div>
               </div>
 
               <div className="mini-section">

@@ -113,12 +113,57 @@ textarea {
 
 .os-header-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
 .os-header-grid__wide {
   grid-column: span 2;
+}
+
+.os-forecast-box {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.os-forecast-box h4 {
+  margin-bottom: 4px;
+}
+
+.os-forecast-box > p {
+  margin-bottom: 14px;
+}
+
+.os-forecast-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.8fr;
+  gap: 14px;
+}
+
+.os-items-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.os-add-item {
+  border: 0;
+  background: transparent;
+  color: var(--grid-accent);
+  font-weight: 700;
+  padding: 0;
+  min-height: auto;
+  cursor: pointer;
+}
+
+.os-add-item:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 .os-datetime {
@@ -132,8 +177,13 @@ textarea {
     grid-template-columns: 1fr 1fr;
   }
 
-  .os-header-grid__wide {
+  .os-header-grid__wide,
+  .os-forecast-grid {
     grid-column: span 2;
+  }
+
+  .os-forecast-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -143,8 +193,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .os-header-grid__wide {
+  .os-header-grid__wide,
+  .os-forecast-grid {
     grid-column: auto;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -153,7 +205,7 @@ textarea {
 }
 
 .os-labor-total {
-  margin: 8px 0 0;
+  margin: 0;
   text-align: right;
   font-weight: 700;
 }
@@ -300,6 +352,30 @@ textarea {
   color: var(--foreground);
   border-radius: 12px;
   padding: 0 14px;
+}
+
+.field--required > span::after,
+.field:has(input[required]) > span::after,
+.field:has(select[required]) > span::after,
+.field:has(textarea[required]) > span::after,
+.smart-lookup--required .smart-lookup__label-row span::after {
+  content: " *";
+  color: var(--danger);
+}
+
+.field input:user-invalid,
+.field select:user-invalid,
+.field textarea:user-invalid,
+.field--invalid input,
+.field--invalid select,
+.field--invalid textarea {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
+}
+
+.smart-lookup.is-invalid .smart-lookup__box {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
 }
 
 .field textarea {
