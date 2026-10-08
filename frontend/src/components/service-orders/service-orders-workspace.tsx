@@ -1750,10 +1750,11 @@ export function ServiceOrdersWorkspace() {
                               />
                             </td>
                             <td>
-                              <input
-                                className="os-item-input"
+                              <textarea
+                                className="os-item-input os-item-input--work"
                                 disabled={!editable}
                                 placeholder="O que ficou combinado com o cliente"
+                                rows={3}
                                 value={row.complement}
                                 onChange={(event) =>
                                   setItemRows((current) =>

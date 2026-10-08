@@ -288,7 +288,7 @@ textarea {
 
 .os-items-table {
   overflow: visible;
-  min-height: calc(52px + (var(--os-item-limit, 5) * 76px));
+  min-height: calc(52px + (var(--os-item-limit, 5) * 108px));
 }
 
 .os-items-section .data-table-wrapper {
@@ -420,7 +420,21 @@ textarea {
   padding: 0 14px;
 }
 
-.os-items-table .data-table input.os-item-input:user-invalid {
+.os-items-table .data-table textarea.os-item-input--work {
+  display: block;
+  min-height: 72px;
+  height: 72px;
+  padding: 8px 12px;
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.os-items-table .data-table input.os-item-input:user-invalid,
+.os-items-table .data-table textarea.os-item-input:user-invalid {
   border-color: var(--danger);
   box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
 }
@@ -2049,6 +2063,15 @@ textarea {
 
 .qc-form .workspace-toolbar {
   align-items: flex-start;
+}
+
+.qc-work {
+  max-height: 4.05em;
+  overflow: auto;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 @media (max-width: 767px) {

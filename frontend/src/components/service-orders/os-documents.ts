@@ -105,7 +105,19 @@ const DEFAULT_PRINT_CSS = `
   p, td, th { font-size: 13px; }
   .muted { color: #667085; margin: 0 0 16px; }
   table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-  th, td { border-bottom: 1px solid #d7dfeb; text-align: left; padding: 8px 6px; vertical-align: top; }
+  th, td { border-bottom: 1px solid #d7dfeb; text-align: left; padding: 8px 6px; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
+  .print-work {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    max-height: calc(1.35em * 3);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
   th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #667085; }
   .total { font-size: 18px; text-align: right; }
   .notes { border: 1px solid #d7dfeb; padding: 12px; white-space: pre-wrap; }
@@ -180,13 +192,26 @@ export const OP_A5_PRINT_CSS = `
   .op-items td:nth-child(2) { width: 20%; }
   .op-items th:nth-child(3),
   .op-items td:nth-child(3) { width: 58%; }
-  .op-item__work { font-size: 13px; line-height: 1.35; }
+  .op-item__work,
+  .op-item__rework,
+  .print-work {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    max-height: calc(1.35em * 3);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .op-item__work { font-size: 13px; }
   .op-item__rework {
-    display: block;
+    display: -webkit-box;
     margin-top: 4px;
     font-size: 14px;
     font-weight: 700;
-    line-height: 1.3;
   }
   .op-item__rework-label {
     display: block;
@@ -302,7 +327,7 @@ export function buildProductionOrderPrintHtml(
       return `<tr>
         <td>${escapeHtml(item.itemType)}${equipment ? `<span class="op-item__equip">${escapeHtml(equipment)}</span>` : ""}</td>
         <td>${escapeHtml(item.description)}</td>
-        <td class="op-item__work">${escapeHtml(item.complement)}${
+        <td><span class="op-item__work">${escapeHtml(item.complement)}</span>${
           rejection
             ? `<span class="op-item__rework"><span class="op-item__rework-label">Refazer</span>${escapeHtml(rejection)}</span>`
             : ""
@@ -363,7 +388,7 @@ export function printServiceOrderDocument(view: OsPrintView, companyName: string
       (item) => `<tr>
         <td>${escapeHtml(item.productName)}</td>
         <td>${escapeHtml(item.serviceName)}</td>
-        <td>${escapeHtml(item.complement)}</td>
+        <td class="print-work">${escapeHtml(item.complement)}</td>
         <td>${escapeHtml(item.quantity)}</td>
         <td>${item.unitPrice ? escapeHtml(formatOsMoney(Number(item.unitPrice))) : "—"}</td>
         <td>${item.discountValue ? escapeHtml(formatOsMoney(Number(item.discountValue))) : "—"}</td>

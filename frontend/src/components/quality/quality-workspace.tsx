@@ -382,7 +382,11 @@ export function QualityWorkspace() {
                     <tr key={item.id}>
                       <td>{item.itemType}</td>
                       <td>{item.description}</td>
-                      <td>{item.complement || "—"}</td>
+                      <td>
+                        <div className="qc-work" title={item.complement || undefined}>
+                          {item.complement || "—"}
+                        </div>
+                      </td>
                       <td className="table-subtle">{equipment || "—"}</td>
                       <td>
                         {qualityDecisionLabel(item.decision)}

@@ -4,6 +4,7 @@ import {
   buildOsWhatsAppMessage,
   buildProductionOrderPrintHtml,
   firstName,
+  OP_A5_PRINT_CSS,
   opShelfDateParts,
   toWhatsAppPhone,
 } from '../../frontend/src/components/service-orders/os-documents';
@@ -62,6 +63,8 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   assert.match(html, /<th>Serviço<\/th>/);
   assert.match(html, /<th>Serviço a realizar<\/th>/);
   assert.match(html, /class="op-item__work">teste/);
+  assert.match(OP_A5_PRINT_CSS, /-webkit-line-clamp: 3/);
+  assert.match(OP_A5_PRINT_CSS, /overflow-wrap: anywhere/);
   assert.match(html, /Ajuste de cintura/);
   assert.match(html, /class="op-item__equip">Zara · Festa · SN-22/);
   assert.match(html, /Pagar na retirada/);
@@ -127,4 +130,5 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   assert.match(reworkHtml, /Ajuste de cintura/);
   assert.match(reworkHtml, /Refazer/);
   assert.match(reworkHtml, /ficou torto, alinhar a parte/);
+  assert.match(reworkHtml, /class="op-item__work">sem cor/);
 });
