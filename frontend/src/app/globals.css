@@ -1704,6 +1704,15 @@ textarea {
   box-shadow: var(--shadow);
 }
 
+.row-overflow__menu--portal {
+  right: auto;
+  top: auto;
+}
+
+.row-overflow__group {
+  position: relative;
+}
+
 .row-overflow__submenu {
   right: calc(100% + 4px);
   top: 0;

@@ -1,4 +1,4 @@
-import { floorActionLabel, productionFloorAction } from "../service-orders/os-floor";
+import { productionFloorAction } from "../service-orders/os-floor";
 import { osStatusLabel } from "../service-orders/os-list";
 
 export type PickBagRecord = {
@@ -48,15 +48,11 @@ export function applyPickBagListFilters(records: PickBagRecord[], filters: Recor
 }
 
 export function buildPickBagExcelCsv(records: PickBagRecord[]) {
-  const header = ["OS", "Entrega", "Status", "Passo"];
-  const rows = records.map((record) => {
-    const action = pickBagAction(record);
-    return [
-      record.orderNo,
-      record.promisedDeliveryDate,
-      osStatusLabel(record.status),
-      action ? floorActionLabel(action) : "",
-    ];
-  });
+  const header = ["OS", "Entrega", "Status"];
+  const rows = records.map((record) => [
+    record.orderNo,
+    record.promisedDeliveryDate,
+    osStatusLabel(record.status),
+  ]);
   return [header, ...rows].map((row) => row.map((cell) => csvCell(cell)).join(";")).join("\n");
 }

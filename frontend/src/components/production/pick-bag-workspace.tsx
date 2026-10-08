@@ -207,7 +207,7 @@ export function PickBagWorkspace() {
         applyFilters={applyPickBagListFilters}
         buildExcelCsv={buildPickBagExcelCsv}
         canWrite={canAct && !saving}
-        columnStorageKey="anexsys.frontend.pick-bag.grid-columns.v1"
+        columnStorageKey="anexsys.frontend.pick-bag.grid-columns.v2"
         columns={[
           {
             id: "name",
@@ -221,16 +221,8 @@ export function PickBagWorkspace() {
             label: "Status",
             render: (row) => <span className="status-chip status-chip--active">{osStatusLabel(row.status)}</span>,
           },
-          {
-            id: "step",
-            label: "Passo",
-            render: (row) => {
-              const action = pickBagAction(row);
-              return action ? floorActionLabel(action) : "—";
-            },
-          },
         ]}
-        defaultColumnIds={["name", "delivery", "status", "step"]}
+        defaultColumnIds={["name", "delivery", "status"]}
         editLabel="Pegar sacola"
         editLabelForRow={(row) => {
           const action = pickBagAction(row);

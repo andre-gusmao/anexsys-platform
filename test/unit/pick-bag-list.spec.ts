@@ -31,7 +31,8 @@ test('pick bag filters by number and status after queue rule', () => {
   assert.deepEqual(applyPickBagListFilters(records, { name: '', status: '' }).map((item) => item.id), ['1', '2']);
   assert.deepEqual(applyPickBagListFilters(records, { name: '000002', status: '' }).map((item) => item.id), ['2']);
   assert.deepEqual(applyPickBagListFilters(records, { name: '', status: 'open' }).map((item) => item.id), ['1']);
-  assert.match(buildPickBagExcelCsv([records[0]]), /Pegar sacola/);
+  assert.match(buildPickBagExcelCsv([records[0]]), /Aberta/);
+  assert.equal(/Passo/.test(buildPickBagExcelCsv([records[0]])), false);
   assert.match(floorActionHint('pick_up'), /mesmo passo/);
   assert.equal(/provisório/i.test(floorActionHint('finish_production')), false);
 });
