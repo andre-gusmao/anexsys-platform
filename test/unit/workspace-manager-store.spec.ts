@@ -6,6 +6,7 @@ import {
   clearWorkspaceScopedState,
   cloneWorkspaceTabState,
   collapseDuplicateDashboardTabs,
+  HOME_WORKSPACE_PATH,
   createEmptyWorkspaceStore,
   createWorkspaceTab,
   findWorkspaceTabByBasePath,
@@ -19,6 +20,7 @@ import {
   normalizeWorkspaceStore,
   removeWorkspaceTab,
   resolveLandingWorkspaceTab,
+  stripHomeWorkspaceTabs,
   revealWorkspaceTab,
   setActiveWorkspaceTab,
   setWorkspaceScopedState,
@@ -29,24 +31,25 @@ import { WORKSPACE_STORAGE_KEY } from '../../frontend/src/components/app-shell/w
 
 test('activates a workspace tab independently of the current route', () => {
   let store = createEmptyWorkspaceStore();
-  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: HOME_WORKSPACE_PATH, label: 'Dashboard' }));
   store = activateWorkspaceTab(store, createWorkspaceTab({ id: 'tab-contas', pathname: '/admin/tenants', label: 'Contas' }));
 
   assert.equal(store.activeTabId, 'tab-contas');
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['tab-dashboard', 'tab-contas'],
+    ['tab-contas'],
   );
 
-  store = setActiveWorkspaceTab(store, 'tab-dashboard');
-  assert.equal(store.activeTabId, 'tab-dashboard');
+  store = setActiveWorkspaceTab(store, null);
+  assert.equal(store.activeTabId, null);
 
   store = normalizeWorkspaceStore({
     tabs: store.tabs,
     activeTabId: null,
     stateByTabId: store.stateByTabId,
   });
-  assert.equal(store.activeTabId, 'tab-dashboard');
+  assert.equal(store.activeTabId, null);
+  assert.deepEqual(store.tabs.map((tab) => tab.id), ['tab-contas']);
 });
 
 test('creates, updates, clones, and removes workspace tabs', () => {
@@ -151,30 +154,27 @@ test('opens the newest workspace tab on the left and can bring an older tab to t
   assert.equal(store.tabs[0]?.id, 'tab-lista');
 });
 
-test('keeps Dashboard pinned on the left and refuses to close it', () => {
+test('keeps work tabs on the left without pinning Dashboard in the strip', () => {
   let store = createEmptyWorkspaceStore();
-  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: HOME_WORKSPACE_PATH, label: 'Dashboard' }));
   store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-os', pathname: '/service-orders', label: 'OS' }));
   store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-os-nova', pathname: '/service-orders?workspaceMode=new', label: 'OS: Nova' }));
 
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['tab-dashboard', 'tab-os-nova', 'tab-os'],
+    ['tab-os-nova', 'tab-os'],
   );
 
   store = revealWorkspaceTab(store, 'tab-os');
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['tab-dashboard', 'tab-os', 'tab-os-nova'],
+    ['tab-os', 'tab-os-nova'],
   );
-
-  store = removeWorkspaceTab(store, 'tab-dashboard');
-  assert.equal(store.tabs[0]?.id, 'tab-dashboard');
-  assert.equal(store.tabs.length, 3);
+  assert.equal(store.tabs.some((tab) => tab.pathname === HOME_WORKSPACE_PATH), false);
 });
 
-test('collapses duplicate Dashboard tabs and keeps the active one', () => {
-  const store = collapseDuplicateDashboardTabs({
+test('strips leftover Dashboard tabs from localStorage so home stays a topbar chip', () => {
+  const store = stripHomeWorkspaceTabs({
     tabs: [
       createWorkspaceTab({ id: 'dash-1', pathname: '/dashboard', label: 'Dashboard' }),
       createWorkspaceTab({ id: 'dash-2', pathname: '/dashboard', label: 'Dashboard' }),
@@ -190,18 +190,22 @@ test('collapses duplicate Dashboard tabs and keeps the active one', () => {
 
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['dash-2', 'clientes'],
+    ['clientes'],
   );
-  assert.equal(store.activeTabId, 'dash-2');
-  assert.deepEqual(Object.keys(store.stateByTabId).sort(), ['clientes', 'dash-2']);
+  assert.equal(store.activeTabId, null);
+  assert.deepEqual(Object.keys(store.stateByTabId), ['clientes']);
+  assert.deepEqual(
+    collapseDuplicateDashboardTabs(store).tabs.map((tab) => tab.id),
+    ['clientes'],
+  );
 });
 
-test('normalizing the store removes extra Dashboard tabs from localStorage', () => {
+test('normalizing the store removes Dashboard tabs from localStorage', () => {
   const store = normalizeWorkspaceStore({
     tabs: [
       createWorkspaceTab({ id: 'dash-1', pathname: '/dashboard', label: 'Dashboard' }),
       createWorkspaceTab({ id: 'dash-2', pathname: '/dashboard', label: 'Dashboard' }),
-      createWorkspaceTab({ id: 'dash-3', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'os-1', pathname: '/service-orders', label: 'OS' }),
     ],
     activeTabId: 'dash-1',
     stateByTabId: {},
@@ -209,12 +213,12 @@ test('normalizing the store removes extra Dashboard tabs from localStorage', () 
 
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['dash-1'],
+    ['os-1'],
   );
-  assert.equal(store.activeTabId, 'dash-1');
+  assert.equal(store.activeTabId, null);
 });
 
-test('post-login landing on /dashboard activates Dashboard instead of a persisted cadastro tab', () => {
+test('post-login landing on /dashboard goes home without stealing a persisted cadastro tab', () => {
   const store = {
     tabs: [
       createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }),
@@ -225,20 +229,20 @@ test('post-login landing on /dashboard activates Dashboard instead of a persiste
   };
 
   assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', null), {
-    activeTabId: 'tab-dashboard',
-    createDashboard: false,
+    activeTabId: null,
+    goHome: true,
   });
   assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', 'tab-empresas'), {
     activeTabId: 'tab-empresas',
-    createDashboard: false,
+    goHome: false,
   });
   assert.deepEqual(resolveLandingWorkspaceTab(store, '/admin/companies', null), {
     activeTabId: 'tab-empresas',
-    createDashboard: false,
+    goHome: false,
   });
 });
 
-test('post-login landing on /dashboard creates Dashboard when it is missing', () => {
+test('post-login landing on /dashboard goes home even when no Dashboard tab exists', () => {
   const store = {
     tabs: [createWorkspaceTab({ id: 'tab-empresas', pathname: '/admin/companies', label: 'Empresas' })],
     activeTabId: 'tab-empresas',
@@ -246,8 +250,8 @@ test('post-login landing on /dashboard creates Dashboard when it is missing', ()
   };
 
   assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', null), {
-    activeTabId: 'tab-empresas',
-    createDashboard: true,
+    activeTabId: null,
+    goHome: true,
   });
 });
 

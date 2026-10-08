@@ -20,7 +20,8 @@ import {
   createWorkspaceTab,
   findWorkspaceTabByBasePath,
   getWorkspaceScopedState,
-  isDashboardWorkspacePath,
+  HOME_WORKSPACE_PATH,
+  isHomeWorkspacePath,
   isMeaningfulWorkspaceTab,
   isPinnedWorkspacePath,
   normalizeWorkspacePathname,
@@ -38,7 +39,7 @@ import {
 import { useWorkspacePane } from "@/components/app-shell/workspace-pane";
 import { clearLegacyWorkspaceStores, WORKSPACE_STORAGE_KEY } from "@/components/app-shell/workspace-storage";
 
-const DASHBOARD_PATH = "/dashboard";
+const DASHBOARD_PATH = HOME_WORKSPACE_PATH;
 
 function isSingletonWorkspacePath(pathname: string) {
   return !pathname.includes("?") && !pathname.includes("#");
@@ -66,6 +67,8 @@ type WorkspaceManagerContextValue = {
   registerCurrentWorkspace: (input: WorkspaceRegistrationInput) => string | null;
   closeWorkspace: (tabId: string) => void;
   activateWorkspace: (tabId: string) => void;
+  goHome: () => void;
+  isHome: boolean;
   openWorkspaceFromMenu: (pathname: string, label: string) => void;
   openWorkspaceInNewTab: (
     pathname: string,
@@ -180,15 +183,18 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
     hydratedFromUrlRef.current = true;
     const landing = resolveLandingWorkspaceTab(storeRef.current, pathname, urlTabId);
-    if (landing.createDashboard) {
-      const dashboardTab = createWorkspaceTab({ id: createTabId(), pathname: DASHBOARD_PATH, label: "Dashboard" });
-      commitStore((current) => activateWorkspaceTab(current, dashboardTab));
+    if (landing.goHome) {
+      commitStore((current) => setActiveWorkspaceTab(current, null));
+      if (urlTabId || currentComparablePath !== DASHBOARD_PATH) {
+        lastSyncedHrefRef.current = DASHBOARD_PATH;
+        router.replace(DASHBOARD_PATH);
+      }
       return;
     }
     if (landing.activeTabId && landing.activeTabId !== storeRef.current.activeTabId) {
       commitStore((current) => setActiveWorkspaceTab(current, landing.activeTabId));
     }
-  }, [commitStore, pathname, storageReady, urlTabId]);
+  }, [commitStore, currentComparablePath, pathname, router, storageReady, urlTabId]);
 
   const findSingletonTabByPath = useCallback((targetPathname: string) => {
     const normalizedPath = normalizeWorkspacePathname(targetPathname);
@@ -256,6 +262,10 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         return storeRef.current.activeTabId;
       }
 
+      if (isHomeWorkspacePath(resolvedPathname)) {
+        return null;
+      }
+
       const seedTab = createWorkspaceTab({
         id: createTabId(),
         pathname: resolvedPathname,
@@ -280,6 +290,15 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
     [commitStore, currentComparablePath, findSingletonTabByPath, syncWorkspaceUrl],
   );
 
+  const goHome = useCallback(() => {
+    commitStore((current) => setActiveWorkspaceTab(current, null));
+    if (lastSyncedHrefRef.current === DASHBOARD_PATH) {
+      return;
+    }
+    lastSyncedHrefRef.current = DASHBOARD_PATH;
+    router.replace(DASHBOARD_PATH);
+  }, [commitStore, router]);
+
   const closeWorkspace = useCallback(
     (tabId: string) => {
       const closingTab = storeRef.current.tabs.find((candidate) => candidate.id === tabId);
@@ -297,9 +316,9 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
       const remainingTabs = nextStore.tabs;
       if (remainingTabs.length === 0) {
-        const dashboardTab = createWorkspaceTab({ id: createTabId(), pathname: DASHBOARD_PATH, label: "Dashboard" });
-        commitStore(activateWorkspaceTab(nextStore, dashboardTab));
-        syncWorkspaceUrl(DASHBOARD_PATH, dashboardTab.id);
+        commitStore(nextStore);
+        lastSyncedHrefRef.current = DASHBOARD_PATH;
+        router.replace(DASHBOARD_PATH);
         return;
       }
 
@@ -307,7 +326,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       commitStore(setActiveWorkspaceTab(nextStore, fallbackTab.id));
       syncWorkspaceUrl(fallbackTab.pathname, fallbackTab.id);
     },
-    [commitStore, currentTabId, syncWorkspaceUrl],
+    [commitStore, currentTabId, router, syncWorkspaceUrl],
   );
 
   const openWorkspaceInNewTab = useCallback(
@@ -327,7 +346,12 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         return;
       }
 
-      const reuse = isDashboardWorkspacePath(nextTab.pathname) ? "base" : (opts.reuse ?? "path");
+      if (isHomeWorkspacePath(nextTab.pathname)) {
+        goHome();
+        return;
+      }
+
+      const reuse = opts.reuse ?? "path";
       const existingTab =
         reuse === "none"
           ? undefined
@@ -349,7 +373,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       commitStore(nextStore);
       syncWorkspaceUrl(nextTab.pathname, nextTabId);
     },
-    [commitStore, currentTabId, findSingletonTabByPath, syncWorkspaceUrl],
+    [commitStore, currentTabId, findSingletonTabByPath, goHome, syncWorkspaceUrl],
   );
 
   const openWorkspaceFromMenu = useCallback(
@@ -489,6 +513,8 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
     commitStore((current) => clearWorkspaceScopedState(current, resolvedTabId, scope));
   }, [commitStore]);
 
+  const isHome = isHomeWorkspacePath(pathname);
+
   const value = useMemo<WorkspaceManagerContextValue>(
     () => ({
       currentTabId,
@@ -504,6 +530,8 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
         }),
       closeWorkspace,
       activateWorkspace,
+      goHome,
+      isHome,
       openWorkspaceFromMenu,
       openWorkspaceInNewTab,
       openWorkspaceInBrowserTab,
@@ -519,6 +547,8 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
       activateWorkspace,
       clearScopedState,
       closeWorkspace,
+      goHome,
+      isHome,
       currentTab,
       currentTabId,
       getWorkspaceHref,
@@ -628,11 +658,27 @@ export function useWorkspaceScopedState<T>(scope: string, initialValue: T): [T, 
   return [value, setPersistedValue, hydrated];
 }
 
+export function TopbarChipTray() {
+  const { goHome, isHome } = useWorkspaceManager();
+
+  return (
+    <div className="topbar__chips" aria-label="Atalhos fixos">
+      <button
+        aria-current={isHome ? "page" : undefined}
+        className={`topbar-chip${isHome ? " topbar-chip--active" : ""}`}
+        onClick={() => goHome()}
+        type="button"
+      >
+        Dashboard
+      </button>
+    </div>
+  );
+}
+
 export function WorkspaceTabsBar() {
   const { currentTabId, tabs, activateWorkspace, closeWorkspace } = useWorkspaceManager();
   const tabListRef = useRef<HTMLDivElement | null>(null);
-  const pinnedTabs = tabs.filter((tab) => isPinnedWorkspacePath(tab.pathname));
-  const workTabs = tabs.filter((tab) => !isPinnedWorkspacePath(tab.pathname));
+  const workTabs = tabs.filter((tab) => !isHomeWorkspacePath(tab.pathname) && !isPinnedWorkspacePath(tab.pathname));
 
   useEffect(() => {
     const bar = tabListRef.current;
@@ -640,7 +686,7 @@ export function WorkspaceTabsBar() {
     if (!bar || !active) {
       return;
     }
-    const firstWorkId = tabs.find((tab) => !isPinnedWorkspacePath(tab.pathname))?.id;
+    const firstWorkId = workTabs[0]?.id;
     if (firstWorkId === currentTabId) {
       bar.scrollLeft = 0;
       return;
@@ -652,7 +698,7 @@ export function WorkspaceTabsBar() {
     } else if (right > bar.scrollLeft + bar.clientWidth) {
       bar.scrollLeft = right - bar.clientWidth;
     }
-  }, [currentTabId, tabs]);
+  }, [currentTabId, workTabs, tabs]);
 
   function renderTab(tab: WorkspaceTab, closeable: boolean) {
     const active = tab.id === currentTabId;
@@ -687,11 +733,12 @@ export function WorkspaceTabsBar() {
     );
   }
 
+  if (workTabs.length === 0) {
+    return null;
+  }
+
   return (
     <div className="workspace-tabs" role="tablist" aria-label="Abas abertas">
-      {pinnedTabs.length > 0 ? (
-        <div className="workspace-tabs__pinned">{pinnedTabs.map((tab) => renderTab(tab, false))}</div>
-      ) : null}
       <div className="workspace-tabs__scroll" ref={tabListRef}>
         {workTabs.map((tab) => renderTab(tab, true))}
       </div>

@@ -938,10 +938,51 @@ textarea {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
   padding: 18px 24px;
+  display: grid;
+  grid-template-columns: minmax(160px, max-content) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar__identity {
+  min-width: 0;
+}
+
+.topbar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.topbar-chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.topbar-chip:hover {
+  border-color: var(--primary);
+}
+
+.topbar-chip--active {
+  border-color: var(--primary);
+  background: #eef4ff;
+}
+
+.topbar__actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .topbar__meta {
@@ -2060,6 +2101,14 @@ textarea {
   .workspace__content,
   .topbar {
     padding: 18px;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .topbar__chips {
+    grid-column: 1 / -1;
   }
 
   .form-section-title {

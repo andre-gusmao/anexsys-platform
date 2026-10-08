@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { ActiveContextCombos } from "@/components/app-shell/active-context-combos";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
-import { WorkspaceTabsBar } from "@/components/app-shell/workspace-manager";
+import { TopbarChipTray, WorkspaceTabsBar } from "@/components/app-shell/workspace-manager";
 import { WorkspaceKeepAlive } from "@/components/app-shell/workspace-screens";
 import { useSession } from "@/components/providers/session-provider";
 
@@ -36,7 +36,7 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
 
       <div className="workspace">
         <header className="topbar">
-          <div>
+          <div className="topbar__identity">
             {!isDesktop ? (
               <button className="button-secondary topbar__menu-button" onClick={() => setSidebarOpen((current) => !current)} type="button">
                 {sidebarVisible ? "Fechar menu" : "Abrir menu"}
@@ -51,7 +51,9 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
             </div>
           </div>
 
-          <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
+          <TopbarChipTray />
+
+          <div className="topbar__actions">
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout
             </button>

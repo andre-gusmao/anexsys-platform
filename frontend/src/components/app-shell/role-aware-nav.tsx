@@ -142,7 +142,7 @@ function TreeChevron({ expanded }: Readonly<{ expanded: boolean }>) {
 
 export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void }>) {
   const { hasAnyPermission } = useSession();
-  const { currentTab, tabs, activateWorkspace, closeWorkspace, openWorkspaceFromMenu } = useWorkspaceManager();
+  const { currentTab, tabs, activateWorkspace, closeWorkspace, isHome, openWorkspaceFromMenu } = useWorkspaceManager();
   const { isMobile } = useWorkspaceViewportMode();
   const tree = useSyncExternalStore(subscribeSidebarTree, readSidebarTree, createEmptySidebarTree);
   const hasAllPermissions = (permissions: string[]) => permissions.every((permission) => hasAnyPermission(permission));
@@ -193,7 +193,11 @@ export function RoleAwareNav({ onNavigate }: Readonly<{ onNavigate?: () => void 
                 {section.items.map((item) => {
                   const relatedTabs = listWorkspaceTabsForNavItem(tabs, item.href);
                   const hasSubmenu = !isMobile && shouldShowWorkspaceNavSubmenu(tabs, item.href);
-                  const active = currentTab ? getWorkspaceBasePath(currentTab.pathname) === item.href : false;
+                      const active = item.href === "/dashboard"
+                        ? isHome
+                        : currentTab
+                          ? getWorkspaceBasePath(currentTab.pathname) === item.href
+                          : false;
                   return (
                     <li key={item.href}>
                       <div className={`nav-link${active ? " nav-link--active" : ""}`}>

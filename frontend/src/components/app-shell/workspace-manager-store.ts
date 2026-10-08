@@ -14,10 +14,16 @@ export type WorkspaceStore = {
 };
 
 export const WORKSPACE_QUERY_PARAM = "workspaceTab";
-export const PINNED_WORKSPACE_BASE_PATHS = ["/dashboard"] as const;
+export const HOME_WORKSPACE_PATH = "/dashboard";
+/** Home destinations live in the topbar chip tray, not in the work-tab strip. */
+export const PINNED_WORKSPACE_BASE_PATHS = [] as const;
 
 export function isPinnedWorkspacePath(pathname: string): boolean {
   return (PINNED_WORKSPACE_BASE_PATHS as readonly string[]).includes(getWorkspaceBasePath(pathname));
+}
+
+export function isHomeWorkspacePath(pathname: string): boolean {
+  return getWorkspaceBasePath(pathname) === HOME_WORKSPACE_PATH;
 }
 
 export function arrangeWorkspaceTabs(tabs: WorkspaceTab[]): WorkspaceTab[] {
@@ -61,7 +67,7 @@ export function resolveActiveWorkspaceTabId(tabs: WorkspaceTab[], activeTabId?: 
     return activeTabId;
   }
 
-  return tabs[0]?.id ?? null;
+  return null;
 }
 
 export function createWorkspaceTab(input: {
@@ -83,20 +89,20 @@ export function isMeaningfulWorkspaceTab(tab: WorkspaceTab): boolean {
 }
 
 export function normalizeWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
-  const collapsed = collapseDuplicateDashboardTabs({
+  const stripped = stripHomeWorkspaceTabs({
     tabs: store.tabs.map((tab) => createWorkspaceTab(tab)).filter(isMeaningfulWorkspaceTab),
     activeTabId: store.activeTabId,
     stateByTabId: store.stateByTabId ?? {},
   });
-  const tabs = arrangeWorkspaceTabs(collapsed.tabs);
+  const tabs = arrangeWorkspaceTabs(stripped.tabs);
   const validTabIds = new Set(tabs.map((tab) => tab.id));
   const stateByTabId = Object.fromEntries(
-    Object.entries(collapsed.stateByTabId).filter(([tabId]) => validTabIds.has(tabId)),
+    Object.entries(stripped.stateByTabId).filter(([tabId]) => validTabIds.has(tabId)),
   );
 
   return {
     tabs,
-    activeTabId: resolveActiveWorkspaceTabId(tabs, collapsed.activeTabId),
+    activeTabId: resolveActiveWorkspaceTabId(tabs, stripped.activeTabId),
     stateByTabId,
   };
 }
@@ -225,7 +231,7 @@ export function listWorkspaceTabsForNavItem(tabs: WorkspaceTab[], href: string):
 }
 
 export function shouldShowWorkspaceNavSubmenu(tabs: WorkspaceTab[], href: string): boolean {
-  if (isDashboardWorkspacePath(href)) {
+  if (isHomeWorkspacePath(href)) {
     return false;
   }
 
@@ -235,7 +241,7 @@ export function shouldShowWorkspaceNavSubmenu(tabs: WorkspaceTab[], href: string
 }
 
 export function isDashboardWorkspacePath(pathname: string): boolean {
-  return getWorkspaceBasePath(pathname) === "/dashboard";
+  return isHomeWorkspacePath(pathname);
 }
 
 export function findWorkspaceTabByBasePath(tabs: WorkspaceTab[], pathname: string): WorkspaceTab | undefined {
@@ -247,39 +253,26 @@ export function resolveLandingWorkspaceTab(
   store: WorkspaceStore,
   currentPathname: string,
   urlTabId: string | null,
-): { activeTabId: string | null; createDashboard: boolean } {
+): { activeTabId: string | null; goHome: boolean } {
   if (urlTabId && store.tabs.some((tab) => tab.id === urlTabId)) {
-    return { activeTabId: urlTabId, createDashboard: false };
+    return { activeTabId: urlTabId, goHome: false };
   }
 
-  if (!isDashboardWorkspacePath(currentPathname)) {
-    return { activeTabId: store.activeTabId, createDashboard: false };
+  if (isHomeWorkspacePath(currentPathname)) {
+    return { activeTabId: null, goHome: true };
   }
 
-  const dashboardTab = findWorkspaceTabByBasePath(store.tabs, "/dashboard");
-  if (dashboardTab) {
-    return { activeTabId: dashboardTab.id, createDashboard: false };
-  }
-
-  return { activeTabId: store.activeTabId, createDashboard: true };
+  return { activeTabId: store.activeTabId, goHome: false };
 }
 
-export function collapseDuplicateDashboardTabs(store: WorkspaceStore): WorkspaceStore {
-  const dashboardTabs = store.tabs.filter(
-    (tab) => isDashboardWorkspacePath(tab.pathname) && !tab.pathname.includes("?"),
+export function stripHomeWorkspaceTabs(store: WorkspaceStore): WorkspaceStore {
+  const dropIds = new Set(
+    store.tabs.filter((tab) => isHomeWorkspacePath(tab.pathname)).map((tab) => tab.id),
   );
-  if (dashboardTabs.length <= 1) {
+  if (dropIds.size === 0) {
     return store;
   }
 
-  const keepId = dashboardTabs.some((tab) => tab.id === store.activeTabId)
-    ? store.activeTabId
-    : dashboardTabs[0]?.id;
-  if (!keepId) {
-    return store;
-  }
-
-  const dropIds = new Set(dashboardTabs.filter((tab) => tab.id !== keepId).map((tab) => tab.id));
   const remainingState = { ...store.stateByTabId };
   for (const tabId of dropIds) {
     delete remainingState[tabId];
@@ -288,8 +281,13 @@ export function collapseDuplicateDashboardTabs(store: WorkspaceStore): Workspace
   return {
     ...store,
     tabs: store.tabs.filter((tab) => !dropIds.has(tab.id)),
+    activeTabId: store.activeTabId && dropIds.has(store.activeTabId) ? null : store.activeTabId,
     stateByTabId: remainingState,
   };
+}
+
+export function collapseDuplicateDashboardTabs(store: WorkspaceStore): WorkspaceStore {
+  return stripHomeWorkspaceTabs(store);
 }
 
 export function getWorkspaceSearchParams(pathname: string): URLSearchParams {
