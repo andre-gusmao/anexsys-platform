@@ -261,6 +261,23 @@ class ClientReturnBody {
   itemIds!: string[];
 }
 
+class CompleteProofNoteBody {
+  @IsUUID()
+  itemId!: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class CompleteProofBody {
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CompleteProofNoteBody)
+  notes?: CompleteProofNoteBody[];
+}
+
 class UpdateServiceOrderItemBody {
   @IsOptional()
   @IsString()
@@ -509,6 +526,7 @@ export class ServiceOrdersController {
   @Post(':serviceOrderId/complete-proof')
   async completeProof(
     @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @Body() body: CompleteProofBody,
     @CurrentTenantId() tenantId: string | null,
     @CurrentRequest() request: PlatformRequest,
   ) {
@@ -521,7 +539,7 @@ export class ServiceOrdersController {
     }
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
-    return this.serviceOrderService.completeProof(tenantId, serviceOrderId, principal.userId);
+    return this.serviceOrderService.completeProof(tenantId, serviceOrderId, principal.userId, body?.notes);
   }
 
   @Permissions('service_orders.write')

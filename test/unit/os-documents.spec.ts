@@ -158,4 +158,30 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   assert.match(reworkHtml, /Refazer/);
   assert.match(reworkHtml, /ficou torto, alinhar a parte/);
   assert.match(reworkHtml, /class="op-item__work">sem cor/);
+
+  const proofHtml = buildProductionOrderPrintHtml(
+    {
+      productionNo: 'OP-1',
+      serviceOrder: { orderNo: 'AAA000001', promisedDeliveryDate: '2026-10-18' },
+      customer: { legalName: 'Sandra Legramanti' },
+      pieceDescription: null,
+      instructions: null,
+      items: [
+        {
+          itemType: 'Calça',
+          description: 'Bainha',
+          complement: 'barra original',
+          proofNote: 'subir 1 cm na barra',
+        },
+      ],
+      qrCode: null,
+    },
+    'Atelier',
+    'Pagar na retirada',
+  );
+  assert.match(proofHtml, /class="op-item__proof-label">Prova/);
+  assert.match(proofHtml, /subir 1 cm na barra/);
+  assert.match(proofHtml, /class="op-item__work">barra original/);
+  assert.doesNotMatch(proofHtml, /Refazer/);
+  assert.match(OP_A5_PRINT_CSS, /\.op-item__proof /);
 });

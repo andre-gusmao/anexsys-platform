@@ -273,6 +273,9 @@ describe('ProductionOrderService', () => {
             items: [{ id: 'item-1', itemType: 'shirt', description: 'Blue Shirt', complement: 'Punho esquerdo', brand: 'Levi', model: '501', serialNo: 'SN-1', quantity: '2.0000', unitPrice: '80.00' }],
           };
         },
+        async latestProofNotesByItem() {
+          return new Map([['item-1', 'subir 1 cm']]);
+        },
       } as never,
       {} as never,
       {} as never,
@@ -293,6 +296,7 @@ describe('ProductionOrderService', () => {
     assert.equal(printView.items[0]?.model, '501');
     assert.equal(printView.items[0]?.serialNo, 'SN-1');
     assert.equal(printView.items[0]?.rejectionReason, 'ficou torto, alinhar a parte');
+    assert.equal(printView.items[0]?.proofNote, 'subir 1 cm');
     assert.equal(printView.serviceOrder.openedAt, '2026-10-03T10:00:00.000Z');
     assert.equal(printView.serviceOrder.promisedDeliveryDate, '2026-10-18');
   });

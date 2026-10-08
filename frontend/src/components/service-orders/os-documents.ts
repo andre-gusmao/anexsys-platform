@@ -58,6 +58,7 @@ export type OpPrintView = {
     model?: string | null;
     serialNo?: string | null;
     rejectionReason?: string | null;
+    proofNote?: string | null;
   }>;
   qrCode: { codeValue: string; reissueNo: number } | null;
   version?: { versionNo: number; versionReason: string } | null;
@@ -211,6 +212,7 @@ export const OP_A5_PRINT_CSS = `
   .op-seq { font-size: 15px; font-weight: 800; }
   .op-item__work,
   .op-item__rework,
+  .op-item__proof,
   .print-work {
     overflow: hidden;
     display: -webkit-box;
@@ -230,15 +232,23 @@ export const OP_A5_PRINT_CSS = `
     font-size: 14px;
     font-weight: 700;
   }
-  .op-item__rework-label {
+  .op-item__rework-label,
+  .op-item__proof-label {
     display: block;
     font-size: 9px;
     font-weight: 700;
     letter-spacing: .05em;
     text-transform: uppercase;
-    color: #667085;
     margin-bottom: 1px;
   }
+  .op-item__rework-label { color: #667085; }
+  .op-item__proof {
+    display: -webkit-box;
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .op-item__proof-label { color: #026aa2; }
   .op-item__equip {
     display: block;
     margin-top: 2px;
@@ -360,6 +370,7 @@ export function buildProductionOrderPrintHtml(
     .map((item, index) => {
       const equipment = [item.brand, item.model, item.serialNo].map((part) => part?.trim()).filter(Boolean).join(" · ");
       const rejection = item.rejectionReason?.trim();
+      const proof = item.proofNote?.trim();
       return `<tr>
         <td class="op-seq">${index + 1}</td>
         <td>${escapeHtml(item.itemType)}${equipment ? `<span class="op-item__equip">${escapeHtml(equipment)}</span>` : ""}</td>
@@ -367,6 +378,10 @@ export function buildProductionOrderPrintHtml(
         <td><span class="op-item__work">${escapeHtml((item.complement ?? "").slice(0, OS_WORK_MAX_CHARS))}</span>${
           rejection
             ? `<span class="op-item__rework"><span class="op-item__rework-label">Refazer</span>${escapeHtml(rejection)}</span>`
+            : ""
+        }${
+          proof
+            ? `<span class="op-item__proof"><span class="op-item__proof-label">Prova</span>${escapeHtml(proof)}</span>`
             : ""
         }</td>
       </tr>`;

@@ -25,9 +25,11 @@ import {
   canSendToProof,
   proofActionLabel,
   proofActionSuccessMessage,
+  proofNotesReprintMessage,
   type ProofAction,
 } from "@/components/service-orders/os-proof";
 import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
+import { OsProofNotesPanel } from "@/components/service-orders/os-proof-notes-panel";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
@@ -115,6 +117,13 @@ type ServiceOrderDetail = {
     adjustmentPeriodDays: number;
     executionPeriodDays: number;
   } | null;
+  proofNotes?: Array<{
+    batchId: string;
+    createdAt: string | Date;
+    createdByName: string;
+    items: Array<{ itemId: string; itemNo: number; itemType: string; description: string; note: string }>;
+  }>;
+  reprintProof?: boolean;
 };
 
 type CustomerLookupRecord = {
@@ -188,6 +197,13 @@ function nowTimeInput() {
   return `${padDatePart(now.getHours())}:${padDatePart(now.getMinutes())}`;
 }
 
+function formatDateTime(value: string | Date | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+}
+
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   const date = new Date(value);
@@ -231,6 +247,7 @@ export function ServiceOrdersWorkspace() {
   const { isMobile } = useWorkspaceViewportMode();
   const focusServiceOrderId = searchParams.get("focusServiceOrderId");
   const workspaceMode = searchParams.get("workspaceMode");
+  const openProof = searchParams.get("openProof") === "1";
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
@@ -265,6 +282,7 @@ export function ServiceOrdersWorkspace() {
   const [previewOrderNo, setPreviewOrderNo] = useState("—");
   const [wantsNextVersion, setWantsNextVersion] = useState(false);
   const [returnPickerOpen, setReturnPickerOpen] = useState(false);
+  const [proofPickerOpen, setProofPickerOpen] = useState(false);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -286,6 +304,7 @@ export function ServiceOrdersWorkspace() {
   useEffect(() => {
     setWantsNextVersion(false);
     setReturnPickerOpen(false);
+    setProofPickerOpen(false);
   }, [selectedOrder?.id, showCreateForm]);
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
@@ -729,11 +748,23 @@ export function ServiceOrdersWorkspace() {
       if (!canWriteProof) {
         return;
       }
-      const path = action === "send_to_proof" ? "send-to-proof" : "complete-proof";
+      if (action === "complete_proof") {
+        if (isListWorkspace) {
+          const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openProof=1`;
+          if (isMobile) {
+            navigateWithinWorkspace(targetPath);
+          } else {
+            openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
+          }
+          return;
+        }
+        setProofPickerOpen(true);
+        return;
+      }
       setSaving(true);
       setMessage(null);
       try {
-        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}/${path}`, {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}/send-to-proof`, {
           method: "POST",
         });
         await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
@@ -744,7 +775,42 @@ export function ServiceOrdersWorkspace() {
         setSaving(false);
       }
     },
-    [apiJson, canWriteProof, isListWorkspace, loadOrders],
+    [apiJson, canWriteProof, isListWorkspace, isMobile, loadOrders, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const handleCompleteProof = useCallback(
+    async (notes: Array<{ itemId: string; note: string }>) => {
+      if (!canWriteProof || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/complete-proof`, {
+          method: "POST",
+          body: JSON.stringify({ notes }),
+        });
+        setProofPickerOpen(false);
+        await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+        if (next.reprintProof) {
+          try {
+            await printProductionOrder(next.serviceOrder.id);
+            setMessage(proofNotesReprintMessage(next.serviceOrder.orderNo));
+          } catch (error) {
+            setMessage(
+              formatWorkspaceMessage(error, "A OS voltou para produção, mas a OP não pôde ser reimpressa."),
+            );
+          }
+        } else {
+          setMessage(proofActionSuccessMessage("complete_proof", next.serviceOrder.orderNo));
+        }
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A prova desta OS não pôde ser atualizada."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWriteProof, isListWorkspace, loadOrders, printProductionOrder, selectedOrder],
   );
 
   const buildOsRowMenu = useCallback(
@@ -933,6 +999,17 @@ export function ServiceOrdersWorkspace() {
   }, [activeOrderId, focusServiceOrderId, loadDetails, setActiveOrderId, showCreateForm]);
 
   useEffect(() => {
+    if (!openProof || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
+      return;
+    }
+    if (!canActOnProof(details.serviceOrder.status)) {
+      return;
+    }
+    setProofPickerOpen(true);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
+  }, [details, focusServiceOrderId, navigateWithinWorkspace, openProof]);
+
+  useEffect(() => {
     if (!isListWorkspace) {
       return;
     }
@@ -965,8 +1042,12 @@ export function ServiceOrdersWorkspace() {
   }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
   const openServiceOrderWorkspace = useCallback(
-    (order: { id: string; orderNo: string; deliveryType?: string }) => {
-      const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}`;
+    (order: { id: string; orderNo: string; deliveryType?: string }, extras?: { openProof?: boolean }) => {
+      const params = new URLSearchParams({ focusServiceOrderId: order.id });
+      if (extras?.openProof) {
+        params.set("openProof", "1");
+      }
+      const targetPath = `/service-orders?${params.toString()}`;
       if (isMobile) {
         navigateWithinWorkspace(targetPath);
         return;
@@ -1615,6 +1696,16 @@ export function ServiceOrdersWorkspace() {
             />
           ) : null}
 
+          {proofPickerOpen && selectedOrder ? (
+            <OsProofNotesPanel
+              items={details?.items ?? []}
+              orderNo={selectedOrder.orderNo}
+              saving={saving}
+              onClose={() => setProofPickerOpen(false)}
+              onConfirm={(notes) => handleCompleteProof(notes)}
+            />
+          ) : null}
+
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
@@ -2238,6 +2329,34 @@ export function ServiceOrdersWorkspace() {
                   </label>
                 </div>
               </div>
+
+              {!showCreateForm && details?.proofNotes && details.proofNotes.length > 0 ? (
+                <div className="mini-section">
+                  <h4>Anotações de prova</h4>
+                  <p className="os-rule-banner">
+                    Histórico da nova medição. Não mistura com Observação nem com Serviço a realizar.
+                  </p>
+                  <div className="os-return-items">
+                    {details.proofNotes.map((batch) => (
+                      <article className="os-proof-history" key={batch.batchId}>
+                        <p className="table-subtle">
+                          {formatDateTime(batch.createdAt)} · {batch.createdByName}
+                        </p>
+                        <ul>
+                          {batch.items.map((item) => (
+                            <li key={`${batch.batchId}-${item.itemId}`}>
+                              <strong>
+                                S{item.itemNo} · {item.itemType}
+                              </strong>
+                              {` · ${item.description} · ${item.note}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="os-form-footer">
                 {selectedOrder && bagClosed && wantsNextVersion ? (

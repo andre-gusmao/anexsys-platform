@@ -757,6 +757,102 @@ describe('ServiceOrderService', () => {
     );
   });
 
+  it('records piece-linked proof notes and reprints only when there is text', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'awaiting_proof',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      versionSuffix: null,
+      commercialResponsibleActorId: 'user-1',
+      technicalMeasurementResponsibleActorId: 'user-1',
+    };
+    const items = [
+      { id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', status: 'open', isDeleted: false },
+      { id: 'item-2', itemNo: 2, itemType: 'Saia', description: 'Cintura', status: 'open', isDeleted: false },
+    ];
+    const savedNotes: Array<Record<string, unknown>> = [];
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return source;
+        },
+        async findByGroupId() {
+          return [source];
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+        async findActiveFloorBags() {
+          return [];
+        },
+        async save(payload: Record<string, unknown>) {
+          Object.assign(source, payload);
+          return source;
+        },
+      } as never,
+      { async findByServiceOrder() { return items; } } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5, warrantyAdjustmentPeriodDays: 7, warrantyExecutionPeriodDays: 90 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE, displayName: 'Técnica Ana' }; } } as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+      {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          savedNotes.push(payload);
+          return payload;
+        },
+        async findByServiceOrder() {
+          return savedNotes.map((note) => ({
+            ...note,
+            createdAt: new Date('2026-10-08T15:00:00.000Z'),
+            createdBy: 'user-1',
+          }));
+        },
+      } as never,
+    );
+
+    const empty = await service.completeProof('tenant-1', 'so-1', 'user-1', [{ itemId: 'item-1', note: '   ' }]);
+    assert.equal(empty.reprintProof, false);
+    assert.equal(savedNotes.length, 0);
+    assert.equal(empty.serviceOrder.status, 'in_production');
+
+    source.status = 'awaiting_proof';
+    const withNotes = await service.completeProof('tenant-1', 'so-1', 'user-1', [
+      { itemId: 'item-1', note: 'subir 1 cm' },
+      { itemId: 'item-2', note: '' },
+    ]);
+    assert.equal(withNotes.reprintProof, true);
+    assert.equal(savedNotes.length, 1);
+    assert.equal(savedNotes[0]?.serviceOrderItemId, 'item-1');
+    assert.equal(savedNotes[0]?.note, 'subir 1 cm');
+    assert.equal(savedNotes[0]?.serviceOrderId, 'so-1');
+    assert.equal(withNotes.proofNotes[0]?.items[0]?.note, 'subir 1 cm');
+    assert.equal(withNotes.proofNotes[0]?.createdByName, 'Técnica Ana');
+
+    const latest = await service.latestProofNotesByItem('so-1');
+    assert.equal(latest.get('item-1'), 'subir 1 cm');
+
+    source.status = 'awaiting_proof';
+    await assert.rejects(
+      () => service.completeProof('tenant-1', 'so-1', 'user-1', [{ itemId: 'item-x', note: 'peça de outra OS' }]),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /peça desta OS/);
+        return true;
+      },
+    );
+  });
+
   it('opens a child OS with a new plate and zero prices inside the reconserto window', async () => {
     const origin = {
       id: 'so-1',

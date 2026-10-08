@@ -749,6 +749,7 @@ export class ProductionOrderService {
       activeVersion?.versionReason === ProductionOrderVersionReason.REWORK
         ? await this.latestRejectionReasons(productionOrderId)
         : new Map<string, string>();
+    const proofNotes = await this.serviceOrderService.latestProofNotesByItem(details.serviceOrder.id);
 
     return {
       productionOrderId: details.productionOrder.id,
@@ -798,6 +799,7 @@ export class ProductionOrderService {
         model: item.model ?? '',
         serialNo: item.serialNo ?? '',
         rejectionReason: rejectionReasons.get(item.id) ?? null,
+        proofNote: proofNotes.get(item.id) ?? null,
       })),
       qrCode: details.activeQrCode
         ? {

@@ -416,7 +416,7 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - Duas faces na mesma folha: **cabeçalho** (balcão/técnico) e **prateleira** (câmera da esteira).
 - **Entrada** pequena no topo. **Previsão sai do cabeçalho** e vira o bloco enorme embaixo: **dia grande, mês pequeno e numérico** (`18` `/10`).
 - Número da OS (placa) **no cabeçalho e em cima do QR**.
-- Grade em **linhas de tabela** (**S** = sequência 1–5, depois Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo, fonte **15 px** (~11 pt) — o maior que cabe em 3 linhas no A5 com 5 peças e a prateleira. A coluna S (~7%) deixa ~34 caracteres por linha (**102** no total). Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. **Sem quantidade e sem preço**.
+- Grade em **linhas de tabela** (**S** = sequência 1–5, depois Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo, fonte **15 px** (~11 pt) — o maior que cabe em 3 linhas no A5 com 5 peças e a prateleira. A coluna S (~7%) deixa ~34 caracteres por linha (**102** no total). Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. Na prova, a anotação sai marcada **Prova**, sem apagar o Serviço a realizar. **Sem quantidade e sem preço**.
 - Marca, modelo e série saem **pequenos**, sem destaque, só o que foi preenchido.
 - **Pagar na retirada** ou **Pago** fica no **cabeçalho**. No espaço que era da condição entra o bloco **Retirada** (Nome, Data, Assinatura) para o cliente — ou quem buscar — assinar no bolso da sacola.
 
@@ -439,7 +439,7 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 Confirmado com o André. São caminhos distintos:
 
 1. **Refação (qualidade).** Mesma OS, nova **versão da OP** só com as peças reprovadas. O cliente continua vendo Controle de qualidade. Já existe.
-2. **Prova / pré-preparação.** Mesma OS e versão da OP, status **Aguardando prova**. A técnica em produção usa **Enviar para prova**. **Prova feita** volta sempre para produção (nova medição depois do corte e da modelagem). A qualidade só entra no **Terminei**. WhatsApp 3 fica em aberto.
+2. **Prova / pré-preparação.** Mesma OS e versão da OP, status **Aguardando prova**. A técnica em produção usa **Enviar para prova**. **Prova feita** abre **Anotações de prova** (texto opcional por peça) e volta sempre para produção. Se anotou, a mesma OP é reimpressa com o marcador **Prova**. A qualidade só entra no **Terminei**. WhatsApp 3 fica em aberto.
 3. **Cliente voltou (reconserto / garantia).** Depois da **retirada**. **OS filha com placa nova**, ligada à original. `-A` continua sendo só peças a mais na mesma visita.
 
 Prazos contados da retirada, pelos parâmetros da Conta (`warranty_adjustment_period_days` e `warranty_execution_period_days`). Dentro do ajuste → **Reconserto** sem valor. Depois do ajuste e dentro da execução → **Em garantia** sem valor. Fora dos dois → **cobrada**. Liberação do gerente com motivo fica para depois.

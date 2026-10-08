@@ -33,6 +33,8 @@ import {
 import {
   canActOnProof,
   canSendToProof,
+  latestProofNoteByItem,
+  normalizeProofNotes,
   proofActionAudit,
   proofActionResultStatus,
   type ProofAction,
@@ -42,6 +44,7 @@ import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, wi
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
 import { ServiceOrderItemRepository } from '../../infrastructure/persistence/repositories/service-order-item.repository';
+import { ServiceOrderProofNoteRepository } from '../../infrastructure/persistence/repositories/service-order-proof-note.repository';
 import {
   ServiceOrderRepository,
   ServiceOrderSearchFilters,
@@ -72,6 +75,8 @@ export class ServiceOrderService {
     private readonly auditService: AuditService,
     @Inject(AtelierCatalogService)
     private readonly atelierCatalogService: AtelierCatalogService,
+    @Inject(ServiceOrderProofNoteRepository)
+    private readonly proofNoteRepository: ServiceOrderProofNoteRepository,
   ) {}
 
   async create(dto: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderEntity; items: ServiceOrderItemEntity[] }> {
@@ -309,12 +314,13 @@ export class ServiceOrderService {
 
   async getDetails(tenantId: string, serviceOrderId: string) {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
-    const [items, customer, commercialResponsible, technicalResponsible, auditTrail] = await Promise.all([
+    const [items, customer, commercialResponsible, technicalResponsible, auditTrail, proofNoteRows] = await Promise.all([
       this.serviceOrderItemRepository.findByServiceOrder(serviceOrderId),
       this.customerService.getById(serviceOrder.customerId, tenantId),
       this.identityService.getById(serviceOrder.commercialResponsibleActorId),
       this.identityService.getById(serviceOrder.technicalMeasurementResponsibleActorId),
       this.auditService.listByEntity(tenantId, 'service_order', serviceOrderId, 200),
+      this.listProofNotes(serviceOrderId),
     ]);
 
     const groupId = serviceOrder.groupId ?? serviceOrder.id;
@@ -364,8 +370,13 @@ export class ServiceOrderService {
         status: order.status,
       })),
       clientReturnPreview,
+      proofNotes: await this.buildProofNoteHistory(proofNoteRows, items),
       maxPiecesPerBag: tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG,
     };
+  }
+
+  async latestProofNotesByItem(serviceOrderId: string): Promise<Map<string, string>> {
+    return latestProofNoteByItem(await this.listProofNotes(serviceOrderId));
   }
 
   async getBagSettings(tenantId: string) {
@@ -896,8 +907,13 @@ export class ServiceOrderService {
     return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'send_to_proof');
   }
 
-  async completeProof(tenantId: string, serviceOrderId: string, actorUserId: string) {
-    return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'complete_proof');
+  async completeProof(
+    tenantId: string,
+    serviceOrderId: string,
+    actorUserId: string,
+    notes?: Array<{ itemId?: string | null; note?: string | null }>,
+  ) {
+    return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'complete_proof', notes);
   }
 
   private async applyProofAction(
@@ -905,6 +921,7 @@ export class ServiceOrderService {
     serviceOrderId: string,
     actorUserId: string,
     action: ProofAction,
+    notes?: Array<{ itemId?: string | null; note?: string | null }>,
   ) {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
     if (action === 'send_to_proof') {
@@ -914,6 +931,8 @@ export class ServiceOrderService {
     } else if (!canActOnProof(serviceOrder.status)) {
       throw new DomainValidationError('Só é possível concluir a prova com a OS em Aguardando prova.');
     }
+
+    const savedNotes = action === 'complete_proof' ? await this.recordProofNotes(serviceOrder, actorUserId, notes) : [];
 
     if (action === 'complete_proof') {
       const busy = await this.serviceOrderRepository.findActiveFloorBags(
@@ -946,9 +965,118 @@ export class ServiceOrderService {
         proofAction: action,
         orderNo: saved.orderNo,
         versionSuffix: saved.versionSuffix,
+        proofNoteCount: savedNotes.length,
       },
     });
-    return this.getDetails(tenantId, saved.id);
+    const details = await this.getDetails(tenantId, saved.id);
+    return {
+      ...details,
+      reprintProof: savedNotes.length > 0,
+    };
+  }
+
+  private async recordProofNotes(
+    serviceOrder: ServiceOrderEntity,
+    actorUserId: string,
+    notes?: Array<{ itemId?: string | null; note?: string | null }>,
+  ) {
+    const normalized = normalizeProofNotes(notes);
+    if (normalized.length === 0 || !this.proofNoteRepository) {
+      return [];
+    }
+    const items = await this.serviceOrderItemRepository.findByServiceOrder(serviceOrder.id);
+    const allowedIds = new Set(items.map((item) => item.id));
+    for (const row of normalized) {
+      if (!allowedIds.has(row.itemId)) {
+        throw new DomainValidationError('A anotação de prova precisa pertencer a uma peça desta OS.');
+      }
+    }
+    const batchId = randomUUID();
+    const saved = [];
+    for (const row of normalized) {
+      const entity = this.proofNoteRepository.create({
+        id: randomUUID(),
+        tenantId: serviceOrder.tenantId,
+        branchId: serviceOrder.branchId,
+        serviceOrderId: serviceOrder.id,
+        serviceOrderItemId: row.itemId,
+        batchId,
+        note: row.note,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      });
+      saved.push(await this.proofNoteRepository.save(entity));
+    }
+    return saved;
+  }
+
+  private async listProofNotes(serviceOrderId: string) {
+    if (!this.proofNoteRepository?.findByServiceOrder) {
+      return [];
+    }
+    return this.proofNoteRepository.findByServiceOrder(serviceOrderId);
+  }
+
+  private async buildProofNoteHistory(
+    rows: Array<{
+      batchId: string;
+      createdAt: Date;
+      createdBy: string;
+      serviceOrderItemId: string;
+      note: string;
+    }>,
+    items: Array<{ id: string; itemNo: number; itemType: string; description: string }>,
+  ) {
+    const itemById = new Map(items.map((item) => [item.id, item]));
+    const actorIds = [...new Set(rows.map((row) => row.createdBy))];
+    const actors = new Map<string, string>();
+    await Promise.all(
+      actorIds.map(async (actorId) => {
+        try {
+          const actor = await this.identityService.getById(actorId);
+          actors.set(actorId, actor.displayName ?? actor.email ?? actorId);
+        } catch {
+          actors.set(actorId, actorId);
+        }
+      }),
+    );
+    const batches = new Map<
+      string,
+      {
+        batchId: string;
+        createdAt: Date;
+        createdBy: string;
+        createdByName: string;
+        items: Array<{ itemId: string; itemNo: number; itemType: string; description: string; note: string }>;
+      }
+    >();
+    for (const row of rows) {
+      const item = itemById.get(row.serviceOrderItemId);
+      if (!item) {
+        continue;
+      }
+      const batch = batches.get(row.batchId) ?? {
+        batchId: row.batchId,
+        createdAt: row.createdAt,
+        createdBy: row.createdBy,
+        createdByName: actors.get(row.createdBy) ?? row.createdBy,
+        items: [],
+      };
+      batch.items.push({
+        itemId: item.id,
+        itemNo: item.itemNo,
+        itemType: item.itemType,
+        description: item.description,
+        note: row.note,
+      });
+      batches.set(row.batchId, batch);
+    }
+    return [...batches.values()]
+      .map((batch) => ({
+        ...batch,
+        items: batch.items.sort((left, right) => left.itemNo - right.itemNo),
+      }))
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
   }
 
   async markPickedUp(tenantId: string, serviceOrderId: string, actorUserId: string) {
