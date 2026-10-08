@@ -593,7 +593,7 @@ export function ServiceOrdersWorkspace() {
       try {
         const view = await apiJson<OsPrintView>(`/service-orders/${serviceOrderId}/print-view`);
         printServiceOrderDocument(view, companyName);
-        setMessage(`OS ${view.orderNo} enviada para impressão, com valores.`);
+        setMessage(`OS ${view.orderNo} enviada para impressão.`);
       } catch (error) {
         setMessage(formatWorkspaceMessage(error, "A OS não pôde ser impressa."));
       }
@@ -681,19 +681,19 @@ export function ServiceOrdersWorkspace() {
         children: [
           {
             id: "print-os",
-            label: "Ordem de serviço (com valores)",
+            label: "Ordem de serviço",
             onSelect: () => {
               void printServiceOrder(row.id);
             },
           },
           {
             id: "print-op",
-            label: "Ordem de produção (sem valores)",
+            label: "Ordem de produção",
             disabled: !canReadProduction && !canWriteProduction,
             onSelect: () => {
               void printProductionOrder(row.id)
                 .then((view) => {
-                  setMessage(`Ordem de produção ${view.productionNo} enviada para impressão, sem valores.`);
+                  setMessage(`Ordem de produção ${view.productionNo} enviada para impressão.`);
                 })
                 .catch((error) => {
                   setMessage(formatWorkspaceMessage(error, "A Ordem de Produção não pôde ser impressa."));

@@ -143,6 +143,17 @@ export const OP_A5_PRINT_CSS = `
   }
   .op-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
   .op-company { font-size: 13px; font-weight: 700; margin: 0; }
+  .op-head__side { text-align: right; }
+  .op-pay {
+    margin: 0 0 4px;
+    padding: 3px 8px;
+    border: 1px solid #162033;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
   .op-entry { font-size: 11px; color: #667085; text-align: right; margin: 0; }
   .op-entry strong { display: block; color: #162033; font-size: 12px; }
   .op-title {
@@ -235,14 +246,33 @@ export const OP_A5_PRINT_CSS = `
     color: #98a2b3;
     font-weight: 400;
   }
-  .op-pay {
-    margin: 4px 0 0;
-    padding: 8px 10px;
-    border: 1px solid #162033;
-    font-size: 13px;
+  .op-pickup { margin: 0; }
+  .op-pickup__title {
+    margin: 0 0 4px;
+    font-size: 9px;
     font-weight: 700;
+    letter-spacing: .06em;
     text-transform: uppercase;
+    color: #667085;
+  }
+  .op-pickup__fields {
+    display: grid;
+    grid-template-columns: 1.3fr 0.7fr 1.4fr;
+    gap: 10px;
+  }
+  .op-pickup__field {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
     letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #667085;
+  }
+  .op-pickup__line {
+    display: block;
+    margin-top: 2px;
+    height: 20px;
+    border-bottom: 1px solid #162033;
   }
   .op-shelf {
     margin-top: auto;
@@ -345,7 +375,10 @@ export function buildProductionOrderPrintHtml(
   return `<article class="op-sheet">
     <header class="op-head">
       <p class="op-company">${escapeHtml(companyName)}</p>
-      <p class="op-entry">Entrada<strong>${escapeHtml(formatDate(view.serviceOrder.openedAt))}</strong></p>
+      <div class="op-head__side">
+        <p class="op-pay">${escapeHtml(paymentCondition)}</p>
+        <p class="op-entry">Entrada<strong>${escapeHtml(formatDate(view.serviceOrder.openedAt))}</strong></p>
+      </div>
     </header>
     <h1 class="op-title"><span>Ordem de produção</span><strong class="op-title__no">${escapeHtml(orderNo)}</strong></h1>
     ${
@@ -368,7 +401,14 @@ export function buildProductionOrderPrintHtml(
       </thead>
       <tbody>${items}</tbody>
     </table>
-    <p class="op-pay">${escapeHtml(paymentCondition)}</p>
+    <section class="op-pickup">
+      <p class="op-pickup__title">Retirada</p>
+      <div class="op-pickup__fields">
+        <span class="op-pickup__field">Nome<span class="op-pickup__line"></span></span>
+        <span class="op-pickup__field">Data<span class="op-pickup__line"></span></span>
+        <span class="op-pickup__field">Assinatura<span class="op-pickup__line"></span></span>
+      </div>
+    </section>
     <footer class="op-shelf">
       <div>
         <span class="op-shelf__label">Previsão de entrega</span>

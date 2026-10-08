@@ -75,7 +75,11 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   assert.match(OP_A5_PRINT_CSS, /nth-child\(1\)[^{]*\{ width: 7%;/);
   assert.match(html, /Ajuste de cintura/);
   assert.match(html, /class="op-item__equip">Zara · Festa · SN-22/);
-  assert.match(html, /Pagar na retirada/);
+  assert.match(html, /class="op-pay">Pagar na retirada/);
+  assert.match(html, /class="op-pickup__title">Retirada/);
+  assert.match(html, /class="op-pickup__field">Nome/);
+  assert.match(html, /class="op-pickup__field">Data/);
+  assert.match(html, /class="op-pickup__field">Assinatura/);
   assert.match(html, /class="op-shelf__day">18/);
   assert.match(html, /class="op-shelf__month">\/10/);
   assert.doesNotMatch(html, />Complemento</);
@@ -110,7 +114,7 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
     'Atelier',
     'Pago',
   );
-  assert.match(paidHtml, />Pago</);
+  assert.match(paidHtml, /class="op-pay">Pago</);
   assert.doesNotMatch(paidHtml, /Pagar na retirada/);
 
   const reworkHtml = buildProductionOrderPrintHtml(

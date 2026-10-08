@@ -393,7 +393,7 @@ Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 - Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
-- A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (OS com valor / OP sem valor) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
+- A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (Ordem de serviço / Ordem de produção) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
 - Não entrou endereço de entrega nem frete.
 - **Pagar** fica no bloco **Pagamento** da OS (e no rodapé). O botão **registra** o valor recebido na maquininha ou em dinheiro. Não processa cartão daqui e não abre QR Pix. À vista/parcelado, plano de contas e gerar parcelas **não** entram nesta fase.
 - **Condição** na OS e na OP: **Pago** só com a OS quitada; parcial ou em aberto = **Pagar na retirada**. Integração com a forma de pagamento vem depois.
@@ -416,7 +416,7 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - Número da OS (placa) **no cabeçalho e em cima do QR**.
 - Grade em **linhas de tabela** (**S** = sequência 1–5, depois Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo, fonte **15 px** (~11 pt) — o maior que cabe em 3 linhas no A5 com 5 peças e a prateleira. A coluna S (~7%) deixa ~34 caracteres por linha (**102** no total). Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. **Sem quantidade e sem preço**.
 - Marca, modelo e série saem **pequenos**, sem destaque, só o que foi preenchido.
-- **Pagar na retirada** se houver saldo; **Pago** se quitado.
+- **Pagar na retirada** ou **Pago** fica no **cabeçalho**. No espaço que era da condição entra o bloco **Retirada** (Nome, Data, Assinatura) para o cliente — ou quem buscar — assinar no bolso da sacola.
 
 ## 17. Controle de qualidade peça a peça (07/10/2026)
 

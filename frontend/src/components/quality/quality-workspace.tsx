@@ -166,7 +166,7 @@ export function QualityWorkspace() {
           /* a OP sai mesmo se o financeiro não puder ser lido */
         }
         printProductionOrderDocument(view, companyName, undefined, paymentCondition);
-        setMessage(`Ordem de produção ${view.serviceOrder.orderNo} enviada para impressão, sem valores.`);
+        setMessage(`Ordem de produção ${view.serviceOrder.orderNo} enviada para impressão.`);
       } catch (error) {
         setMessage(describeWorkspaceError(error, "A Ordem de Produção não pôde ser reimpressa."));
       }
@@ -182,7 +182,7 @@ export function QualityWorkspace() {
         children: [
           {
             id: "print-op",
-            label: "Ordem de produção (sem valores)",
+            label: "Ordem de produção",
             disabled: !canReadProduction,
             onSelect: () => {
               void reprintProductionOrder(row.id, row.productionOrderId);
