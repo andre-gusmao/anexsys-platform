@@ -250,14 +250,22 @@ export class QualityService {
   }
 
   async searchReviews(tenantId: string, filters: { q?: string; accessibleBranchIds: string[] }) {
-    const productionOrders = await this.productionOrderService.search(tenantId, {
+    const orders = await this.serviceOrderService.search(tenantId, {
       q: filters.q,
+      status: ServiceOrderStatus.AWAITING_QUALITY,
       accessibleBranchIds: filters.accessibleBranchIds,
     });
     const reviews = [];
-    for (const productionOrder of productionOrders) {
-      const details = await this.productionOrderService.getDetails(tenantId, productionOrder.id);
-      if (!belongsToQualityQueue(details.serviceOrder.status, details.serviceOrder.bagClosed)) {
+    for (const serviceOrder of orders) {
+      if (!belongsToQualityQueue(serviceOrder.status, serviceOrder.bagClosed)) {
+        continue;
+      }
+      const details = await this.productionOrderService.getDetailsByServiceOrder(
+        tenantId,
+        serviceOrder.id,
+        filters.accessibleBranchIds,
+      );
+      if (!details) {
         continue;
       }
       reviews.push({
@@ -268,8 +276,8 @@ export class QualityService {
         bagClosed: details.serviceOrder.bagClosed,
         promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
         customerName: details.customer.legalName,
-        productionOrderId: productionOrder.id,
-        productionNo: productionOrder.productionNo ?? details.productionOrder?.productionNo,
+        productionOrderId: details.productionOrder.id,
+        productionNo: details.productionOrder.productionNo,
         versionNo: activeCorrectiveVersion(details.versions)?.versionNo ?? 1,
       });
     }

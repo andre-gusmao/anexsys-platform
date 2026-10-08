@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspaceManager, useWorkspaceRegistration } from "@/components/app-shell/workspace-manager";
-import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
+import { useWorkspacePane, useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import {
@@ -57,6 +57,7 @@ type DecideResponse = {
 
 export function QualityWorkspace() {
   const searchParams = useWorkspaceSearchParams();
+  const pane = useWorkspacePane();
   const { session, hasAnyPermission, apiJson } = useSession();
   const { isMobile } = useWorkspaceViewportMode();
   const { closeWorkspace } = useWorkspaceManager();
@@ -83,6 +84,7 @@ export function QualityWorkspace() {
     label: selected ? `Qualidade ${selected.orderNo}` : review ? `Qualidade ${review.serviceOrder.orderNo}` : "Controle de qualidade",
     subtitle: review ? qualityPhaseLabel(review.phase) : null,
   });
+  const isActivePane = !pane || pane.tabId === currentTabId;
 
   const loadList = useCallback(async () => {
     if (!canRead) {
@@ -117,8 +119,11 @@ export function QualityWorkspace() {
   );
 
   useEffect(() => {
+    if (!isActivePane) {
+      return;
+    }
     void loadList();
-  }, [loadList]);
+  }, [isActivePane, loadList, session?.activeBranchId, session?.tenantId]);
 
   useEffect(() => {
     if (focusRecordId) {

@@ -232,7 +232,7 @@ describe('QualityService', () => {
       'po-waiting': {
         serviceOrder: { id: 'so-waiting', orderNo: 'AAA000007', status: 'awaiting_quality', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
         customer: { legalName: 'Isabel' },
-        productionOrder: { productionNo: 'PO-7' },
+        productionOrder: { id: 'po-waiting', productionNo: 'PO-7' },
         versions: [],
       },
       'po-ready': {
@@ -246,19 +246,21 @@ describe('QualityService', () => {
       {} as never,
       {} as never,
       {
-        async search() {
-          return [
-            { id: 'po-open-bag', productionNo: 'PO-5' },
-            { id: 'po-open', productionNo: 'PO-6' },
-            { id: 'po-waiting', productionNo: 'PO-7' },
-            { id: 'po-ready', productionNo: 'PO-8' },
-          ];
-        },
-        async getDetails(_tenant: string, id: string) {
-          return detailsById[id];
+        async getDetailsByServiceOrder(_tenant: string, serviceOrderId: string) {
+          const match = Object.values(detailsById).find((details) => details.serviceOrder.id === serviceOrderId);
+          return match ?? null;
         },
       } as never,
-      {} as never,
+      {
+        async search() {
+          return [
+            detailsById['po-open-bag'].serviceOrder,
+            detailsById['po-open'].serviceOrder,
+            detailsById['po-waiting'].serviceOrder,
+            detailsById['po-ready'].serviceOrder,
+          ];
+        },
+      } as never,
       {} as never,
       {} as never,
       {} as never,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useWorkspaceRegistration } from "@/components/app-shell/workspace-manager";
+import { useWorkspacePane } from "@/components/app-shell/workspace-pane";
 import {
   applyPickBagListFilters,
   buildPickBagExcelCsv,
@@ -30,6 +31,7 @@ function formatDate(value: string | null | undefined) {
 }
 
 export function PickBagWorkspace() {
+  const pane = useWorkspacePane();
   const { session, hasAnyPermission, apiJson } = useSession();
   const canRead = hasAnyPermission("production_orders.read", "service_orders.read");
   const canWriteOs = hasAnyPermission("service_orders.write");
@@ -43,10 +45,11 @@ export function PickBagWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [records, setRecords] = useState<PickBagRecord[]>([]);
 
-  useWorkspaceRegistration({
+  const { currentTabId } = useWorkspaceRegistration({
     label: "Pegar sacola",
     subtitle: "Esteira de produção",
   });
+  const isActivePane = !pane || pane.tabId === currentTabId;
 
   const loadList = useCallback(async () => {
     if (!canRead) {
@@ -65,8 +68,11 @@ export function PickBagWorkspace() {
   }, [apiJson, canRead]);
 
   useEffect(() => {
+    if (!isActivePane) {
+      return;
+    }
     void loadList();
-  }, [loadList, session?.activeBranchId, session?.tenantId]);
+  }, [isActivePane, loadList, session?.activeBranchId, session?.tenantId]);
 
   const advanceFloor = useCallback(
     async (row: PickBagRecord) => {
