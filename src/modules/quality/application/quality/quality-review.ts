@@ -93,7 +93,7 @@ export function currentRoundFinished(currentItems: Array<{ decision: QualityPiec
   return currentItems.length > 0 && currentItems.every((item) => item.decision === 'approved' || item.decision === 'rejected');
 }
 
-/** Recorte futuro da lista, quando as leituras de QR passarem a status Controle de qualidade. */
+/** Lista da qualidade: sacola já terminada na esteira, aguardando revisão. */
 export function belongsToQualityQueue(status: string, bagClosed: boolean): boolean {
-  return bagClosed && status === 'quality';
+  return bagClosed && status === 'awaiting_quality';
 }

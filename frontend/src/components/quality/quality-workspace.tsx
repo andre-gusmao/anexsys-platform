@@ -7,6 +7,7 @@ import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-respo
 import { useSession } from "@/components/providers/session-provider";
 import {
   applyQualityListFilters,
+  belongsToQualityList,
   buildQualityExcelCsv,
   qualityDecisionLabel,
   qualityPhaseLabel,
@@ -91,7 +92,7 @@ export function QualityWorkspace() {
     setLoading(true);
     try {
       const response = await apiJson<QualityListRecord[]>("/quality-reviews");
-      setRecords(response.filter((record) => record.bagClosed !== false));
+      setRecords(response.filter((record) => belongsToQualityList(record)));
     } catch (error) {
       setMessage(describeWorkspaceError(error));
     } finally {
@@ -282,25 +283,11 @@ export function QualityWorkspace() {
             { id: "version", label: "Versão OP", render: (row) => String(row.versionNo) },
           ]}
           defaultColumnIds={["name", "status", "version"]}
-          emptyFilters={{ name: "", status: "" }}
-          emptyMessage="Nenhuma Ordem de Produção com sacola fechada para revisar."
+          emptyFilters={{ name: "" }}
+          emptyMessage="Nenhuma OP aguardando controle de qualidade."
           excelFileName="qualidade.csv"
           filterFields={[
             { id: "name", label: "Número", lookup: true, placeholder: "Número da OS / OP" },
-            {
-              id: "status",
-              kind: "select",
-              label: "Status",
-              options: [
-                { value: "", label: "Todos" },
-                { value: "open", label: "Aberta" },
-                { value: "in_production", label: "Em produção" },
-                { value: "awaiting_quality", label: "Aguardando controle de qualidade" },
-                { value: "quality", label: "Controle de qualidade" },
-                { value: "in_rework", label: "Em refação" },
-                { value: "ready_for_pickup", label: "Pronto para retirada" },
-              ],
-            },
           ]}
           hideCreate
           loading={loading}

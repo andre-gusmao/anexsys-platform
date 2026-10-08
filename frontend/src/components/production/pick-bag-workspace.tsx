@@ -192,7 +192,7 @@ export function PickBagWorkspace() {
           return action ? floorActionLabel(action) : "Pegar sacola";
         }}
         emptyFilters={{ name: "", status: "" }}
-        emptyMessage="Nenhuma sacola fechada aguardando produção nesta Filial."
+        emptyMessage="Nenhuma OS em aberto para pegar nesta Filial."
         excelFileName="pegar-sacola.csv"
         filterFields={[
           { id: "name", label: "Número", lookup: true, placeholder: "Número da OS" },
@@ -203,10 +203,7 @@ export function PickBagWorkspace() {
             options: [
               { value: "", label: "Todos" },
               { value: "open", label: "Aberta" },
-              { value: "approved", label: "Aprovada" },
               { value: "in_production", label: "Em produção" },
-              { value: "quality", label: "Controle de qualidade" },
-              { value: "in_rework", label: "Em refação" },
             ],
           },
         ]}

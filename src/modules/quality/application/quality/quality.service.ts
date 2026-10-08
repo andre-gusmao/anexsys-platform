@@ -32,6 +32,7 @@ import { CustomerRejectionRepository } from '../../infrastructure/persistence/re
 import { QualityRecordRepository } from '../../infrastructure/persistence/repositories/quality-record.repository';
 import {
   activeCorrectiveVersion,
+  belongsToQualityQueue,
   currentReviewItemIds,
   currentRoundFinished,
   deriveReviewPhase,
@@ -256,7 +257,7 @@ export class QualityService {
     const reviews = [];
     for (const productionOrder of productionOrders) {
       const details = await this.productionOrderService.getDetails(tenantId, productionOrder.id);
-      if (!details.serviceOrder.bagClosed) {
+      if (!belongsToQualityQueue(details.serviceOrder.status, details.serviceOrder.bagClosed)) {
         continue;
       }
       reviews.push({

@@ -1,4 +1,4 @@
-import { floorActionLabel, productionFloorAction, type FloorAction } from "../service-orders/os-floor";
+import { floorActionLabel, productionFloorAction } from "../service-orders/os-floor";
 import { osStatusLabel } from "../service-orders/os-list";
 
 export type PickBagRecord = {
@@ -18,8 +18,12 @@ function csvCell(value: string | null | undefined) {
   return text;
 }
 
-export function pickBagAction(row: Pick<PickBagRecord, "status" | "bagClosed">): Exclude<FloorAction, "open_review"> | null {
-  return productionFloorAction(row.status, Boolean(row.bagClosed));
+export function pickBagAction(row: Pick<PickBagRecord, "status" | "bagClosed">): "pick_up" | "finish_production" | null {
+  const action = productionFloorAction(row.status, Boolean(row.bagClosed));
+  if (action === "pick_up" || action === "finish_production") {
+    return action;
+  }
+  return null;
 }
 
 export function belongsToPickBagQueue(row: Pick<PickBagRecord, "status" | "bagClosed">) {

@@ -422,8 +422,8 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 
 - Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com Produto, Serviço, Serviço a realizar, marca/modelo/série.
 - O botão da grade é **Revisar**, não Alterar. A reimpressão da OP fica no **⋮** de cada linha, no mesmo padrão da grade da OS, para o caso da impressão falhar.
-- Enquanto o QR não existir, a lista mostra as **OP com sacola fechada** (mesmo com status Aberta), para homologar o fluxo. Quando as leituras de QR existirem, a lista passará a trazer só o status **Controle de qualidade**.
-- Os passos de chão **não são provisórios**. Ficam na função **Operações → Pegar sacola**: **Pegar sacola** → **Terminei**. Depois da reprovação: **Pegar refação** → **Terminei a refação**. Uma sacola por vez. Quem não usa QR no contrato continua por esta tela. O QR, quando existir, dispara o **mesmo passo**.
+- A lista do **Controle de qualidade** mostra só as OP com status **Aguardando controle de qualidade**. **Pegar sacola** mostra só **Aberta** (botão Pegar sacola) e, depois de pegar, **Em produção** (botão Terminei). A lista da OS continua com todos os status.
+- Os passos de chão **não são provisórios**. Ficam na função **Operações → Pegar sacola**: só as OS **Abertas** (Pegar sacola), que passam a **Em produção** (Terminei). Uma sacola por vez. Quem não usa QR no contrato continua por esta tela. O QR, quando existir, dispara o **mesmo passo**.
 - **Abrir revisão** fica no **Controle de qualidade**, não na esteira.
 - Dois botões por peça: **Aprovado** e **Reprovado** (motivo em texto livre).
 - Se **todas** as peças da OS estão aprovadas, o status vai para **Pronto para retirada**.

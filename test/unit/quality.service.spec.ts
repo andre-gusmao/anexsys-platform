@@ -216,7 +216,7 @@ describe('QualityService', () => {
     assert.equal(response.printView.items[0]?.rejectionReason, 'Barra curta');
   });
 
-  it('lists closed-bag production orders even when the OS is still open', async () => {
+  it('lists only closed bags waiting for quality review', async () => {
     const detailsById: Record<string, { serviceOrder: Record<string, unknown>; customer: { legalName: string }; productionOrder?: { productionNo: string }; versions: unknown[] }> = {
       'po-open-bag': {
         serviceOrder: { id: 'so-draft', orderNo: 'AAA000005', status: 'open', bagClosed: false, promisedDeliveryDate: '2026-10-18' },
@@ -229,10 +229,16 @@ describe('QualityService', () => {
         productionOrder: { productionNo: 'PO-6' },
         versions: [],
       },
-      'po-quality': {
-        serviceOrder: { id: 'so-quality', orderNo: 'AAA000007', status: 'quality', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
+      'po-waiting': {
+        serviceOrder: { id: 'so-waiting', orderNo: 'AAA000007', status: 'awaiting_quality', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
         customer: { legalName: 'Isabel' },
         productionOrder: { productionNo: 'PO-7' },
+        versions: [],
+      },
+      'po-ready': {
+        serviceOrder: { id: 'so-ready', orderNo: 'AAA000008', status: 'ready_for_pickup', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
+        customer: { legalName: 'André' },
+        productionOrder: { productionNo: 'PO-8' },
         versions: [],
       },
     };
@@ -244,7 +250,8 @@ describe('QualityService', () => {
           return [
             { id: 'po-open-bag', productionNo: 'PO-5' },
             { id: 'po-open', productionNo: 'PO-6' },
-            { id: 'po-quality', productionNo: 'PO-7' },
+            { id: 'po-waiting', productionNo: 'PO-7' },
+            { id: 'po-ready', productionNo: 'PO-8' },
           ];
         },
         async getDetails(_tenant: string, id: string) {
@@ -260,8 +267,7 @@ describe('QualityService', () => {
     );
 
     const reviews = await service.searchReviews('tenant-1', { accessibleBranchIds: ['branch-1'] });
-    assert.deepEqual(reviews.map((review) => review.orderNo), ['AAA000006', 'AAA000007']);
-    assert.equal(reviews[0]?.status, 'open');
-    assert.equal(reviews[1]?.status, 'quality');
+    assert.deepEqual(reviews.map((review) => review.orderNo), ['AAA000007']);
+    assert.equal(reviews[0]?.status, 'awaiting_quality');
   });
 });

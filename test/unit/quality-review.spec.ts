@@ -49,9 +49,10 @@ test('finishes a round only when every current piece is approved or rejected', (
   assert.equal(deriveReviewPhase({ allItemsApproved: true, reworkWaitingReturn: true }), 'ready');
 });
 
-test('quality queue only includes closed bags with status quality', () => {
-  assert.equal(belongsToQualityQueue('quality', true), true);
+test('quality queue only includes closed bags awaiting quality', () => {
+  assert.equal(belongsToQualityQueue('awaiting_quality', true), true);
   assert.equal(belongsToQualityQueue('open', true), false);
-  assert.equal(belongsToQualityQueue('quality', false), false);
+  assert.equal(belongsToQualityQueue('quality', true), false);
+  assert.equal(belongsToQualityQueue('awaiting_quality', false), false);
   assert.equal(belongsToQualityQueue('ready_for_pickup', true), false);
 });

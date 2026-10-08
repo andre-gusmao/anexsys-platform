@@ -26,19 +26,22 @@ export function qualityDecisionLabel(decision: string) {
   return "Pendente";
 }
 
+export function belongsToQualityList(record: Pick<QualityListRecord, "status" | "bagClosed">) {
+  return record.bagClosed !== false && record.status === "awaiting_quality";
+}
+
 export function applyQualityListFilters(records: QualityListRecord[], filters: Record<string, string>): QualityListRecord[] {
   const nameQuery = (filters.name ?? "").trim().toLowerCase();
-  const statusQuery = (filters.status ?? "").trim();
   return records.filter((record) => {
+    if (!belongsToQualityList(record)) {
+      return false;
+    }
     if (
       nameQuery &&
       ![record.orderNo, record.customerName, record.status, record.productionNo ?? ""].some((value) =>
         value.toLowerCase().includes(nameQuery),
       )
     ) {
-      return false;
-    }
-    if (statusQuery && record.status !== statusQuery) {
       return false;
     }
     return true;
