@@ -977,29 +977,47 @@ textarea {
   align-items: stretch;
   gap: 12px;
   flex-shrink: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-gutter: stable both-edges;
+  overflow: hidden;
   padding: 12px 24px;
   border-bottom: 1px solid var(--border);
   background: rgba(244, 247, 251, 0.9);
+}
+
+.workspace-tabs__pinned {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
+
+.workspace-tabs__scroll {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable both-edges;
   scroll-behavior: smooth;
 }
 
-.workspace-tabs::-webkit-scrollbar {
+.workspace-tabs__scroll::-webkit-scrollbar {
   height: 10px;
 }
 
-.workspace-tabs::-webkit-scrollbar-track {
+.workspace-tabs__scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.workspace-tabs::-webkit-scrollbar-thumb {
+.workspace-tabs__scroll::-webkit-scrollbar-thumb {
   background: rgba(102, 112, 133, 0.32);
   border-radius: 999px;
 }
 
-.workspace-tabs::-webkit-scrollbar-thumb:hover {
+.workspace-tabs__scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(102, 112, 133, 0.52);
 }
 
@@ -1023,6 +1041,10 @@ textarea {
   box-shadow:
     inset 0 0 0 1px rgba(31, 79, 209, 0.14),
     0 8px 22px rgba(31, 79, 209, 0.12);
+}
+
+.workspace-tab--pinned .workspace-tab__trigger {
+  padding-right: 16px;
 }
 
 .workspace-tab__trigger {

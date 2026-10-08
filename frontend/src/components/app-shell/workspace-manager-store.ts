@@ -14,6 +14,29 @@ export type WorkspaceStore = {
 };
 
 export const WORKSPACE_QUERY_PARAM = "workspaceTab";
+export const PINNED_WORKSPACE_BASE_PATHS = ["/dashboard"] as const;
+
+export function isPinnedWorkspacePath(pathname: string): boolean {
+  return (PINNED_WORKSPACE_BASE_PATHS as readonly string[]).includes(getWorkspaceBasePath(pathname));
+}
+
+export function arrangeWorkspaceTabs(tabs: WorkspaceTab[]): WorkspaceTab[] {
+  const pinned: WorkspaceTab[] = [];
+  const rest: WorkspaceTab[] = [];
+  for (const tab of tabs) {
+    if (isPinnedWorkspacePath(tab.pathname)) {
+      pinned.push(tab);
+    } else {
+      rest.push(tab);
+    }
+  }
+  pinned.sort(
+    (left, right) =>
+      (PINNED_WORKSPACE_BASE_PATHS as readonly string[]).indexOf(getWorkspaceBasePath(left.pathname)) -
+      (PINNED_WORKSPACE_BASE_PATHS as readonly string[]).indexOf(getWorkspaceBasePath(right.pathname)),
+  );
+  return [...pinned, ...rest];
+}
 
 export function normalizeWorkspacePathname(pathname: string): string {
   const [pathWithQuery, hashFragment = ""] = pathname.trim().split("#");
@@ -65,7 +88,7 @@ export function normalizeWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
     activeTabId: store.activeTabId,
     stateByTabId: store.stateByTabId ?? {},
   });
-  const tabs = collapsed.tabs;
+  const tabs = arrangeWorkspaceTabs(collapsed.tabs);
   const validTabIds = new Set(tabs.map((tab) => tab.id));
   const stateByTabId = Object.fromEntries(
     Object.entries(collapsed.stateByTabId).filter(([tabId]) => validTabIds.has(tabId)),
@@ -125,10 +148,15 @@ export function activateWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): 
 }
 
 export function removeWorkspaceTab(store: WorkspaceStore, tabId: string): WorkspaceStore {
+  const tab = store.tabs.find((candidate) => candidate.id === tabId);
+  if (tab && isPinnedWorkspacePath(tab.pathname)) {
+    return store;
+  }
+
   const remainingState = { ...store.stateByTabId };
   delete remainingState[tabId];
   return normalizeWorkspaceStore({
-    tabs: store.tabs.filter((tab) => tab.id !== tabId),
+    tabs: store.tabs.filter((candidate) => candidate.id !== tabId),
     activeTabId: store.activeTabId === tabId ? null : store.activeTabId,
     stateByTabId: remainingState,
   });

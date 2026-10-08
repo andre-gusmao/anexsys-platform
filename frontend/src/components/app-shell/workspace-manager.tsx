@@ -22,6 +22,7 @@ import {
   getWorkspaceScopedState,
   isDashboardWorkspacePath,
   isMeaningfulWorkspaceTab,
+  isPinnedWorkspacePath,
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
@@ -281,6 +282,11 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
   const closeWorkspace = useCallback(
     (tabId: string) => {
+      const closingTab = storeRef.current.tabs.find((candidate) => candidate.id === tabId);
+      if (closingTab && isPinnedWorkspacePath(closingTab.pathname)) {
+        return;
+      }
+
       const closingTabIndex = storeRef.current.tabs.findIndex((candidate) => candidate.id === tabId);
       const nextStore = removeWorkspaceTab(storeRef.current, tabId);
 
@@ -625,6 +631,8 @@ export function useWorkspaceScopedState<T>(scope: string, initialValue: T): [T, 
 export function WorkspaceTabsBar() {
   const { currentTabId, tabs, activateWorkspace, closeWorkspace } = useWorkspaceManager();
   const tabListRef = useRef<HTMLDivElement | null>(null);
+  const pinnedTabs = tabs.filter((tab) => isPinnedWorkspacePath(tab.pathname));
+  const workTabs = tabs.filter((tab) => !isPinnedWorkspacePath(tab.pathname));
 
   useEffect(() => {
     const bar = tabListRef.current;
@@ -632,7 +640,8 @@ export function WorkspaceTabsBar() {
     if (!bar || !active) {
       return;
     }
-    if (tabs[0]?.id === currentTabId) {
+    const firstWorkId = tabs.find((tab) => !isPinnedWorkspacePath(tab.pathname))?.id;
+    if (firstWorkId === currentTabId) {
       bar.scrollLeft = 0;
       return;
     }
@@ -645,34 +654,47 @@ export function WorkspaceTabsBar() {
     }
   }, [currentTabId, tabs]);
 
+  function renderTab(tab: WorkspaceTab, closeable: boolean) {
+    const active = tab.id === currentTabId;
+    return (
+      <div
+        className={`workspace-tab${active ? " workspace-tab--active" : ""}${closeable ? "" : " workspace-tab--pinned"}`}
+        key={tab.id}
+        role="presentation"
+      >
+        <button
+          aria-selected={active}
+          className="workspace-tab__trigger"
+          onClick={() => activateWorkspace(tab.id)}
+          role="tab"
+          title={tab.subtitle ? `${tab.label} · ${tab.subtitle}` : closeable ? tab.label : `${tab.label} (fixa)`}
+          type="button"
+        >
+          <span className="workspace-tab__title">{tab.label}</span>
+          {tab.subtitle ? <small className="workspace-tab__subtitle">{tab.subtitle}</small> : null}
+        </button>
+        {closeable ? (
+          <button
+            aria-label={`Fechar ${tab.label}`}
+            className="workspace-tab__close"
+            onClick={() => closeWorkspace(tab.id)}
+            type="button"
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="workspace-tabs" ref={tabListRef} role="tablist" aria-label="Abas abertas">
-      {tabs.map((tab) => {
-        const active = tab.id === currentTabId;
-        return (
-          <div className={`workspace-tab${active ? " workspace-tab--active" : ""}`} key={tab.id} role="presentation">
-            <button
-              aria-selected={active}
-              className="workspace-tab__trigger"
-              onClick={() => activateWorkspace(tab.id)}
-              role="tab"
-              title={tab.subtitle ? `${tab.label} · ${tab.subtitle}` : tab.label}
-              type="button"
-            >
-              <span className="workspace-tab__title">{tab.label}</span>
-              {tab.subtitle ? <small className="workspace-tab__subtitle">{tab.subtitle}</small> : null}
-            </button>
-            <button
-              aria-label={`Close ${tab.label}`}
-              className="workspace-tab__close"
-              onClick={() => closeWorkspace(tab.id)}
-              type="button"
-            >
-              ×
-            </button>
-          </div>
-        );
-      })}
+    <div className="workspace-tabs" role="tablist" aria-label="Abas abertas">
+      {pinnedTabs.length > 0 ? (
+        <div className="workspace-tabs__pinned">{pinnedTabs.map((tab) => renderTab(tab, false))}</div>
+      ) : null}
+      <div className="workspace-tabs__scroll" ref={tabListRef}>
+        {workTabs.map((tab) => renderTab(tab, true))}
+      </div>
     </div>
   );
 }

@@ -35,7 +35,7 @@ test('activates a workspace tab independently of the current route', () => {
   assert.equal(store.activeTabId, 'tab-contas');
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['tab-contas', 'tab-dashboard'],
+    ['tab-dashboard', 'tab-contas'],
   );
 
   store = setActiveWorkspaceTab(store, 'tab-dashboard');
@@ -46,7 +46,7 @@ test('activates a workspace tab independently of the current route', () => {
     activeTabId: null,
     stateByTabId: store.stateByTabId,
   });
-  assert.equal(store.activeTabId, 'tab-contas');
+  assert.equal(store.activeTabId, 'tab-dashboard');
 });
 
 test('creates, updates, clones, and removes workspace tabs', () => {
@@ -149,6 +149,28 @@ test('opens the newest workspace tab on the left and can bring an older tab to t
 
   store = moveWorkspaceTabToFront(store, 'tab-lista');
   assert.equal(store.tabs[0]?.id, 'tab-lista');
+});
+
+test('keeps Dashboard pinned on the left and refuses to close it', () => {
+  let store = createEmptyWorkspaceStore();
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-os', pathname: '/service-orders', label: 'OS' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-os-nova', pathname: '/service-orders?workspaceMode=new', label: 'OS: Nova' }));
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-dashboard', 'tab-os-nova', 'tab-os'],
+  );
+
+  store = revealWorkspaceTab(store, 'tab-os');
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-dashboard', 'tab-os', 'tab-os-nova'],
+  );
+
+  store = removeWorkspaceTab(store, 'tab-dashboard');
+  assert.equal(store.tabs[0]?.id, 'tab-dashboard');
+  assert.equal(store.tabs.length, 3);
 });
 
 test('collapses duplicate Dashboard tabs and keeps the active one', () => {
