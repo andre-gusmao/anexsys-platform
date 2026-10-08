@@ -367,6 +367,7 @@ export function QualityWorkspace() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th title="Sequência">S</th>
                   <th>Produto</th>
                   <th>Serviço</th>
                   <th>Serviço a realizar</th>
@@ -376,10 +377,13 @@ export function QualityWorkspace() {
                 </tr>
               </thead>
               <tbody>
-                {review.items.map((item) => {
+                {review.items.map((item, index) => {
                   const equipment = [item.brand, item.model, item.serialNo].filter((part) => part.trim()).join(" · ");
                   return (
                     <tr key={item.id}>
+                      <td className="os-item-seq" title={`Sequência ${index + 1}`}>
+                        {index + 1}
+                      </td>
                       <td>{item.itemType}</td>
                       <td>{item.description}</td>
                       <td>

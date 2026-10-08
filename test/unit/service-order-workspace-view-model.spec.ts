@@ -10,7 +10,12 @@ import {
   formatOsMoneyInput,
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
+  OS_WORK_CHARS_PER_LINE,
+  OS_WORK_MAX_CHARS,
+  OS_WORK_PRINT_FONT_PX,
+  OS_WORK_PRINT_LINES,
   osPaymentConditionLabel,
+  osWorkPrintHint,
   parseOsMoney,
   previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
@@ -322,4 +327,16 @@ test('previews the next linked OS number from the current plate', () => {
   assert.equal(previewNextLinkedServiceOrderNo('AAA000001'), 'AAA000001-A');
   assert.equal(previewNextLinkedServiceOrderNo('AAA000001-A', ['AAA000001', 'AAA000001-A']), 'AAA000001-B');
   assert.equal(previewNextLinkedServiceOrderNo('00002', ['00002']), '00002-A');
+});
+
+test('keeps Serviço a realizar within the A5 15px / 3-line budget after column S', () => {
+  assert.equal(OS_WORK_PRINT_FONT_PX, 15);
+  assert.equal(OS_WORK_PRINT_LINES, 3);
+  assert.equal(OS_WORK_CHARS_PER_LINE, 34);
+  assert.equal(OS_WORK_MAX_CHARS, 102);
+  assert.equal(osWorkPrintHint('', 1), 'S1 · linha 1 de 3 · 0/34');
+  assert.equal(osWorkPrintHint('abc', 2), 'S2 · linha 1 de 3 · 3/34');
+  assert.equal(osWorkPrintHint('a'.repeat(34), 3), 'S3 · linha 1 de 3 · 34/34');
+  assert.equal(osWorkPrintHint('a'.repeat(35), 4), 'S4 · linha 2 de 3 · 1/34');
+  assert.equal(osWorkPrintHint('a'.repeat(102), 5), 'S5 · linha 3 de 3 · 34/34');
 });

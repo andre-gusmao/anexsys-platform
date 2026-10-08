@@ -414,13 +414,13 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - Duas faces na mesma folha: **cabeçalho** (balcão/técnico) e **prateleira** (câmera da esteira).
 - **Entrada** pequena no topo. **Previsão sai do cabeçalho** e vira o bloco enorme embaixo: **dia grande, mês pequeno e numérico** (`18` `/10`).
 - Número da OS (placa) **no cabeçalho e em cima do QR**.
-- Grade em **linhas de tabela** (Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo. Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. **Sem quantidade e sem preço**.
+- Grade em **linhas de tabela** (**S** = sequência 1–5, depois Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo, fonte **15 px** (~11 pt) — o maior que cabe em 3 linhas no A5 com 5 peças e a prateleira. A coluna S (~7%) deixa ~34 caracteres por linha (**102** no total). Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. **Sem quantidade e sem preço**.
 - Marca, modelo e série saem **pequenos**, sem destaque, só o que foi preenchido.
 - **Pagar na retirada** se houver saldo; **Pago** se quitado.
 
 ## 17. Controle de qualidade peça a peça (07/10/2026)
 
-- Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com Produto, Serviço, Serviço a realizar, marca/modelo/série.
+- Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com **S** (sequência), Produto, Serviço, Serviço a realizar, marca/modelo/série.
 - O botão da grade é **Revisar**, não Alterar. A reimpressão da OP fica no **⋮** de cada linha, no mesmo padrão da grade da OS, para o caso da impressão falhar.
 - A lista do **Controle de qualidade** mostra só as OP com status **Aguardando controle de qualidade**. **Pegar sacola** mostra só **Aberta** (botão Pegar sacola) e, depois de pegar, **Em produção** (botão Terminei). A lista da OS continua com todos os status.
 - Os passos de chão **não são provisórios**. Ficam na função **Operações → Pegar sacola**: só as OS **Abertas** (Pegar sacola), que passam a **Em produção** (Terminei). Uma sacola por vez. Quem não usa QR no contrato continua por esta tela. O QR, quando existir, dispara o **mesmo passo**.

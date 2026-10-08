@@ -1,5 +1,5 @@
 import { osDeliveryTypeLabel, osStatusLabel } from "./os-list";
-import { formatOsMoney } from "./service-order-workspace-view-model";
+import { formatOsMoney, OS_WORK_MAX_CHARS } from "./service-order-workspace-view-model";
 
 export type OsPrintView = {
   documentType: "service_order";
@@ -106,6 +106,7 @@ const DEFAULT_PRINT_CSS = `
   .muted { color: #667085; margin: 0 0 16px; }
   table { width: 100%; border-collapse: collapse; margin: 16px 0; }
   th, td { border-bottom: 1px solid #d7dfeb; text-align: left; padding: 8px 6px; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
+  th:nth-child(1), td:nth-child(1) { width: 28px; text-align: center; font-weight: 800; }
   .print-work {
     overflow: hidden;
     display: -webkit-box;
@@ -114,6 +115,7 @@ const DEFAULT_PRINT_CSS = `
     line-clamp: 3;
     max-height: calc(1.35em * 3);
     line-height: 1.35;
+    font-size: 15px;
     overflow-wrap: anywhere;
     word-break: break-word;
     white-space: pre-wrap;
@@ -181,17 +183,20 @@ export const OP_A5_PRINT_CSS = `
     padding: 4px 6px 6px;
   }
   .op-items td {
-    font-size: 12px;
+    font-size: 14px;
     border-bottom: 1px solid #d0d5dd;
-    padding: 7px 6px;
+    padding: 6px 5px;
     vertical-align: top;
   }
   .op-items th:nth-child(1),
-  .op-items td:nth-child(1) { width: 22%; }
+  .op-items td:nth-child(1) { width: 7%; text-align: center; }
   .op-items th:nth-child(2),
   .op-items td:nth-child(2) { width: 20%; }
   .op-items th:nth-child(3),
-  .op-items td:nth-child(3) { width: 58%; }
+  .op-items td:nth-child(3) { width: 18%; }
+  .op-items th:nth-child(4),
+  .op-items td:nth-child(4) { width: 55%; }
+  .op-seq { font-size: 15px; font-weight: 800; }
   .op-item__work,
   .op-item__rework,
   .print-work {
@@ -206,7 +211,7 @@ export const OP_A5_PRINT_CSS = `
     word-break: break-word;
     white-space: pre-wrap;
   }
-  .op-item__work { font-size: 13px; }
+  .op-item__work { font-size: 15px; }
   .op-item__rework {
     display: -webkit-box;
     margin-top: 4px;
@@ -321,13 +326,14 @@ export function buildProductionOrderPrintHtml(
   const orderNo = view.serviceOrder.orderNo;
   const address = formatCustomerAddress(view.customer);
   const items = view.items
-    .map((item) => {
+    .map((item, index) => {
       const equipment = [item.brand, item.model, item.serialNo].map((part) => part?.trim()).filter(Boolean).join(" · ");
       const rejection = item.rejectionReason?.trim();
       return `<tr>
+        <td class="op-seq">${index + 1}</td>
         <td>${escapeHtml(item.itemType)}${equipment ? `<span class="op-item__equip">${escapeHtml(equipment)}</span>` : ""}</td>
         <td>${escapeHtml(item.description)}</td>
-        <td><span class="op-item__work">${escapeHtml(item.complement)}</span>${
+        <td><span class="op-item__work">${escapeHtml((item.complement ?? "").slice(0, OS_WORK_MAX_CHARS))}</span>${
           rejection
             ? `<span class="op-item__rework"><span class="op-item__rework-label">Refazer</span>${escapeHtml(rejection)}</span>`
             : ""
@@ -354,6 +360,7 @@ export function buildProductionOrderPrintHtml(
     <table class="op-items">
       <thead>
         <tr>
+          <th title="Sequência">S</th>
           <th>Produto</th>
           <th>Serviço</th>
           <th>Serviço a realizar</th>
@@ -385,10 +392,11 @@ export function buildProductionOrderPrintHtml(
 export function printServiceOrderDocument(view: OsPrintView, companyName: string, reservedWindow?: Window | null) {
   const rows = view.items
     .map(
-      (item) => `<tr>
+      (item, index) => `<tr>
+        <td>${index + 1}</td>
         <td>${escapeHtml(item.productName)}</td>
         <td>${escapeHtml(item.serviceName)}</td>
-        <td class="print-work">${escapeHtml(item.complement)}</td>
+        <td class="print-work">${escapeHtml((item.complement ?? "").slice(0, OS_WORK_MAX_CHARS))}</td>
         <td>${escapeHtml(item.quantity)}</td>
         <td>${item.unitPrice ? escapeHtml(formatOsMoney(Number(item.unitPrice))) : "—"}</td>
         <td>${item.discountValue ? escapeHtml(formatOsMoney(Number(item.discountValue))) : "—"}</td>
@@ -405,7 +413,7 @@ export function printServiceOrderDocument(view: OsPrintView, companyName: string
      <p>Status: ${escapeHtml(osStatusLabel(view.status))} · Tipo: ${escapeHtml(osDeliveryTypeLabel(view.deliveryType))}</p>
      <p>Entrada: ${escapeHtml(formatDateTime(view.openedAt))} · Saída: ${escapeHtml(formatDateTime(view.promisedDeliveryDate, view.promisedDeliveryTime))}</p>
      <table>
-       <thead><tr><th>Produto</th><th>Serviço</th><th>Serviço a realizar</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
+       <thead><tr><th title="Sequência">S</th><th>Produto</th><th>Serviço</th><th>Serviço a realizar</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
        <tbody>${rows}</tbody>
      </table>
      <p class="total">Valor total ${escapeHtml(view.totalValue ? formatOsMoney(Number(view.totalValue)) : "R$ 0,00")}</p>

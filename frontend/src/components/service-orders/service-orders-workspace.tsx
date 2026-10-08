@@ -37,7 +37,9 @@ import {
   getVisibleServiceOrderItemGridRows,
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
+  OS_WORK_MAX_CHARS,
   osPaymentConditionLabel,
+  osWorkPrintHint,
   previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
   runClosedBagCommit,
@@ -1655,6 +1657,7 @@ export function ServiceOrdersWorkspace() {
                   <table className="data-table">
                     <thead>
                       <tr>
+                        <th title="Sequência">S</th>
                         <th>Produto</th>
                         <th>Serviço</th>
                         <th>Serviço a realizar</th>
@@ -1668,11 +1671,15 @@ export function ServiceOrdersWorkspace() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleItemRows.map((row) => {
+                      {visibleItemRows.map((row, index) => {
                         const editable = saving ? false : showCreateForm || row.isEditing;
                         const canMutateRow = showCreateForm || canEditSelectedOrder;
+                        const sequence = index + 1;
                         return (
                           <tr data-os-item-row={row.localId} key={row.localId}>
+                            <td className="os-item-seq" title={`Sequência ${sequence}`}>
+                              {sequence}
+                            </td>
                             <td>
                               <SmartLookup
                                 compact
@@ -1753,15 +1760,19 @@ export function ServiceOrdersWorkspace() {
                               <textarea
                                 className="os-item-input os-item-input--work"
                                 disabled={!editable}
+                                maxLength={OS_WORK_MAX_CHARS}
                                 placeholder="O que ficou combinado com o cliente"
                                 rows={3}
                                 value={row.complement}
                                 onChange={(event) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { complement: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      complement: event.target.value.slice(0, OS_WORK_MAX_CHARS),
+                                    }),
                                   )
                                 }
                               />
+                              <small className="os-item-work-hint">{osWorkPrintHint(row.complement, sequence)}</small>
                             </td>
                             <td>
                               <input
