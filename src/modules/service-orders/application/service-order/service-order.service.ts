@@ -900,10 +900,6 @@ export class ServiceOrderService {
     return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'complete_proof');
   }
 
-  async resumeFromProof(tenantId: string, serviceOrderId: string, actorUserId: string) {
-    return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'resume_from_proof');
-  }
-
   private async applyProofAction(
     tenantId: string,
     serviceOrderId: string,
@@ -916,10 +912,10 @@ export class ServiceOrderService {
         throw new DomainValidationError('Só é possível enviar para prova uma OS em produção com a sacola fechada.');
       }
     } else if (!canActOnProof(serviceOrder.status)) {
-      throw new DomainValidationError('Só é possível concluir ou continuar a prova com a OS em Aguardando prova.');
+      throw new DomainValidationError('Só é possível concluir a prova com a OS em Aguardando prova.');
     }
 
-    if (action === 'resume_from_proof') {
+    if (action === 'complete_proof') {
       const busy = await this.serviceOrderRepository.findActiveFloorBags(
         tenantId,
         serviceOrder.branchId,

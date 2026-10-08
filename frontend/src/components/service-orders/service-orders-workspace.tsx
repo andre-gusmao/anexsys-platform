@@ -729,12 +729,7 @@ export function ServiceOrdersWorkspace() {
       if (!canWriteProof) {
         return;
       }
-      const path =
-        action === "send_to_proof"
-          ? "send-to-proof"
-          : action === "complete_proof"
-            ? "complete-proof"
-            : "resume-from-proof";
+      const path = action === "send_to_proof" ? "send-to-proof" : "complete-proof";
       setSaving(true);
       setMessage(null);
       try {
@@ -772,13 +767,6 @@ export function ServiceOrdersWorkspace() {
               label: proofActionLabel("complete_proof"),
               onSelect: () => {
                 void handleProofAction(row, "complete_proof");
-              },
-            },
-            {
-              id: "resume-from-proof",
-              label: proofActionLabel("resume_from_proof"),
-              onSelect: () => {
-                void handleProofAction(row, "resume_from_proof");
               },
             },
           ]
@@ -2310,28 +2298,16 @@ export function ServiceOrdersWorkspace() {
                         </button>
                       ) : null}
                       {canActOnProof(selectedOrder.status) && canWriteProof ? (
-                        <>
-                          <button
-                            className="button"
-                            disabled={saving}
-                            onClick={() => {
-                              void handleProofAction(selectedOrder, "complete_proof");
-                            }}
-                            type="button"
-                          >
-                            {proofActionLabel("complete_proof")}
-                          </button>
-                          <button
-                            className="button"
-                            disabled={saving}
-                            onClick={() => {
-                              void handleProofAction(selectedOrder, "resume_from_proof");
-                            }}
-                            type="button"
-                          >
-                            {proofActionLabel("resume_from_proof")}
-                          </button>
-                        </>
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => {
+                            void handleProofAction(selectedOrder, "complete_proof");
+                          }}
+                          type="button"
+                        >
+                          {proofActionLabel("complete_proof")}
+                        </button>
                       ) : null}
                       {selectedOrder.status === "ready_for_pickup" && canWrite ? (
                         <button

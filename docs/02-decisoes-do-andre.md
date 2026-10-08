@@ -439,7 +439,7 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 Confirmado com o André. São caminhos distintos:
 
 1. **Refação (qualidade).** Mesma OS, nova **versão da OP** só com as peças reprovadas. O cliente continua vendo Controle de qualidade. Já existe.
-2. **Prova / pré-preparação.** Mesma OS e versão da OP, status **Aguardando prova**. A técnica em produção usa **Enviar para prova**. Quando o cliente prova: **Prova feita** (vai para Aguardando controle de qualidade) ou **Continuar produção** (volta à esteira, mesma OP). WhatsApp 3 fica em aberto.
+2. **Prova / pré-preparação.** Mesma OS e versão da OP, status **Aguardando prova**. A técnica em produção usa **Enviar para prova**. **Prova feita** volta sempre para produção (nova medição depois do corte e da modelagem). A qualidade só entra no **Terminei**. WhatsApp 3 fica em aberto.
 3. **Cliente voltou (reconserto / garantia).** Depois da **retirada**. **OS filha com placa nova**, ligada à original. `-A` continua sendo só peças a mais na mesma visita.
 
 Prazos contados da retirada, pelos parâmetros da Conta (`warranty_adjustment_period_days` e `warranty_execution_period_days`). Dentro do ajuste → **Reconserto** sem valor. Depois do ajuste e dentro da execução → **Em garantia** sem valor. Fora dos dois → **cobrada**. Liberação do gerente com motivo fica para depois.

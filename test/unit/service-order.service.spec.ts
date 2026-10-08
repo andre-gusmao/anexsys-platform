@@ -657,6 +657,9 @@ describe('ServiceOrderService', () => {
         async findByOriginServiceOrderId() {
           return [];
         },
+        async findActiveFloorBags() {
+          return [];
+        },
         async save(payload: Record<string, unknown>) {
           saved.push({ ...source, ...payload });
           return saved[saved.length - 1];
@@ -679,11 +682,11 @@ describe('ServiceOrderService', () => {
     assert.equal(audits[0]?.action, 'service_order.proof.send_to_proof');
 
     const completed = await service.completeProof('tenant-1', 'so-1', 'user-1');
-    assert.equal(completed.serviceOrder.status, 'awaiting_quality');
+    assert.equal(completed.serviceOrder.status, 'in_production');
     assert.equal(completed.serviceOrder.orderNo, 'AAA000001');
   });
 
-  it('resumes production from proof on the same OS and refuses a second busy bag', async () => {
+  it('returns from proof to production on the same OS and refuses a second busy bag', async () => {
     const source = {
       id: 'so-1',
       tenantId: 'tenant-1',
@@ -728,15 +731,15 @@ describe('ServiceOrderService', () => {
       {} as never,
     );
 
-    const resumed = await service.resumeFromProof('tenant-1', 'so-1', 'user-1');
-    assert.equal(resumed.serviceOrder.status, 'in_production');
-    assert.equal(resumed.serviceOrder.orderNo, 'AAA000001');
+    const completed = await service.completeProof('tenant-1', 'so-1', 'user-1');
+    assert.equal(completed.serviceOrder.status, 'in_production');
+    assert.equal(completed.serviceOrder.orderNo, 'AAA000001');
 
     source.status = 'awaiting_proof';
     saved.length = 0;
     busy = [{ orderNo: 'AAA000009' }];
     await assert.rejects(
-      () => service.resumeFromProof('tenant-1', 'so-1', 'user-1'),
+      () => service.completeProof('tenant-1', 'so-1', 'user-1'),
       (error: unknown) => {
         assert.ok(error instanceof DomainValidationError);
         assert.match(error.message, /Já existe uma sacola em produção \(AAA000009\)/);

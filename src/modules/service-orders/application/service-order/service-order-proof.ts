@@ -1,6 +1,6 @@
 import { ServiceOrderStatus } from 'src/shared/domain/enums';
 
-export type ProofAction = 'send_to_proof' | 'complete_proof' | 'resume_from_proof';
+export type ProofAction = 'send_to_proof' | 'complete_proof';
 
 export function canSendToProof(status: string, bagClosed: boolean): boolean {
   return bagClosed && status === ServiceOrderStatus.IN_PRODUCTION;
@@ -13,9 +13,6 @@ export function canActOnProof(status: string): boolean {
 export function proofActionResultStatus(action: ProofAction): ServiceOrderStatus {
   if (action === 'send_to_proof') {
     return ServiceOrderStatus.AWAITING_PROOF;
-  }
-  if (action === 'complete_proof') {
-    return ServiceOrderStatus.AWAITING_QUALITY;
   }
   return ServiceOrderStatus.IN_PRODUCTION;
 }

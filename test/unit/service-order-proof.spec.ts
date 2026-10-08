@@ -12,7 +12,7 @@ import {
   proofActionLabel,
 } from '../../frontend/src/components/service-orders/os-proof';
 
-test('prova stays on the same OS and only starts from production with a closed bag', () => {
+test('prova stays on the same OS and returns to production after the fitting', () => {
   assert.equal(canSendToProof('in_production', true), true);
   assert.equal(canSendToProof('in_production', false), false);
   assert.equal(canSendToProof('awaiting_quality', true), false);
@@ -22,12 +22,10 @@ test('prova stays on the same OS and only starts from production with a closed b
   assert.equal(canActOnProof('awaiting_proof'), true);
   assert.equal(canActOnProof('in_production'), false);
   assert.equal(proofActionResultStatus('send_to_proof'), 'awaiting_proof');
-  assert.equal(proofActionResultStatus('complete_proof'), 'awaiting_quality');
-  assert.equal(proofActionResultStatus('resume_from_proof'), 'in_production');
+  assert.equal(proofActionResultStatus('complete_proof'), 'in_production');
   assert.equal(proofActionAudit('send_to_proof'), 'service_order.proof.send_to_proof');
   assert.equal(canSendToProofUi('in_production', true), true);
   assert.equal(canActOnProofUi('awaiting_proof'), true);
   assert.equal(proofActionLabel('send_to_proof'), 'Enviar para prova');
   assert.equal(proofActionLabel('complete_proof'), 'Prova feita');
-  assert.equal(proofActionLabel('resume_from_proof'), 'Continuar produção');
 });

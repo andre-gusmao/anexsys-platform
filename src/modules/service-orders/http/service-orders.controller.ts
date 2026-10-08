@@ -524,25 +524,6 @@ export class ServiceOrdersController {
     return this.serviceOrderService.completeProof(tenantId, serviceOrderId, principal.userId);
   }
 
-  @Permissions('service_orders.read')
-  @Post(':serviceOrderId/resume-from-proof')
-  async resumeFromProof(
-    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
-    @CurrentTenantId() tenantId: string | null,
-    @CurrentRequest() request: PlatformRequest,
-  ) {
-    const principal = request.requestContext.authenticatedPrincipal;
-    if (!tenantId || !principal) {
-      throw new UnauthorizedException('Authenticated tenant context is required.');
-    }
-    if (!canRunProofAction(principal.effectivePermissions)) {
-      throw new ForbiddenException('Você não tem permissão para continuar a produção desta OS.');
-    }
-    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
-    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
-    return this.serviceOrderService.resumeFromProof(tenantId, serviceOrderId, principal.userId);
-  }
-
   @Permissions('service_orders.write')
   @Post(':serviceOrderId/deliver')
   async markPickedUp(

@@ -38,7 +38,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Cliente voltou** | O cliente reclama depois da retirada. A atendente escolhe as peças e nasce uma **OS filha com placa nova**, ligada à original | `POST /service-orders/:id/client-return` |
 | **OS filha / retorno** | OS nova (`AAA000002`), não `-A`. Copia as peças escolhidas e o técnico original. Dentro do prazo sai sem valor; fora do prazo é cobrada | `origin_service_order_id` / `return_kind` |
 | **Controle de qualidade** | Tela em que o revisor abre a OS original e aprova ou reprova **peça a peça**, sem valores. O botão da lista é **Revisar**. 100% aprovado avança a OS para Pronto para retirada | `quality-reviews` |
-| **Prova / pré-preparação** | A técnica envia a OS **em produção** para **Aguardando prova**. **Mesma OS e mesma versão da OP** — não nasce placa nova, nem `-A`, nem OP de refação. **Prova feita** manda para Aguardando controle de qualidade; **Continuar produção** devolve à esteira na mesma OP. WhatsApp 3 ainda não | `awaiting_proof` / `POST /service-orders/:id/send-to-proof` |
+| **Prova / pré-preparação** | Nova medição depois do corte e da modelagem. A técnica envia a OS **em produção** para **Aguardando prova**. **Mesma OS e mesma versão da OP** — não nasce placa nova, nem `-A`, nem OP de refação. **Prova feita** volta sempre para **Em produção**. A qualidade só entra no **Terminei**. WhatsApp 3 ainda não | `awaiting_proof` / `POST /service-orders/:id/send-to-proof` |
 | **Refação** | Peças reprovadas voltam à esteira numa **nova versão da OP**. A OS original **permanece em Controle de qualidade**. Não confundir com versão da OS (sacola) nem com prova | `production_order_versions` + `rework_cases` |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
 | **Pegar sacola** | Função de **Operações**: a técnica pega a sacola da esteira e avança o status (Em produção, Terminei, refação). Fluxo **manual permanente** para quem não usa QR. A leitura do QR, quando existir, dispara o mesmo passo | `POST /service-orders/:id/floor-advance` / `/pick-bag` |
@@ -61,7 +61,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 |---|---|
 | **Status** | A situação da OS no fluxo. Cada status tem nome interno, nome para o cliente e é **público** ou **interno** |
 | **Status público** | O cliente enxerga. Ex.: "Em produção", "Aguardando prova" |
-| **Aguardando prova** | Status público da pré-preparação. A peça espera o cliente. **Mesma OS e mesma OP**. **Prova feita** vai para qualidade; **Continuar produção** volta à esteira |
+| **Aguardando prova** | Status público da pré-preparação. A peça espera o cliente para uma nova medição. **Mesma OS e mesma OP**. **Prova feita** volta para produção; a qualidade só entra no **Terminei** |
 | **Status interno** | Só funcionários enxergam. O único previsto é "Reprovado pela qualidade" |
 | **Catálogo de status** | Cadastro **configurável** de status, com parâmetros, para o sistema não ficar engessado |
 | **Parâmetros de um status** | Nome interno e público; público ou interno; ordem; papel que pode atribuí-lo; exige leitura de QR; grava técnico e hora; dispara WhatsApp; tempo esperado e limite de alerta; é inicial; é final |
