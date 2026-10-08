@@ -630,6 +630,130 @@ describe('ServiceOrderService', () => {
     );
   });
 
+  it('sends an in-production OS to proof on the same plate and same OP version', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'in_production',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      versionSuffix: null,
+      commercialResponsibleActorId: 'user-1',
+      technicalMeasurementResponsibleActorId: 'user-1',
+    };
+    const saved: Array<Record<string, unknown>> = [];
+    const audits: Array<Record<string, unknown>> = [];
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return saved[saved.length - 1] ?? source;
+        },
+        async findByGroupId() {
+          return [saved[saved.length - 1] ?? source];
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+        async save(payload: Record<string, unknown>) {
+          saved.push({ ...source, ...payload });
+          return saved[saved.length - 1];
+        },
+      } as never,
+      { async findByServiceOrder() { return []; } } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5, warrantyAdjustmentPeriodDays: 7, warrantyExecutionPeriodDays: 90 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      {} as never,
+      { async record(payload: Record<string, unknown>) { audits.push(payload); }, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const sent = await service.sendToProof('tenant-1', 'so-1', 'user-1');
+    assert.equal(sent.serviceOrder.status, 'awaiting_proof');
+    assert.equal(sent.serviceOrder.orderNo, 'AAA000001');
+    assert.equal(sent.serviceOrder.versionSuffix, null);
+    assert.equal(audits[0]?.action, 'service_order.proof.send_to_proof');
+
+    const completed = await service.completeProof('tenant-1', 'so-1', 'user-1');
+    assert.equal(completed.serviceOrder.status, 'awaiting_quality');
+    assert.equal(completed.serviceOrder.orderNo, 'AAA000001');
+  });
+
+  it('resumes production from proof on the same OS and refuses a second busy bag', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'awaiting_proof',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      versionSuffix: null,
+      commercialResponsibleActorId: 'user-1',
+      technicalMeasurementResponsibleActorId: 'user-1',
+    };
+    const saved: Array<Record<string, unknown>> = [];
+    let busy: Array<{ orderNo: string }> = [];
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return saved[0] ?? source;
+        },
+        async findByGroupId() {
+          return [saved[0] ?? source];
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+        async findActiveFloorBags() {
+          return busy;
+        },
+        async save(payload: Record<string, unknown>) {
+          saved.push({ ...source, ...payload });
+          return saved[saved.length - 1];
+        },
+      } as never,
+      { async findByServiceOrder() { return []; } } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5, warrantyAdjustmentPeriodDays: 7, warrantyExecutionPeriodDays: 90 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const resumed = await service.resumeFromProof('tenant-1', 'so-1', 'user-1');
+    assert.equal(resumed.serviceOrder.status, 'in_production');
+    assert.equal(resumed.serviceOrder.orderNo, 'AAA000001');
+
+    source.status = 'awaiting_proof';
+    saved.length = 0;
+    busy = [{ orderNo: 'AAA000009' }];
+    await assert.rejects(
+      () => service.resumeFromProof('tenant-1', 'so-1', 'user-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /Já existe uma sacola em produção \(AAA000009\)/);
+        return true;
+      },
+    );
+
+    await assert.rejects(
+      () => service.sendToProof('tenant-1', 'so-1', 'user-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /em produção/);
+        return true;
+      },
+    );
+  });
+
   it('opens a child OS with a new plate and zero prices inside the reconserto window', async () => {
     const origin = {
       id: 'so-1',

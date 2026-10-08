@@ -1,7 +1,13 @@
 export type FloorAction = "pick_up" | "finish_production" | "open_review" | "pick_up_rework" | "finish_rework";
 
 export function nextFloorAction(status: string, bagClosed: boolean): FloorAction | null {
-  if (!bagClosed || status === "cancelled" || status === "ready_for_pickup" || status === "picked_up") {
+  if (
+    !bagClosed ||
+    status === "cancelled" ||
+    status === "awaiting_proof" ||
+    status === "ready_for_pickup" ||
+    status === "picked_up"
+  ) {
     return null;
   }
   if (status === "open" || status === "approved") {

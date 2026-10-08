@@ -114,7 +114,7 @@ async function main() {
     await client.query(`
       ALTER TABLE IF EXISTS service_orders
       ADD CONSTRAINT chk_service_orders_status
-      CHECK (status IN ('open', 'approved', 'cancelled', 'in_production', 'awaiting_quality', 'quality', 'in_rework', 'ready_for_pickup', 'picked_up'))
+      CHECK (status IN ('open', 'approved', 'cancelled', 'in_production', 'awaiting_proof', 'awaiting_quality', 'quality', 'in_rework', 'ready_for_pickup', 'picked_up'))
     `);
     await client.query(`
       UPDATE service_orders
@@ -132,7 +132,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, retirada e retorno do cliente).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, retirada e retorno do cliente).');
   } finally {
     await client.end();
   }

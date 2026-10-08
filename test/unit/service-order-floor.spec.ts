@@ -18,6 +18,7 @@ test('floor steps follow the production sequence for the manual Pegar sacola pat
   assert.equal(floorActionResultStatus('pick_up_rework'), 'in_rework');
   assert.equal(nextFloorAction('in_rework', true), 'finish_rework');
   assert.equal(floorActionResultStatus('finish_rework'), 'awaiting_quality');
+  assert.equal(nextFloorAction('awaiting_proof', true), null);
   assert.equal(nextFloorAction('ready_for_pickup', true), null);
   assert.equal(nextFloorAction('picked_up', true), null);
 });

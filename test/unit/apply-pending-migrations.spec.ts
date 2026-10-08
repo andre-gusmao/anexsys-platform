@@ -59,6 +59,7 @@ describe('applyPendingMigrations', () => {
     assert.equal(executedQueries.some((sql) => sql.includes("'in_production'") && sql.includes("'in_rework'")), true);
     assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS origin_service_order_id')), true);
     assert.equal(executedQueries.some((sql) => sql.includes("'picked_up'")), true);
+    assert.equal(executedQueries.some((sql) => sql.includes("'awaiting_proof'")), true);
   });
 
   it('still repairs the schema when TypeORM cannot load the migration files', async () => {

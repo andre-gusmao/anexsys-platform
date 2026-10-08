@@ -20,6 +20,13 @@ import {
 } from "@/components/service-orders/os-documents";
 import { canReopenBagAfterFloor } from "@/components/service-orders/os-floor";
 import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
+import {
+  canActOnProof,
+  canSendToProof,
+  proofActionLabel,
+  proofActionSuccessMessage,
+  type ProofAction,
+} from "@/components/service-orders/os-proof";
 import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
@@ -233,6 +240,7 @@ export function ServiceOrdersWorkspace() {
   const canWriteFinance = hasAnyPermission("finance.write");
   const canReadProduction = hasAnyPermission("production_orders.read");
   const canWriteProduction = hasAnyPermission("production_orders.write");
+  const canWriteProof = canWrite || canWriteProduction;
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
   const [products, setProducts] = useState<CatalogLookupRecord[]>([]);
@@ -716,8 +724,65 @@ export function ServiceOrdersWorkspace() {
     [apiJson, canWrite, isListWorkspace, loadOrders],
   );
 
+  const handleProofAction = useCallback(
+    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">, action: ProofAction) => {
+      if (!canWriteProof) {
+        return;
+      }
+      const path =
+        action === "send_to_proof"
+          ? "send-to-proof"
+          : action === "complete_proof"
+            ? "complete-proof"
+            : "resume-from-proof";
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}/${path}`, {
+          method: "POST",
+        });
+        await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+        setMessage(proofActionSuccessMessage(action, next.serviceOrder.orderNo));
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A prova desta OS não pôde ser atualizada."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWriteProof, isListWorkspace, loadOrders],
+  );
+
   const buildOsRowMenu = useCallback(
     (row: Pick<ServiceOrderRecord, "id" | "orderNo" | "status" | "bagClosed">): RowMenuItem[] => [
+      ...(canSendToProof(row.status, Boolean(row.bagClosed)) && canWriteProof
+        ? [
+            {
+              id: "send-to-proof",
+              label: proofActionLabel("send_to_proof"),
+              onSelect: () => {
+                void handleProofAction(row, "send_to_proof");
+              },
+            },
+          ]
+        : []),
+      ...(canActOnProof(row.status) && canWriteProof
+        ? [
+            {
+              id: "complete-proof",
+              label: proofActionLabel("complete_proof"),
+              onSelect: () => {
+                void handleProofAction(row, "complete_proof");
+              },
+            },
+            {
+              id: "resume-from-proof",
+              label: proofActionLabel("resume_from_proof"),
+              onSelect: () => {
+                void handleProofAction(row, "resume_from_proof");
+              },
+            },
+          ]
+        : []),
       ...(row.status === "ready_for_pickup" && canWrite
         ? [
             {
@@ -781,7 +846,9 @@ export function ServiceOrdersWorkspace() {
       canReadProduction,
       canWrite,
       canWriteProduction,
+      canWriteProof,
       handleDeliver,
+      handleProofAction,
       printProductionOrder,
       printServiceOrder,
       resendEmail,
@@ -1408,6 +1475,7 @@ export function ServiceOrdersWorkspace() {
                 { value: "open", label: "Aberta" },
                 { value: "approved", label: "Aprovada" },
                 { value: "in_production", label: "Em produção" },
+                { value: "awaiting_proof", label: "Aguardando prova" },
                 { value: "awaiting_quality", label: "Aguardando controle de qualidade" },
                 { value: "quality", label: "Controle de qualidade" },
                 { value: "in_rework", label: "Em refação" },
@@ -2229,6 +2297,42 @@ export function ServiceOrdersWorkspace() {
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
                       </button>
+                      {canSendToProof(selectedOrder.status, bagClosed) && canWriteProof ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => {
+                            void handleProofAction(selectedOrder, "send_to_proof");
+                          }}
+                          type="button"
+                        >
+                          {proofActionLabel("send_to_proof")}
+                        </button>
+                      ) : null}
+                      {canActOnProof(selectedOrder.status) && canWriteProof ? (
+                        <>
+                          <button
+                            className="button"
+                            disabled={saving}
+                            onClick={() => {
+                              void handleProofAction(selectedOrder, "complete_proof");
+                            }}
+                            type="button"
+                          >
+                            {proofActionLabel("complete_proof")}
+                          </button>
+                          <button
+                            className="button"
+                            disabled={saving}
+                            onClick={() => {
+                              void handleProofAction(selectedOrder, "resume_from_proof");
+                            }}
+                            type="button"
+                          >
+                            {proofActionLabel("resume_from_proof")}
+                          </button>
+                        </>
+                      ) : null}
                       {selectedOrder.status === "ready_for_pickup" && canWrite ? (
                         <button
                           className="button"

@@ -83,6 +83,7 @@ export enum ServiceOrderStatus {
   APPROVED = 'approved',
   CANCELLED = 'cancelled',
   IN_PRODUCTION = 'in_production',
+  AWAITING_PROOF = 'awaiting_proof',
   AWAITING_QUALITY = 'awaiting_quality',
   QUALITY = 'quality',
   IN_REWORK = 'in_rework',

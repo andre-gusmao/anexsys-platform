@@ -17,6 +17,7 @@ import {
   floorActionSuccessMessage,
 } from "@/components/service-orders/os-floor";
 import { osStatusLabel } from "@/components/service-orders/os-list";
+import { canSendToProof, proofActionLabel, proofActionSuccessMessage } from "@/components/service-orders/os-proof";
 import { type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { osOpHeaderTerm } from "@/components/service-orders/service-order-workspace-view-model";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
@@ -105,6 +106,30 @@ export function PickBagWorkspace() {
     [apiJson, canWriteOs, canWriteProduction, loadList, saving],
   );
 
+  const sendToProof = useCallback(
+    async (row: PickBagRecord) => {
+      if (saving || !canSendToProof(row.status, Boolean(row.bagClosed))) {
+        return;
+      }
+      if (!canAct) {
+        setMessage("Você não tem permissão para enviar esta OS para prova.");
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        await apiJson(`/service-orders/${row.id}/send-to-proof`, { method: "POST" });
+        await loadList();
+        setMessage(proofActionSuccessMessage("send_to_proof", row.orderNo));
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, "A OS não pôde ser enviada para prova."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canAct, loadList, saving],
+  );
+
   const reprintProductionOrder = useCallback(
     async (serviceOrderId: string) => {
       try {
@@ -133,6 +158,17 @@ export function PickBagWorkspace() {
 
   const buildRowMenu = useCallback(
     (row: PickBagRecord): RowMenuItem[] => [
+      ...(canSendToProof(row.status, Boolean(row.bagClosed)) && canAct
+        ? [
+            {
+              id: "send-to-proof",
+              label: proofActionLabel("send_to_proof"),
+              onSelect: () => {
+                void sendToProof(row);
+              },
+            },
+          ]
+        : []),
       {
         id: "print",
         label: "Imprimir",
@@ -148,7 +184,7 @@ export function PickBagWorkspace() {
         ],
       },
     ],
-    [canReadProduction, canWriteProduction, reprintProductionOrder],
+    [canAct, canReadProduction, canWriteProduction, reprintProductionOrder, sendToProof],
   );
 
   if (!canRead) {

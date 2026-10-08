@@ -8,6 +8,7 @@ export function nextFloorAction(status: string, bagClosed: boolean): FloorAction
   if (
     !bagClosed ||
     status === ServiceOrderStatus.CANCELLED ||
+    status === ServiceOrderStatus.AWAITING_PROOF ||
     status === ServiceOrderStatus.READY_FOR_PICKUP ||
     status === ServiceOrderStatus.PICKED_UP
   ) {

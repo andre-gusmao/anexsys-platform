@@ -50,6 +50,7 @@ test('filters OS by number and status', () => {
   assert.equal(osDeliveryTypeLabel('Priority'), 'Urgente');
   assert.equal(osStatusLabel('cancelled'), 'Cancelada');
   assert.equal(osStatusLabel('in_production'), 'Em produção');
+  assert.equal(osStatusLabel('awaiting_proof'), 'Aguardando prova');
   assert.equal(osStatusLabel('awaiting_quality'), 'Aguardando controle de qualidade');
   assert.equal(osStatusLabel('quality'), 'Controle de qualidade');
   assert.equal(osStatusLabel('in_rework'), 'Em refação');

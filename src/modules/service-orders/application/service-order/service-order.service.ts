@@ -30,6 +30,13 @@ import {
   floorActionResultStatus,
   nextFloorAction,
 } from './service-order-floor';
+import {
+  canActOnProof,
+  canSendToProof,
+  proofActionAudit,
+  proofActionResultStatus,
+  type ProofAction,
+} from './service-order-proof';
 import { buildClientReturnPreview, osReturnKindLabel, todayDateOnly } from './service-order-return';
 import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, withVersionSuffix } from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
@@ -883,6 +890,69 @@ export class ServiceOrderService {
       metadata: { status: saved.status },
     });
     return saved;
+  }
+
+  async sendToProof(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'send_to_proof');
+  }
+
+  async completeProof(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'complete_proof');
+  }
+
+  async resumeFromProof(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    return this.applyProofAction(tenantId, serviceOrderId, actorUserId, 'resume_from_proof');
+  }
+
+  private async applyProofAction(
+    tenantId: string,
+    serviceOrderId: string,
+    actorUserId: string,
+    action: ProofAction,
+  ) {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    if (action === 'send_to_proof') {
+      if (!canSendToProof(serviceOrder.status, serviceOrder.bagClosed)) {
+        throw new DomainValidationError('Só é possível enviar para prova uma OS em produção com a sacola fechada.');
+      }
+    } else if (!canActOnProof(serviceOrder.status)) {
+      throw new DomainValidationError('Só é possível concluir ou continuar a prova com a OS em Aguardando prova.');
+    }
+
+    if (action === 'resume_from_proof') {
+      const busy = await this.serviceOrderRepository.findActiveFloorBags(
+        tenantId,
+        serviceOrder.branchId,
+        serviceOrder.id,
+      );
+      if (busy[0]) {
+        throw new DomainValidationError(
+          `Já existe uma sacola em produção (${busy[0].orderNo}). Termine ela antes de continuar esta.`,
+        );
+      }
+    }
+
+    const previousStatus = serviceOrder.status;
+    serviceOrder.status = proofActionResultStatus(action);
+    serviceOrder.updatedBy = actorUserId;
+    const saved = await this.serviceOrderRepository.save(serviceOrder);
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: proofActionAudit(action),
+      eventType: 'service_order.workflow',
+      metadata: {
+        status: saved.status,
+        previousStatus,
+        proofAction: action,
+        orderNo: saved.orderNo,
+        versionSuffix: saved.versionSuffix,
+      },
+    });
+    return this.getDetails(tenantId, saved.id);
   }
 
   async markPickedUp(tenantId: string, serviceOrderId: string, actorUserId: string) {
