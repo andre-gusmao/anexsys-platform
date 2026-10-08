@@ -16,6 +16,7 @@ import {
   OS_WORK_PRINT_LINES,
   osPaymentConditionLabel,
   osWorkPrintHint,
+  serviceOrderListLoadBinding,
   parseOsMoney,
   previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
@@ -327,6 +328,13 @@ test('previews the next linked OS number from the current plate', () => {
   assert.equal(previewNextLinkedServiceOrderNo('AAA000001'), 'AAA000001-A');
   assert.equal(previewNextLinkedServiceOrderNo('AAA000001-A', ['AAA000001', 'AAA000001-A']), 'AAA000001-B');
   assert.equal(previewNextLinkedServiceOrderNo('00002', ['00002']), '00002-A');
+});
+
+test('does not rebind the open OS when the list refreshes without a preferred id', () => {
+  assert.deepEqual(serviceOrderListLoadBinding(), { bind: false });
+  assert.deepEqual(serviceOrderListLoadBinding(undefined), { bind: false });
+  assert.deepEqual(serviceOrderListLoadBinding(null), { bind: true, activeId: null });
+  assert.deepEqual(serviceOrderListLoadBinding('os-1'), { bind: true, activeId: 'os-1' });
 });
 
 test('keeps Serviço a realizar within the A5 15px / 3-line budget after column S', () => {

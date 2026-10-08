@@ -13,6 +13,16 @@ export function osWorkPrintHint(text: string, sequence = 1) {
   return `S${sequence} · linha ${lineIndex} de ${OS_WORK_PRINT_LINES} · ${inLine}/${OS_WORK_CHARS_PER_LINE}`;
 }
 
+/** A bare list refresh must not rebind the open OS form. Pass an id only after save/close. */
+export function serviceOrderListLoadBinding(preferredActiveId?: string | null):
+  | { bind: false }
+  | { bind: true; activeId: string | null } {
+  if (preferredActiveId === undefined) {
+    return { bind: false };
+  }
+  return { bind: true, activeId: preferredActiveId };
+}
+
 export const DEFAULT_CUSTOMER_NOTE =
   "Garantia de serviço: 90 dias a partir da retirada. Reconserto em até 7 dias úteis se o cliente não provou na hora da retirada.";
 

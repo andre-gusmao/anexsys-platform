@@ -43,6 +43,7 @@ import {
   previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
   runClosedBagCommit,
+  serviceOrderListLoadBinding,
   updateServiceOrderItemGridRow,
   type PersistedServiceOrderItem,
   type ServiceOrderItemGridRow,
@@ -460,26 +461,25 @@ export function ServiceOrdersWorkspace() {
         return;
       }
       setLoading(true);
+      const binding = serviceOrderListLoadBinding(preferredActiveId);
       try {
         const response = await apiJson<ServiceOrderRecord[]>("/service-orders");
         setOrders(response);
-        const nextActiveId =
-          preferredActiveId !== undefined
-            ? preferredActiveId
-            : activeOrderId && response.some((order) => order.id === activeOrderId)
-              ? activeOrderId
-              : null;
-        setActiveOrderId(nextActiveId);
-        if (nextActiveId) {
-          await loadDetails(nextActiveId);
-        } else {
-          setDetails(null);
+        if (binding.bind) {
+          setActiveOrderId(binding.activeId);
+          if (binding.activeId) {
+            await loadDetails(binding.activeId);
+          } else {
+            setDetails(null);
+          }
         }
         setMessage(null);
       } catch (error) {
         setOrders([]);
-        setActiveOrderId(null);
-        setDetails(null);
+        if (binding.bind) {
+          setActiveOrderId(null);
+          setDetails(null);
+        }
         setMessage(
           formatWorkspaceMessage(error, "As OS não puderam ser carregadas. Confira filtros, acesso e a Filial do contexto."),
         );
@@ -487,7 +487,7 @@ export function ServiceOrdersWorkspace() {
         setLoading(false);
       }
     },
-    [activeOrderId, apiJson, canRead, loadDetails, setActiveOrderId],
+    [apiJson, canRead, loadDetails, setActiveOrderId],
   );
 
   const loadCustomers = useCallback(async () => {
@@ -727,11 +727,14 @@ export function ServiceOrdersWorkspace() {
   );
 
   useEffect(() => {
+    if (!isListWorkspace) {
+      return;
+    }
     const timeoutId = window.setTimeout(() => {
       void loadOrders();
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [loadOrders, session?.activeBranchId, session?.tenantId]);
+  }, [isListWorkspace, loadOrders, session?.activeBranchId, session?.tenantId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -1257,7 +1260,7 @@ export function ServiceOrdersWorkspace() {
 
   return (
     <>
-      {!isListWorkspace && !showCreateForm && !selectedOrder ? (
+      {!isListWorkspace && !showCreateForm && !selectedOrder && !detailLoading ? (
         <section className="hero-card">
           <div className="eyebrow">Operações</div>
           <h1 className="title">Ordem de serviço</h1>
@@ -2139,7 +2142,7 @@ export function ServiceOrdersWorkspace() {
                 <strong className="os-form-footer__total">{formatOsMoney(Number(selectedOrder?.totalValue ?? laborTotal))}</strong>
               </div>
             </form>
-          ) : (
+          ) : detailLoading ? null : (
             <div className="empty-state">Abra uma OS na grade ou clique em Nova OS para começar.</div>
           )}
         </article>
