@@ -315,6 +315,7 @@ Validado no ambiente local. Vale para **todos** os cadastros de uma vez: mesma l
 - O **menu lateral** usa fundo **ciano-turquesa** e letras **pretas**.
 - As faixas de título das telas (**hero**) também usam ciano e letras pretas.
 - Quando um cadastro tem **mais de uma aba** (lista + Novo ou Alterar), o **menu lateral** mostra um submenu com essas abas. O clique no item do menu volta para a grade; o clique no submenu ativa a aba correspondente. O **X** do submenu fecha aquela aba (o mesmo que o X do topo). No celular não há submenu.
+- As abas do topo **nascem à esquerda**, empurrando as já abertas para a direita, para a última tela aberta ficar visível. Reabrir pelo menu traz essa aba de volta à esquerda. Trocar de aba pelo clique nela não reordena.
 - O menu **encolhe e expande** como pasta: a seta abre/fecha o ramo; o nome do item continua abrindo a tela. Assim os submenus futuros cabem na barra.
 - Se houver **subaba aberta**, aquele ramo **permanece aberto**. Só some quando o usuário fecha a aba (X).
 - Cada função do menu tem uma **borda discreta** para separar visualmente um item do outro.

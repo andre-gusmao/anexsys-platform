@@ -26,6 +26,7 @@ import {
   normalizeWorkspaceStore,
   removeWorkspaceTab,
   resolveLandingWorkspaceTab,
+  revealWorkspaceTab,
   setActiveWorkspaceTab,
   setWorkspaceScopedState,
   upsertWorkspaceTab,
@@ -266,7 +267,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
 
       const singletonTab = findSingletonTabByPath(seedTab.pathname);
       if (singletonTab) {
-        commitStore((current) => setActiveWorkspaceTab(current, singletonTab.id));
+        commitStore((current) => revealWorkspaceTab(current, singletonTab.id));
         syncWorkspaceUrl(singletonTab.pathname, singletonTab.id);
         return singletonTab.id;
       }
@@ -328,7 +329,7 @@ export function WorkspaceManagerProvider({ children }: Readonly<{ children: Reac
             ? findWorkspaceTabByBasePath(storeRef.current.tabs, nextTab.pathname)
             : findSingletonTabByPath(nextTab.pathname);
       if (existingTab) {
-        commitStore((current) => setActiveWorkspaceTab(current, existingTab.id));
+        commitStore((current) => revealWorkspaceTab(current, existingTab.id));
         syncWorkspaceUrl(existingTab.pathname, existingTab.id);
         return;
       }
@@ -623,9 +624,29 @@ export function useWorkspaceScopedState<T>(scope: string, initialValue: T): [T, 
 
 export function WorkspaceTabsBar() {
   const { currentTabId, tabs, activateWorkspace, closeWorkspace } = useWorkspaceManager();
+  const tabListRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const bar = tabListRef.current;
+    const active = bar?.querySelector<HTMLElement>(".workspace-tab--active");
+    if (!bar || !active) {
+      return;
+    }
+    if (tabs[0]?.id === currentTabId) {
+      bar.scrollLeft = 0;
+      return;
+    }
+    const left = active.offsetLeft - bar.offsetLeft;
+    const right = left + active.offsetWidth;
+    if (left < bar.scrollLeft) {
+      bar.scrollLeft = left;
+    } else if (right > bar.scrollLeft + bar.clientWidth) {
+      bar.scrollLeft = right - bar.clientWidth;
+    }
+  }, [currentTabId, tabs]);
 
   return (
-    <div className="workspace-tabs" role="tablist" aria-label="Internal workspaces">
+    <div className="workspace-tabs" ref={tabListRef} role="tablist" aria-label="Abas abertas">
       {tabs.map((tab) => {
         const active = tab.id === currentTabId;
         return (

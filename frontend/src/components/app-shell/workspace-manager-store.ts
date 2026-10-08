@@ -92,8 +92,21 @@ export function upsertWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): Wo
 
   return normalizeWorkspaceStore({
     ...store,
-    tabs: [...store.tabs, tab],
+    tabs: [tab, ...store.tabs],
   });
+}
+
+export function moveWorkspaceTabToFront(store: WorkspaceStore, tabId: string): WorkspaceStore {
+  const index = store.tabs.findIndex((tab) => tab.id === tabId);
+  if (index <= 0) {
+    return store;
+  }
+
+  const tab = store.tabs[index];
+  return {
+    ...store,
+    tabs: [tab, ...store.tabs.filter((candidate) => candidate.id !== tabId)],
+  };
 }
 
 export function setActiveWorkspaceTab(store: WorkspaceStore, tabId: string | null): WorkspaceStore {
@@ -101,6 +114,10 @@ export function setActiveWorkspaceTab(store: WorkspaceStore, tabId: string | nul
     ...store,
     activeTabId: tabId,
   });
+}
+
+export function revealWorkspaceTab(store: WorkspaceStore, tabId: string): WorkspaceStore {
+  return setActiveWorkspaceTab(moveWorkspaceTabToFront(store, tabId), tabId);
 }
 
 export function activateWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): WorkspaceStore {
@@ -195,7 +212,7 @@ export function isDashboardWorkspacePath(pathname: string): boolean {
 
 export function findWorkspaceTabByBasePath(tabs: WorkspaceTab[], pathname: string): WorkspaceTab | undefined {
   const basePath = getWorkspaceBasePath(pathname);
-  return [...tabs].reverse().find((tab) => getWorkspaceBasePath(tab.pathname) === basePath);
+  return tabs.find((tab) => getWorkspaceBasePath(tab.pathname) === basePath);
 }
 
 export function resolveLandingWorkspaceTab(

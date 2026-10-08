@@ -14,10 +14,12 @@ import {
   getWorkspaceSearchParams,
   isDashboardWorkspacePath,
   listWorkspaceTabsForNavItem,
+  moveWorkspaceTabToFront,
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
   resolveLandingWorkspaceTab,
+  revealWorkspaceTab,
   setActiveWorkspaceTab,
   setWorkspaceScopedState,
   shouldShowWorkspaceNavSubmenu,
@@ -33,7 +35,7 @@ test('activates a workspace tab independently of the current route', () => {
   assert.equal(store.activeTabId, 'tab-contas');
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['tab-dashboard', 'tab-contas'],
+    ['tab-contas', 'tab-dashboard'],
   );
 
   store = setActiveWorkspaceTab(store, 'tab-dashboard');
@@ -44,7 +46,7 @@ test('activates a workspace tab independently of the current route', () => {
     activeTabId: null,
     stateByTabId: store.stateByTabId,
   });
-  assert.equal(store.activeTabId, 'tab-dashboard');
+  assert.equal(store.activeTabId, 'tab-contas');
 });
 
 test('creates, updates, clones, and removes workspace tabs', () => {
@@ -54,6 +56,10 @@ test('creates, updates, clones, and removes workspace tabs', () => {
   store = cloneWorkspaceTabState(store, 'tab-1', 'tab-2');
   store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-2', pathname: '/customers', label: 'Cliente · Maria' }));
 
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-2', 'tab-1'],
+  );
   assert.equal(store.tabs.length, 2);
   assert.equal(getWorkspaceScopedState<string>(store, 'tab-2', 'customers.searchQuery'), 'maria');
 
@@ -120,8 +126,29 @@ test('finds the latest workspace tab by menu base path', () => {
   });
 
   assert.equal(isDashboardWorkspacePath('/dashboard?workspaceTab=abc'), true);
-  assert.equal(findWorkspaceTabByBasePath([dashboard, clientes, clienteNovo], '/customers')?.id, 'tab-cliente-novo');
-  assert.equal(findWorkspaceTabByBasePath([dashboard, clientes, clienteNovo], '/dashboard')?.id, 'tab-dashboard');
+  assert.equal(findWorkspaceTabByBasePath([clienteNovo, clientes, dashboard], '/customers')?.id, 'tab-cliente-novo');
+  assert.equal(findWorkspaceTabByBasePath([clienteNovo, clientes, dashboard], '/dashboard')?.id, 'tab-dashboard');
+});
+
+test('opens the newest workspace tab on the left and can bring an older tab to the front', () => {
+  let store = createEmptyWorkspaceStore();
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-lista', pathname: '/service-orders', label: 'OS' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-nova', pathname: '/service-orders?workspaceMode=new', label: 'OS: Nova' }));
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-nova', 'tab-lista'],
+  );
+
+  store = revealWorkspaceTab(store, 'tab-lista');
+  assert.equal(store.activeTabId, 'tab-lista');
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-lista', 'tab-nova'],
+  );
+
+  store = moveWorkspaceTabToFront(store, 'tab-lista');
+  assert.equal(store.tabs[0]?.id, 'tab-lista');
 });
 
 test('collapses duplicate Dashboard tabs and keeps the active one', () => {
