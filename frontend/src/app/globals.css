@@ -482,6 +482,25 @@ textarea {
   border: 1px solid rgba(15, 76, 92, 0.16);
 }
 
+.os-return-items {
+  display: grid;
+  gap: 8px;
+}
+
+.os-return-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 76, 92, 0.12);
+  background: #fff;
+}
+
+.os-return-item input {
+  margin-top: 4px;
+}
+
 @media (max-width: 860px) {
   .os-totals-grid,
   .os-notes-grid {

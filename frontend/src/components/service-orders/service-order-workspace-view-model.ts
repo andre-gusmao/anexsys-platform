@@ -310,6 +310,34 @@ export function osPaymentConditionLabel(paymentStatus?: string | null) {
   return paymentStatus === "paid" ? "Pago" : "Pagar na retirada";
 }
 
+export function osReturnKindLabel(kind?: string | null) {
+  if (kind === "reconserto") return "Reconserto";
+  if (kind === "warranty") return "Em garantia";
+  if (kind === "charged") return "Cobrada";
+  return null;
+}
+
+export function osOpHeaderTerm(input: { returnKind?: string | null; paymentStatus?: string | null }) {
+  if (input.returnKind === "reconserto") return "Reconserto";
+  if (input.returnKind === "warranty") return "Em garantia";
+  return osPaymentConditionLabel(input.paymentStatus);
+}
+
+export function osClientReturnPreviewCopy(preview: {
+  kind: string;
+  daysSincePickup: number;
+  adjustmentPeriodDays: number;
+  executionPeriodDays: number;
+}) {
+  if (preview.kind === "reconserto") {
+    return `Dentro de ${preview.adjustmentPeriodDays} dias de reconserto (${preview.daysSincePickup} dia(s) desde a retirada). A OS nova sai sem valor, com o termo Reconserto na OP.`;
+  }
+  if (preview.kind === "warranty") {
+    return `Dentro de ${preview.executionPeriodDays} dias de garantia (${preview.daysSincePickup} dia(s) desde a retirada). A OS nova sai sem valor, com o termo Em garantia na OP.`;
+  }
+  return `Fora do prazo de reconserto e de garantia (${preview.daysSincePickup} dia(s) desde a retirada). A OS nova será cobrada.`;
+}
+
 export function formatOsMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }

@@ -20,6 +20,7 @@ import {
 } from "@/components/service-orders/os-documents";
 import { canReopenBagAfterFloor } from "@/components/service-orders/os-floor";
 import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
+import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
@@ -38,7 +39,8 @@ import {
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
   OS_WORK_MAX_CHARS,
-  osPaymentConditionLabel,
+  osOpHeaderTerm,
+  osReturnKindLabel,
   osWorkPrintHint,
   previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
@@ -68,6 +70,9 @@ type ServiceOrderRecord = {
   actualDeliveryDate?: string | null;
   actualDeliveryTime?: string | null;
   bagClosed?: boolean;
+  actualPickupDate?: string | null;
+  originServiceOrderId?: string | null;
+  returnKind?: string | null;
 };
 
 type ActorSummary = {
@@ -95,6 +100,14 @@ type ServiceOrderDetail = {
   items: PersistedServiceOrderItem[];
   maxPiecesPerBag?: number;
   groupVersions?: Array<{ id: string; orderNo: string; versionSuffix: string | null }>;
+  origin?: { id: string; orderNo: string; status: string; actualPickupDate: string | null } | null;
+  linkedReturns?: Array<{ id: string; orderNo: string; returnKind: string | null; status: string }>;
+  clientReturnPreview?: {
+    kind: string;
+    daysSincePickup: number;
+    adjustmentPeriodDays: number;
+    executionPeriodDays: number;
+  } | null;
 };
 
 type CustomerLookupRecord = {
@@ -243,6 +256,7 @@ export function ServiceOrdersWorkspace() {
   const [maxPiecesPerBag, setMaxPiecesPerBag] = useState(MAX_SERVICE_ORDER_ITEMS);
   const [previewOrderNo, setPreviewOrderNo] = useState("—");
   const [wantsNextVersion, setWantsNextVersion] = useState(false);
+  const [returnPickerOpen, setReturnPickerOpen] = useState(false);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -263,6 +277,7 @@ export function ServiceOrdersWorkspace() {
 
   useEffect(() => {
     setWantsNextVersion(false);
+    setReturnPickerOpen(false);
   }, [selectedOrder?.id, showCreateForm]);
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
@@ -618,10 +633,16 @@ export function ServiceOrdersWorkspace() {
         productionOrderId = created.productionOrder.id;
       }
       const view = await apiJson<OpPrintView>(`/production-orders/${productionOrderId}/print-view`);
-      let paymentCondition = osPaymentConditionLabel(paymentSummary?.paymentStatus);
+      let paymentCondition = osOpHeaderTerm({
+        returnKind: view.serviceOrder.returnKind,
+        paymentStatus: paymentSummary?.paymentStatus,
+      });
       try {
         const summary = await apiJson<OsFinancialSummary>(`/service-orders/${serviceOrderId}/financial-summary`);
-        paymentCondition = osPaymentConditionLabel(summary.paymentStatus);
+        paymentCondition = osOpHeaderTerm({
+          returnKind: view.serviceOrder.returnKind,
+          paymentStatus: summary.paymentStatus,
+        });
         setPaymentSummary(summary);
       } catch {
         /* a OP sai mesmo se o financeiro não puder ser lido; parcial e em aberto = Pagar na retirada */
@@ -673,8 +694,41 @@ export function ServiceOrdersWorkspace() {
     [apiJson, companyName],
   );
 
+  const handleDeliver = useCallback(
+    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (!canWrite) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const delivered = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}/deliver`, {
+          method: "POST",
+        });
+        await loadOrders(isListWorkspace ? undefined : delivered.serviceOrder.id);
+        setMessage(`OS ${delivered.serviceOrder.orderNo} marcada como retirada. Use Cliente voltou se o cliente reclamar depois.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A OS não pôde ser entregue."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, isListWorkspace, loadOrders],
+  );
+
   const buildOsRowMenu = useCallback(
     (row: Pick<ServiceOrderRecord, "id" | "orderNo" | "status" | "bagClosed">): RowMenuItem[] => [
+      ...(row.status === "ready_for_pickup" && canWrite
+        ? [
+            {
+              id: "deliver",
+              label: "Entregar",
+              onSelect: () => {
+                void handleDeliver(row);
+              },
+            },
+          ]
+        : []),
       {
         id: "print",
         label: "Imprimir",
@@ -723,7 +777,16 @@ export function ServiceOrdersWorkspace() {
         ],
       },
     ],
-    [canReadProduction, canWriteProduction, printProductionOrder, printServiceOrder, resendEmail, resendWhatsApp],
+    [
+      canReadProduction,
+      canWrite,
+      canWriteProduction,
+      handleDeliver,
+      printProductionOrder,
+      printServiceOrder,
+      resendEmail,
+      resendWhatsApp,
+    ],
   );
 
   useEffect(() => {
@@ -860,6 +923,32 @@ export function ServiceOrdersWorkspace() {
       });
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const handleClientReturn = useCallback(
+    async (itemIds: string[]) => {
+      if (!canWrite || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/client-return`, {
+          method: "POST",
+          body: JSON.stringify({ itemIds }),
+        });
+        setReturnPickerOpen(false);
+        openServiceOrderWorkspace(next.serviceOrder);
+        await loadOrders(selectedOrder.id);
+        const term = osReturnKindLabel(next.serviceOrder.returnKind) ?? "retorno";
+        setMessage(`OS ${next.serviceOrder.orderNo} aberta como ${term}. Feche a sacola e salve para imprimir a OP.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O retorno do cliente não pôde ser aberto."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, loadOrders, openServiceOrderWorkspace, selectedOrder],
   );
 
   const closeServiceOrderWorkspace = useCallback(() => {
@@ -1323,6 +1412,7 @@ export function ServiceOrdersWorkspace() {
                 { value: "quality", label: "Controle de qualidade" },
                 { value: "in_rework", label: "Em refação" },
                 { value: "ready_for_pickup", label: "Pronto para retirada" },
+                { value: "picked_up", label: "Retirado" },
                 { value: "cancelled", label: "Cancelada" },
               ],
             },
@@ -1393,6 +1483,36 @@ export function ServiceOrdersWorkspace() {
                       ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola trava; a OP só sai ao salvar depois.`
                       : "Abra uma OS na grade ou cadastre uma nova."}
               </p>
+              {!showCreateForm && details?.origin ? (
+                <p className="table-subtle">
+                  Retorno{osReturnKindLabel(selectedOrder?.returnKind) ? ` (${osReturnKindLabel(selectedOrder?.returnKind)})` : ""} da{" "}
+                  <button
+                    className="button-ghost"
+                    onClick={() => openServiceOrderWorkspace(details.origin!)}
+                    type="button"
+                  >
+                    {details.origin.orderNo}
+                  </button>
+                </p>
+              ) : null}
+              {!showCreateForm && details?.linkedReturns && details.linkedReturns.length > 0 ? (
+                <p className="table-subtle">
+                  Retornos:{" "}
+                  {details.linkedReturns.map((linked, index) => (
+                    <span key={linked.id}>
+                      {index > 0 ? " · " : null}
+                      <button
+                        className="button-ghost"
+                        onClick={() => openServiceOrderWorkspace(linked)}
+                        type="button"
+                      >
+                        {linked.orderNo}
+                      </button>
+                      {osReturnKindLabel(linked.returnKind) ? ` (${osReturnKindLabel(linked.returnKind)})` : ""}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
               {!showCreateForm && details?.groupVersions && details.groupVersions.length > 1 ? (
                 <p className="table-subtle">
                   Versões ligadas:{" "}
@@ -1426,6 +1546,18 @@ export function ServiceOrdersWorkspace() {
           </div>
 
           {detailLoading && !showCreateForm ? <div className="empty-state">Carregando a OS…</div> : null}
+
+          {returnPickerOpen && selectedOrder ? (
+            <OsClientReturnPanel
+              items={details?.items ?? []}
+              maxPiecesPerBag={maxPiecesPerBag}
+              orderNo={selectedOrder.orderNo}
+              preview={details?.clientReturnPreview ?? null}
+              saving={saving}
+              onClose={() => setReturnPickerOpen(false)}
+              onConfirm={(itemIds) => handleClientReturn(itemIds)}
+            />
+          ) : null}
 
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
@@ -1970,7 +2102,13 @@ export function ServiceOrdersWorkspace() {
                   <div className="os-pay-row">
                     <label className="field">
                       <span>Condição</span>
-                      <input disabled value={osPaymentConditionLabel(paymentSummary?.paymentStatus)} />
+                      <input
+                        disabled
+                        value={osOpHeaderTerm({
+                          returnKind: selectedOrder?.returnKind,
+                          paymentStatus: paymentSummary?.paymentStatus,
+                        })}
+                      />
                     </label>
                     <label className="field">
                       <span>Já pago</span>
@@ -2091,6 +2229,28 @@ export function ServiceOrdersWorkspace() {
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
                       </button>
+                      {selectedOrder.status === "ready_for_pickup" && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => {
+                            void handleDeliver(selectedOrder);
+                          }}
+                          type="button"
+                        >
+                          Entregar
+                        </button>
+                      ) : null}
+                      {selectedOrder.status === "picked_up" && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => setReturnPickerOpen(true)}
+                          type="button"
+                        >
+                          Cliente voltou
+                        </button>
+                      ) : null}
                       {canWriteFinance ? (
                         <button
                           className="button"

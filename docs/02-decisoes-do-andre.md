@@ -1,6 +1,6 @@
 # Decisões do André
 
-**Atualizado em:** 07/10/2026
+**Atualizado em:** 08/10/2026
 **Substitui:** as regras de negócio da documentação antiga (`docs/arquivo/`) nos pontos em que elas divergem deste documento.
 **Valor:** este é o documento **oficial** das regras de negócio. Quando outro documento discordar, vale este.
 
@@ -433,3 +433,15 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - Quando a sacola volta, o revisor puxa a **mesma OS**. A tela mostra a versão da refação. Aprova ou reprova de novo. Nova reprovação gera a versão 3, e assim por diante.
 - Isto **não** é a versão da OS (`AAA000001-A`, que é sacola). É versão da **OP** de refação.
 - Leitura de QR no celular e catálogo completo de status (Em produção, Aguardando qualidade) continuam no Ciclo 4.
+
+## 18. Três voltas que não se misturam (08/10/2026)
+
+Confirmado com o André. São caminhos distintos:
+
+1. **Refação (qualidade).** Mesma OS, nova **versão da OP** só com as peças reprovadas. O cliente continua vendo Controle de qualidade. Já existe.
+2. **Prova / pré-preparação.** Mesma OS e versão da OP, status Aguardando prova. **Ainda não construir.** WhatsApp 3 fica em aberto.
+3. **Cliente voltou (reconserto / garantia).** Depois da **retirada**. **OS filha com placa nova**, ligada à original. `-A` continua sendo só peças a mais na mesma visita.
+
+Prazos contados da retirada, pelos parâmetros da Conta (`warranty_adjustment_period_days` e `warranty_execution_period_days`). Dentro do ajuste → **Reconserto** sem valor. Depois do ajuste e dentro da execução → **Em garantia** sem valor. Fora dos dois → **cobrada**. Liberação do gerente com motivo fica para depois.
+
+Para homologar o retorno antes da assinatura em papel: botão **Entregar** (Pronto para retirada → Retirado + data). **Cliente voltou** abre o seletor de peças e a OS filha.

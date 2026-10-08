@@ -38,6 +38,7 @@ export function osStatusLabel(status: string) {
   if (status === "quality") return "Controle de qualidade";
   if (status === "in_rework") return "Em refação";
   if (status === "ready_for_pickup") return "Pronto para retirada";
+  if (status === "picked_up") return "Retirado";
   return status;
 }
 

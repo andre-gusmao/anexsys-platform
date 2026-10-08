@@ -9,6 +9,7 @@ import { TenantService } from 'src/modules/tenant/application/tenant/tenant.serv
 import {
   DeliveryType,
   ServiceOrderItemStatus,
+  ServiceOrderReturnKind,
   ServiceOrderStatus,
   SurchargeMethod,
   UserStatus,
@@ -29,6 +30,7 @@ import {
   floorActionResultStatus,
   nextFloorAction,
 } from './service-order-floor';
+import { buildClientReturnPreview, osReturnKindLabel, todayDateOnly } from './service-order-return';
 import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, withVersionSuffix } from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
@@ -126,6 +128,8 @@ export class ServiceOrderService {
       promisedDeliveryDate,
       promisedDeliveryTime,
       actualPickupDate: dto.actualPickupDate ?? null,
+      originServiceOrderId: null,
+      returnKind: null,
       actualDeliveryDate: dto.actualDeliveryDate ?? null,
       actualDeliveryTime: null,
       paymentTermsDays: dto.paymentTermsDays ?? 0,
@@ -279,6 +283,7 @@ export class ServiceOrderService {
       serviceOrderId: details.serviceOrder.id,
       orderNo: details.serviceOrder.orderNo,
       status: details.serviceOrder.status,
+      returnKind: details.serviceOrder.returnKind,
       openedAt: details.serviceOrder.openedAt,
       promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
       promisedDeliveryTime: details.serviceOrder.promisedDeliveryTime,
@@ -306,8 +311,20 @@ export class ServiceOrderService {
     ]);
 
     const groupId = serviceOrder.groupId ?? serviceOrder.id;
-    const groupVersions = await this.serviceOrderRepository.findByGroupId(tenantId, groupId);
-    const tenant = await this.tenantService.getById(tenantId);
+    const [groupVersions, origin, linkedReturns, tenant] = await Promise.all([
+      this.serviceOrderRepository.findByGroupId(tenantId, groupId),
+      serviceOrder.originServiceOrderId
+        ? this.serviceOrderRepository.findById(serviceOrder.originServiceOrderId)
+        : Promise.resolve(null),
+      this.serviceOrderRepository.findByOriginServiceOrderId(tenantId, serviceOrder.id),
+      this.tenantService.getById(tenantId),
+    ]);
+    const adjustmentPeriodDays = tenant.warrantyAdjustmentPeriodDays ?? 7;
+    const executionPeriodDays = tenant.warrantyExecutionPeriodDays ?? 7;
+    const clientReturnPreview =
+      serviceOrder.status === ServiceOrderStatus.PICKED_UP && serviceOrder.actualPickupDate
+        ? buildClientReturnPreview(serviceOrder.actualPickupDate, adjustmentPeriodDays, executionPeriodDays)
+        : null;
 
     return {
       serviceOrder,
@@ -324,6 +341,22 @@ export class ServiceOrderService {
         orderNo: order.orderNo,
         versionSuffix: order.versionSuffix,
       })),
+      origin:
+        origin && origin.tenantId === tenantId && !origin.isDeleted
+          ? {
+              id: origin.id,
+              orderNo: origin.orderNo,
+              status: origin.status,
+              actualPickupDate: origin.actualPickupDate,
+            }
+          : null,
+      linkedReturns: linkedReturns.map((order) => ({
+        id: order.id,
+        orderNo: order.orderNo,
+        returnKind: order.returnKind,
+        status: order.status,
+      })),
+      clientReturnPreview,
       maxPiecesPerBag: tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG,
     };
   }
@@ -370,6 +403,8 @@ export class ServiceOrderService {
       promisedDeliveryDate: source.promisedDeliveryDate,
       promisedDeliveryTime: source.promisedDeliveryTime,
       actualPickupDate: null,
+      originServiceOrderId: source.originServiceOrderId ?? null,
+      returnKind: source.returnKind ?? null,
       actualDeliveryDate: null,
       actualDeliveryTime: null,
       paymentTermsDays: source.paymentTermsDays,
@@ -848,6 +883,196 @@ export class ServiceOrderService {
       metadata: { status: saved.status },
     });
     return saved;
+  }
+
+  async markPickedUp(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    if (serviceOrder.status === ServiceOrderStatus.PICKED_UP) {
+      throw new DomainValidationError('Esta OS já foi retirada.');
+    }
+    if (serviceOrder.status !== ServiceOrderStatus.READY_FOR_PICKUP) {
+      throw new DomainValidationError('Só é possível entregar OS pronta para retirada.');
+    }
+
+    serviceOrder.status = ServiceOrderStatus.PICKED_UP;
+    serviceOrder.actualPickupDate = serviceOrder.actualPickupDate ?? todayDateOnly();
+    serviceOrder.updatedBy = actorUserId;
+    const saved = await this.serviceOrderRepository.save(serviceOrder);
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: 'service_order.delivered',
+      eventType: 'service_order.workflow',
+      metadata: { status: saved.status, actualPickupDate: saved.actualPickupDate },
+    });
+    return this.getDetails(tenantId, saved.id);
+  }
+
+  async createClientReturn(
+    tenantId: string,
+    originServiceOrderId: string,
+    actorUserId: string,
+    itemIds: string[],
+  ) {
+    const origin = await this.getById(originServiceOrderId, tenantId);
+    if (origin.status !== ServiceOrderStatus.PICKED_UP) {
+      throw new DomainValidationError('Só é possível abrir retorno depois da retirada.');
+    }
+    if (!origin.actualPickupDate) {
+      throw new DomainValidationError('A OS original não tem data de retirada.');
+    }
+
+    const selectedIds = [...new Set(itemIds.filter(Boolean))];
+    if (selectedIds.length === 0) {
+      throw new DomainValidationError('Selecione pelo menos uma peça para o retorno.');
+    }
+
+    const originItems = (await this.serviceOrderItemRepository.findByServiceOrder(origin.id)).filter(
+      (item) => item.status !== ServiceOrderItemStatus.CANCELLED && !item.isDeleted,
+    );
+    const originItemById = new Map(originItems.map((item) => [item.id, item]));
+    const selectedItems = selectedIds.map((itemId) => {
+      const item = originItemById.get(itemId);
+      if (!item) {
+        throw new DomainValidationError('Uma das peças não pertence à OS original.');
+      }
+      return item;
+    });
+
+    const tenant = await this.tenantService.getById(tenantId);
+    const maxPiecesPerBag = tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG;
+    this.assertItemCount(selectedItems.length, maxPiecesPerBag);
+
+    const preview = buildClientReturnPreview(
+      origin.actualPickupDate,
+      tenant.warrantyAdjustmentPeriodDays ?? 7,
+      tenant.warrantyExecutionPeriodDays ?? 7,
+    );
+    const charged = preview.kind === ServiceOrderReturnKind.CHARGED;
+    const returnLabel = osReturnKindLabel(preview.kind) ?? 'Retorno';
+    const openedAt = new Date();
+    const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
+      tenantId,
+      origin.branchId,
+      openedAt,
+      { deliveryType: origin.deliveryType, itemCount: selectedItems.length },
+    );
+    const groupSeq = await this.serviceOrderRepository.nextGroupSeq(tenantId);
+    const orderId = randomUUID();
+    const returnNote = `Retorno da OS ${origin.orderNo} (${returnLabel}).`;
+    const commercialNotes = [returnNote, origin.commercialNotes?.trim()].filter(Boolean).join('\n') || null;
+    const copiedItems = selectedItems.map((item) => ({
+      itemType: item.itemType,
+      description: item.description,
+      quantity: 1,
+      unitPrice: charged ? (item.unitPrice === null ? null : Number(item.unitPrice)) : null,
+      discountValue: charged ? Number(item.discountValue ?? 0) : 0,
+    }));
+    const orderTotals = charged
+      ? this.calculateOrderTotal(
+          copiedItems,
+          Number(origin.discountValue ?? 0),
+          origin.deliverySurchargeMethod,
+          Number(origin.deliverySurchargeValue ?? 0),
+        )
+      : null;
+
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const persistedOrder = manager.create(ServiceOrderEntity, {
+        id: orderId,
+        tenantId: origin.tenantId,
+        branchId: origin.branchId,
+        customerId: origin.customerId,
+        workflowDefinitionId: origin.workflowDefinitionId,
+        currentStatusDefinitionId: null,
+        orderNo: formatServiceOrderNo(groupSeq),
+        groupId: orderId,
+        groupSeq,
+        versionSuffix: null,
+        bagClosed: false,
+        openedAt,
+        deliveryCommitmentSourceAt: openedAt,
+        promisedDeliveryDate: suggestedDelivery.promisedDeliveryDate,
+        promisedDeliveryTime: normalizeClockTime(suggestedDelivery.promisedDeliveryTime) ?? currentClockTime(openedAt),
+        actualPickupDate: null,
+        originServiceOrderId: origin.id,
+        returnKind: preview.kind,
+        actualDeliveryDate: null,
+        actualDeliveryTime: null,
+        paymentTermsDays: charged ? origin.paymentTermsDays : 0,
+        deliveryType: origin.deliveryType,
+        operationalPriority: origin.operationalPriority,
+        commercialResponsibleActorId: origin.commercialResponsibleActorId,
+        technicalMeasurementResponsibleActorId: origin.technicalMeasurementResponsibleActorId,
+        deliverySurchargeMethod: charged ? origin.deliverySurchargeMethod : null,
+        deliverySurchargeValue: charged ? origin.deliverySurchargeValue : null,
+        commercialNotes,
+        customerNotes: origin.customerNotes,
+        status: ServiceOrderStatus.OPEN,
+        totalValue: orderTotals,
+        discountValue: charged && origin.discountValue != null ? origin.discountValue : null,
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      });
+      await manager.save(ServiceOrderEntity, persistedOrder);
+
+      for (const [index, item] of selectedItems.entries()) {
+        const serviceOrderItem = manager.create(ServiceOrderItemEntity, {
+          id: randomUUID(),
+          tenantId: origin.tenantId,
+          branchId: origin.branchId,
+          serviceOrderId: persistedOrder.id,
+          itemNo: index + 1,
+          itemType: item.itemType,
+          productId: item.productId,
+          serviceId: item.serviceId,
+          description: item.description,
+          complement: item.complement,
+          brand: item.brand,
+          model: item.model,
+          serialNo: item.serialNo,
+          quantity: this.formatQuantity(1),
+          unitPrice: charged ? item.unitPrice : null,
+          discountValue: this.formatMoney(charged ? Number(item.discountValue ?? 0) : 0),
+          deliveryType: item.deliveryType,
+          operationalPriority: item.operationalPriority,
+          status: ServiceOrderItemStatus.OPEN,
+          isDeleted: false,
+          deletedAt: null,
+          deletedBy: null,
+          createdBy: actorUserId,
+          updatedBy: actorUserId,
+        });
+        await manager.save(ServiceOrderItemEntity, serviceOrderItem);
+      }
+
+      return persistedOrder;
+    });
+
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: 'service_order.client_return.created',
+      eventType: 'service_order.write',
+      metadata: {
+        originServiceOrderId: origin.id,
+        originOrderNo: origin.orderNo,
+        returnKind: preview.kind,
+        daysSincePickup: preview.daysSincePickup,
+        itemCount: selectedItems.length,
+      },
+    });
+
+    return this.getDetails(tenantId, saved.id);
   }
 
   async cancel(serviceOrderId: string, tenantId: string, actorUserId: string): Promise<ServiceOrderEntity> {

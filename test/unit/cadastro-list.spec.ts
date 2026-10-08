@@ -54,6 +54,7 @@ test('filters OS by number and status', () => {
   assert.equal(osStatusLabel('quality'), 'Controle de qualidade');
   assert.equal(osStatusLabel('in_rework'), 'Em refação');
   assert.equal(osStatusLabel('ready_for_pickup'), 'Pronto para retirada');
+  assert.equal(osStatusLabel('picked_up'), 'Retirado');
 });
 
 test('filters measurement catalog records by name, code and status', () => {

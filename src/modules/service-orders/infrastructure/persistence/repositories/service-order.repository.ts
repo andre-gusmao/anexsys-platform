@@ -52,6 +52,13 @@ export class ServiceOrderRepository {
     });
   }
 
+  async findByOriginServiceOrderId(tenantId: string, originServiceOrderId: string): Promise<ServiceOrderEntity[]> {
+    return this.repository.find({
+      where: { tenantId, originServiceOrderId, isDeleted: false },
+      order: { openedAt: 'DESC', createdAt: 'DESC' },
+    });
+  }
+
   async nextGroupSeq(tenantId: string): Promise<number> {
     const result = await this.repository
       .createQueryBuilder('service_order')

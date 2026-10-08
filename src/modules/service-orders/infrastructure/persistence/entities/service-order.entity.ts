@@ -1,5 +1,5 @@
 import { Column, Entity } from 'typeorm';
-import { DeliveryType, ServiceOrderStatus, SurchargeMethod } from 'src/shared/domain/enums';
+import { DeliveryType, ServiceOrderReturnKind, ServiceOrderStatus, SurchargeMethod } from 'src/shared/domain/enums';
 import { SoftDeletableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'service_orders' })
@@ -48,6 +48,12 @@ export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
 
   @Column({ name: 'actual_pickup_date', type: 'date', nullable: true })
   actualPickupDate!: string | null;
+
+  @Column({ name: 'origin_service_order_id', type: 'uuid', nullable: true })
+  originServiceOrderId!: string | null;
+
+  @Column({ name: 'return_kind', type: 'varchar', length: 20, nullable: true })
+  returnKind!: ServiceOrderReturnKind | null;
 
   @Column({ name: 'actual_delivery_date', type: 'date', nullable: true })
   actualDeliveryDate!: string | null;

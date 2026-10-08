@@ -87,6 +87,13 @@ export enum ServiceOrderStatus {
   QUALITY = 'quality',
   IN_REWORK = 'in_rework',
   READY_FOR_PICKUP = 'ready_for_pickup',
+  PICKED_UP = 'picked_up',
+}
+
+export enum ServiceOrderReturnKind {
+  RECONSERTO = 'reconserto',
+  WARRANTY = 'warranty',
+  CHARGED = 'charged',
 }
 
 export enum ServiceOrderItemStatus {

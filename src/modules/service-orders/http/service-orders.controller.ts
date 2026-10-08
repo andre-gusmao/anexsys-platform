@@ -250,6 +250,13 @@ class UpdateServiceOrderBody {
   customerNotes?: string;
 }
 
+class ClientReturnBody {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID('4', { each: true })
+  itemIds!: string[];
+}
+
 class UpdateServiceOrderItemBody {
   @IsOptional()
   @IsString()
@@ -473,6 +480,39 @@ export class ServiceOrdersController {
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
     return this.serviceOrderService.closeBag(tenantId, serviceOrderId, principal.userId);
+  }
+
+  @Permissions('service_orders.write')
+  @Post(':serviceOrderId/deliver')
+  async markPickedUp(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.markPickedUp(tenantId, serviceOrderId, principal.userId);
+  }
+
+  @Permissions('service_orders.write')
+  @Post(':serviceOrderId/client-return')
+  async createClientReturn(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @Body() body: ClientReturnBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.createClientReturn(tenantId, serviceOrderId, principal.userId, body.itemIds);
   }
 
   @Permissions('service_orders.write')

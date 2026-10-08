@@ -18,7 +18,7 @@ import {
 } from "@/components/service-orders/os-floor";
 import { osStatusLabel } from "@/components/service-orders/os-list";
 import { type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
-import { osPaymentConditionLabel } from "@/components/service-orders/service-order-workspace-view-model";
+import { osOpHeaderTerm } from "@/components/service-orders/service-order-workspace-view-model";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import { type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
@@ -112,10 +112,13 @@ export function PickBagWorkspace() {
           `/service-orders/${serviceOrderId}/production-order`,
         );
         const view = await apiJson<OpPrintView>(`/production-orders/${existing.productionOrder.id}/print-view`);
-        let paymentCondition = osPaymentConditionLabel(null);
+        let paymentCondition = osOpHeaderTerm({ returnKind: view.serviceOrder.returnKind, paymentStatus: null });
         try {
           const summary = await apiJson<OsFinancialSummary>(`/service-orders/${serviceOrderId}/financial-summary`);
-          paymentCondition = osPaymentConditionLabel(summary.paymentStatus);
+          paymentCondition = osOpHeaderTerm({
+            returnKind: view.serviceOrder.returnKind,
+            paymentStatus: summary.paymentStatus,
+          });
         } catch {
           /* a OP sai mesmo se o financeiro não puder ser lido */
         }

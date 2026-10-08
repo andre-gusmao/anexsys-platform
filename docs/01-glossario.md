@@ -1,6 +1,6 @@
 # Glossário
 
-**Atualizado em:** 06/10/2026
+**Atualizado em:** 08/10/2026
 **Substitui:** os termos espalhados pela documentação antiga (`docs/arquivo/`).
 
 Este glossário vale para as conversas, os documentos e as telas. A coluna "No código" ajuda quem abrir o programa, que usa nomes em inglês.
@@ -28,12 +28,15 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Produto** | Tipo da peça no cadastro (Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta). A atendente escolhe na linha da OS e pode cadastrar outro | `garment product` |
 | **Serviço** | O que se faz numa peça (bainha, ajuste de cintura). O catálogo tem preço padrão, com ajuste manual na OS por quem tem permissão | `atelier service` / `service order item` |
 | **Serviço a realizar** | Texto livre na linha da peça: o que a atendente combinou com o cliente. É o **maior campo da OP** (fonte 15 px, 3 linhas, ~102 caracteres). No código o campo continua `complement` | `service_order_items.complement` |
-| **Ordem de Produção** | Papel **A5** da sacola: número da placa no cabeçalho e em cima do QR; **Pago / Pagar na retirada** no cabeçalho; grade em linhas (**S**, Produto, Serviço, Serviço a realizar); bloco **Retirada** (Nome, Data, Assinatura); marca/modelo/série pequenos; previsão enorme na face da prateleira. **Nunca mostra preço nem quantidade**. A bandeja A5 é da impressora; o layout já nasce A5. Reprovação na qualidade gera **outra versão da mesma OP**, só com as peças reprovadas | `production order` / `production_order_versions` |
+| **Ordem de Produção** | Papel **A5** da sacola: número da placa no cabeçalho e em cima do QR; **Pago / Pagar na retirada** (ou **Reconserto / Em garantia** no retorno) no cabeçalho; grade em linhas (**S**, Produto, Serviço, Serviço a realizar); bloco **Retirada** (Nome, Data, Assinatura); marca/modelo/série pequenos; previsão enorme na face da prateleira. **Nunca mostra preço nem quantidade**. A bandeja A5 é da impressora; o layout já nasce A5. Reprovação na qualidade gera **outra versão da mesma OP**, só com as peças reprovadas | `production order` / `production_order_versions` |
 | **Sacola** | Embalagem **física** só para transportar as peças. O sistema não controla a sacola: controla o **limite de peças por versão da OS**. A OP impressa vai no bolso transparente | `bag` (apenas apoio físico) |
 | **Fechar sacola** | Ação na OS: grava a versão e **trava** as peças. **Não** imprime e **não** abre a próxima versão. O botão vira **Abrir sacola** | `POST /service-orders/:id/close-bag` |
 | **Abrir sacola** | Destrava a versão fechada para corrigir erro ou incluir peça que o cliente pediu de volta | `POST /service-orders/:id/open-bag` |
 | **Abrir nova versão** | Só aparece na grade de itens, com a sacola fechada. Marca a intenção; o rodapé avisa o número. A próxima versão nasce ao **Salvar**, em **outra aba**, já editável | `POST /service-orders/:id/next-version` |
-| **Versão da OS** | Continuação ligada da mesma OS quando o cliente trouxe mais peças do que o limite. A primeira é `AAA000001`; as seguintes são `AAA000001-A`, `AAA000001-B` | `service_orders.group_id` / `version_suffix` |
+| **Versão da OS** | Continuação ligada da mesma OS quando o cliente trouxe mais peças do que o limite **na mesma visita**. A primeira é `AAA000001`; as seguintes são `AAA000001-A`, `AAA000001-B`. **Não** é reconserto nem garantia | `service_orders.group_id` / `version_suffix` |
+| **Entregar** | Marca a OS **Pronto para retirada** como **Retirado** e grava a data de retirada. Provisório até existir a assinatura em papel e a foto. Precisa existir para homologar o retorno do cliente | `POST /service-orders/:id/deliver` |
+| **Cliente voltou** | O cliente reclama depois da retirada. A atendente escolhe as peças e nasce uma **OS filha com placa nova**, ligada à original | `POST /service-orders/:id/client-return` |
+| **OS filha / retorno** | OS nova (`AAA000002`), não `-A`. Copia as peças escolhidas e o técnico original. Dentro do prazo sai sem valor; fora do prazo é cobrada | `origin_service_order_id` / `return_kind` |
 | **Controle de qualidade** | Tela em que o revisor abre a OS original e aprova ou reprova **peça a peça**, sem valores. O botão da lista é **Revisar**. 100% aprovado avança a OS para Pronto para retirada | `quality-reviews` |
 | **Refação** | Peças reprovadas voltam à esteira numa **nova versão da OP**. A OS original **permanece em Controle de qualidade**. Não confundir com versão da OS (sacola) | `production_order_versions` + `rework_cases` |
 | **Esteira** | Lugar físico onde ficam as sacolas: "a fazer" (por ordem de chegada) e "finalizadas" | não existe no sistema |
@@ -77,13 +80,14 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Assinatura eletrônica** | Registro de aceite com data, hora, texto aceito e aparelho. É **evidência de aceite**, não substitui um certificado digital |
 | **Retirada** | O cliente retira a peça. Informa o número da OS ou o nome, o atendente confere, lê o QR e o cliente assina a Ordem de Produção em papel; a foto é anexada à OS e o atendente clica "entregue assinado" |
 | **Tipo de entrega** | **Normal**: mesmo dia da semana da semana seguinte. **Expresso**: até 2 horas por peça, só no horário de funcionamento. **Urgente**: 2 ou 3 dias úteis (sugestão 3). Cada tipo tem **sobretaxa percentual** configurável. O sistema **sugere** a data e o atendente **pode alterar** |
-| **Reconserto** | O cliente volta em até **7 dias corridos** da retirada reclamando de ajuste (curto ou largo). Cria-se **nova OS sem valor**, **vinculada à original**, mostrando o **técnico que fez a primeira vez**. Depois do prazo, a OS nova é cobrada (o gerente pode liberar sem valor, com motivo) |
-| **Garantia de serviço** | **90 dias**, contados **da retirada**, para defeito de execução (descosturou, a barra se desfez), negociável no balcão |
+| **Reconserto** | O cliente volta em até **7 dias corridos** da retirada reclamando de ajuste (curto ou largo). **Cliente voltou** cria **OS filha sem valor**, placa nova, ligada à original, com o técnico da primeira vez. A OP leva o termo **Reconserto**. Depois do prazo a filha é cobrada (o gerente pode liberar sem valor, com motivo — ainda não) |
+| **Garantia de serviço** | Depois do reconserto e até o prazo de execução da Conta (André quer **90 dias**; o cadastro da Conta é que vale), para defeito de execução. Mesmo fluxo de OS filha, termo **Em garantia** na OP. **Não** confundir com **Refação** (qualidade, mesma OS, versão da OP) nem com **prova** (mesma OS, ainda não construída) |
+| **Retirado** | Status público depois de **Entregar**. A data de retirada abre a janela de reconserto e garantia | `picked_up` |
 | **Grupo de OS** | Versões ligadas da mesma OS (`AAA000001`, `AAA000001-A`, `AAA000001-B`): um só cliente, mesmo cabeçalho reaproveitado, cada uma com sua grade, sua sacola física e sua Ordem de Produção. Um só link, um só aviso e um só pagamento **[assumido]** |
 | **Limite de peças por versão** | Parâmetro da Conta (padrão 5). A atendente registra até esse limite, fecha a sacola e continua na próxima versão. Não é divisão automática no meio da digitação |
 | **Sugestão de cadastro** | Nos campos de busca e nos que vêm de tabela, o sistema sugere o que já está cadastrado. Se não houver sugestão, **Cadastrar** aparece na caixinha de “Nenhum registro encontrado” |
 | **Tela de parâmetros** | Tela onde o administrador altera as regras do sistema (graus e tempos, prazos, cortes, sobretaxas, status etc.), com histórico de quem mudou e quando |
-| **Condição de pagamento** | Na OS e na OP: **Pago** só quando o financeiro está quitado; qualquer saldo (inclusive parcial) sai **Pagar na retirada** |
+| **Condição de pagamento** | Na OS e na OP: **Pago** só quando o financeiro está quitado; qualquer saldo (inclusive parcial) sai **Pagar na retirada**. Em OS de retorno dentro do prazo, a OP mostra **Reconserto** ou **Em garantia** no lugar dessa condição |
 | **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |
 | **Estorno de cartão** | Devolução do pagamento feito na maquininha, pela operadora (Cielo). Só o gerente, com motivo. Não é o reembolso via Pix |
 | **Aprovação pendente** | OS cujo cliente ainda não assinou. Lista sempre visível e aviso diário ao atendente e ao gerente |

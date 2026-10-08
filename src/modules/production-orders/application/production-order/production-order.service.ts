@@ -760,6 +760,7 @@ export class ProductionOrderService {
         openedAt: details.serviceOrder.openedAt,
         promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
         promisedDeliveryTime: details.serviceOrder.promisedDeliveryTime ?? null,
+        returnKind: details.serviceOrder.returnKind ?? null,
       },
       customer: {
         id: details.customer.id,

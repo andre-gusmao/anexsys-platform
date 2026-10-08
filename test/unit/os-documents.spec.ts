@@ -117,6 +117,21 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   assert.match(paidHtml, /class="op-pay">Pago</);
   assert.doesNotMatch(paidHtml, /Pagar na retirada/);
 
+  const reconsertoHtml = buildProductionOrderPrintHtml(
+    {
+      productionNo: 'OP-1',
+      serviceOrder: { orderNo: 'AAA000009', promisedDeliveryDate: '2026-10-18', returnKind: 'reconserto' },
+      customer: { legalName: 'Sandra Legramanti' },
+      pieceDescription: null,
+      instructions: null,
+      items: [{ itemType: 'Calça', description: 'Bainha' }],
+      qrCode: null,
+    },
+    'Atelier',
+    'Reconserto',
+  );
+  assert.match(reconsertoHtml, /class="op-pay">Reconserto</);
+
   const reworkHtml = buildProductionOrderPrintHtml(
     {
       productionNo: 'OP-1',

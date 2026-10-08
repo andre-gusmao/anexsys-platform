@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { DeliveryType, UserStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
+import { todayDateOnly } from 'src/modules/service-orders/application/service-order/service-order-return';
 
 function buildDataSource() {
   return {
@@ -227,7 +228,7 @@ describe('ServiceOrderService', () => {
   it('prints the service order with values and keeps internal notes out', async () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,
-      { async findById() { return { id: 'so-1', tenantId: 'tenant-1', customerId: 'customer-1', commercialResponsibleActorId: 'user-1', technicalMeasurementResponsibleActorId: 'user-1', orderNo: 'OS-1', status: 'open', openedAt: '2026-10-07T10:00:00.000Z', promisedDeliveryDate: '2026-10-14', promisedDeliveryTime: '18:00', deliveryType: DeliveryType.STANDARD, totalValue: '90.00', customerNotes: 'Garantia 90 dias', commercialNotes: 'nao imprimir' }; }, async findByGroupId() { return []; } } as never,
+      { async findById() { return { id: 'so-1', tenantId: 'tenant-1', customerId: 'customer-1', commercialResponsibleActorId: 'user-1', technicalMeasurementResponsibleActorId: 'user-1', orderNo: 'OS-1', status: 'open', openedAt: '2026-10-07T10:00:00.000Z', promisedDeliveryDate: '2026-10-14', promisedDeliveryTime: '18:00', deliveryType: DeliveryType.STANDARD, totalValue: '90.00', customerNotes: 'Garantia 90 dias', commercialNotes: 'nao imprimir' }; }, async findByGroupId() { return []; }, async findByOriginServiceOrderId() { return []; } } as never,
       { async findByServiceOrder() { return [{ id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', complement: 'Barra 4 cm', brand: 'Levi', model: '501', serialNo: 'SN-1', quantity: '1', unitPrice: '90.00', discountValue: '0.00', status: 'open', isDeleted: false }]; } } as never,
       { async getById() { return { id: 'tenant-1' }; } } as never,
       { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
@@ -350,6 +351,9 @@ describe('ServiceOrderService', () => {
         async findByGroupId() {
           return [source];
         },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
         create(payload: Record<string, unknown>) {
           return payload;
         },
@@ -425,6 +429,9 @@ describe('ServiceOrderService', () => {
         },
         async findByGroupId() {
           return [saved[0] ?? source];
+        },
+        async findByOriginServiceOrderId() {
+          return [];
         },
         async save(payload: Record<string, unknown>) {
           saved.push({ ...source, ...payload });
@@ -566,5 +573,168 @@ describe('ServiceOrderService', () => {
         return true;
       },
     );
+  });
+
+  it('marks a ready OS as picked up and refuses a second delivery', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'ready_for_pickup',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      actualPickupDate: null,
+      commercialResponsibleActorId: 'user-1',
+      technicalMeasurementResponsibleActorId: 'user-1',
+    };
+    const saved: Array<Record<string, unknown>> = [];
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return saved[0] ?? source;
+        },
+        async findByGroupId() {
+          return [saved[0] ?? source];
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+        async save(payload: Record<string, unknown>) {
+          saved.push({ ...source, ...payload });
+          return saved[saved.length - 1];
+        },
+      } as never,
+      { async findByServiceOrder() { return []; } } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5, warrantyAdjustmentPeriodDays: 7, warrantyExecutionPeriodDays: 90 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const delivered = await service.markPickedUp('tenant-1', 'so-1', 'user-1');
+    assert.equal(delivered.serviceOrder.status, 'picked_up');
+    assert.equal(typeof delivered.serviceOrder.actualPickupDate, 'string');
+
+    await assert.rejects(
+      () => service.markPickedUp('tenant-1', 'so-1', 'user-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /já foi retirada/);
+        return true;
+      },
+    );
+  });
+
+  it('opens a child OS with a new plate and zero prices inside the reconserto window', async () => {
+    const origin = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'picked_up',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      actualPickupDate: todayDateOnly(),
+      deliveryType: DeliveryType.STANDARD,
+      operationalPriority: null,
+      paymentTermsDays: 0,
+      commercialResponsibleActorId: 'tech-1',
+      technicalMeasurementResponsibleActorId: 'tech-1',
+      workflowDefinitionId: null,
+      deliverySurchargeMethod: null,
+      deliverySurchargeValue: null,
+      commercialNotes: null,
+      customerNotes: 'Garantia 90 dias',
+      discountValue: null,
+    };
+    const created: Array<Record<string, unknown>> = [];
+    const items: Array<Record<string, unknown>> = [];
+    const service = new ServiceOrderService(
+      {
+        async transaction(callback: (manager: any) => Promise<unknown>) {
+          const manager = {
+            create(_entity: unknown, payload: Record<string, unknown>) {
+              return payload;
+            },
+            async save(_entity: unknown, payload: Record<string, unknown>) {
+              if (payload.orderNo) {
+                created.push(payload);
+              } else {
+                items.push(payload);
+              }
+              return payload;
+            },
+          };
+          return callback(manager);
+        },
+      } as never,
+      {
+        async findById(id: string) {
+          if (created[0] && id === created[0].id) {
+            return created[0];
+          }
+          return origin;
+        },
+        async findByGroupId() {
+          return created;
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+        async nextGroupSeq() {
+          return 9;
+        },
+      } as never,
+      {
+        async findByServiceOrder(serviceOrderId: string) {
+          if (serviceOrderId === 'so-1') {
+            return [
+              {
+                id: 'item-1',
+                itemNo: 1,
+                itemType: 'Calça',
+                description: 'Bainha',
+                complement: 'Barra 4 cm',
+                brand: 'Levi',
+                model: '501',
+                serialNo: 'SN-1',
+                productId: null,
+                serviceId: null,
+                quantity: '1.0000',
+                unitPrice: '90.00',
+                discountValue: '0.00',
+                deliveryType: null,
+                operationalPriority: null,
+                status: 'open',
+                isDeleted: false,
+              },
+            ];
+          }
+          return items;
+        },
+      } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5, warrantyAdjustmentPeriodDays: 7, warrantyExecutionPeriodDays: 90 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1', legalName: 'Maria' }; } } as never,
+      { async getById() { return { id: 'tech-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-15', promisedDeliveryTime: '18:00' }; } } as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const child = await service.createClientReturn('tenant-1', 'so-1', 'user-1', ['item-1']);
+    assert.equal(created[0]?.orderNo, 'AAA000009');
+    assert.equal(created[0]?.originServiceOrderId, 'so-1');
+    assert.equal(created[0]?.returnKind, 'reconserto');
+    assert.equal(created[0]?.versionSuffix, null);
+    assert.equal(created[0]?.technicalMeasurementResponsibleActorId, 'tech-1');
+    assert.equal(created[0]?.totalValue, null);
+    assert.equal(items[0]?.unitPrice, null);
+    assert.equal(child.serviceOrder.orderNo, 'AAA000009');
   });
 });

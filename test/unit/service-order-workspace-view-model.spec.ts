@@ -14,7 +14,9 @@ import {
   OS_WORK_MAX_CHARS,
   OS_WORK_PRINT_FONT_PX,
   OS_WORK_PRINT_LINES,
+  osOpHeaderTerm,
   osPaymentConditionLabel,
+  osReturnKindLabel,
   osWorkPrintHint,
   serviceOrderListLoadBinding,
   parseOsMoney,
@@ -296,6 +298,14 @@ test('labels payment as paid only when the OS is fully settled', () => {
   assert.equal(osPaymentConditionLabel('partial'), 'Pagar na retirada');
   assert.equal(osPaymentConditionLabel('pending'), 'Pagar na retirada');
   assert.equal(osPaymentConditionLabel(null), 'Pagar na retirada');
+});
+
+test('uses Reconserto or Em garantia on the OP header for in-window returns', () => {
+  assert.equal(osReturnKindLabel('reconserto'), 'Reconserto');
+  assert.equal(osReturnKindLabel('warranty'), 'Em garantia');
+  assert.equal(osOpHeaderTerm({ returnKind: 'reconserto', paymentStatus: 'paid' }), 'Reconserto');
+  assert.equal(osOpHeaderTerm({ returnKind: 'warranty', paymentStatus: 'pending' }), 'Em garantia');
+  assert.equal(osOpHeaderTerm({ returnKind: 'charged', paymentStatus: 'paid' }), 'Pago');
 });
 
 test('fails the save when print is blocked and no next version was requested', async () => {

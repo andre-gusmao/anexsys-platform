@@ -5,7 +5,12 @@ export type FloorAction = 'pick_up' | 'finish_production' | 'open_review' | 'pic
 const BUSY_FLOOR_STATUSES: ServiceOrderStatus[] = [ServiceOrderStatus.IN_PRODUCTION, ServiceOrderStatus.IN_REWORK];
 
 export function nextFloorAction(status: string, bagClosed: boolean): FloorAction | null {
-  if (!bagClosed || status === ServiceOrderStatus.CANCELLED || status === ServiceOrderStatus.READY_FOR_PICKUP) {
+  if (
+    !bagClosed ||
+    status === ServiceOrderStatus.CANCELLED ||
+    status === ServiceOrderStatus.READY_FOR_PICKUP ||
+    status === ServiceOrderStatus.PICKED_UP
+  ) {
     return null;
   }
   if (status === ServiceOrderStatus.OPEN || status === ServiceOrderStatus.APPROVED) {

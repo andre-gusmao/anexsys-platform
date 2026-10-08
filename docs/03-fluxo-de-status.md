@@ -1,6 +1,6 @@
 # Fluxo de status da Ordem de Serviço
 
-**Atualizado em:** 05/10/2026 (noite)
+**Atualizado em:** 08/10/2026
 **Substitui:** os ciclos de vida de status da documentação antiga (`docs/arquivo/`). Baseado em `02-decisoes-do-andre.md`.
 **Situação:** o fluxo abaixo é o **desenho decidido**. **Ainda não está construído**: hoje o sistema só tem os status Em aberto, Aprovada e Cancelada para a OS. Os pontos que estavam **em aberto** foram resolvidos nas rodadas 2 e 3 de respostas do André.
 
@@ -34,7 +34,7 @@ e vai por WhatsApp     papel)                 impressa no bolso          termina
 | 3 | Aguardando controle de qualidade | Público | Técnico, ao terminar | Controle de qualidade | |
 | 4 | Controle de qualidade | Público | Revisor | Pronto para retirada quando **100% das peças** estão aprovadas | Reprovação **não** muda o status da OS |
 | 5 | Pronto para retirada | Público | Ninguém | Retirado pelo cliente | WhatsApp 2 |
-| 6 | Retirado pelo cliente | Público | Atendente, na retirada | Fim | Assinatura no papel, foto na OS e "entregue assinado" |
+| 6 | Retirado pelo cliente | Público | Atendente, na retirada | Fim (ou **Cliente voltou**, que abre OS filha) | Hoje o botão **Entregar** grava a data. Assinatura em papel e foto ficam para depois |
 | — | Refação | **Interno (OP)** | Técnica que fará a refação | Volta para a qualidade na **mesma OS** | Não é status da OS. É uma **versão da OP** só com as peças reprovadas. O cliente continua vendo Controle de qualidade |
 
 ## 4. Regras do catálogo de status
@@ -51,14 +51,20 @@ e vai por WhatsApp     papel)                 impressa no bolso          termina
 
 ## 5. Reconserto e garantia
 
-Há **dois prazos diferentes**, ambos contados **da retirada pelo cliente** (decidido em 05/10/2026):
+Há **dois prazos diferentes**, ambos contados **da retirada pelo cliente** (decidido em 05/10/2026), pelos parâmetros da Conta:
 
-- **7 dias corridos** para reclamar de **ajuste** (ficou curto ou largo).
-- **90 dias** de **garantia de defeito de execução** (descosturou, a barra se desfez), negociável no balcão.
+- Prazo de **ajuste** (reconserto; padrão 7 dias).
+- Prazo de **execução** (garantia de defeito; o André quer 90; o cadastro da Conta é que vale).
 
-**Dentro do prazo:** o atendente analisa e cria **uma nova OS sem valor**, **vinculada à OS original**, mostrando o **técnico que fez a primeira vez** (vale para os dois tipos). Isso mede a eficiência por técnico.
+Isto **não** é a versão `-A` da sacola e **não** é a refação da qualidade.
 
-**Depois do prazo:** a OS nova é **cobrada**. O **gerente pode liberar sem valor, com motivo**.
+**Entregar** (provisório): Pronto para retirada → **Retirado**, com data de retirada.
+
+**Cliente voltou:** a atendente marca as peças. Nasce **OS filha com placa nova**, mesmo cliente, mesmo técnico, ligada à original.
+
+- Dentro do ajuste: sem valor; OP com **Reconserto**.
+- Depois do ajuste e dentro da execução: sem valor; OP com **Em garantia**.
+- Fora dos dois: **cobrada** (Pago / Pagar na retirada). Liberação do gerente com motivo **ainda não**.
 
 ## 6. Prazo de entrega
 

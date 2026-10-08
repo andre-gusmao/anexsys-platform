@@ -17,6 +17,7 @@ test('pick bag queue keeps production steps and skips quality review', () => {
   assert.equal(pickBagAction({ status: 'quality', bagClosed: true }), null);
   assert.equal(pickBagAction({ status: 'in_rework', bagClosed: true }), null);
   assert.equal(pickBagAction({ status: 'ready_for_pickup', bagClosed: true }), null);
+  assert.equal(pickBagAction({ status: 'picked_up', bagClosed: true }), null);
 });
 
 test('pick bag filters by number and status after queue rule', () => {

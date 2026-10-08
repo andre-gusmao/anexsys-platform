@@ -35,6 +35,7 @@ export type OpPrintView = {
     openedAt?: string;
     promisedDeliveryDate?: string;
     promisedDeliveryTime?: string | null;
+    returnKind?: string | null;
   };
   customer: {
     legalName: string;
