@@ -2409,7 +2409,6 @@ export function ServiceOrdersWorkspace() {
                               {sequence}
                             </td>
                             <td>
-                              <HoverPeek text={row.itemType}>
                               <SmartLookup
                                 compact
                                 canCreate={canWrite}
@@ -2458,10 +2457,8 @@ export function ServiceOrdersWorkspace() {
                                 searchPlaceholder="Digite o produto"
                                 value={row.productId}
                               />
-                              </HoverPeek>
                             </td>
                             <td>
-                              <HoverPeek text={row.description}>
                               <SmartLookup
                                 compact
                                 canCreate={canWrite && Boolean(row.productId)}
@@ -2522,7 +2519,6 @@ export function ServiceOrdersWorkspace() {
                                     : undefined
                                 }
                               />
-                              </HoverPeek>
                             </td>
                             <td>
                               <HoverPeek text={row.complement}>
