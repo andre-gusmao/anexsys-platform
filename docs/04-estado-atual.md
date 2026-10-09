@@ -19,7 +19,7 @@
 | Financeiro | Existe | **Não existe** | Idem | Maquininha só como interface, sem integração real |
 | Fiscal | Só esqueleto | **Não existe** | Idem | Nenhum adaptador real |
 | Retirada por terceiros e custódia | Existe | **Não existe** | Idem | Aviso "enviado" é só um registro, não envio |
-| Concierge e portal do cliente | Existe | **Não existe** | Idem | Link de aprovação exige login, que o cliente não tem |
+| Concierge e portal do cliente | Existe | Página pública `/os/{token}` | Unitários passam | Acompanhamento sem login: status público, peças sem preço, **Recebi** quando a atendente inicia a retirada. WhatsApp oficial ainda não envia o link; a atendente copia o endereço na OS |
 | **WhatsApp** | **Não existe** | **Não existe** | n/a | Só há o campo de telefone. Registros marcados como "enviado" **não foram enviados** |
 | Migração/importação de dados | **Não existe** | **Não existe** | n/a | |
 | LGPD (consentimento, retenção) | **Não existe** | **Não existe** | n/a | |

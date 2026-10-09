@@ -8,6 +8,7 @@ type Props = {
   pickup: PickupSummary | null;
   saving?: boolean;
   onClose: () => void;
+  onCopyLink?: () => Promise<void> | void;
   onStart: () => Promise<void> | void;
   onComplete: (input: {
     method: "paper" | "attendant";
@@ -28,7 +29,7 @@ async function readPhoto(file: File): Promise<{ mimeType: string; contentBase64:
   return { mimeType: file.type || "image/jpeg", contentBase64, fileName: file.name };
 }
 
-export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onStart, onComplete }: Props) {
+export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onCopyLink, onStart, onComplete }: Props) {
   const [photo, setPhoto] = useState<{ mimeType: string; contentBase64: string; fileName: string } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +78,11 @@ export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onStar
         <button className="button" disabled={saving} onClick={() => void onStart()} type="button">
           {saving ? "Abrindo…" : pickup?.windowOpen ? "Renovar janela" : "Iniciar retirada"}
         </button>
+        {onCopyLink ? (
+          <button className="button-secondary" disabled={saving} onClick={() => void onCopyLink()} type="button">
+            Copiar link do cliente
+          </button>
+        ) : null}
       </div>
       <label className="field">
         <span>Foto da OP assinada</span>

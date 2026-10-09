@@ -522,6 +522,23 @@ textarea {
   background: #fff;
 }
 
+.public-os {
+  max-width: 440px;
+}
+
+.public-os__status {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f4c5c;
+}
+
+.public-os__items {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 16px;
+  padding-left: 18px;
+}
+
 .os-pickup-photo {
   display: block;
   max-width: 280px;

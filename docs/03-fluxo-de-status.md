@@ -49,7 +49,7 @@ e vai por WhatsApp     papel)                 impressa no bolso          termina
 6. **Cliente.** Vê **a última fase pública atingida**, com as datas, no link público. Em "Reprovado pela qualidade" continua vendo "Controle de qualidade".
 7. **Refação.** Só as peças reprovadas voltam para a esteira, numa **nova versão da OP** (versão 2, 3…). A OS original **continua em Controle de qualidade**. Quando a sacola retorna, o revisor puxa a **mesma OS**; a tela mostra a versão da refação para aprovar ou reprovar de novo. 100% aprovado avança a OS; nova reprovação gera a próxima OP.
 8. **Aviso de pagamento.** Se há saldo em aberto, a tela da retirada mostra **"Falta pagamento"**. **Não é status.** O saldo bloqueia a entrega, e o **gerente libera com motivo**.
-9. **Mensagens.** O cliente recebe WhatsApp **somente** em **Em aberto** (OS aberta) e **Pronto para retirada**. Só envia com **consentimento registrado**.
+9. **Mensagens.** O combinado antigo era WhatsApp só em **Em aberto** e **Pronto para retirada**. O **link público** (`/os/{token}`) já mostra o status e o **Recebi**. O envio oficial do WhatsApp entra depois; a atendente copia o link na OS. Só envia com **consentimento registrado**.
 
 ## 5. Reconserto e garantia
 

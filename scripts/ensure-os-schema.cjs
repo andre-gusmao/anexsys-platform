@@ -176,6 +176,19 @@ async function main() {
       ON service_order_pickups (service_order_id)
     `);
     await client.query(`
+      ALTER TABLE IF EXISTS service_orders
+      ADD COLUMN IF NOT EXISTS public_token uuid
+    `);
+    await client.query(`
+      UPDATE service_orders
+      SET public_token = gen_random_uuid()
+      WHERE public_token IS NULL
+    `);
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_service_orders_public_token
+      ON service_orders (public_token)
+    `);
+    await client.query(`
       UPDATE service_orders
       SET group_id = id
       WHERE group_id IS NULL
@@ -191,7 +204,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada com evidência e retorno do cliente).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada, link público e retorno do cliente).');
   } finally {
     await client.end();
   }

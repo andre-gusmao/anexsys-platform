@@ -49,7 +49,9 @@ import {
   pickupWindowExpiresAt,
   type PickupMethod,
 } from './service-order-pickup';
+import { publicCustomerFirstName, publicOsStatusLabel } from './service-order-public';
 import { buildClientReturnPreview, osReturnKindLabel, todayDateOnly } from './service-order-return';
+import { TenantContext } from 'src/platform/tenancy/tenant-context';
 import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, withVersionSuffix } from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
@@ -166,6 +168,7 @@ export class ServiceOrderService {
       deliverySurchargeValue: dto.deliverySurchargeMethod ? this.formatMoney(normalizedSurchargeValue) : null,
       commercialNotes: dto.commercialNotes?.trim() || null,
       customerNotes: dto.customerNotes?.trim() || null,
+      publicToken: randomUUID(),
       status: ServiceOrderStatus.OPEN,
       totalValue: orderTotals,
       discountValue: dto.discountValue !== undefined ? this.formatMoney(normalizedDiscountValue) : null,
@@ -389,6 +392,54 @@ export class ServiceOrderService {
     };
   }
 
+  async getPublicTrackingView(publicToken: string) {
+    const serviceOrder = await this.serviceOrderRepository.findByPublicToken(publicToken);
+    if (!serviceOrder) {
+      throw new EntityNotFoundError('ServiceOrder', publicToken);
+    }
+    return TenantContext.run({ tenantId: serviceOrder.tenantId, bypass: false }, async () => {
+      const [details, tenant] = await Promise.all([
+        this.getDetails(serviceOrder.tenantId, serviceOrder.id),
+        this.tenantService.getById(serviceOrder.tenantId),
+      ]);
+      const pickup = details.pickup;
+      return {
+        orderNo: details.serviceOrder.orderNo,
+        companyName: tenant.displayName || tenant.legalName,
+        customerFirstName: publicCustomerFirstName(details.customer.legalName),
+        status: details.serviceOrder.status,
+        statusLabel: publicOsStatusLabel(details.serviceOrder.status),
+        openedAt: details.serviceOrder.openedAt,
+        promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
+        promisedDeliveryTime: details.serviceOrder.promisedDeliveryTime ?? null,
+        items: details.items.map((item) => ({
+          itemNo: item.itemNo,
+          itemType: item.itemType,
+          description: item.description,
+          complement: item.complement ?? null,
+        })),
+        recebiReady: Boolean(pickup?.recebiReady),
+        pickedUp: details.serviceOrder.status === ServiceOrderStatus.PICKED_UP,
+        pickupMethod: pickup?.method ?? null,
+        paymentLabel: 'Pagar na retirada',
+      };
+    });
+  }
+
+  async confirmPublicRecebi(
+    publicToken: string,
+    evidence?: { userAgent?: string | null; ip?: string | null },
+  ) {
+    const serviceOrder = await this.serviceOrderRepository.findByPublicToken(publicToken);
+    if (!serviceOrder) {
+      throw new EntityNotFoundError('ServiceOrder', publicToken);
+    }
+    return TenantContext.run({ tenantId: serviceOrder.tenantId, bypass: false }, async () => {
+      await this.confirmPickupFromLink(serviceOrder.tenantId, serviceOrder.id, evidence);
+      return this.getPublicTrackingView(publicToken);
+    });
+  }
+
   async latestProofNotesByItem(serviceOrderId: string): Promise<Map<string, string>> {
     return latestProofNoteByItem(await this.listProofNotes(serviceOrderId));
   }
@@ -446,6 +497,7 @@ export class ServiceOrderService {
       technicalMeasurementResponsibleActorId: source.technicalMeasurementResponsibleActorId,
       deliverySurchargeMethod: source.deliverySurchargeMethod,
       deliverySurchargeValue: source.deliverySurchargeValue,
+      publicToken: randomUUID(),
       commercialNotes: source.commercialNotes,
       customerNotes: source.customerNotes,
       status: ServiceOrderStatus.OPEN,
@@ -1394,6 +1446,7 @@ export class ServiceOrderService {
         deliverySurchargeValue: charged ? origin.deliverySurchargeValue : null,
         commercialNotes,
         customerNotes: origin.customerNotes,
+        publicToken: randomUUID(),
         status: ServiceOrderStatus.OPEN,
         totalValue: orderTotals,
         discountValue: charged && origin.discountValue != null ? origin.discountValue : null,

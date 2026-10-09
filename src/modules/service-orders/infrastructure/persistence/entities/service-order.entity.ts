@@ -22,6 +22,9 @@ export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'order_no', type: 'varchar', length: 50 })
   orderNo!: string;
 
+  @Column({ name: 'public_token', type: 'uuid', nullable: true })
+  publicToken!: string | null;
+
   @Column({ name: 'group_id', type: 'uuid', nullable: true })
   groupId!: string | null;
 

@@ -68,6 +68,7 @@ describe('applyPendingMigrations', () => {
       executedQueries.some((sql) => sql.includes('CREATE TABLE IF NOT EXISTS service_order_pickups')),
       true,
     );
+    assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS public_token')), true);
   });
 
   it('still repairs the schema when TypeORM cannot load the migration files', async () => {

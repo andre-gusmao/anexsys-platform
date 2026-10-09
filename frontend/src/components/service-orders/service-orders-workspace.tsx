@@ -81,6 +81,7 @@ type ServiceOrderRecord = {
   actualDeliveryDate?: string | null;
   actualDeliveryTime?: string | null;
   bagClosed?: boolean;
+  publicToken?: string | null;
   actualPickupDate?: string | null;
   originServiceOrderId?: string | null;
   returnKind?: string | null;
@@ -744,6 +745,21 @@ export function ServiceOrdersWorkspace() {
     },
     [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
   );
+
+  const copyPublicLink = useCallback(async () => {
+    const token = selectedOrder?.publicToken;
+    if (!token) {
+      setMessage("Esta OS ainda não tem o link do cliente. Salve de novo depois de atualizar o sistema.");
+      return;
+    }
+    const url = `${window.location.origin}/os/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setMessage(`Link do cliente copiado: ${url}`);
+    } catch {
+      setMessage(url);
+    }
+  }, [selectedOrder?.publicToken]);
 
   const handleStartPickup = useCallback(async () => {
     if (!canWrite || !selectedOrder) {
@@ -1709,6 +1725,14 @@ export function ServiceOrdersWorkspace() {
                       ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola trava; a OP só sai ao salvar depois.`
                       : "Abra uma OS na grade ou cadastre uma nova."}
               </p>
+              {!showCreateForm && selectedOrder?.publicToken ? (
+                <p className="table-subtle">
+                  Link do cliente (sem WhatsApp ainda):{" "}
+                  <button className="button-ghost" onClick={() => void copyPublicLink()} type="button">
+                    Copiar link
+                  </button>
+                </p>
+              ) : null}
               {!showCreateForm && details?.origin ? (
                 <p className="table-subtle">
                   Retorno{osReturnKindLabel(selectedOrder?.returnKind) ? ` (${osReturnKindLabel(selectedOrder?.returnKind)})` : ""} da{" "}
@@ -1801,6 +1825,7 @@ export function ServiceOrdersWorkspace() {
               pickup={details?.pickup ?? null}
               saving={saving}
               onClose={() => setPickupPickerOpen(false)}
+              onCopyLink={() => copyPublicLink()}
               onStart={() => handleStartPickup()}
               onComplete={(input) => handleCompletePickup(input)}
             />

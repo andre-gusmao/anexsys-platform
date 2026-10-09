@@ -32,6 +32,10 @@ export class ServiceOrderRepository {
     return this.repository.findOne({ where: { id, isDeleted: false } });
   }
 
+  async findByPublicToken(publicToken: string): Promise<ServiceOrderEntity | null> {
+    return this.repository.findOne({ where: { publicToken, isDeleted: false } });
+  }
+
   async findActiveFloorBags(tenantId: string, branchId: string, excludeId: string): Promise<ServiceOrderEntity[]> {
     return this.repository.find({
       where: {

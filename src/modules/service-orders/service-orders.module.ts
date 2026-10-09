@@ -11,6 +11,7 @@ import { AtelierCatalogService } from './application/atelier-catalog/atelier-cat
 import { DeliveryDateService } from './application/delivery-date/delivery-date.service';
 import { ServiceOrderService } from './application/service-order/service-order.service';
 import { AtelierServicesController, GarmentProductsController } from './http/atelier-catalog.controller';
+import { PublicServiceOrdersController } from './http/public-service-orders.controller';
 import { ServiceOrdersController } from './http/service-orders.controller';
 import { AtelierServiceEntity } from './infrastructure/persistence/entities/atelier-service.entity';
 import { BusinessCalendarDayEntity } from './infrastructure/persistence/entities/business-calendar-day.entity';
@@ -46,7 +47,7 @@ import { ServiceOrderRepository } from './infrastructure/persistence/repositorie
     CompanyModule,
     GovernanceModule,
   ],
-  controllers: [ServiceOrdersController, GarmentProductsController, AtelierServicesController],
+  controllers: [ServiceOrdersController, PublicServiceOrdersController, GarmentProductsController, AtelierServicesController],
   providers: [
     AtelierCatalogService,
     DeliveryDateService,

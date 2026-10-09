@@ -1064,4 +1064,81 @@ describe('ServiceOrderService', () => {
     assert.equal(items[0]?.unitPrice, null);
     assert.equal(child.serviceOrder.orderNo, 'AAA000009');
   });
+
+  it('exposes a public tracking view without prices and confirms Recebi only with an open window', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'ready_for_pickup',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      publicToken: '11111111-1111-4111-8111-111111111111',
+      openedAt: '2026-10-03T10:00:00.000Z',
+      promisedDeliveryDate: '2026-10-18',
+      promisedDeliveryTime: '18:00',
+      actualPickupDate: null,
+      commercialResponsibleActorId: 'user-1',
+      technicalMeasurementResponsibleActorId: 'user-1',
+    };
+    const pickups: Array<Record<string, unknown>> = [];
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return source;
+        },
+        async findByPublicToken(token: string) {
+          return token === source.publicToken ? source : null;
+        },
+        async findByGroupId() {
+          return [source];
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+        async save(payload: Record<string, unknown>) {
+          Object.assign(source, payload);
+          return source;
+        },
+      } as never,
+      { async findByServiceOrder() { return [{ id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', complement: 'barra', unitPrice: '90.00' }]; } } as never,
+      { async getById() { return { id: 'tenant-1', displayName: 'Ateliê A', legalName: 'Ateliê A Ltda', maxPiecesPerBag: 5, warrantyAdjustmentPeriodDays: 7, warrantyExecutionPeriodDays: 90 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1', legalName: 'Sandra Legramanti', phone: '11988887777' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE, displayName: 'Ana' }; } } as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+      {} as never,
+      {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          pickups.push({ ...payload });
+          return pickups[pickups.length - 1];
+        },
+        async findLatestByServiceOrder() {
+          return pickups[pickups.length - 1] ?? null;
+        },
+      } as never,
+    );
+
+    const closed = await service.getPublicTrackingView(source.publicToken);
+    assert.equal(closed.customerFirstName, 'Sandra');
+    assert.equal(closed.statusLabel, 'Pronto para retirada');
+    assert.equal(closed.recebiReady, false);
+    assert.equal('unitPrice' in closed.items[0], false);
+    assert.doesNotMatch(JSON.stringify(closed), /90/);
+
+    await service.startPickup('tenant-1', 'so-1', 'user-1');
+    const opened = await service.getPublicTrackingView(source.publicToken);
+    assert.equal(opened.recebiReady, true);
+
+    const confirmed = await service.confirmPublicRecebi(source.publicToken, { userAgent: 'Mozilla', ip: '127.0.0.1' });
+    assert.equal(confirmed.pickedUp, true);
+    assert.equal(confirmed.statusLabel, 'Retirado');
+  });
 });
