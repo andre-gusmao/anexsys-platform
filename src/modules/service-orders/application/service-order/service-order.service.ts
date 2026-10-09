@@ -65,7 +65,6 @@ import {
 import {
   osGroupPaymentFromMembers,
   osHasPendingProcessSibling,
-  osListPaymentFromTotals,
   osPayLockedOnParent,
 } from './service-order-finance';
 import { publicCustomerFirstName, publicOsStatusLabel } from './service-order-public';
