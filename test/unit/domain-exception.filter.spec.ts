@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
 import { DomainExceptionFilter } from 'src/platform/http/domain-exception.filter';
 
 function createHost(request: { method?: string; url?: string } = {}) {
@@ -100,6 +100,19 @@ describe('DomainExceptionFilter', () => {
     assert.equal(result.statusCode, 500);
     assert.match(String((result.body as { message?: string }).message), /banco local está incompleto/);
     assert.match(String((result.body as { message?: string }).message), /start:dev/);
+  });
+
+  it('translates a photo that exceeds the JSON body limit', () => {
+    const { host, result } = createHost({ method: 'POST', url: '/api/v1/service-orders/so-1/approval' });
+
+    new DomainExceptionFilter().catch(new PayloadTooLargeException('request entity too large'), host as never);
+
+    assert.equal(result.statusCode, 413);
+    assert.match(String((result.body as { message?: string }).message), /foto ficou grande demais/);
+
+    new DomainExceptionFilter().catch(Object.assign(new Error('request entity too large'), { status: 413 }), host as never);
+    assert.equal(result.statusCode, 413);
+    assert.match(String((result.body as { message?: string }).message), /foto ficou grande demais/);
   });
 
   it('translates a tsx customer search crash into a recoverable message', () => {

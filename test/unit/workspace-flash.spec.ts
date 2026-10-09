@@ -12,6 +12,15 @@ test('marks failures as error flashes and confirmations as ok', () => {
   assert.equal(inferFlashTone("Empresa atualizada."), 'ok');
 });
 
+test('translates a photo that the server rejected as too large', () => {
+  const message = describeWorkspaceError(
+    new Error('request entity too large'),
+    'A aprovação não pôde ser registrada.',
+  );
+  assert.match(message, /foto ficou grande demais/);
+  assert.equal(inferFlashTone(message), 'error');
+});
+
 test('translates a missing database column into VS Code restart steps', () => {
   const message = describeWorkspaceError(
     new Error('coluna service_order.promised_delivery_time não existe'),

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { formatPickupWindow, type PickupSummary } from "@/components/service-orders/os-pickup";
+import { readOsPhotoFile } from "@/components/service-orders/os-photo";
 
 type Props = {
   orderNo: string;
@@ -16,19 +17,6 @@ type Props = {
   }) => Promise<void> | void;
 };
 
-async function readPhoto(file: File): Promise<{ mimeType: string; contentBase64: string; fileName: string }> {
-  const contentBase64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.slice(result.indexOf(",") + 1) : result);
-    };
-    reader.onerror = () => reject(new Error("A foto da OP assinada não pôde ser lida."));
-    reader.readAsDataURL(file);
-  });
-  return { mimeType: file.type || "image/jpeg", contentBase64, fileName: file.name };
-}
-
 export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onCopyLink, onStart, onComplete }: Props) {
   const [photo, setPhoto] = useState<{ mimeType: string; contentBase64: string; fileName: string } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -42,7 +30,7 @@ export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onCopy
       return;
     }
     try {
-      const next = await readPhoto(file);
+      const next = await readOsPhotoFile(file, "A foto da OP assinada não pôde ser lida.");
       setPhoto(next);
       setPreview(`data:${next.mimeType};base64,${next.contentBase64}`);
       setError(null);

@@ -21,8 +21,17 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
+      if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
+        response.status(status).json({ message: this.photoTooLargeMessage() });
+        return;
+      }
       const friendlyMessage = this.getFriendlyHttpMessage(status, exception.getResponse(), request);
       response.status(status).json(friendlyMessage ? { message: friendlyMessage } : exception.getResponse());
+      return;
+    }
+
+    if (/entity too large|PayloadTooLarge/i.test(exception instanceof Error ? exception.message : '')) {
+      response.status(HttpStatus.PAYLOAD_TOO_LARGE).json({ message: this.photoTooLargeMessage() });
       return;
     }
 
@@ -81,5 +90,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
 
     return 'The request could not be completed. Some informed fields are missing or invalid. Review the data and try again.';
+  }
+
+  private photoTooLargeMessage() {
+    return 'A foto ficou grande demais para enviar. O sistema já reduz a imagem; tire outra um pouco mais de perto.';
   }
 }

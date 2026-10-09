@@ -66,6 +66,9 @@ export function inferFlashTone(message: string): FlashTone {
 
 export function describeWorkspaceError(error: unknown, fallback: string): string {
   const raw = error instanceof Error ? error.message : "";
+  if (/entity too large|PayloadTooLarge/i.test(raw)) {
+    return "A foto ficou grande demais para enviar. O sistema já reduz a imagem; tire outra um pouco mais de perto.";
+  }
   if (MISSING_SCHEMA_HINT.test(raw)) {
     return "O banco local está incompleto. No VS Code, no terminal do start:dev, aperte Ctrl+C e rode npm run start:dev de novo.";
   }
