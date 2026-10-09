@@ -6,6 +6,7 @@ export type OsPrintView = {
   serviceOrderId: string;
   orderNo: string;
   status: string;
+  statusLabel?: string;
   openedAt: string;
   promisedDeliveryDate: string;
   promisedDeliveryTime?: string | null;
@@ -101,7 +102,7 @@ export function reservePrintWindow() {
   return popup;
 }
 
-const DEFAULT_PRINT_CSS = `
+export const OS_PRINT_CSS = `
   body { font-family: Arial, Helvetica, sans-serif; color: #162033; margin: 24px; }
   h1 { font-size: 22px; margin: 0 0 6px; }
   p, td, th { font-size: 13px; }
@@ -304,7 +305,7 @@ export const OP_A5_PRINT_CSS = `
   @media print { body { margin: 0; } }
 `;
 
-function writePrintWindow(popup: Window | null, title: string, body: string, css = DEFAULT_PRINT_CSS) {
+function writePrintWindow(popup: Window | null, title: string, body: string, css = OS_PRINT_CSS) {
   if (!popup) {
     throw new Error(
       "O navegador bloqueou a janela de impressão. Permita pop-ups para este site e reimprima a OP pelo menu ⋮.",
@@ -445,7 +446,7 @@ export function buildProductionOrderPrintHtml(
   </article>`;
 }
 
-export function printServiceOrderDocument(view: OsPrintView, companyName: string, reservedWindow?: Window | null) {
+export function buildServiceOrderPrintHtml(view: OsPrintView, companyName: string) {
   const rows = view.items
     .map(
       (item, index) => `<tr>
@@ -460,22 +461,23 @@ export function printServiceOrderDocument(view: OsPrintView, companyName: string
       </tr>`,
     )
     .join("");
+  const statusLabel = view.statusLabel ?? osStatusLabel(view.status);
 
-  openPrintWindow(
-    `OS ${view.orderNo}`,
-    `<p class="muted">${escapeHtml(companyName)}</p>
+  return `<p class="muted">${escapeHtml(companyName)}</p>
      <h1>Ordem de serviço ${escapeHtml(view.orderNo)}</h1>
      <p>Cliente: <strong>${escapeHtml(view.customer.legalName)}</strong></p>
-     <p>Status: ${escapeHtml(osStatusLabel(view.status))} · Tipo: ${escapeHtml(osDeliveryTypeLabel(view.deliveryType))}</p>
+     <p>Status: ${escapeHtml(statusLabel)} · Tipo: ${escapeHtml(osDeliveryTypeLabel(view.deliveryType))}</p>
      <p>Entrada: ${escapeHtml(formatDateTime(view.openedAt))} · Saída: ${escapeHtml(formatDateTime(view.promisedDeliveryDate, view.promisedDeliveryTime))}</p>
      <table>
        <thead><tr><th title="Sequência">S</th><th>Produto</th><th>Serviço</th><th>Serviço a realizar</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
        <tbody>${rows}</tbody>
      </table>
      <p class="total">Valor total ${escapeHtml(view.totalValue ? formatOsMoney(Number(view.totalValue)) : "R$ 0,00")}</p>
-     ${view.customerNotes ? `<div class="notes"><strong>Observação</strong><br />${escapeHtml(view.customerNotes)}</div>` : ""}`,
-    reservedWindow,
-  );
+     ${view.customerNotes ? `<div class="notes"><strong>Observação</strong><br />${escapeHtml(view.customerNotes)}</div>` : ""}`;
+}
+
+export function printServiceOrderDocument(view: OsPrintView, companyName: string, reservedWindow?: Window | null) {
+  openPrintWindow(`OS ${view.orderNo}`, buildServiceOrderPrintHtml(view, companyName), reservedWindow);
 }
 
 export function printProductionOrderDocument(

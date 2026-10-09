@@ -393,33 +393,30 @@ export class ServiceOrderService {
   }
 
   async getPublicTrackingView(publicToken: string) {
-    const serviceOrder = await this.serviceOrderRepository.findByPublicToken(publicToken);
-    if (!serviceOrder) {
-      throw new EntityNotFoundError('ServiceOrder', publicToken);
-    }
-    return TenantContext.run({ tenantId: serviceOrder.tenantId, bypass: false }, async () => {
-      const [details, tenant] = await Promise.all([
-        this.getDetails(serviceOrder.tenantId, serviceOrder.id),
+    return TenantContext.run({ tenantId: null, bypass: true }, async () => {
+      const serviceOrder = await this.loadPublicServiceOrder(publicToken);
+      const [items, customer, tenant] = await Promise.all([
+        this.serviceOrderItemRepository.findByServiceOrder(serviceOrder.id),
+        this.customerService.getById(serviceOrder.customerId, serviceOrder.tenantId),
         this.tenantService.getById(serviceOrder.tenantId),
       ]);
-      const pickup = details.pickup;
+      const pickup = await this.buildPickupSummary(serviceOrder, customer.phone ?? null);
       return {
-        orderNo: details.serviceOrder.orderNo,
+        orderNo: serviceOrder.orderNo,
         companyName: tenant.displayName || tenant.legalName,
-        customerFirstName: publicCustomerFirstName(details.customer.legalName),
-        status: details.serviceOrder.status,
-        statusLabel: publicOsStatusLabel(details.serviceOrder.status),
-        openedAt: details.serviceOrder.openedAt,
-        promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
-        promisedDeliveryTime: details.serviceOrder.promisedDeliveryTime ?? null,
-        items: details.items.map((item) => ({
-          itemNo: item.itemNo,
-          itemType: item.itemType,
-          description: item.description,
-          complement: item.complement ?? null,
-        })),
+        customerFirstName: publicCustomerFirstName(customer.legalName),
+        customerName: customer.legalName,
+        status: serviceOrder.status,
+        statusLabel: publicOsStatusLabel(serviceOrder.status),
+        openedAt: serviceOrder.openedAt,
+        promisedDeliveryDate: serviceOrder.promisedDeliveryDate,
+        promisedDeliveryTime: serviceOrder.promisedDeliveryTime ?? null,
+        deliveryType: serviceOrder.deliveryType,
+        items: this.mapPublicPrintItems(items),
+        totalValue: serviceOrder.totalValue,
+        customerNotes: serviceOrder.customerNotes,
         recebiReady: Boolean(pickup?.recebiReady),
-        pickedUp: details.serviceOrder.status === ServiceOrderStatus.PICKED_UP,
+        pickedUp: serviceOrder.status === ServiceOrderStatus.PICKED_UP,
         pickupMethod: pickup?.method ?? null,
         paymentLabel: 'Pagar na retirada',
       };
@@ -430,14 +427,45 @@ export class ServiceOrderService {
     publicToken: string,
     evidence?: { userAgent?: string | null; ip?: string | null },
   ) {
-    const serviceOrder = await this.serviceOrderRepository.findByPublicToken(publicToken);
-    if (!serviceOrder) {
-      throw new EntityNotFoundError('ServiceOrder', publicToken);
-    }
-    return TenantContext.run({ tenantId: serviceOrder.tenantId, bypass: false }, async () => {
+    return TenantContext.run({ tenantId: null, bypass: true }, async () => {
+      const serviceOrder = await this.loadPublicServiceOrder(publicToken);
       await this.confirmPickupFromLink(serviceOrder.tenantId, serviceOrder.id, evidence);
       return this.getPublicTrackingView(publicToken);
     });
+  }
+
+  private async loadPublicServiceOrder(publicToken: string) {
+    const token = publicToken?.trim() ?? '';
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) {
+      throw new EntityNotFoundError('Este link não foi encontrado.');
+    }
+    const serviceOrder = await this.serviceOrderRepository.findByPublicToken(token);
+    if (!serviceOrder) {
+      throw new EntityNotFoundError('Este link não foi encontrado.');
+    }
+    return serviceOrder;
+  }
+
+  private mapPublicPrintItems(items: ServiceOrderItemEntity[]) {
+    return items
+      .filter((item) => item.status !== ServiceOrderItemStatus.CANCELLED && !item.isDeleted)
+      .map((item) => {
+        const parsedQuantity = Number(item.quantity);
+        const quantity = Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1;
+        const unitPrice = item.unitPrice === null || item.unitPrice === undefined ? null : Number(item.unitPrice);
+        const discountValue = Number(item.discountValue ?? 0);
+        const subtotal = unitPrice === null || !Number.isFinite(unitPrice) ? null : Math.max(quantity * unitPrice - discountValue, 0);
+        return {
+          itemNo: item.itemNo,
+          itemType: item.itemType,
+          description: item.description,
+          complement: item.complement ?? null,
+          quantity: item.quantity ?? this.formatQuantity(quantity),
+          unitPrice: item.unitPrice ?? null,
+          discountValue: item.discountValue ?? null,
+          subtotal: subtotal === null ? null : this.formatMoney(subtotal),
+        };
+      });
   }
 
   async latestProofNotesByItem(serviceOrderId: string): Promise<Map<string, string>> {

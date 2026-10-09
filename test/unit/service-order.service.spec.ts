@@ -1065,7 +1065,7 @@ describe('ServiceOrderService', () => {
     assert.equal(child.serviceOrder.orderNo, 'AAA000009');
   });
 
-  it('exposes a public tracking view without prices and confirms Recebi only with an open window', async () => {
+  it('exposes the printed OS on the public link and confirms Recebi only with an open window', async () => {
     const source = {
       id: 'so-1',
       tenantId: 'tenant-1',
@@ -1075,6 +1075,9 @@ describe('ServiceOrderService', () => {
       bagClosed: true,
       orderNo: 'AAA000001',
       publicToken: '11111111-1111-4111-8111-111111111111',
+      deliveryType: 'Standard',
+      totalValue: '90.00',
+      customerNotes: 'Barra original',
       openedAt: '2026-10-03T10:00:00.000Z',
       promisedDeliveryDate: '2026-10-18',
       promisedDeliveryTime: '18:00',
@@ -1128,10 +1131,13 @@ describe('ServiceOrderService', () => {
 
     const closed = await service.getPublicTrackingView(source.publicToken);
     assert.equal(closed.customerFirstName, 'Sandra');
+    assert.equal(closed.customerName, 'Sandra Legramanti');
     assert.equal(closed.statusLabel, 'Pronto para retirada');
     assert.equal(closed.recebiReady, false);
-    assert.equal('unitPrice' in closed.items[0], false);
-    assert.doesNotMatch(JSON.stringify(closed), /90/);
+    assert.equal(closed.items[0].unitPrice, '90.00');
+    assert.equal(closed.items[0].subtotal, '90.00');
+    assert.equal(closed.totalValue, '90.00');
+    assert.equal(closed.customerNotes, 'Barra original');
 
     await service.startPickup('tenant-1', 'so-1', 'user-1');
     const opened = await service.getPublicTrackingView(source.publicToken);
@@ -1140,5 +1146,58 @@ describe('ServiceOrderService', () => {
     const confirmed = await service.confirmPublicRecebi(source.publicToken, { userAgent: 'Mozilla', ip: '127.0.0.1' });
     assert.equal(confirmed.pickedUp, true);
     assert.equal(confirmed.statusLabel, 'Retirado');
+  });
+
+  it('opens the public OS without loading attendant identity or audit history', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      customerId: 'customer-1',
+      status: 'in_production',
+      orderNo: 'AAA000001',
+      publicToken: '11111111-1111-4111-8111-111111111111',
+      deliveryType: 'Standard',
+      totalValue: '40.00',
+      customerNotes: null,
+      openedAt: '2026-10-03T10:00:00.000Z',
+      promisedDeliveryDate: '2026-10-18',
+      promisedDeliveryTime: null,
+    };
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findByPublicToken(token: string) {
+          return token === source.publicToken ? source : null;
+        },
+      } as never,
+      { async findByServiceOrder() { return [{ id: 'item-1', itemNo: 1, itemType: 'Calça', description: 'Bainha', unitPrice: '40.00' }]; } } as never,
+      { async getById() { return { id: 'tenant-1', displayName: 'Ateliê A', legalName: 'Ateliê A Ltda' }; } } as never,
+      {} as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', legalName: 'Sandra Legramanti', phone: null }; } } as never,
+      {
+        async getById() {
+          throw new Error('public tracking must not load the attendant identity');
+        },
+      } as never,
+      {} as never,
+      {
+        async listByEntity() {
+          throw new Error('public tracking must not load the audit trail');
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {
+        async findLatestByServiceOrder() {
+          return null;
+        },
+      } as never,
+    );
+
+    const view = await service.getPublicTrackingView(source.publicToken);
+    assert.equal(view.orderNo, 'AAA000001');
+    assert.equal(view.statusLabel, 'Em produção');
+    assert.equal(view.items[0].unitPrice, '40.00');
+    await assert.rejects(() => service.getPublicTrackingView('not-a-token'), /Este link não foi encontrado/);
   });
 });

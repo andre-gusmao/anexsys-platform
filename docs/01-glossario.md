@@ -36,7 +36,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Versão da OS** | Continuação ligada da mesma OS quando o cliente trouxe mais peças do que o limite **na mesma visita**. A primeira é `AAA000001`; as seguintes são `AAA000001-A`, `AAA000001-B`. **Não** é reconserto nem garantia | `service_orders.group_id` / `version_suffix` |
 | **Retirada** | No balcão: a atendente **inicia a retirada** (janela de 10 min para o **Recebi** no link). Cliente tecnológico confirma no link. Cliente sem celular assina a OP na caneta; a atendente anexa a foto e **Entregue assinado**. Se ninguém clicou, a atendente pode **Entregue** (baixa dela). API do WhatsApp entra depois | `POST /service-orders/:id/pickup/start` / `complete` |
 | **Recebi** | Botão do cliente no **mesmo link** da OS (`/os/{token}`). Só funciona com a janela aberta no balcão. Grava data, hora, número e o texto aceito. WhatsApp oficial ainda não envia o link | `GET/POST /public/service-orders/:token` |
-| **Link público** | Página sem login: primeiro nome, número da OS, status público, peças sem preço, **Recebi**. A atendente copia o endereço na OS | `service_orders.public_token` |
+| **Link público** | Página sem login com a **OS impressa** (peças, valores, observação do cliente), status público e **Recebi**. A atendente copia o endereço na OS | `service_orders.public_token` |
 | **Cliente voltou** | O cliente reclama depois da retirada. A atendente escolhe as peças e nasce uma **OS filha com placa nova**, ligada à original | `POST /service-orders/:id/client-return` |
 | **OS filha / retorno** | OS nova (`AAA000002`), não `-A`. Copia as peças escolhidas e o técnico original. Dentro do prazo sai sem valor; fora do prazo é cobrada | `origin_service_order_id` / `return_kind` |
 | **Controle de qualidade** | Tela em que o revisor abre a OS original e aprova ou reprova **peça a peça**, sem valores. O botão da lista é **Revisar**. 100% aprovado avança a OS para Pronto para retirada | `quality-reviews` |
@@ -111,7 +111,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Fila de mensagens** | As mensagens esperam numa fila e um "carteiro" as envia, com nova tentativa se falhar. Falhas vão para uma **lista de falhas** |
 | **Consentimento** | Autorização do cliente, registrada com data e responsável. Sem ele, não se envia mensagem |
 | **Controlador / operador (LGPD)** | O **ateliê** é o controlador dos dados dos clientes. O **ANEXSYS** é o operador |
-| **Dado mínimo no link** | O link público mostra só nome (sugestão: primeiro nome), número da OS, datas, status, serviços e situação do pagamento. Endereço só existe quando há entrega em domicílio |
+| **Dado mínimo no link** | O link público mostra a OS como na impressão: saudação pelo primeiro nome, documento com nome, número, datas, status público, serviços, valores e pagamento. Endereço só existe quando há entrega em domicílio |
 | **Isolamento por Conta** | Garantia de que uma Conta nunca vê dados de outra. Será reforçado no próprio banco de dados |
 | **Responsável (menor de idade)** | Roupa infantil só com responsável cadastrado. Fotos só da peça, nunca da criança |
 

@@ -1,30 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-
-type PublicTrackingView = {
-  orderNo: string;
-  companyName: string;
-  customerFirstName: string;
-  status: string;
-  statusLabel: string;
-  openedAt: string;
-  promisedDeliveryDate: string;
-  promisedDeliveryTime?: string | null;
-  items: Array<{ itemNo: number; itemType: string; description: string; complement?: string | null }>;
-  recebiReady: boolean;
-  pickedUp: boolean;
-  pickupMethod?: string | null;
-  paymentLabel: string;
-};
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
+import {
+  OS_PRINT_CSS,
+  buildServiceOrderPrintHtml,
+  printServiceOrderDocument,
+} from "@/components/service-orders/os-documents";
+import {
+  describePublicOsError,
+  toPublicOsPrintView,
+  type PublicOsTrackingView,
+} from "@/components/service-orders/public-os-view";
 
 async function publicJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/backend-api${path}`, {
@@ -45,7 +32,7 @@ async function publicJson<T>(path: string, init?: RequestInit): Promise<T> {
 export default function PublicOsPage() {
   const params = useParams<{ token: string }>();
   const token = params?.token ?? "";
-  const [view, setView] = useState<PublicTrackingView | null>(null);
+  const [view, setView] = useState<PublicOsTrackingView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -54,10 +41,11 @@ export default function PublicOsPage() {
       return;
     }
     try {
-      setView(await publicJson<PublicTrackingView>(`/public/service-orders/${token}`));
+      setView(await publicJson<PublicOsTrackingView>(`/public/service-orders/${token}`));
       setError(null);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Este link não foi encontrado.");
+      setView(null);
+      setError(describePublicOsError(loadError));
     }
   }, [token]);
 
@@ -65,13 +53,15 @@ export default function PublicOsPage() {
     void load();
   }, [load]);
 
+  const printView = useMemo(() => (view ? toPublicOsPrintView(view) : null), [view]);
+
   async function confirmRecebi() {
     setSaving(true);
     try {
-      setView(await publicJson<PublicTrackingView>(`/public/service-orders/${token}/recebi`, { method: "POST" }));
+      setView(await publicJson<PublicOsTrackingView>(`/public/service-orders/${token}/recebi`, { method: "POST" }));
       setError(null);
     } catch (confirmError) {
-      setError(confirmError instanceof Error ? confirmError.message : "A retirada não pôde ser confirmada.");
+      setError(describePublicOsError(confirmError));
     } finally {
       setSaving(false);
     }
@@ -79,36 +69,26 @@ export default function PublicOsPage() {
 
   return (
     <div className="screen-shell">
+      <style>{OS_PRINT_CSS}</style>
       <section className="auth-card public-os">
         {error ? <p className="workspace-flash workspace-flash--error">{error}</p> : null}
         {!view && !error ? <p className="subtitle">Carregando a sua OS…</p> : null}
-        {view ? (
+        {view && printView ? (
           <>
             <div className="auth-card__header">
               <div className="eyebrow">{view.companyName}</div>
               <h1 className="title">Olá, {view.customerFirstName}</h1>
               <p className="subtitle">
-                Acompanhe a OS <strong>{view.orderNo}</strong> por este link. Não compartilhe com outras pessoas.
+                Esta é a ordem de serviço <strong>{view.orderNo}</strong>, igual à via impressa. Não compartilhe este
+                link.
               </p>
             </div>
             <div className="auth-card__body">
-              <p className="public-os__status">{view.statusLabel}</p>
-              <p className="table-subtle">
-                Entrada {formatDate(view.openedAt)} · Previsão {formatDate(view.promisedDeliveryDate)}
-                {view.promisedDeliveryTime ? ` ${view.promisedDeliveryTime.slice(0, 5)}` : ""}
-              </p>
+              <article
+                className="public-os__sheet"
+                dangerouslySetInnerHTML={{ __html: buildServiceOrderPrintHtml(printView, view.companyName) }}
+              />
               <p className="table-subtle">{view.paymentLabel}</p>
-              <ul className="public-os__items">
-                {view.items.map((item) => (
-                  <li key={`${item.itemNo}-${item.description}`}>
-                    <strong>
-                      S{item.itemNo} · {item.itemType}
-                    </strong>
-                    {` · ${item.description}`}
-                    {item.complement ? ` · ${item.complement}` : ""}
-                  </li>
-                ))}
-              </ul>
               {view.pickedUp ? (
                 <p className="os-rule-banner">Retirada confirmada. Obrigada.</p>
               ) : view.recebiReady ? (
@@ -118,8 +98,15 @@ export default function PublicOsPage() {
               ) : view.status === "ready_for_pickup" ? (
                 <p className="os-rule-banner">Quando estiver no balcão, a atendente libera o botão Recebi neste link.</p>
               ) : (
-                <p className="os-rule-banner">Avisaremos por WhatsApp quando estiver pronto. Este link já mostra o status.</p>
+                <p className="os-rule-banner">Avisaremos por WhatsApp quando estiver pronto. Este link já mostra a OS.</p>
               )}
+              <button
+                className="button-secondary"
+                onClick={() => printServiceOrderDocument(printView, view.companyName)}
+                type="button"
+              >
+                Imprimir / salvar PDF
+              </button>
             </div>
           </>
         ) : null}

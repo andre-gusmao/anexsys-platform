@@ -1,6 +1,6 @@
 # Estado atual do ANEXSYS
 
-**Atualizado em:** 08/10/2026
+**Atualizado em:** 09/10/2026
 **Substitui:** `PROJECT_IMPLEMENTATION_STATUS`, `CURRENT_APPLICATION_STATUS`, `CURRENT_REPOSITORY_STATUS`, `REPOSITORY_CODE_AUDIT_V1` e os relatórios de sprint (todos em `docs/arquivo/`), que se contradizem.
 
 **Como ler:** cada item diz se algo foi **demonstrado numa tela**, **testado com banco de dados** e **aceito pelo André**. Hoje **nada foi aceito formalmente** pelo André como pronto; essa coluna começa vazia.
@@ -15,11 +15,11 @@
 | Pegar sacola (esteira manual) | Existe (`POST /service-orders/:id/floor-advance`) | Existe: **Operações → Pegar sacola** | Unitários passam | Lista só **Aberta** (Pegar sacola) e **Em produção** (Terminei). Uma sacola por vez. QR futuro dispara o mesmo passo |
 | Motor de data de entrega | Existe (domingo fechado por padrão) | Parcial | Unitários passam | Falta Normal/Expresso/Urgente |
 | Ordem de Produção, QR por ordem, diário | Existe | Impressão A5 a partir da OS | Unitários passam | Papel A5: placa no cabeçalho e no QR; Pago ou Pagar na retirada no cabeçalho; tabela S / Produto / Serviço / Serviço a realizar (fonte 15 px, 3 linhas); bloco Retirada (Nome, Data, Assinatura); marca/modelo/série pequenos; previsão enorme na prateleira. Reprovação sai como **Refazer**; anotação de prova sai como **Prova**, sem sobrescrever o Serviço a realizar. Sem preço e sem quantidade. Tela de OP ainda não existe |
-| Qualidade, retrabalho, garantia | Existe | Tela **Controle de qualidade**; na OS: **Retirada**, **Cliente voltou**, **Enviar para prova** e **Prova feita** | Unitários passam | Qualidade: lista só **Aguardando controle de qualidade**. Botão **Revisar**. Reimpressão da OP no **⋮**. Revisão peça a peça; OS permanece em qualidade se houver reprovação; OP de refação só com as peças reprovadas. **Prova** usa a mesma OS e a mesma OP; **Prova feita** abre **Anotações de prova**. **Retirada** abre janela de 10 min (gancho do **Recebi**), aceita foto + **Entregue assinado**, ou **Entregue** do atendente. **Cliente voltou** cria OS filha depois do status Retirado. WhatsApp oficial e página pública do link ainda não |
+| Qualidade, retrabalho, garantia | Existe | Tela **Controle de qualidade**; na OS: **Retirada**, **Cliente voltou**, **Enviar para prova** e **Prova feita** | Unitários passam | Qualidade: lista só **Aguardando controle de qualidade**. Botão **Revisar**. Reimpressão da OP no **⋮**. Revisão peça a peça; OS permanece em qualidade se houver reprovação; OP de refação só com as peças reprovadas. **Prova** usa a mesma OS e a mesma OP; **Prova feita** abre **Anotações de prova**. **Retirada** abre janela de 10 min (gancho do **Recebi**), aceita foto + **Entregue assinado**, ou **Entregue** do atendente. **Cliente voltou** cria OS filha depois do status Retirado. WhatsApp oficial ainda não |
 | Financeiro | Existe | **Não existe** | Idem | Maquininha só como interface, sem integração real |
 | Fiscal | Só esqueleto | **Não existe** | Idem | Nenhum adaptador real |
 | Retirada por terceiros e custódia | Existe | **Não existe** | Idem | Aviso "enviado" é só um registro, não envio |
-| Concierge e portal do cliente | Existe | Página pública `/os/{token}` | Unitários passam | Acompanhamento sem login: status público, peças sem preço, **Recebi** quando a atendente inicia a retirada. WhatsApp oficial ainda não envia o link; a atendente copia o endereço na OS |
+| Concierge e portal do cliente | Existe | Página pública `/os/{token}` | Unitários passam | Sem login: a **OS impressa** (peças e valores), status público e **Recebi** quando a atendente inicia a retirada. O cliente pode imprimir / salvar PDF no navegador. WhatsApp oficial ainda não envia o link; a atendente copia o endereço na OS |
 | **WhatsApp** | **Não existe** | **Não existe** | n/a | Só há o campo de telefone. Registros marcados como "enviado" **não foram enviados** |
 | Migração/importação de dados | **Não existe** | **Não existe** | n/a | |
 | LGPD (consentimento, retenção) | **Não existe** | **Não existe** | n/a | |

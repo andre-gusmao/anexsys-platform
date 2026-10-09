@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, Ip, Param, ParseUUIDPipe, Post, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Header, Headers, Ip, Param, Post, UnauthorizedException } from '@nestjs/common';
 import { Public } from 'src/platform/auth/public.decorator';
 import { ServiceOrderService } from '../application/service-order/service-order.service';
 
@@ -7,14 +7,18 @@ import { ServiceOrderService } from '../application/service-order/service-order.
 export class PublicServiceOrdersController {
   constructor(private readonly serviceOrderService: ServiceOrderService) {}
 
+  @Public()
   @Get(':publicToken')
-  async getTracking(@Param('publicToken', new ParseUUIDPipe()) publicToken: string) {
+  @Header('X-Robots-Tag', 'noindex, nofollow')
+  async getTracking(@Param('publicToken') publicToken: string) {
     return this.serviceOrderService.getPublicTrackingView(publicToken);
   }
 
+  @Public()
   @Post(':publicToken/recebi')
+  @Header('X-Robots-Tag', 'noindex, nofollow')
   async confirmRecebi(
-    @Param('publicToken', new ParseUUIDPipe()) publicToken: string,
+    @Param('publicToken') publicToken: string,
     @Headers('user-agent') userAgent: string | undefined,
     @Ip() ip: string,
   ) {

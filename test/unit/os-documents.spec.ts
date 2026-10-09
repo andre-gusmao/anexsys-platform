@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildOsWhatsAppMessage,
   buildProductionOrderPrintHtml,
+  buildServiceOrderPrintHtml,
   firstName,
   OP_A5_PRINT_CSS,
   opShelfDateParts,
@@ -184,4 +185,43 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   assert.match(proofHtml, /class="op-item__work">barra original/);
   assert.doesNotMatch(proofHtml, /Refazer/);
   assert.match(OP_A5_PRINT_CSS, /\.op-item__proof /);
+});
+
+test('builds the public OS sheet with the same fields as the printed service order', () => {
+  const html = buildServiceOrderPrintHtml(
+    {
+      documentType: 'service_order',
+      serviceOrderId: 'so-1',
+      orderNo: 'AAA000001',
+      status: 'ready_for_pickup',
+      statusLabel: 'Pronto para retirada',
+      openedAt: '2026-10-03T10:00:00.000Z',
+      promisedDeliveryDate: '2026-10-18',
+      promisedDeliveryTime: '18:00',
+      deliveryType: 'Standard',
+      customer: { legalName: 'Sandra Legramanti', phone: null, email: null },
+      items: [
+        {
+          productName: 'Calça',
+          serviceName: 'Bainha',
+          complement: 'barra',
+          quantity: '1.0000',
+          unitPrice: '90.00',
+          discountValue: null,
+          subtotal: '90.00',
+        },
+      ],
+      totalValue: '90.00',
+      customerNotes: 'Barra original',
+    },
+    'Ateliê A',
+  );
+
+  assert.match(html, /Ordem de serviço AAA000001/);
+  assert.match(html, /Sandra Legramanti/);
+  assert.match(html, /Pronto para retirada/);
+  assert.match(html, /Bainha/);
+  assert.match(html, /R\$\s*90,00/);
+  assert.match(html, /Barra original/);
+  assert.doesNotMatch(html, /Ana|atendente|audit/i);
 });
