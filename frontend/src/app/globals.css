@@ -540,6 +540,12 @@ textarea {
   gap: 12px;
 }
 
+.public-os .workspace-flash {
+  display: block;
+  margin: 16px;
+  border-radius: 16px;
+}
+
 .public-os__status {
   font-size: 22px;
   font-weight: 800;
