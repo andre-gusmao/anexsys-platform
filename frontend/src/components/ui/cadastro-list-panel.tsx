@@ -430,7 +430,6 @@ export function CadastroListPanel<T extends { id: string }>({
                 <td>
                   {canWrite || onPay || extraActions || rowMenu ? (
                     <div className="table-actions">
-                      {extraActions?.(row)}
                       {canWrite ? (
                         <button className="button-secondary" onClick={() => onEdit(row)} type="button">
                           {editLabelForRow?.(row) ?? editLabel}
@@ -462,6 +461,7 @@ export function CadastroListPanel<T extends { id: string }>({
                         </button>
                       ) : null}
                       {rowMenu ? <RowOverflowMenu items={rowMenu(row)} label={`Opções de ${rowLabel(row)}`} /> : null}
+                      {extraActions?.(row)}
                     </div>
                   ) : (
                     "—"

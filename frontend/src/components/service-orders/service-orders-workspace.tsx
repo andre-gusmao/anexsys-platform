@@ -2894,15 +2894,6 @@ export function ServiceOrdersWorkspace() {
                           Aprovação
                         </button>
                       ) : null}
-                      <OsAnexoButton
-                        disabled={Boolean(anexoViewer?.loading)}
-                        hasAttachments={Boolean(
-                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
-                        )}
-                        onClick={() => {
-                          void openAnexoPanel(selectedOrder);
-                        }}
-                      />
                       {selectedOrder.status === "ready_for_pickup" && canWrite ? (
                         <button
                           className="button"
@@ -2936,6 +2927,15 @@ export function ServiceOrdersWorkspace() {
                         </button>
                       ) : null}
                       <RowOverflowMenu items={buildOsRowMenu(selectedOrder)} label={`Opções da OS ${selectedOrder.orderNo}`} />
+                      <OsAnexoButton
+                        disabled={Boolean(anexoViewer?.loading)}
+                        hasAttachments={Boolean(
+                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
+                        )}
+                        onClick={() => {
+                          void openAnexoPanel(selectedOrder);
+                        }}
+                      />
                     </>
                   ) : selectedOrder ? (
                     <>
@@ -2965,15 +2965,6 @@ export function ServiceOrdersWorkspace() {
                           Aprovação
                         </button>
                       ) : null}
-                      <OsAnexoButton
-                        disabled={Boolean(anexoViewer?.loading)}
-                        hasAttachments={Boolean(
-                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
-                        )}
-                        onClick={() => {
-                          void openAnexoPanel(selectedOrder);
-                        }}
-                      />
                       {canWriteFinance ? (
                         <button
                           className="button"
@@ -2987,6 +2978,15 @@ export function ServiceOrdersWorkspace() {
                         </button>
                       ) : null}
                       <RowOverflowMenu items={buildOsRowMenu(selectedOrder)} label={`Opções da OS ${selectedOrder.orderNo}`} />
+                      <OsAnexoButton
+                        disabled={Boolean(anexoViewer?.loading)}
+                        hasAttachments={Boolean(
+                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
+                        )}
+                        onClick={() => {
+                          void openAnexoPanel(selectedOrder);
+                        }}
+                      />
                     </>
                   ) : null}
                 </div>
