@@ -30,6 +30,7 @@ import {
 } from "@/components/service-orders/os-proof";
 import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
 import { OsProofNotesPanel } from "@/components/service-orders/os-proof-notes-panel";
+import { OsAnexoButton } from "@/components/service-orders/os-anexo-button";
 import { OsApprovalPanel } from "@/components/service-orders/os-approval-panel";
 import { OsAttachmentsPanel } from "@/components/service-orders/os-attachments-panel";
 import { approvalMethodLabel, canRecordOsApproval, formatOsInstant, type ApprovalSummary } from "@/components/service-orders/os-approval";
@@ -88,6 +89,7 @@ type ServiceOrderRecord = {
   actualPickupDate?: string | null;
   originServiceOrderId?: string | null;
   returnKind?: string | null;
+  hasAttachments?: boolean;
 };
 
 type ActorSummary = {
@@ -219,6 +221,10 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
+function photoSrc(photo: { mimeType?: string | null; contentBase64?: string | null } | null | undefined) {
+  return photo?.contentBase64 ? `data:${photo.mimeType};base64,${photo.contentBase64}` : null;
+}
+
 function createEmptyHeaderForm(attendantId = ""): ServiceOrderHeaderForm {
   return {
     customerId: "",
@@ -258,7 +264,6 @@ export function ServiceOrdersWorkspace() {
   const openProof = searchParams.get("openProof") === "1";
   const openPickup = searchParams.get("openPickup") === "1";
   const openApproval = searchParams.get("openApproval") === "1";
-  const openAnexo = searchParams.get("openAnexo") === "1";
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
@@ -298,7 +303,14 @@ export function ServiceOrdersWorkspace() {
   const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
   const [approvalPickerOpen, setApprovalPickerOpen] = useState(false);
   const [approvalPhoto, setApprovalPhoto] = useState<string | null>(null);
-  const [anexoPickerOpen, setAnexoPickerOpen] = useState(false);
+  const [anexoViewer, setAnexoViewer] = useState<{
+    orderNo: string;
+    approval: ApprovalSummary | null;
+    approvalPhoto: string | null;
+    pickup: PickupSummary | null;
+    pickupPhoto: string | null;
+    loading: boolean;
+  } | null>(null);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -772,19 +784,40 @@ export function ServiceOrdersWorkspace() {
   );
 
   const openAnexoPanel = useCallback(
-    (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
-      if (isListWorkspace) {
-        const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openAnexo=1`;
-        if (isMobile) {
-          navigateWithinWorkspace(targetPath);
-        } else {
-          openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
-        }
-        return;
+    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      setMessage(null);
+      setAnexoViewer({
+        orderNo: order.orderNo,
+        approval: null,
+        approvalPhoto: null,
+        pickup: null,
+        pickupPhoto: null,
+        loading: true,
+      });
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}`);
+        const [approvalFile, pickupFile] = await Promise.all([
+          next.approval?.photoAvailable
+            ? apiJson<{ mimeType: string; contentBase64: string } | null>(`/service-orders/${order.id}/approval/photo`)
+            : Promise.resolve(null),
+          next.pickup?.photoAvailable
+            ? apiJson<{ mimeType: string; contentBase64: string } | null>(`/service-orders/${order.id}/pickup/photo`)
+            : Promise.resolve(null),
+        ]);
+        setAnexoViewer({
+          orderNo: next.serviceOrder.orderNo,
+          approval: next.approval ?? null,
+          approvalPhoto: photoSrc(approvalFile),
+          pickup: next.pickup ?? null,
+          pickupPhoto: photoSrc(pickupFile),
+          loading: false,
+        });
+      } catch (error) {
+        setAnexoViewer(null);
+        setMessage(formatWorkspaceMessage(error, "Os anexos não puderam ser abertos."));
       }
-      setAnexoPickerOpen(true);
     },
-    [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+    [apiJson],
   );
 
   const copyPublicLink = useCallback(async () => {
@@ -1070,13 +1103,6 @@ export function ServiceOrdersWorkspace() {
           ]
         : []),
       {
-        id: "anexo",
-        label: "Anexo",
-        onSelect: () => {
-          openAnexoPanel(row);
-        },
-      },
-      {
         id: "print",
         label: "Imprimir",
         children: [
@@ -1130,7 +1156,6 @@ export function ServiceOrdersWorkspace() {
       canWriteProduction,
       canWriteProof,
       handleProofAction,
-      openAnexoPanel,
       openApprovalPanel,
       openPickupPanel,
       printProductionOrder,
@@ -1262,14 +1287,6 @@ export function ServiceOrdersWorkspace() {
   }, [details, focusServiceOrderId, navigateWithinWorkspace, openApproval]);
 
   useEffect(() => {
-    if (!openAnexo || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
-      return;
-    }
-    setAnexoPickerOpen(true);
-    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
-  }, [details, focusServiceOrderId, navigateWithinWorkspace, openAnexo]);
-
-  useEffect(() => {
     if (!details?.pickup?.photoAvailable || !details.serviceOrder.id) {
       setPickupPhoto(null);
       return;
@@ -1316,6 +1333,19 @@ export function ServiceOrdersWorkspace() {
       cancelled = true;
     };
   }, [apiJson, details?.approval?.photoAvailable, details?.serviceOrder.id]);
+
+  useEffect(() => {
+    if (!anexoViewer) {
+      return;
+    }
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAnexoViewer(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [anexoViewer]);
 
   useEffect(() => {
     if (!isListWorkspace) {
@@ -1803,6 +1833,28 @@ export function ServiceOrdersWorkspace() {
 
       {message ? <WorkspaceFlash message={message} /> : null}
 
+      {anexoViewer ? (
+        <div aria-labelledby="os-anexo-title" aria-modal="true" className="os-anexo-lightbox" role="dialog">
+          <button
+            aria-label="Fechar anexos"
+            className="os-anexo-lightbox__backdrop"
+            onClick={() => setAnexoViewer(null)}
+            type="button"
+          />
+          <div className="os-anexo-lightbox__card">
+            <OsAttachmentsPanel
+              orderNo={anexoViewer.orderNo}
+              approval={anexoViewer.approval}
+              approvalPhoto={anexoViewer.approvalPhoto}
+              pickup={anexoViewer.pickup}
+              pickupPhoto={anexoViewer.pickupPhoto}
+              loading={anexoViewer.loading}
+              onClose={() => setAnexoViewer(null)}
+            />
+          </div>
+        </div>
+      ) : null}
+
       {isListWorkspace ? (
         <CadastroListPanel
           applyFilters={applyOsListFilters}
@@ -1884,6 +1936,15 @@ export function ServiceOrdersWorkspace() {
               : undefined
           }
           canPay={(row) => row.status !== "cancelled"}
+          extraActions={(row) => (
+            <OsAnexoButton
+              disabled={Boolean(anexoViewer?.loading)}
+              hasAttachments={Boolean(row.hasAttachments)}
+              onClick={() => {
+                void openAnexoPanel(row);
+              }}
+            />
+          )}
           rowMenu={buildOsRowMenu}
           records={orders}
           rowLabel={(row) => row.orderNo}
@@ -2041,17 +2102,6 @@ export function ServiceOrdersWorkspace() {
               saving={saving}
               onClose={() => setApprovalPickerOpen(false)}
               onComplete={(input) => handleCompleteApproval(input)}
-            />
-          ) : null}
-
-          {anexoPickerOpen && selectedOrder ? (
-            <OsAttachmentsPanel
-              orderNo={selectedOrder.orderNo}
-              approval={details?.approval ?? null}
-              approvalPhoto={approvalPhoto}
-              pickup={details?.pickup ?? null}
-              pickupPhoto={pickupPhoto}
-              onClose={() => setAnexoPickerOpen(false)}
             />
           ) : null}
 
@@ -2844,6 +2894,15 @@ export function ServiceOrdersWorkspace() {
                           Aprovação
                         </button>
                       ) : null}
+                      <OsAnexoButton
+                        disabled={Boolean(anexoViewer?.loading)}
+                        hasAttachments={Boolean(
+                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
+                        )}
+                        onClick={() => {
+                          void openAnexoPanel(selectedOrder);
+                        }}
+                      />
                       {selectedOrder.status === "ready_for_pickup" && canWrite ? (
                         <button
                           className="button"
@@ -2906,6 +2965,15 @@ export function ServiceOrdersWorkspace() {
                           Aprovação
                         </button>
                       ) : null}
+                      <OsAnexoButton
+                        disabled={Boolean(anexoViewer?.loading)}
+                        hasAttachments={Boolean(
+                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
+                        )}
+                        onClick={() => {
+                          void openAnexoPanel(selectedOrder);
+                        }}
+                      />
                       {canWriteFinance ? (
                         <button
                           className="button"

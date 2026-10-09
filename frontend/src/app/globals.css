@@ -627,7 +627,42 @@ textarea {
 
 .os-attachment-card .os-pickup-photo {
   max-width: 100%;
-  max-height: 280px;
+  max-height: min(70vh, 640px);
+  object-fit: contain;
+  background: #eef2f5;
+}
+
+.os-anexo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.os-anexo-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 32, 0.55);
+  cursor: pointer;
+}
+
+.os-anexo-lightbox__card {
+  position: relative;
+  z-index: 1;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 8px 8px 4px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 32, 0.28);
+}
+
+.os-anexo-lightbox .os-pay-panel {
+  margin-top: 0;
 }
 
 @media (max-width: 720px) {
@@ -1808,10 +1843,45 @@ textarea {
 }
 
 .table-actions .button,
-.table-actions .button-secondary {
+.table-actions .button-secondary,
+.table-anexo {
   min-height: 32px;
   padding: 0 10px;
   font-size: 13px;
+}
+
+.table-anexo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-anexo:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.table-anexo--empty {
+  border: 1px solid #d5dee6;
+  background: #e8eef2;
+  color: #7a8894;
+}
+
+.table-anexo--empty:hover:not(:disabled) {
+  background: #dce5ec;
+}
+
+.table-anexo--ready {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.table-anexo--ready:hover:not(:disabled) {
+  background: var(--primary-strong);
 }
 
 .row-overflow {

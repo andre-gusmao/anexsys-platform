@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { ServiceOrderApprovalEntity } from '../entities/service-order-approval.entity';
 
 @Injectable()
@@ -33,5 +33,16 @@ export class ServiceOrderApprovalRepository {
       order: { createdAt: 'DESC', id: 'DESC' },
     });
     return rows.find((row) => row.method === 'counter' || row.method === 'paper' || row.method === 'link') ?? null;
+  }
+
+  async findIdsWithPhoto(serviceOrderIds: string[]): Promise<string[]> {
+    if (serviceOrderIds.length === 0) {
+      return [];
+    }
+    const rows = await this.repository.find({
+      where: { serviceOrderId: In(serviceOrderIds), isDeleted: false, photoBase64: Not(IsNull()) },
+      select: { serviceOrderId: true },
+    });
+    return [...new Set(rows.map((row) => row.serviceOrderId))];
   }
 }

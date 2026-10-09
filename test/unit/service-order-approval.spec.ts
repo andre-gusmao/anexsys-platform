@@ -204,3 +204,39 @@ test('completeApproval keeps the OS open, locks measurements and records paper o
   assert.equal(later.approval.method, 'counter');
   assert.equal(later.serviceOrder.status, 'open');
 });
+
+test('the OS list highlights rows that already have a paper photo', async () => {
+  const service = new ServiceOrderService(
+    { async transaction() { return null; } } as never,
+    {
+      async search() {
+        return [{ id: 'so-1' }, { id: 'so-2' }, { id: 'so-3' }];
+      },
+    } as never,
+    {} as never,
+    { async getById() { return { id: 'tenant-1' }; } } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {
+      async findIdsWithPhoto() {
+        return ['so-2'];
+      },
+    } as never,
+    {} as never,
+    {
+      async findIdsWithPhoto() {
+        return ['so-1'];
+      },
+    } as never,
+  );
+
+  const listed = await service.search('tenant-1', { accessibleBranchIds: ['branch-1'] });
+  assert.equal(listed.find((row) => row.id === 'so-1')?.hasAttachments, true);
+  assert.equal(listed.find((row) => row.id === 'so-2')?.hasAttachments, true);
+  assert.equal(listed.find((row) => row.id === 'so-3')?.hasAttachments, false);
+});

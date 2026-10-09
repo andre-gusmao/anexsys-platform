@@ -286,7 +286,14 @@ export class ServiceOrderService {
       await this.customerService.getById(filters.customerId, tenantId);
     }
 
-    return this.serviceOrderRepository.search(tenantId, filters);
+    const orders = await this.serviceOrderRepository.search(tenantId, filters);
+    const ids = orders.map((order) => order.id);
+    const [approvalPhotoIds, pickupPhotoIds] = await Promise.all([
+      this.approvalRepository?.findIdsWithPhoto?.(ids) ?? [],
+      this.pickupRepository?.findIdsWithPhoto?.(ids) ?? [],
+    ]);
+    const withPhoto = new Set([...approvalPhotoIds, ...pickupPhotoIds]);
+    return orders.map((order) => Object.assign(order, { hasAttachments: withPhoto.has(order.id) }));
   }
 
   async getById(id: string, tenantId: string): Promise<ServiceOrderEntity> {

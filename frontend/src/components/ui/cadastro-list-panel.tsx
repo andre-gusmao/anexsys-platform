@@ -92,6 +92,7 @@ type CadastroListPanelProps<T extends { id: string }> = {
   canInactivate?: (row: T) => boolean;
   onPay?: (row: T) => void;
   canPay?: (row: T) => boolean;
+  extraActions?: (row: T) => ReactNode;
   rowMenu?: (row: T) => RowMenuItem[];
   excelFileName: string;
   buildExcelCsv: (rows: T[]) => string;
@@ -126,6 +127,7 @@ export function CadastroListPanel<T extends { id: string }>({
   canInactivate,
   onPay,
   canPay,
+  extraActions,
   rowMenu,
   excelFileName,
   buildExcelCsv,
@@ -426,8 +428,9 @@ export function CadastroListPanel<T extends { id: string }>({
                   <td key={column.id}>{column.render(row)}</td>
                 ))}
                 <td>
-                  {canWrite || onPay ? (
+                  {canWrite || onPay || extraActions || rowMenu ? (
                     <div className="table-actions">
+                      {extraActions?.(row)}
                       {canWrite ? (
                         <button className="button-secondary" onClick={() => onEdit(row)} type="button">
                           {editLabelForRow?.(row) ?? editLabel}
@@ -461,7 +464,7 @@ export function CadastroListPanel<T extends { id: string }>({
                       {rowMenu ? <RowOverflowMenu items={rowMenu(row)} label={`Opções de ${rowLabel(row)}`} /> : null}
                     </div>
                   ) : (
-                    rowMenu ? <RowOverflowMenu items={rowMenu(row)} label={`Opções de ${rowLabel(row)}`} /> : "—"
+                    "—"
                   )}
                 </td>
               </tr>
