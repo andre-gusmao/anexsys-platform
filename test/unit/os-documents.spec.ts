@@ -63,7 +63,7 @@ test('builds the A5 OP with the shelf face and without prices or quantity', () =
   assert.match(html, /<th title="Sequência">S<\/th>/);
   assert.match(html, /<th>Produto<\/th>/);
   assert.match(html, /<th>Serviço<\/th>/);
-  assert.match(html, /<th>Serviço a realizar<\/th>/);
+  assert.match(html, /<th>Detalhamento do ajuste<\/th>/);
   assert.match(html, /class="op-seq">1/);
   assert.match(html, /class="op-seq">2/);
   assert.match(html, /class="op-seq">3/);
@@ -218,6 +218,7 @@ test('builds the public OS sheet with the same fields as the printed service ord
   );
 
   assert.match(html, /Ordem de serviço AAA000001/);
+  assert.match(html, /<th>Detalhamento do ajuste<\/th>/);
   assert.match(html, /Sandra Legramanti/);
   assert.match(html, /Pronto para retirada/);
   assert.match(html, /Bainha/);

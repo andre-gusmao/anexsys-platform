@@ -347,7 +347,7 @@ test('does not rebind the open OS when the list refreshes without a preferred id
   assert.deepEqual(serviceOrderListLoadBinding('os-1'), { bind: true, activeId: 'os-1' });
 });
 
-test('keeps Serviço a realizar within the A5 15px / 3-line budget after column S', () => {
+test('keeps Detalhamento do ajuste within the A5 15px / 3-line budget after column S', () => {
   assert.equal(OS_WORK_PRINT_FONT_PX, 15);
   assert.equal(OS_WORK_PRINT_LINES, 3);
   assert.equal(OS_WORK_CHARS_PER_LINE, 34);

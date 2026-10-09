@@ -416,7 +416,7 @@ export function buildProductionOrderPrintHtml(
           <th title="Sequência">S</th>
           <th>Produto</th>
           <th>Serviço</th>
-          <th>Serviço a realizar</th>
+          <th>Detalhamento do ajuste</th>
         </tr>
       </thead>
       <tbody>${items}</tbody>
@@ -479,7 +479,7 @@ export function buildServiceOrderPrintHtml(view: OsPrintView, companyName: strin
          : ""
      }
      <table>
-       <thead><tr><th title="Sequência">S</th><th>Produto</th><th>Serviço</th><th>Serviço a realizar</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
+       <thead><tr><th title="Sequência">S</th><th>Produto</th><th>Serviço</th><th>Detalhamento do ajuste</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
        <tbody>${rows}</tbody>
      </table>
      <p class="total">Valor total ${escapeHtml(view.totalValue ? formatOsMoney(Number(view.totalValue)) : "R$ 0,00")}</p>

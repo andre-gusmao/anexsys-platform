@@ -65,6 +65,8 @@ test('filters product-service prices by product and service', () => {
     { id: '2', productId: 'p2', serviceId: 's1', productName: 'Vestido', serviceName: 'Barra Original', suggestedPrice: '40.00', estimatedMinutes: 25, status: 'inactive' as const },
   ];
   assert.deepEqual(applyProductPriceFilters(records, { product: 'calça', service: '', status: '' }).map((item) => item.id), ['1']);
+  assert.deepEqual(applyProductPriceFilters(records, { product: 'Calça · Barra Original', service: '', status: '' }).map((item) => item.id), ['1']);
+  assert.deepEqual(applyProductPriceFilters(records, { q: 'barra original', service: '', status: '' }).map((item) => item.id), ['1', '2']);
   assert.deepEqual(applyProductPriceFilters(records, { product: '', service: 'barra', status: 'inactive' }).map((item) => item.id), ['2']);
   assert.match(buildProductPriceExcelCsv([records[0]]), /Calça/);
   assert.match(buildProductPriceExcelCsv([records[0]]), /15/);

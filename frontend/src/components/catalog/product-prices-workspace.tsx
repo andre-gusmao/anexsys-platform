@@ -2,7 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
-import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
+import { useWorkspacePane, useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
+import { HoverPeek } from "@/components/ui/hover-peek";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import {
   applyProductPriceFilters,
@@ -36,7 +37,8 @@ const emptyForm = (): PriceForm => ({
 
 export function ProductPricesWorkspace() {
   const searchParams = useWorkspaceSearchParams();
-  const { hasAnyPermission, apiJson } = useSession();
+  const { hasAnyPermission, apiJson, session } = useSession();
+  const pane = useWorkspacePane();
   const { isMobile } = useWorkspaceViewportMode();
   const workspaceMode = searchParams.get("workspaceMode");
   const focusRecordId = searchParams.get("focusRecordId");
@@ -61,6 +63,7 @@ export function ProductPricesWorkspace() {
     label: workspaceMode === "new" ? "Preço: Novo" : activeRecord ? `Preço: ${activeRecord.productName}` : "Preços",
     subtitle: workspaceMode === "new" ? "Novo cadastro" : activeRecord?.serviceName ?? null,
   });
+  const isActivePane = !pane || pane.tabId === currentTabId;
 
   const productOptions = useMemo(
     () => products.filter((item) => item.status !== "inactive").map((item) => ({ id: item.id, label: item.displayName })),
@@ -87,7 +90,7 @@ export function ProductPricesWorkspace() {
         apiJson<CatalogOption[]>("/garment-products"),
         apiJson<CatalogOption[]>("/atelier-services"),
       ]);
-      setRecords(priceResponse);
+      setRecords(Array.isArray(priceResponse) ? priceResponse : []);
       setProducts(productResponse);
       setServices(serviceResponse);
       setMessage(null);
@@ -100,11 +103,14 @@ export function ProductPricesWorkspace() {
   }, [apiJson, canRead]);
 
   useEffect(() => {
+    if (!isActivePane) {
+      return;
+    }
     const timeoutId = window.setTimeout(() => {
       void loadRecords();
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [loadRecords]);
+  }, [isActivePane, loadRecords, session?.tenantId]);
 
   const openCreateWorkspace = useCallback(
     (name?: string) => {
@@ -308,13 +314,17 @@ export function ProductPricesWorkspace() {
               label: "Produto",
               locked: true,
               render: (row) => (
-                <>
+                <HoverPeek text={`${row.productName} · ${row.serviceName}`}>
                   <strong>{row.productName}</strong>
                   <div className="table-subtle">{row.serviceName}</div>
-                </>
+                </HoverPeek>
               ),
             },
-            { id: "service", label: "Serviço", render: (row) => row.serviceName },
+            {
+              id: "service",
+              label: "Serviço",
+              render: (row) => <HoverPeek text={row.serviceName}>{row.serviceName}</HoverPeek>,
+            },
             { id: "price", label: "Preço", render: (row) => formatOsMoney(Number(row.suggestedPrice)) },
             { id: "minutes", label: "Tempo (min)", render: (row) => String(row.estimatedMinutes) },
             {

@@ -18,6 +18,7 @@ import { type OsFinancialSummary } from "@/components/service-orders/os-pay-pane
 import { osOpHeaderTerm, osPaymentConditionLabel } from "@/components/service-orders/service-order-workspace-view-model";
 import { osStatusLabel } from "@/components/service-orders/os-list";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { HoverPeek } from "@/components/ui/hover-peek";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 
@@ -373,7 +374,7 @@ export function QualityWorkspace() {
                   <th title="Sequência">S</th>
                   <th>Produto</th>
                   <th>Serviço</th>
-                  <th>Serviço a realizar</th>
+                  <th>Detalhamento do ajuste</th>
                   <th>Marca / modelo / série</th>
                   <th>Situação</th>
                   <th>Ações</th>
@@ -387,12 +388,16 @@ export function QualityWorkspace() {
                       <td className="os-item-seq" title={`Sequência ${index + 1}`}>
                         {index + 1}
                       </td>
-                      <td>{item.itemType}</td>
-                      <td>{item.description}</td>
                       <td>
-                        <div className="qc-work" title={item.complement || undefined}>
-                          {item.complement || "—"}
-                        </div>
+                        <HoverPeek text={item.itemType}>{item.itemType}</HoverPeek>
+                      </td>
+                      <td>
+                        <HoverPeek text={item.description}>{item.description}</HoverPeek>
+                      </td>
+                      <td>
+                        <HoverPeek text={item.complement}>
+                          <div className="qc-work">{item.complement || "—"}</div>
+                        </HoverPeek>
                       </td>
                       <td className="table-subtle">{equipment || "—"}</td>
                       <td>

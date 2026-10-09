@@ -6,6 +6,7 @@ import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane"
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
 import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { HoverPeek } from "@/components/ui/hover-peek";
 import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import {
@@ -2387,7 +2388,7 @@ export function ServiceOrdersWorkspace() {
                         <th title="Sequência">S</th>
                         <th>Produto</th>
                         <th>Serviço</th>
-                        <th>Serviço a realizar</th>
+                        <th>Detalhamento do ajuste</th>
                         <th>Marca</th>
                         <th>Modelo</th>
                         <th>Série</th>
@@ -2408,6 +2409,7 @@ export function ServiceOrdersWorkspace() {
                               {sequence}
                             </td>
                             <td>
+                              <HoverPeek text={row.itemType}>
                               <SmartLookup
                                 compact
                                 canCreate={canWrite}
@@ -2456,8 +2458,10 @@ export function ServiceOrdersWorkspace() {
                                 searchPlaceholder="Digite o produto"
                                 value={row.productId}
                               />
+                              </HoverPeek>
                             </td>
                             <td>
+                              <HoverPeek text={row.description}>
                               <SmartLookup
                                 compact
                                 canCreate={canWrite && Boolean(row.productId)}
@@ -2518,24 +2522,27 @@ export function ServiceOrdersWorkspace() {
                                     : undefined
                                 }
                               />
+                              </HoverPeek>
                             </td>
                             <td>
-                              <textarea
-                                className="os-item-input os-item-input--work"
-                                disabled={!editable}
-                                maxLength={OS_WORK_MAX_CHARS}
-                                placeholder="O que ficou combinado com o cliente"
-                                rows={3}
-                                value={row.complement}
-                                onChange={(event) =>
-                                  setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, {
-                                      complement: event.target.value.slice(0, OS_WORK_MAX_CHARS),
-                                    }),
-                                  )
-                                }
-                              />
-                              <small className="os-item-work-hint">{osWorkPrintHint(row.complement, sequence)}</small>
+                              <HoverPeek text={row.complement}>
+                                <textarea
+                                  className="os-item-input os-item-input--work"
+                                  disabled={!editable}
+                                  maxLength={OS_WORK_MAX_CHARS}
+                                  placeholder="Detalhe do ajuste combinado com o cliente"
+                                  rows={3}
+                                  value={row.complement}
+                                  onChange={(event) =>
+                                    setItemRows((current) =>
+                                      updateServiceOrderItemGridRow(current, row.localId, {
+                                        complement: event.target.value.slice(0, OS_WORK_MAX_CHARS),
+                                      }),
+                                    )
+                                  }
+                                />
+                                <small className="os-item-work-hint">{osWorkPrintHint(row.complement, sequence)}</small>
+                              </HoverPeek>
                             </td>
                             <td>
                               <input
@@ -2846,7 +2853,7 @@ export function ServiceOrdersWorkspace() {
                 <div className="mini-section">
                   <h4>Anotações de prova</h4>
                   <p className="os-rule-banner">
-                    Histórico da nova medição. Não mistura com Observação nem com Serviço a realizar.
+                    Histórico da nova medição. Não mistura com Observação nem com Detalhamento do ajuste.
                   </p>
                   <div className="os-return-items">
                     {details.proofNotes.map((batch) => (

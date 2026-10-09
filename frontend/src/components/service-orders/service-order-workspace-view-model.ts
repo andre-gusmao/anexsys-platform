@@ -2,7 +2,7 @@ export const MAX_SERVICE_ORDER_ITEMS = 5;
 /** 15px (~11 pt) is the largest A5 work font that still fits 5 pieces + the shelf camera. */
 export const OS_WORK_PRINT_FONT_PX = 15;
 export const OS_WORK_PRINT_LINES = 3;
-/** Column S takes ~7% of the A5 table; Serviço a realizar keeps ~55% → ~34 chars/line. */
+/** Column S takes ~7% of the A5 table; Detalhamento do ajuste keeps ~55% → ~34 chars/line. */
 export const OS_WORK_CHARS_PER_LINE = 34;
 export const OS_WORK_MAX_CHARS = OS_WORK_PRINT_LINES * OS_WORK_CHARS_PER_LINE;
 

@@ -404,7 +404,7 @@ A conexão bancária depende de contrato com o banco ou intermediário; detalha-
 
 Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 
-- Na mesma linha: **Produto** e **Serviço**. O serviço da linha **só lista o que já tem preço** para aquele produto. O preço vem da tabela **Preços** (par produto + serviço) e o atendente pode alterar. O tempo previsto da combinação é cadastro para o PCP; **não** mexe em Normal / Expresso / Urgente. Depois o **Serviço a realizar** (o combinado com o cliente; no código `complement`), **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros.
+- Na mesma linha: **Produto** e **Serviço**. O serviço da linha **só lista o que já tem preço** para aquele produto. O preço vem da tabela **Preços** (par produto + serviço) e o atendente pode alterar. O tempo previsto da combinação é cadastro para o PCP; **não** mexe em Normal / Expresso / Urgente. Depois o **Detalhamento do ajuste** (o combinado com o cliente; no código `complement`), **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros. Na tela, o mouse em cima do detalhamento, do produto ou do serviço abre o texto completo.
 - Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
@@ -429,13 +429,13 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - Duas faces na mesma folha: **cabeçalho** (balcão/técnico) e **prateleira** (câmera da esteira).
 - **Entrada** pequena no topo. **Previsão sai do cabeçalho** e vira o bloco enorme embaixo: **dia grande, mês pequeno e numérico** (`18` `/10`).
 - Número da OS (placa) **no cabeçalho e em cima do QR**.
-- Grade em **linhas de tabela** (**S** = sequência 1–5, depois Produto \| Serviço \| Serviço a realizar). O técnico lê peça a peça. **Serviço a realizar** é o maior campo, fonte **15 px** (~11 pt) — o maior que cabe em 3 linhas no A5 com 5 peças e a prateleira. A coluna S (~7%) deixa ~34 caracteres por linha (**102** no total). Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. Na prova, a anotação sai marcada **Prova**, sem apagar o Serviço a realizar. **Sem quantidade e sem preço**.
+- Grade em **linhas de tabela** (**S** = sequência 1–5, depois Produto \| Serviço \| Detalhamento do ajuste). O técnico lê peça a peça. **Detalhamento do ajuste** é o maior campo, fonte **15 px** (~11 pt) — o maior que cabe em 3 linhas no A5 com 5 peças e a prateleira. A coluna S (~7%) deixa ~34 caracteres por linha (**102** no total). Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. Na prova, a anotação sai marcada **Prova**, sem apagar o Detalhamento do ajuste. **Sem quantidade e sem preço**.
 - Marca, modelo e série saem **pequenos**, sem destaque, só o que foi preenchido.
 - **Pagar na retirada** ou **Pago** fica no **cabeçalho**. No espaço que era da condição entra o bloco **Retirada** (Nome, Data, Assinatura) para o cliente — ou quem buscar — assinar no bolso da sacola.
 
 ## 17. Controle de qualidade peça a peça (07/10/2026)
 
-- Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com **S** (sequência), Produto, Serviço, Serviço a realizar, marca/modelo/série.
+- Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com **S** (sequência), Produto, Serviço, Detalhamento do ajuste, marca/modelo/série.
 - O botão da grade é **Revisar**, não Alterar. A reimpressão da OP fica no **⋮** de cada linha, no mesmo padrão da grade da OS, para o caso da impressão falhar.
 - A lista do **Controle de qualidade** mostra só as OP com status **Aguardando controle de qualidade**. **Pegar sacola** mostra só **Aberta** (botão Pegar sacola) e, depois de pegar, **Em produção** (botão Terminei). A lista da OS continua com todos os status.
 - Os passos de chão **não são provisórios**. Ficam na função **Operações → Pegar sacola**: só as OS **Abertas** (Pegar sacola), que passam a **Em produção** (Terminei). Uma sacola por vez. Quem não usa QR no contrato continua por esta tela. O QR, quando existir, dispara o **mesmo passo**.

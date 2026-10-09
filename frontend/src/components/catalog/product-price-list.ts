@@ -22,6 +22,18 @@ export type ProductPriceRecord = {
   status: "active" | "inactive";
 };
 
+function matchesPriceSearch(record: ProductPriceRecord, query: string) {
+  if (!query) {
+    return true;
+  }
+  const combined = `${record.productName} · ${record.serviceName}`;
+  return (
+    includesNormalized(record.productName, query) ||
+    includesNormalized(record.serviceName, query) ||
+    includesNormalized(combined, query)
+  );
+}
+
 export function productPriceStatusLabel(status: ProductPriceRecord["status"]) {
   return status === "inactive" ? "Inativo" : "Ativo";
 }
@@ -30,12 +42,12 @@ export function applyProductPriceFilters(
   records: ProductPriceRecord[],
   filters: Record<string, string>,
 ): ProductPriceRecord[] {
-  const productQuery = (filters.product ?? "").trim().toLowerCase();
-  const serviceQuery = (filters.service ?? "").trim().toLowerCase();
+  const productQuery = (filters.q ?? filters.product ?? "").trim();
+  const serviceQuery = (filters.service ?? "").trim();
   const statusQuery = (filters.status ?? "").trim();
 
   return records.filter((record) => {
-    if (productQuery && !includesNormalized(record.productName, productQuery)) {
+    if (productQuery && !matchesPriceSearch(record, productQuery)) {
       return false;
     }
     if (serviceQuery && !includesNormalized(record.serviceName, serviceQuery)) {

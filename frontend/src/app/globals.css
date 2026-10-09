@@ -2412,6 +2412,27 @@ textarea {
   word-break: break-word;
 }
 
+.hover-peek {
+  display: block;
+  min-width: 0;
+}
+
+.hover-peek__tip {
+  position: fixed;
+  z-index: 90;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #17313a;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  box-shadow: 0 10px 24px rgba(15, 23, 32, 0.22);
+  pointer-events: none;
+}
+
 @media (max-width: 767px) {
   .workspace-tabs {
     display: none;
