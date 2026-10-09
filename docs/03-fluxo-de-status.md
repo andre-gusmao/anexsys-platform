@@ -1,6 +1,6 @@
 # Fluxo de status da Ordem de Serviço
 
-**Atualizado em:** 08/10/2026
+**Atualizado em:** 09/10/2026
 **Substitui:** os ciclos de vida de status da documentação antiga (`docs/arquivo/`). Baseado em `02-decisoes-do-andre.md`.
 **Situação:** o fluxo abaixo é o **desenho decidido**. **Ainda não está construído**: hoje o sistema só tem os status Em aberto, Aprovada e Cancelada para a OS. Os pontos que estavam **em aberto** foram resolvidos nas rodadas 2 e 3 de respostas do André.
 
@@ -18,7 +18,7 @@ e vai por WhatsApp     papel)                 impressa no bolso          termina
 
 1. **Atendimento e abertura da OS.** O atendente cadastra o cliente (nome e WhatsApp obrigatórios), as peças e os serviços. A OS nasce com o status **Em aberto** (público). Não há etiqueta nem leitura de QR nesta etapa. O sistema envia a **primeira mensagem de WhatsApp** com o **link público** de acompanhamento e aprovação.
 2. **Medição das roupas.** Acontece no atendimento. **Não é status**, não gera QR e não manda WhatsApp.
-3. **Aprovação do cliente.** O cliente **assina** "concordo com o serviço e o preço" no link público. **Não é status**: a OS continua **Em aberto**. A medida usada fica travada na aprovação.
+3. **Aprovação do cliente.** O cliente **assina** "concordo com o serviço e o preço" no **balcão** ou no **papel** (foto da OS assinada). O **Concordo** no link entra depois, no mesmo endereço. **Não é status**: a OS continua **Em aberto**. A medida usada fica travada. A produção **pode começar sem assinatura**, com **liberação e motivo**.
 4. **Sacola e esteira.** A sacola é só o transporte físico. Cada **versão da OS** aceita até o limite parametrizado (padrão 5) e cada linha é uma peça. **Fechar sacola** trava a versão. **Salvar** com a sacola fechada imprime a **Ordem de Produção** para o bolso transparente. **Abrir nova versão** + **Salvar** abre a próxima versão ligada em outra aba. A sacola vai para a esteira "a fazer", por ordem de chegada.
 5. **Produção.** O técnico pega a sacola em **Operações → Pegar sacola** (fluxo manual permanente) ou **lê o QR** (quando existir). Os dois disparam o mesmo passo. O status passa a **Em produção** (público). Ao terminar, **Terminei** (ou a segunda leitura) leva a sacola à esteira de finalizadas. O status passa a **Aguardando controle de qualidade** (público). Se a peça precisa de prova, **Enviar para prova** (⋮ na esteira ou botão na OS) vai para **Aguardando prova** na **mesma OS e na mesma OP**.
 6. **Prova / pré-preparação.** Status **público**. É uma **nova medição** depois do corte e da modelagem. A sacola espera o cliente; **não** entra na esteira de Pegar sacola. **Prova feita** pede **Anotações de prova** (opcional, por peça) e volta **sempre** para **Em produção**, na mesma OP. Se houver texto, a OP é reimpressa com o marcador **Prova**. A qualidade só entra quando a técnica clica **Terminei**. WhatsApp 3 ainda não.
@@ -88,7 +88,7 @@ Isto **não** é a versão `-A` da sacola e **não** é a refação da qualidade
 
 ## 8. Aprovação e retirada
 
-- **Aprovação do cliente** ("concordo com o serviço e o preço"), de três formas: **pelo link**, **na tela do balcão** ou **no papel** (o atendente imprime, o cliente assina, o atendente **anexa a foto** e clica **"assinado no papel"**). **Não é status.** A produção **pode começar sem assinatura**, com **liberação e motivo**.
+- **Aprovação do cliente** ("concordo com o serviço e o preço"): nesta fase, **balcão** (**Concordou**) e **papel** (foto da OS + **Assinado no papel**). O **Concordo** no celular entra depois no mesmo link. **Não é status.** A produção **pode começar sem assinatura**, com **Liberar produção** e **motivo**.
 - **Aprovação pendente:** o sistema **avisa todos os dias**, **até o cliente assinar**, o **atendente e o gerente**, e mantém uma **lista sempre visível** na tela. Não é por prazo.
 - **Retirada (decidido em 09/10/2026):** digital no **mesmo link** (**Recebi** só com janela aberta no balcão), papel com foto, e **Entregue** do atendente se o cliente não clicou. API do WhatsApp depois.
 - **Entrega em domicílio:** depois do piloto; por ora só um marcador e o endereço opcional.

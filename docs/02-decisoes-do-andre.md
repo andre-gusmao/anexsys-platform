@@ -1,6 +1,6 @@
 # Decisões do André
 
-**Atualizado em:** 08/10/2026
+**Atualizado em:** 09/10/2026
 **Substitui:** as regras de negócio da documentação antiga (`docs/arquivo/`) nos pontos em que elas divergem deste documento.
 **Valor:** este é o documento **oficial** das regras de negócio. Quando outro documento discordar, vale este.
 
@@ -285,6 +285,14 @@ Todas as cinco foram **confirmadas**:
 
 - O cálculo **Normal / Expresso / Urgente** na OS está **validado**.
 - Os prazos ainda são **fixos no código** (Normal = +7 dias, Urgente = 3 dias úteis, Expresso = 2 horas por peça). O **painel de parâmetros** para o André definir esses valores entra depois.
+
+### 11.7c Aprovação na entrada da OS (a validar)
+
+- A aprovação é **concordo com o serviço e o valor**. **Não é status**: a OS continua **Em aberto**.
+- Nesta fase: **balcão** (**Concordou**) e **papel** (foto da OS assinada + **Assinado no papel**). O **Concordo** no celular entra depois, no mesmo link.
+- Cada registro guarda quem, quando, o texto aceito, valor e serviços na hora, e a foto (no papel). A **medida usada fica travada**.
+- A produção **pode começar sem assinatura**, com **Liberar produção** e **motivo**. Depois ainda dá para assinar no balcão ou no papel.
+- Lista visível e aviso diário de aprovação pendente entram depois.
 
 ### 11.8 Princípio transversal: tela de parâmetros
 

@@ -1,0 +1,37 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ServiceOrderApprovalEntity } from '../entities/service-order-approval.entity';
+
+@Injectable()
+export class ServiceOrderApprovalRepository {
+  constructor(
+    @InjectRepository(ServiceOrderApprovalEntity)
+    private readonly repository: Repository<ServiceOrderApprovalEntity>,
+  ) {}
+
+  create(payload: Partial<ServiceOrderApprovalEntity>): ServiceOrderApprovalEntity {
+    return this.repository.create(payload);
+  }
+
+  async save(approval: ServiceOrderApprovalEntity): Promise<ServiceOrderApprovalEntity> {
+    return this.repository.save(approval);
+  }
+
+  async findLatestByServiceOrder(serviceOrderId: string): Promise<ServiceOrderApprovalEntity | null> {
+    const rows = await this.repository.find({
+      where: { serviceOrderId, isDeleted: false },
+      order: { createdAt: 'DESC', id: 'DESC' },
+      take: 1,
+    });
+    return rows[0] ?? null;
+  }
+
+  async findLatestSignatureByServiceOrder(serviceOrderId: string): Promise<ServiceOrderApprovalEntity | null> {
+    const rows = await this.repository.find({
+      where: { serviceOrderId, isDeleted: false },
+      order: { createdAt: 'DESC', id: 'DESC' },
+    });
+    return rows.find((row) => row.method === 'counter' || row.method === 'paper' || row.method === 'link') ?? null;
+  }
+}

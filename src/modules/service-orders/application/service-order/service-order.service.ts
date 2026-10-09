@@ -4,6 +4,7 @@ import { DataSource, QueryFailedError } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { CustomerService } from 'src/modules/crm/application/customer/customer.service';
+import { MeasurementService } from 'src/modules/crm/application/measurement/measurement.service';
 import { IdentityService } from 'src/modules/identity/application/identity/identity.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import {
@@ -40,6 +41,17 @@ import {
   type ProofAction,
 } from './service-order-proof';
 import {
+  APPROVAL_ACCEPTED_TEXT,
+  APPROVAL_RELEASE_TEXT,
+  buildApprovalMeasurementsSnapshot,
+  buildApprovalServicesSnapshot,
+  canRecordApproval,
+  isCustomerSignatureMethod,
+  normalizeApprovalPhoto,
+  normalizeReleaseReason,
+  type ApprovalMethod,
+} from './service-order-approval';
+import {
   canCompletePickup,
   canConfirmPickupFromLink,
   canStartPickup,
@@ -56,6 +68,7 @@ import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, wi
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
 import { ServiceOrderItemRepository } from '../../infrastructure/persistence/repositories/service-order-item.repository';
+import { ServiceOrderApprovalRepository } from '../../infrastructure/persistence/repositories/service-order-approval.repository';
 import { ServiceOrderPickupRepository } from '../../infrastructure/persistence/repositories/service-order-pickup.repository';
 import { ServiceOrderProofNoteRepository } from '../../infrastructure/persistence/repositories/service-order-proof-note.repository';
 import {
@@ -92,6 +105,10 @@ export class ServiceOrderService {
     private readonly proofNoteRepository: ServiceOrderProofNoteRepository,
     @Inject(ServiceOrderPickupRepository)
     private readonly pickupRepository: ServiceOrderPickupRepository,
+    @Inject(MeasurementService)
+    private readonly measurementService: MeasurementService,
+    @Inject(ServiceOrderApprovalRepository)
+    private readonly approvalRepository: ServiceOrderApprovalRepository,
   ) {}
 
   async create(dto: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderEntity; items: ServiceOrderItemEntity[] }> {
@@ -388,6 +405,7 @@ export class ServiceOrderService {
       clientReturnPreview,
       proofNotes: await this.buildProofNoteHistory(proofNoteRows, items),
       pickup: await this.buildPickupSummary(serviceOrder, customer.phone ?? null),
+      approval: await this.buildApprovalSummary(serviceOrder),
       maxPiecesPerBag: tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG,
     };
   }
@@ -909,28 +927,112 @@ export class ServiceOrderService {
     return saved;
   }
 
-  async approve(serviceOrderId: string, tenantId: string, actorUserId: string): Promise<ServiceOrderEntity> {
+  async approve(serviceOrderId: string, tenantId: string, actorUserId: string) {
+    return this.completeApproval(tenantId, serviceOrderId, actorUserId, { method: 'counter' });
+  }
+
+  async completeApproval(
+    tenantId: string,
+    serviceOrderId: string,
+    actorUserId: string,
+    input: {
+      method: ApprovalMethod;
+      photo?: { mimeType?: string | null; contentBase64?: string | null; fileName?: string | null } | null;
+      releaseReason?: string | null;
+      userAgent?: string | null;
+      ip?: string | null;
+    },
+  ) {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
-    if (serviceOrder.status === ServiceOrderStatus.CANCELLED) {
-      throw new DomainValidationError('Cancelled service orders cannot be approved.');
+    if (!canRecordApproval(serviceOrder.status)) {
+      throw new DomainValidationError('Esta OS não aceita aprovação.');
     }
-    if (serviceOrder.status !== ServiceOrderStatus.OPEN) {
-      throw new DomainValidationError('Only open service orders can be approved.');
+    if (!this.approvalRepository) {
+      throw new DomainValidationError('O registro de aprovação ainda não está disponível.');
     }
-    serviceOrder.status = ServiceOrderStatus.APPROVED;
-    serviceOrder.updatedBy = actorUserId;
-    const saved = await this.serviceOrderRepository.save(serviceOrder);
+
+    const latestSignature = await this.findLatestApprovalSignature(serviceOrder.id);
+    if (latestSignature && isCustomerSignatureMethod(input.method)) {
+      throw new DomainValidationError('Esta OS já foi assinada.');
+    }
+    if (latestSignature && input.method === 'release') {
+      throw new DomainValidationError('Esta OS já foi assinada. Não é preciso liberar a produção.');
+    }
+    const latest = await this.findLatestApproval(serviceOrder.id);
+    if (latest?.method === 'release' && input.method === 'release') {
+      throw new DomainValidationError('A produção já foi liberada sem assinatura.');
+    }
+
+    const photo = normalizeApprovalPhoto(input.photo);
+    if (input.method === 'paper' && !photo) {
+      throw new DomainValidationError('Anexe a foto da OS assinada para registrar no papel.');
+    }
+    const releaseReason = input.method === 'release' ? normalizeReleaseReason(input.releaseReason) : null;
+    const items = await this.serviceOrderItemRepository.findByServiceOrder(serviceOrderId);
+    const previousLock = latest?.measurementsSnapshot ?? latestSignature?.measurementsSnapshot ?? null;
+    const previousLockedAt = latest?.measurementsLockedAt ?? latestSignature?.measurementsLockedAt ?? null;
+    let measurementsSnapshot = previousLock;
+    if (!measurementsSnapshot && this.measurementService?.listByCustomer) {
+      const measurements = await this.measurementService.listByCustomer(tenantId, serviceOrder.customerId);
+      measurementsSnapshot = buildApprovalMeasurementsSnapshot(measurements.latestByLabel);
+    }
+    const now = new Date();
+    const savedApproval = await this.approvalRepository.save(
+      this.approvalRepository.create({
+        id: randomUUID(),
+        tenantId: serviceOrder.tenantId,
+        branchId: serviceOrder.branchId,
+        serviceOrderId: serviceOrder.id,
+        method: input.method,
+        confirmedAt: now,
+        acceptedText: input.method === 'release' ? APPROVAL_RELEASE_TEXT : APPROVAL_ACCEPTED_TEXT,
+        releaseReason,
+        totalValueSnapshot: serviceOrder.totalValue,
+        discountValueSnapshot: serviceOrder.discountValue,
+        servicesSnapshot: buildApprovalServicesSnapshot(items),
+        measurementsSnapshot,
+        measurementsLockedAt: previousLockedAt ?? now,
+        clientUserAgent: input.userAgent ?? null,
+        clientIp: input.ip ?? null,
+        photoFileName: photo?.fileName ?? null,
+        photoMimeType: photo?.mimeType ?? null,
+        photoBase64: photo?.contentBase64 ?? null,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      }),
+    );
+
     await this.auditService.record({
       tenantId,
-      branchId: saved.branchId,
+      branchId: serviceOrder.branchId,
       actorUserId,
       entityType: 'service_order',
-      entityId: saved.id,
-      action: 'service_order.approved',
+      entityId: serviceOrder.id,
+      action:
+        input.method === 'release' ? 'service_order.approval.released' : 'service_order.approval.recorded',
       eventType: 'service_order.workflow',
-      metadata: { status: saved.status },
+      metadata: {
+        orderNo: serviceOrder.orderNo,
+        method: savedApproval.method,
+        status: serviceOrder.status,
+        measurementsLocked: Boolean(savedApproval.measurementsLockedAt),
+        photo: Boolean(photo),
+      },
     });
-    return saved;
+    return this.getDetails(tenantId, serviceOrder.id);
+  }
+
+  async getApprovalPhoto(tenantId: string, serviceOrderId: string) {
+    await this.getById(serviceOrderId, tenantId);
+    const approval = await this.findLatestApproval(serviceOrderId);
+    if (!approval?.photoBase64 || !approval.photoMimeType) {
+      return null;
+    }
+    return {
+      fileName: approval.photoFileName,
+      mimeType: approval.photoMimeType,
+      contentBase64: approval.photoBase64,
+    };
   }
 
   async advanceFloor(tenantId: string, serviceOrderId: string, actorUserId: string) {
@@ -1371,6 +1473,37 @@ export class ServiceOrderService {
       acceptedText: pickup?.acceptedText ?? null,
       photoAvailable: Boolean(pickup?.photoBase64),
       recebiReady: canConfirmPickupFromLink(serviceOrder.status, pickup?.windowOpenedAt, pickup?.windowExpiresAt),
+    };
+  }
+
+  private async findLatestApproval(serviceOrderId: string) {
+    if (!this.approvalRepository?.findLatestByServiceOrder) {
+      return null;
+    }
+    return this.approvalRepository.findLatestByServiceOrder(serviceOrderId);
+  }
+
+  private async findLatestApprovalSignature(serviceOrderId: string) {
+    if (!this.approvalRepository?.findLatestSignatureByServiceOrder) {
+      return null;
+    }
+    return this.approvalRepository.findLatestSignatureByServiceOrder(serviceOrderId);
+  }
+
+  private async buildApprovalSummary(serviceOrder: ServiceOrderEntity) {
+    const latest = await this.findLatestApproval(serviceOrder.id);
+    const signature = await this.findLatestApprovalSignature(serviceOrder.id);
+    const current = signature ?? latest;
+    return {
+      method: current?.method ?? null,
+      confirmedAt: current?.confirmedAt ?? null,
+      acceptedText: current?.acceptedText ?? null,
+      releaseReason: latest?.method === 'release' ? latest.releaseReason : current?.releaseReason ?? null,
+      totalValue: current?.totalValueSnapshot ?? null,
+      photoAvailable: Boolean(current?.photoBase64),
+      measurementsLocked: Boolean(current?.measurementsLockedAt || latest?.measurementsLockedAt),
+      signed: Boolean(signature),
+      releasedWithoutSignature: Boolean(latest && latest.method === 'release' && !signature),
     };
   }
 

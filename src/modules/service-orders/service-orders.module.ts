@@ -18,12 +18,14 @@ import { BusinessCalendarDayEntity } from './infrastructure/persistence/entities
 import { GarmentProductEntity } from './infrastructure/persistence/entities/garment-product.entity';
 import { ServiceOrderEntity } from './infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from './infrastructure/persistence/entities/service-order-item.entity';
+import { ServiceOrderApprovalEntity } from './infrastructure/persistence/entities/service-order-approval.entity';
 import { ServiceOrderPickupEntity } from './infrastructure/persistence/entities/service-order-pickup.entity';
 import { ServiceOrderProofNoteEntity } from './infrastructure/persistence/entities/service-order-proof-note.entity';
 import { AtelierServiceRepository } from './infrastructure/persistence/repositories/atelier-service.repository';
 import { BusinessCalendarDayRepository } from './infrastructure/persistence/repositories/business-calendar-day.repository';
 import { GarmentProductRepository } from './infrastructure/persistence/repositories/garment-product.repository';
 import { ServiceOrderItemRepository } from './infrastructure/persistence/repositories/service-order-item.repository';
+import { ServiceOrderApprovalRepository } from './infrastructure/persistence/repositories/service-order-approval.repository';
 import { ServiceOrderPickupRepository } from './infrastructure/persistence/repositories/service-order-pickup.repository';
 import { ServiceOrderProofNoteRepository } from './infrastructure/persistence/repositories/service-order-proof-note.repository';
 import { ServiceOrderRepository } from './infrastructure/persistence/repositories/service-order.repository';
@@ -38,6 +40,7 @@ import { ServiceOrderRepository } from './infrastructure/persistence/repositorie
       ServiceOrderItemEntity,
       ServiceOrderProofNoteEntity,
       ServiceOrderPickupEntity,
+      ServiceOrderApprovalEntity,
     ]),
     AuditModule,
     TenantModule,
@@ -59,6 +62,7 @@ import { ServiceOrderRepository } from './infrastructure/persistence/repositorie
     ServiceOrderItemRepository,
     ServiceOrderProofNoteRepository,
     ServiceOrderPickupRepository,
+    ServiceOrderApprovalRepository,
   ],
   exports: [AtelierCatalogService, DeliveryDateService, ServiceOrderService, ServiceOrderRepository, BusinessCalendarDayRepository],
 })

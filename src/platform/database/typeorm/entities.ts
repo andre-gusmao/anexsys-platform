@@ -56,6 +56,7 @@ import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastruc
 import { GarmentProductEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/garment-product.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
+import { ServiceOrderApprovalEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-approval.entity';
 import { ServiceOrderPickupEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-pickup.entity';
 import { ServiceOrderProofNoteEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-proof-note.entity';
 import { FirstAccessTokenEntity } from 'src/modules/identity/infrastructure/persistence/entities/first-access-token.entity';
@@ -120,6 +121,7 @@ export const typeOrmEntities = [
   ServiceOrderItemEntity,
   ServiceOrderProofNoteEntity,
   ServiceOrderPickupEntity,
+  ServiceOrderApprovalEntity,
   UserIdentityEntity,
   UserCredentialEntity,
   UserSessionEntity,

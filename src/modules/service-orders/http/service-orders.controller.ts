@@ -4,6 +4,8 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Headers,
+  Ip,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -298,6 +300,20 @@ class CompletePickupBody {
   @IsOptional()
   @IsString()
   recipientName?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PickupPhotoBody)
+  photo?: PickupPhotoBody;
+}
+
+class CompleteApprovalBody {
+  @IsIn(['counter', 'paper', 'release'])
+  method!: 'counter' | 'paper' | 'release';
+
+  @IsOptional()
+  @IsString()
+  releaseReason?: string;
 
   @IsOptional()
   @ValidateNested()
@@ -606,6 +622,47 @@ export class ServiceOrdersController {
     });
   }
 
+  @Permissions('service_orders.write')
+  @Post(':serviceOrderId/approval')
+  async completeApproval(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @Body() body: CompleteApprovalBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Ip() ip: string,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.completeApproval(tenantId, serviceOrderId, principal.userId, {
+      method: body.method,
+      photo: body.photo,
+      releaseReason: body.releaseReason,
+      userAgent: userAgent ?? null,
+      ip: ip ?? null,
+    });
+  }
+
+  @Permissions('service_orders.read')
+  @Get(':serviceOrderId/approval/photo')
+  async getApprovalPhoto(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.getApprovalPhoto(tenantId, serviceOrderId);
+  }
+
   @Permissions('service_orders.read')
   @Get(':serviceOrderId/pickup/photo')
   async getPickupPhoto(
@@ -762,7 +819,10 @@ export class ServiceOrdersController {
     }
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
-    return this.serviceOrderService.approve(serviceOrderId, tenantId, principal.userId);
+    return this.serviceOrderService.completeApproval(tenantId, serviceOrderId, principal.userId, {
+      method: 'counter',
+      userAgent: (request.headers['user-agent'] as string | undefined) ?? null,
+    });
   }
 
   @Permissions('service_orders.write')

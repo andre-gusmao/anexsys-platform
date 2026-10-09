@@ -30,6 +30,8 @@ import {
 } from "@/components/service-orders/os-proof";
 import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
 import { OsProofNotesPanel } from "@/components/service-orders/os-proof-notes-panel";
+import { OsApprovalPanel } from "@/components/service-orders/os-approval-panel";
+import { approvalMethodLabel, canRecordOsApproval, type ApprovalSummary } from "@/components/service-orders/os-approval";
 import { OsPickupPanel } from "@/components/service-orders/os-pickup-panel";
 import { pickupMethodLabel, type PickupSummary } from "@/components/service-orders/os-pickup";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
@@ -128,6 +130,7 @@ type ServiceOrderDetail = {
   }>;
   reprintProof?: boolean;
   pickup?: PickupSummary | null;
+  approval?: ApprovalSummary | null;
 };
 
 type CustomerLookupRecord = {
@@ -253,6 +256,7 @@ export function ServiceOrdersWorkspace() {
   const workspaceMode = searchParams.get("workspaceMode");
   const openProof = searchParams.get("openProof") === "1";
   const openPickup = searchParams.get("openPickup") === "1";
+  const openApproval = searchParams.get("openApproval") === "1";
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
@@ -290,6 +294,8 @@ export function ServiceOrdersWorkspace() {
   const [proofPickerOpen, setProofPickerOpen] = useState(false);
   const [pickupPickerOpen, setPickupPickerOpen] = useState(false);
   const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
+  const [approvalPickerOpen, setApprovalPickerOpen] = useState(false);
+  const [approvalPhoto, setApprovalPhoto] = useState<string | null>(null);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -746,6 +752,22 @@ export function ServiceOrdersWorkspace() {
     [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
   );
 
+  const openApprovalPanel = useCallback(
+    (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (isListWorkspace) {
+        const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openApproval=1`;
+        if (isMobile) {
+          navigateWithinWorkspace(targetPath);
+        } else {
+          openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
+        }
+        return;
+      }
+      setApprovalPickerOpen(true);
+    },
+    [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
   const copyPublicLink = useCallback(async () => {
     const token = selectedOrder?.publicToken;
     if (!token) {
@@ -875,6 +897,43 @@ export function ServiceOrdersWorkspace() {
     [apiJson, canWrite, isListWorkspace, loadOrders, selectedOrder],
   );
 
+  const handleCompleteApproval = useCallback(
+    async (input: {
+      method: "counter" | "paper" | "release";
+      photo?: { mimeType: string; contentBase64: string; fileName: string } | null;
+      releaseReason?: string;
+    }) => {
+      if (!canWrite || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/approval`, {
+          method: "POST",
+          body: JSON.stringify(input),
+        });
+        setApprovalPickerOpen(false);
+        await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+        if (next.approval?.releasedWithoutSignature) {
+          setMessage(
+            `Produção da OS ${next.serviceOrder.orderNo} liberada sem assinatura. A OS continua Em aberto.`,
+          );
+          return;
+        }
+        const method = approvalMethodLabel(next.approval?.method) ?? "balcão";
+        setMessage(
+          `OS ${next.serviceOrder.orderNo} assinada (${method}). A OS continua Em aberto e a medida ficou travada.`,
+        );
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A aprovação não pôde ser registrada."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, isListWorkspace, loadOrders, selectedOrder],
+  );
+
   const handleProofAction = useCallback(
     async (order: Pick<ServiceOrderRecord, "id" | "orderNo">, action: ProofAction) => {
       if (!canWriteProof) {
@@ -969,6 +1028,17 @@ export function ServiceOrdersWorkspace() {
             },
           ]
         : []),
+      ...(canRecordOsApproval(row.status) && canWrite
+        ? [
+            {
+              id: "approval",
+              label: "Aprovação",
+              onSelect: () => {
+                openApprovalPanel(row);
+              },
+            },
+          ]
+        : []),
       ...(row.status === "ready_for_pickup" && canWrite
         ? [
             {
@@ -1034,6 +1104,7 @@ export function ServiceOrdersWorkspace() {
       canWriteProduction,
       canWriteProof,
       handleProofAction,
+      openApprovalPanel,
       openPickupPanel,
       printProductionOrder,
       printServiceOrder,
@@ -1153,6 +1224,17 @@ export function ServiceOrdersWorkspace() {
   }, [details, focusServiceOrderId, navigateWithinWorkspace, openPickup]);
 
   useEffect(() => {
+    if (!openApproval || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
+      return;
+    }
+    if (!canRecordOsApproval(details.serviceOrder.status)) {
+      return;
+    }
+    setApprovalPickerOpen(true);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
+  }, [details, focusServiceOrderId, navigateWithinWorkspace, openApproval]);
+
+  useEffect(() => {
     if (!details?.pickup?.photoAvailable || !details.serviceOrder.id) {
       setPickupPhoto(null);
       return;
@@ -1175,6 +1257,30 @@ export function ServiceOrdersWorkspace() {
       cancelled = true;
     };
   }, [apiJson, details?.pickup?.photoAvailable, details?.serviceOrder.id]);
+
+  useEffect(() => {
+    if (!details?.approval?.photoAvailable || !details.serviceOrder.id) {
+      setApprovalPhoto(null);
+      return;
+    }
+    let cancelled = false;
+    void apiJson<{ mimeType: string; contentBase64: string } | null>(
+      `/service-orders/${details.serviceOrder.id}/approval/photo`,
+    )
+      .then((photo) => {
+        if (!cancelled && photo?.contentBase64) {
+          setApprovalPhoto(`data:${photo.mimeType};base64,${photo.contentBase64}`);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setApprovalPhoto(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiJson, details?.approval?.photoAvailable, details?.serviceOrder.id]);
 
   useEffect(() => {
     if (!isListWorkspace) {
@@ -1893,6 +1999,16 @@ export function ServiceOrdersWorkspace() {
             />
           ) : null}
 
+          {approvalPickerOpen && selectedOrder ? (
+            <OsApprovalPanel
+              orderNo={selectedOrder.orderNo}
+              approval={details?.approval ?? null}
+              saving={saving}
+              onClose={() => setApprovalPickerOpen(false)}
+              onComplete={(input) => handleCompleteApproval(input)}
+            />
+          ) : null}
+
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
@@ -2528,6 +2644,22 @@ export function ServiceOrdersWorkspace() {
                 </div>
               </div>
 
+              {!showCreateForm && (details?.approval?.method || details?.approval?.signed) ? (
+                <div className="mini-section">
+                  <h4>Aprovação</h4>
+                  <p className="os-rule-banner">
+                    {details.approval.releasedWithoutSignature
+                      ? "Produção liberada sem assinatura"
+                      : approvalMethodLabel(details.approval.method)}
+                    {details.approval.confirmedAt ? ` · ${formatDateTime(details.approval.confirmedAt)}` : ""}
+                    {details.approval.acceptedText ? ` · ${details.approval.acceptedText}` : ""}
+                    {details.approval.releaseReason ? ` · ${details.approval.releaseReason}` : ""}
+                    {details.approval.measurementsLocked ? " · Medida travada" : ""}
+                  </p>
+                  {approvalPhoto ? <img alt="Foto da OS assinada" className="os-pickup-photo" src={approvalPhoto} /> : null}
+                </div>
+              ) : null}
+
               {!showCreateForm && details?.pickup?.method ? (
                 <div className="mini-section">
                   <h4>Retirada</h4>
@@ -2639,6 +2771,16 @@ export function ServiceOrdersWorkspace() {
                           {proofActionLabel("complete_proof")}
                         </button>
                       ) : null}
+                      {canRecordOsApproval(selectedOrder.status) && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => openApprovalPanel(selectedOrder)}
+                          type="button"
+                        >
+                          Aprovação
+                        </button>
+                      ) : null}
                       {selectedOrder.status === "ready_for_pickup" && canWrite ? (
                         <button
                           className="button"
@@ -2691,6 +2833,16 @@ export function ServiceOrdersWorkspace() {
                       <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
                         Cancelar
                       </button>
+                      {canRecordOsApproval(selectedOrder.status) && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => openApprovalPanel(selectedOrder)}
+                          type="button"
+                        >
+                          Aprovação
+                        </button>
+                      ) : null}
                       {canWriteFinance ? (
                         <button
                           className="button"

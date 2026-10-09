@@ -176,6 +176,40 @@ async function main() {
       ON service_order_pickups (service_order_id)
     `);
     await client.query(`
+      CREATE TABLE IF NOT EXISTS service_order_approvals (
+        id uuid PRIMARY KEY,
+        tenant_id uuid NOT NULL,
+        branch_id uuid NOT NULL,
+        service_order_id uuid NOT NULL,
+        method varchar(20) NOT NULL,
+        confirmed_at timestamptz NOT NULL,
+        accepted_text text,
+        release_reason text,
+        total_value_snapshot numeric(18, 2),
+        discount_value_snapshot numeric(18, 2),
+        services_snapshot jsonb,
+        measurements_snapshot jsonb,
+        measurements_locked_at timestamptz,
+        client_user_agent text,
+        client_ip varchar(80),
+        photo_file_name varchar(180),
+        photo_mime_type varchar(80),
+        photo_base64 text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        created_by uuid NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        updated_by uuid NOT NULL,
+        row_version bigint NOT NULL DEFAULT 1,
+        is_deleted boolean NOT NULL DEFAULT false,
+        deleted_at timestamptz,
+        deleted_by uuid
+      )
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_approvals_order
+      ON service_order_approvals (service_order_id)
+    `);
+    await client.query(`
       ALTER TABLE IF EXISTS service_orders
       ADD COLUMN IF NOT EXISTS public_token uuid
     `);
@@ -204,7 +238,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada, link público e retorno do cliente).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada, aprovação, link público e retorno do cliente).');
   } finally {
     await client.end();
   }

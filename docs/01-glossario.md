@@ -1,6 +1,6 @@
 # Glossário
 
-**Atualizado em:** 08/10/2026
+**Atualizado em:** 09/10/2026
 **Substitui:** os termos espalhados pela documentação antiga (`docs/arquivo/`).
 
 Este glossário vale para as conversas, os documentos e as telas. A coluna "No código" ajuda quem abrir o programa, que usa nomes em inglês.
@@ -81,7 +81,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | Termo | Significado |
 |---|---|
 | **Link público** | Endereço seguro que o cliente recebe por WhatsApp. Sem login. Microformulário no celular: status, o combinado e botões (hoje **Recebi**; depois **Concordo**) |
-| **Aprovação do cliente** | **Assinatura eletrônica** de "concordo com o serviço e o preço", feita no link. **Não é status** |
+| **Aprovação do cliente** | Assinatura de "concordo com o serviço e o preço" no **balcão**, no **papel** (foto da OS assinada) ou, depois, no **link**. **Não é status**. A medida usada fica travada |
 | **Assinatura eletrônica** | Registro de aceite com data, hora, texto aceito e aparelho. É **evidência de aceite**, não substitui um certificado digital |
 | **Retirada** | O cliente retira a peça. A atendente inicia a janela no balcão. No celular, o cliente aperta **Recebi** no link; sem celular, assina a OP e a foto vai para a OS. Sem clique, a atendente dá baixa no **Entregue** |
 | **Tipo de entrega** | **Normal**: mesmo dia da semana da semana seguinte. **Expresso**: até 2 horas por peça, só no horário de funcionamento. **Urgente**: 2 ou 3 dias úteis (sugestão 3). Cada tipo tem **sobretaxa percentual** configurável. O sistema **sugere** a data e o atendente **pode alterar** |
