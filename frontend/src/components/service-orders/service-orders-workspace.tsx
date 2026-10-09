@@ -30,6 +30,8 @@ import {
 } from "@/components/service-orders/os-proof";
 import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
 import { OsProofNotesPanel } from "@/components/service-orders/os-proof-notes-panel";
+import { OsPickupPanel } from "@/components/service-orders/os-pickup-panel";
+import { pickupMethodLabel, type PickupSummary } from "@/components/service-orders/os-pickup";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
@@ -124,6 +126,7 @@ type ServiceOrderDetail = {
     items: Array<{ itemId: string; itemNo: number; itemType: string; description: string; note: string }>;
   }>;
   reprintProof?: boolean;
+  pickup?: PickupSummary | null;
 };
 
 type CustomerLookupRecord = {
@@ -248,6 +251,7 @@ export function ServiceOrdersWorkspace() {
   const focusServiceOrderId = searchParams.get("focusServiceOrderId");
   const workspaceMode = searchParams.get("workspaceMode");
   const openProof = searchParams.get("openProof") === "1";
+  const openPickup = searchParams.get("openPickup") === "1";
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
@@ -283,6 +287,8 @@ export function ServiceOrdersWorkspace() {
   const [wantsNextVersion, setWantsNextVersion] = useState(false);
   const [returnPickerOpen, setReturnPickerOpen] = useState(false);
   const [proofPickerOpen, setProofPickerOpen] = useState(false);
+  const [pickupPickerOpen, setPickupPickerOpen] = useState(false);
+  const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -305,6 +311,8 @@ export function ServiceOrdersWorkspace() {
     setWantsNextVersion(false);
     setReturnPickerOpen(false);
     setProofPickerOpen(false);
+    setPickupPickerOpen(false);
+    setPickupPhoto(null);
   }, [selectedOrder?.id, showCreateForm]);
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
@@ -721,26 +729,72 @@ export function ServiceOrdersWorkspace() {
     [apiJson, companyName],
   );
 
-  const handleDeliver = useCallback(
-    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
-      if (!canWrite) {
+  const openPickupPanel = useCallback(
+    (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (isListWorkspace) {
+        const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openPickup=1`;
+        if (isMobile) {
+          navigateWithinWorkspace(targetPath);
+        } else {
+          openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
+        }
+        return;
+      }
+      setPickupPickerOpen(true);
+    },
+    [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const handleStartPickup = useCallback(async () => {
+    if (!canWrite || !selectedOrder) {
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/pickup/start`, {
+        method: "POST",
+      });
+      await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+      setPickupPickerOpen(true);
+      setMessage(
+        `Janela de retirada aberta na OS ${next.serviceOrder.orderNo}. O Recebi no link do cliente fica pronto; o envio por WhatsApp entra depois.`,
+      );
+    } catch (error) {
+      setMessage(formatWorkspaceMessage(error, "A retirada não pôde ser iniciada."));
+    } finally {
+      setSaving(false);
+    }
+  }, [apiJson, canWrite, isListWorkspace, loadOrders, selectedOrder]);
+
+  const handleCompletePickup = useCallback(
+    async (input: {
+      method: "paper" | "attendant";
+      photo?: { mimeType: string; contentBase64: string; fileName: string } | null;
+    }) => {
+      if (!canWrite || !selectedOrder) {
         return;
       }
       setSaving(true);
       setMessage(null);
       try {
-        const delivered = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}/deliver`, {
+        const delivered = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/pickup/complete`, {
           method: "POST",
+          body: JSON.stringify(input),
         });
+        setPickupPickerOpen(false);
         await loadOrders(isListWorkspace ? undefined : delivered.serviceOrder.id);
-        setMessage(`OS ${delivered.serviceOrder.orderNo} marcada como retirada. Use Cliente voltou se o cliente reclamar depois.`);
+        const method = pickupMethodLabel(delivered.pickup?.method) ?? "atendente";
+        setMessage(
+          `OS ${delivered.serviceOrder.orderNo} retirada (${method}). Use Cliente voltou se o cliente reclamar depois.`,
+        );
       } catch (error) {
         setMessage(formatWorkspaceMessage(error, "A OS não pôde ser entregue."));
       } finally {
         setSaving(false);
       }
     },
-    [apiJson, canWrite, isListWorkspace, loadOrders],
+    [apiJson, canWrite, isListWorkspace, loadOrders, selectedOrder],
   );
 
   const handleProofAction = useCallback(
@@ -841,9 +895,9 @@ export function ServiceOrdersWorkspace() {
         ? [
             {
               id: "deliver",
-              label: "Entregar",
+              label: "Retirada",
               onSelect: () => {
-                void handleDeliver(row);
+                openPickupPanel(row);
               },
             },
           ]
@@ -901,8 +955,8 @@ export function ServiceOrdersWorkspace() {
       canWrite,
       canWriteProduction,
       canWriteProof,
-      handleDeliver,
       handleProofAction,
+      openPickupPanel,
       printProductionOrder,
       printServiceOrder,
       resendEmail,
@@ -1008,6 +1062,41 @@ export function ServiceOrdersWorkspace() {
     setProofPickerOpen(true);
     navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
   }, [details, focusServiceOrderId, navigateWithinWorkspace, openProof]);
+
+  useEffect(() => {
+    if (!openPickup || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
+      return;
+    }
+    if (details.serviceOrder.status !== "ready_for_pickup") {
+      return;
+    }
+    setPickupPickerOpen(true);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
+  }, [details, focusServiceOrderId, navigateWithinWorkspace, openPickup]);
+
+  useEffect(() => {
+    if (!details?.pickup?.photoAvailable || !details.serviceOrder.id) {
+      setPickupPhoto(null);
+      return;
+    }
+    let cancelled = false;
+    void apiJson<{ mimeType: string; contentBase64: string } | null>(
+      `/service-orders/${details.serviceOrder.id}/pickup/photo`,
+    )
+      .then((photo) => {
+        if (!cancelled && photo?.contentBase64) {
+          setPickupPhoto(`data:${photo.mimeType};base64,${photo.contentBase64}`);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPickupPhoto(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiJson, details?.pickup?.photoAvailable, details?.serviceOrder.id]);
 
   useEffect(() => {
     if (!isListWorkspace) {
@@ -1706,6 +1795,17 @@ export function ServiceOrdersWorkspace() {
             />
           ) : null}
 
+          {pickupPickerOpen && selectedOrder ? (
+            <OsPickupPanel
+              orderNo={selectedOrder.orderNo}
+              pickup={details?.pickup ?? null}
+              saving={saving}
+              onClose={() => setPickupPickerOpen(false)}
+              onStart={() => handleStartPickup()}
+              onComplete={(input) => handleCompletePickup(input)}
+            />
+          ) : null}
+
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
@@ -2330,6 +2430,19 @@ export function ServiceOrdersWorkspace() {
                 </div>
               </div>
 
+              {!showCreateForm && details?.pickup?.method ? (
+                <div className="mini-section">
+                  <h4>Retirada</h4>
+                  <p className="os-rule-banner">
+                    {pickupMethodLabel(details.pickup.method)}
+                    {details.pickup.confirmedAt ? ` · ${formatDateTime(details.pickup.confirmedAt)}` : ""}
+                    {details.pickup.customerPhone ? ` · ${details.pickup.customerPhone}` : ""}
+                    {details.pickup.acceptedText ? ` · ${details.pickup.acceptedText}` : ""}
+                  </p>
+                  {pickupPhoto ? <img alt="Foto da OP assinada" className="os-pickup-photo" src={pickupPhoto} /> : null}
+                </div>
+              ) : null}
+
               {!showCreateForm && details?.proofNotes && details.proofNotes.length > 0 ? (
                 <div className="mini-section">
                   <h4>Anotações de prova</h4>
@@ -2432,12 +2545,10 @@ export function ServiceOrdersWorkspace() {
                         <button
                           className="button"
                           disabled={saving}
-                          onClick={() => {
-                            void handleDeliver(selectedOrder);
-                          }}
+                          onClick={() => openPickupPanel(selectedOrder)}
                           type="button"
                         >
-                          Entregar
+                          Retirada
                         </button>
                       ) : null}
                       {selectedOrder.status === "picked_up" && canWrite ? (

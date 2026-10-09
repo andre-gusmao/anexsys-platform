@@ -17,6 +17,7 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -276,6 +277,32 @@ class CompleteProofBody {
   @ValidateNested({ each: true })
   @Type(() => CompleteProofNoteBody)
   notes?: CompleteProofNoteBody[];
+}
+
+class PickupPhotoBody {
+  @IsString()
+  mimeType!: string;
+
+  @IsString()
+  contentBase64!: string;
+
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+}
+
+class CompletePickupBody {
+  @IsIn(['paper', 'attendant'])
+  method!: 'paper' | 'attendant';
+
+  @IsOptional()
+  @IsString()
+  recipientName?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PickupPhotoBody)
+  photo?: PickupPhotoBody;
 }
 
 class UpdateServiceOrderItemBody {
@@ -540,6 +567,59 @@ export class ServiceOrdersController {
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
     return this.serviceOrderService.completeProof(tenantId, serviceOrderId, principal.userId, body?.notes);
+  }
+
+  @Permissions('service_orders.write')
+  @Post(':serviceOrderId/pickup/start')
+  async startPickup(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.startPickup(tenantId, serviceOrderId, principal.userId);
+  }
+
+  @Permissions('service_orders.write')
+  @Post(':serviceOrderId/pickup/complete')
+  async completePickup(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @Body() body: CompletePickupBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.completePickup(tenantId, serviceOrderId, principal.userId, {
+      method: body.method,
+      recipientName: body.recipientName,
+      photo: body.photo,
+    });
+  }
+
+  @Permissions('service_orders.read')
+  @Get(':serviceOrderId/pickup/photo')
+  async getPickupPhoto(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.getPickupPhoto(tenantId, serviceOrderId);
   }
 
   @Permissions('service_orders.write')

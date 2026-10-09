@@ -144,6 +144,38 @@ async function main() {
       ON service_order_proof_notes (batch_id)
     `);
     await client.query(`
+      CREATE TABLE IF NOT EXISTS service_order_pickups (
+        id uuid PRIMARY KEY,
+        tenant_id uuid NOT NULL,
+        branch_id uuid NOT NULL,
+        service_order_id uuid NOT NULL,
+        method varchar(20),
+        window_opened_at timestamptz,
+        window_expires_at timestamptz,
+        confirmed_at timestamptz,
+        customer_phone varchar(40),
+        recipient_name varchar(160),
+        accepted_text text,
+        client_user_agent text,
+        client_ip varchar(80),
+        photo_file_name varchar(180),
+        photo_mime_type varchar(80),
+        photo_base64 text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        created_by uuid NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        updated_by uuid NOT NULL,
+        row_version bigint NOT NULL DEFAULT 1,
+        is_deleted boolean NOT NULL DEFAULT false,
+        deleted_at timestamptz,
+        deleted_by uuid
+      )
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_pickups_order
+      ON service_order_pickups (service_order_id)
+    `);
+    await client.query(`
       UPDATE service_orders
       SET group_id = id
       WHERE group_id IS NULL
@@ -159,7 +191,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada e retorno do cliente).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada com evidência e retorno do cliente).');
   } finally {
     await client.end();
   }

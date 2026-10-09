@@ -10,6 +10,7 @@ import { ServiceOrderFloorStatus1760000030000 } from './migrations/1760000030000
 import { ServiceOrderClientReturn1760000031000 } from './migrations/1760000031000-service-order-client-return';
 import { ServiceOrderProof1760000032000 } from './migrations/1760000032000-service-order-proof';
 import { ServiceOrderProofNotes1760000033000 } from './migrations/1760000033000-service-order-proof-notes';
+import { ServiceOrderPickup1760000034000 } from './migrations/1760000034000-service-order-pickup';
 
 export async function applyPendingMigrations(dataSource: DataSource): Promise<void> {
   if (typeof dataSource.runMigrations === 'function') {
@@ -38,6 +39,7 @@ export async function ensureAtelierOsSchema(dataSource: DataSource): Promise<voi
     await new ServiceOrderClientReturn1760000031000().up(queryRunner);
     await new ServiceOrderProof1760000032000().up(queryRunner);
     await new ServiceOrderProofNotes1760000033000().up(queryRunner);
+    await new ServiceOrderPickup1760000034000().up(queryRunner);
   } finally {
     await queryRunner.release();
   }

@@ -250,8 +250,8 @@ Fonte: respostas do André às perguntas complementares da segunda rodada. Esta 
 
 ### 11.2 Retirada
 
-- **Só assinatura no papel nesta primeira fase.** O cliente assina a **Ordem de Produção em papel**, o atendente **anexa a foto na OS** e clica **"entregue assinado"**.
-- **Sem token e sem janela de confirmação por ora.** (O parecer sobre token permanece como análise para uma versão futura.)
+- **Dois caminhos, mais um escape.** Digital: o cliente aperta **Recebi** no **mesmo link** da OS, só depois que a atendente **inicia a retirada** (janela de 10 min). Papel: foto da OP assinada + **Entregue assinado**. Se o cliente não clicou, a atendente pode **Entregue** (baixa do atendente, não é assinatura do cliente).
+- A API oficial do WhatsApp e a página pública do link entram depois. O servidor já grava método, janela, foto, número e texto aceito.
 
 ### 11.3 Entrega em domicílio
 
@@ -444,4 +444,4 @@ Confirmado com o André. São caminhos distintos:
 
 Prazos contados da retirada, pelos parâmetros da Conta (`warranty_adjustment_period_days` e `warranty_execution_period_days`). Dentro do ajuste → **Reconserto** sem valor. Depois do ajuste e dentro da execução → **Em garantia** sem valor. Fora dos dois → **cobrada**. Liberação do gerente com motivo fica para depois.
 
-Para homologar o retorno antes da assinatura em papel: botão **Entregar** (Pronto para retirada → Retirado + data). **Cliente voltou** abre o seletor de peças e a OS filha.
+**Retirada (09/10/2026):** botão **Retirada** na OS. Inicia a janela do **Recebi**, aceita foto + **Entregue assinado**, ou **Entregue** pelo atendente. **Cliente voltou** continua depois do status Retirado.

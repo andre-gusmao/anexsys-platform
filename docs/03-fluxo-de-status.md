@@ -24,7 +24,7 @@ e vai por WhatsApp     papel)                 impressa no bolso          termina
 6. **Prova / pré-preparação.** Status **público**. É uma **nova medição** depois do corte e da modelagem. A sacola espera o cliente; **não** entra na esteira de Pegar sacola. **Prova feita** pede **Anotações de prova** (opcional, por peça) e volta **sempre** para **Em produção**, na mesma OP. Se houver texto, a OP é reimpressa com o marcador **Prova**. A qualidade só entra quando a técnica clica **Terminei**. WhatsApp 3 ainda não.
 7. **Controle de qualidade.** O revisor abre a OS na tela **Controle de qualidade** (ou lê o QR, quando existir) e avalia **peça a peça**. A lista mostra só **Aguardando controle de qualidade**. Se **todas** forem aprovadas, a OS vai para **Pronto para retirada**. Se uma ou várias forem reprovadas, a **OS original permanece em Controle de qualidade** e nasce uma **nova versão da OP só com as peças reprovadas**, para voltar à esteira de produção. A esteira de produção fica em **Pegar sacola** (Aberta → Terminei), não na OS.
 8. **Pronto para retirada.** Status **público**. Sai a **segunda mensagem de WhatsApp**.
-9. **Retirada (só em papel nesta fase).** O cliente informa o número da OS ou o nome, o atendente confere e **lê o QR**, o cliente **assina a Ordem de Produção em papel**, o atendente **anexa a foto à OS** e clica **"entregue assinado"**. Status **Retirado pelo cliente** (público). **Sem token e sem janela de confirmação por ora.**
+9. **Retirada.** A atendente **inicia a retirada** na OS (janela de 10 min). No **mesmo link**, o cliente pode apertar **Recebi**. Sem celular, assina a OP e a atendente anexa a foto (**Entregue assinado**). Sem clique, a atendente dá baixa no **Entregue**. Status **Retirado pelo cliente**. WhatsApp oficial e a página pública do link entram depois.
 
 ## 3. Catálogo inicial de status
 
@@ -36,7 +36,7 @@ e vai por WhatsApp     papel)                 impressa no bolso          termina
 | 4 | Aguardando controle de qualidade | Público | Técnico, ao terminar | Controle de qualidade | |
 | 5 | Controle de qualidade | Público | Revisor | Pronto para retirada quando **100% das peças** estão aprovadas | Reprovação **não** muda o status da OS |
 | 6 | Pronto para retirada | Público | Ninguém | Retirado pelo cliente | WhatsApp 2 |
-| 7 | Retirado pelo cliente | Público | Atendente, na retirada | Fim (ou **Cliente voltou**, que abre OS filha) | Hoje o botão **Entregar** grava a data. Assinatura em papel e foto ficam para depois |
+| 7 | Retirado pelo cliente | Público | Atendente, na retirada | Fim (ou **Cliente voltou**, que abre OS filha) | Janela + **Recebi** (link), papel com foto, ou **Entregue** do atendente |
 | — | Refação | **Interno (OP)** | Técnica que fará a refação | Volta para a qualidade na **mesma OS** | Não é status da OS. É uma **versão da OP** só com as peças reprovadas. O cliente continua vendo Controle de qualidade |
 
 ## 4. Regras do catálogo de status
@@ -60,7 +60,7 @@ Há **dois prazos diferentes**, ambos contados **da retirada pelo cliente** (dec
 
 Isto **não** é a versão `-A` da sacola e **não** é a refação da qualidade.
 
-**Entregar** (provisório): Pronto para retirada → **Retirado**, com data de retirada.
+**Retirada:** Pronto para retirada → janela de 10 min → **Recebi** no link, **Entregue assinado** com foto, ou **Entregue** do atendente. Grava o método.
 
 **Cliente voltou:** a atendente marca as peças. Nasce **OS filha com placa nova**, mesmo cliente, mesmo técnico, ligada à original.
 
@@ -90,7 +90,7 @@ Isto **não** é a versão `-A` da sacola e **não** é a refação da qualidade
 
 - **Aprovação do cliente** ("concordo com o serviço e o preço"), de três formas: **pelo link**, **na tela do balcão** ou **no papel** (o atendente imprime, o cliente assina, o atendente **anexa a foto** e clica **"assinado no papel"**). **Não é status.** A produção **pode começar sem assinatura**, com **liberação e motivo**.
 - **Aprovação pendente:** o sistema **avisa todos os dias**, **até o cliente assinar**, o **atendente e o gerente**, e mantém uma **lista sempre visível** na tela. Não é por prazo.
-- **Retirada (decidido):** **só assinatura no papel** nesta fase, com **foto anexada na OS** e botão **"entregue assinado"**. Token ou janela de confirmação ficam para uma versão futura (ver `06-parecer-token-lgpd-entrega.md`).
+- **Retirada (decidido em 09/10/2026):** digital no **mesmo link** (**Recebi** só com janela aberta no balcão), papel com foto, e **Entregue** do atendente se o cliente não clicou. API do WhatsApp depois.
 - **Entrega em domicílio:** depois do piloto; por ora só um marcador e o endereço opcional.
 
 ## 9. Tela de parâmetros

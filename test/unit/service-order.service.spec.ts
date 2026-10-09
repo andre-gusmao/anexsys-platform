@@ -630,6 +630,110 @@ describe('ServiceOrderService', () => {
     );
   });
 
+  it('opens a pickup window and records paper or attendant evidence', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'ready_for_pickup',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      actualPickupDate: null,
+      commercialResponsibleActorId: 'user-1',
+      technicalMeasurementResponsibleActorId: 'user-1',
+    };
+    const pickups: Array<Record<string, unknown>> = [];
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return source;
+        },
+        async findByGroupId() {
+          return [source];
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+        async save(payload: Record<string, unknown>) {
+          Object.assign(source, payload);
+          return source;
+        },
+      } as never,
+      { async findByServiceOrder() { return []; } } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5, warrantyAdjustmentPeriodDays: 7, warrantyExecutionPeriodDays: 90 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1', phone: '11988887777' }; } } as never,
+      { async getById() { return { id: 'user-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE, displayName: 'Ana' }; } } as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+      {} as never,
+      {
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+        async save(payload: Record<string, unknown>) {
+          const index = pickups.findIndex((row) => row.id === payload.id);
+          if (index >= 0) {
+            pickups[index] = { ...pickups[index], ...payload };
+            return pickups[index];
+          }
+          pickups.push(payload);
+          return payload;
+        },
+        async findLatestByServiceOrder() {
+          return pickups[pickups.length - 1] ?? null;
+        },
+      } as never,
+    );
+
+    const started = await service.startPickup('tenant-1', 'so-1', 'user-1');
+    assert.equal(started.pickup.windowOpen, true);
+    assert.equal(started.pickup.recebiReady, true);
+    assert.equal(started.serviceOrder.status, 'ready_for_pickup');
+
+    await assert.rejects(
+      () => service.completePickup('tenant-1', 'so-1', 'user-1', { method: 'paper' }),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /foto da OP assinada/);
+        return true;
+      },
+    );
+
+    const paper = await service.completePickup('tenant-1', 'so-1', 'user-1', {
+      method: 'paper',
+      photo: { mimeType: 'image/jpeg', contentBase64: 'AAAA', fileName: 'op.jpg' },
+    });
+    assert.equal(paper.serviceOrder.status, 'picked_up');
+    assert.equal(paper.pickup.method, 'paper');
+    assert.equal(paper.pickup.photoAvailable, true);
+    assert.equal(paper.pickup.customerPhone, '11988887777');
+
+    source.status = 'ready_for_pickup';
+    source.actualPickupDate = null;
+    pickups.length = 0;
+    const linked = await service.startPickup('tenant-1', 'so-1', 'user-1');
+    assert.equal(linked.pickup.recebiReady, true);
+    const fromLink = await service.confirmPickupFromLink('tenant-1', 'so-1', { userAgent: 'Mozilla', ip: '127.0.0.1' });
+    assert.equal(fromLink.pickup.method, 'link');
+    assert.match(fromLink.pickup.acceptedText, /Confirmo que retirei a OS AAA000001/);
+
+    source.status = 'ready_for_pickup';
+    source.actualPickupDate = null;
+    pickups.length = 0;
+    await assert.rejects(
+      () => service.confirmPickupFromLink('tenant-1', 'so-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /inicia a retirada/);
+        return true;
+      },
+    );
+  });
+
   it('sends an in-production OS to proof on the same plate and same OP version', async () => {
     const source = {
       id: 'so-1',

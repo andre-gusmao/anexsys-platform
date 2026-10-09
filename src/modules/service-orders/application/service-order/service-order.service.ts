@@ -39,11 +39,22 @@ import {
   proofActionResultStatus,
   type ProofAction,
 } from './service-order-proof';
+import {
+  canCompletePickup,
+  canConfirmPickupFromLink,
+  canStartPickup,
+  isPickupWindowOpen,
+  normalizePickupPhoto,
+  pickupAcceptedText,
+  pickupWindowExpiresAt,
+  type PickupMethod,
+} from './service-order-pickup';
 import { buildClientReturnPreview, osReturnKindLabel, todayDateOnly } from './service-order-return';
 import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, withVersionSuffix } from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
 import { ServiceOrderItemRepository } from '../../infrastructure/persistence/repositories/service-order-item.repository';
+import { ServiceOrderPickupRepository } from '../../infrastructure/persistence/repositories/service-order-pickup.repository';
 import { ServiceOrderProofNoteRepository } from '../../infrastructure/persistence/repositories/service-order-proof-note.repository';
 import {
   ServiceOrderRepository,
@@ -77,6 +88,8 @@ export class ServiceOrderService {
     private readonly atelierCatalogService: AtelierCatalogService,
     @Inject(ServiceOrderProofNoteRepository)
     private readonly proofNoteRepository: ServiceOrderProofNoteRepository,
+    @Inject(ServiceOrderPickupRepository)
+    private readonly pickupRepository: ServiceOrderPickupRepository,
   ) {}
 
   async create(dto: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderEntity; items: ServiceOrderItemEntity[] }> {
@@ -371,6 +384,7 @@ export class ServiceOrderService {
       })),
       clientReturnPreview,
       proofNotes: await this.buildProofNoteHistory(proofNoteRows, items),
+      pickup: await this.buildPickupSummary(serviceOrder, customer.phone ?? null),
       maxPiecesPerBag: tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG,
     };
   }
@@ -1080,13 +1094,58 @@ export class ServiceOrderService {
   }
 
   async markPickedUp(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    return this.completePickup(tenantId, serviceOrderId, actorUserId, { method: 'attendant' });
+  }
+
+  async startPickup(tenantId: string, serviceOrderId: string, actorUserId: string) {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    if (!canStartPickup(serviceOrder.status)) {
+      throw new DomainValidationError('Só é possível iniciar a retirada com a OS pronta para retirada.');
+    }
+    const customer = await this.customerService.getById(serviceOrder.customerId, tenantId);
+    await this.openPickupWindow(serviceOrder, actorUserId, customer.phone ?? null);
+    return this.getDetails(tenantId, serviceOrder.id);
+  }
+
+  async completePickup(
+    tenantId: string,
+    serviceOrderId: string,
+    actorUserId: string,
+    input: {
+      method: PickupMethod;
+      recipientName?: string | null;
+      photo?: { mimeType?: string | null; contentBase64?: string | null; fileName?: string | null } | null;
+      userAgent?: string | null;
+      ip?: string | null;
+    },
+  ) {
     const serviceOrder = await this.getById(serviceOrderId, tenantId);
     if (serviceOrder.status === ServiceOrderStatus.PICKED_UP) {
       throw new DomainValidationError('Esta OS já foi retirada.');
     }
-    if (serviceOrder.status !== ServiceOrderStatus.READY_FOR_PICKUP) {
+    if (!canCompletePickup(serviceOrder.status)) {
       throw new DomainValidationError('Só é possível entregar OS pronta para retirada.');
     }
+
+    const photo = normalizePickupPhoto(input.photo);
+    if (input.method === 'paper' && !photo) {
+      throw new DomainValidationError('Anexe a foto da OP assinada para entregar no papel.');
+    }
+    const latest = await this.findLatestPickup(serviceOrder.id);
+    if (input.method === 'link' && !canConfirmPickupFromLink(serviceOrder.status, latest?.windowOpenedAt, latest?.windowExpiresAt)) {
+      throw new DomainValidationError('O Recebi só funciona depois que o atendente inicia a retirada no balcão.');
+    }
+
+    const customer = await this.customerService.getById(serviceOrder.customerId, tenantId);
+    await this.recordPickupEvidence(serviceOrder, actorUserId, {
+      method: input.method,
+      recipientName: input.recipientName?.trim() || null,
+      photo,
+      customerPhone: customer.phone ?? null,
+      acceptedText: input.method === 'link' ? pickupAcceptedText(serviceOrder.orderNo) : null,
+      userAgent: input.userAgent ?? null,
+      ip: input.ip ?? null,
+    });
 
     serviceOrder.status = ServiceOrderStatus.PICKED_UP;
     serviceOrder.actualPickupDate = serviceOrder.actualPickupDate ?? todayDateOnly();
@@ -1100,9 +1159,139 @@ export class ServiceOrderService {
       entityId: saved.id,
       action: 'service_order.delivered',
       eventType: 'service_order.workflow',
-      metadata: { status: saved.status, actualPickupDate: saved.actualPickupDate },
+      metadata: {
+        status: saved.status,
+        actualPickupDate: saved.actualPickupDate,
+        pickupMethod: input.method,
+        pickupPhoto: Boolean(photo),
+      },
     });
     return this.getDetails(tenantId, saved.id);
+  }
+
+  async confirmPickupFromLink(
+    tenantId: string,
+    serviceOrderId: string,
+    evidence?: { userAgent?: string | null; ip?: string | null },
+  ) {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    return this.completePickup(tenantId, serviceOrderId, serviceOrder.commercialResponsibleActorId, {
+      method: 'link',
+      userAgent: evidence?.userAgent,
+      ip: evidence?.ip,
+    });
+  }
+
+  async getPickupPhoto(tenantId: string, serviceOrderId: string) {
+    await this.getById(serviceOrderId, tenantId);
+    const pickup = await this.findLatestPickup(serviceOrderId);
+    if (!pickup?.photoBase64 || !pickup.photoMimeType) {
+      return null;
+    }
+    return {
+      fileName: pickup.photoFileName,
+      mimeType: pickup.photoMimeType,
+      contentBase64: pickup.photoBase64,
+    };
+  }
+
+  private async findLatestPickup(serviceOrderId: string) {
+    if (!this.pickupRepository?.findLatestByServiceOrder) {
+      return null;
+    }
+    return this.pickupRepository.findLatestByServiceOrder(serviceOrderId);
+  }
+
+  private async openPickupWindow(
+    serviceOrder: ServiceOrderEntity,
+    actorUserId: string,
+    customerPhone: string | null,
+  ) {
+    if (!this.pickupRepository) {
+      return null;
+    }
+    const now = new Date();
+    const latest = await this.findLatestPickup(serviceOrder.id);
+    const current = latest && !latest.confirmedAt ? latest : this.pickupRepository.create({
+      id: randomUUID(),
+      tenantId: serviceOrder.tenantId,
+      branchId: serviceOrder.branchId,
+      serviceOrderId: serviceOrder.id,
+      createdBy: actorUserId,
+    });
+    current.windowOpenedAt = now;
+    current.windowExpiresAt = pickupWindowExpiresAt(now);
+    current.customerPhone = customerPhone;
+    current.updatedBy = actorUserId;
+    const saved = await this.pickupRepository.save(current);
+    await this.auditService.record({
+      tenantId: serviceOrder.tenantId,
+      branchId: serviceOrder.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: serviceOrder.id,
+      action: 'service_order.pickup.window_opened',
+      eventType: 'service_order.workflow',
+      metadata: {
+        orderNo: serviceOrder.orderNo,
+        windowExpiresAt: saved.windowExpiresAt,
+      },
+    });
+    return saved;
+  }
+
+  private async recordPickupEvidence(
+    serviceOrder: ServiceOrderEntity,
+    actorUserId: string,
+    input: {
+      method: PickupMethod;
+      recipientName: string | null;
+      photo: { mimeType: string; contentBase64: string; fileName: string } | null;
+      customerPhone: string | null;
+      acceptedText: string | null;
+      userAgent: string | null;
+      ip: string | null;
+    },
+  ) {
+    if (!this.pickupRepository) {
+      return null;
+    }
+    const latest = await this.findLatestPickup(serviceOrder.id);
+    const current = latest && !latest.confirmedAt ? latest : this.pickupRepository.create({
+      id: randomUUID(),
+      tenantId: serviceOrder.tenantId,
+      branchId: serviceOrder.branchId,
+      serviceOrderId: serviceOrder.id,
+      createdBy: actorUserId,
+    });
+    current.method = input.method;
+    current.confirmedAt = new Date();
+    current.customerPhone = input.customerPhone;
+    current.recipientName = input.recipientName;
+    current.acceptedText = input.acceptedText;
+    current.clientUserAgent = input.userAgent;
+    current.clientIp = input.ip;
+    current.photoFileName = input.photo?.fileName ?? null;
+    current.photoMimeType = input.photo?.mimeType ?? null;
+    current.photoBase64 = input.photo?.contentBase64 ?? null;
+    current.updatedBy = actorUserId;
+    return this.pickupRepository.save(current);
+  }
+
+  private async buildPickupSummary(serviceOrder: ServiceOrderEntity, customerPhone: string | null) {
+    const pickup = await this.findLatestPickup(serviceOrder.id);
+    return {
+      windowOpen: isPickupWindowOpen(pickup?.windowOpenedAt, pickup?.windowExpiresAt),
+      windowOpenedAt: pickup?.windowOpenedAt ?? null,
+      windowExpiresAt: pickup?.windowExpiresAt ?? null,
+      method: pickup?.method ?? null,
+      confirmedAt: pickup?.confirmedAt ?? null,
+      customerPhone: pickup?.customerPhone ?? customerPhone,
+      recipientName: pickup?.recipientName ?? null,
+      acceptedText: pickup?.acceptedText ?? null,
+      photoAvailable: Boolean(pickup?.photoBase64),
+      recebiReady: canConfirmPickupFromLink(serviceOrder.status, pickup?.windowOpenedAt, pickup?.windowExpiresAt),
+    };
   }
 
   async createClientReturn(
