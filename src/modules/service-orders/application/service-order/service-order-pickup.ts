@@ -45,6 +45,13 @@ export function pickupAcceptedText(orderNo: string): string {
   return `Confirmo que retirei a OS ${orderNo}.`;
 }
 
+export function pickupBlockedByOutstanding(input: {
+  blockDeliveryWithOutstandingBalance?: boolean | null;
+  outstandingBalance: number;
+}): boolean {
+  return Boolean(input.blockDeliveryWithOutstandingBalance) && input.outstandingBalance > 0;
+}
+
 export function pickupMethodLabel(method: string | null | undefined): string | null {
   if (method === 'paper') {
     return 'Papel';

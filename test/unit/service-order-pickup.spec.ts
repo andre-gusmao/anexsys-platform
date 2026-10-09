@@ -7,6 +7,7 @@ import {
   isPickupWindowOpen,
   normalizePickupPhoto,
   pickupAcceptedText,
+  pickupBlockedByOutstanding,
   pickupMethodLabel,
   pickupWindowExpiresAt,
   PICKUP_WINDOW_MINUTES,
@@ -33,6 +34,8 @@ test('pickup window enables Recebi only after the attendant starts it', () => {
   assert.equal(pickupMethodLabel('attendant'), 'Atendente');
   assert.equal(pickupMethodLabel('link'), 'Link do cliente');
   assert.equal(pickupMethodLabelUi('link'), 'Link do cliente');
+  assert.equal(pickupBlockedByOutstanding({ blockDeliveryWithOutstandingBalance: true, outstandingBalance: 12 }), true);
+  assert.equal(pickupBlockedByOutstanding({ blockDeliveryWithOutstandingBalance: false, outstandingBalance: 12 }), false);
 });
 
 test('pickup photo stays optional for the attendant and required for paper', () => {

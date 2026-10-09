@@ -2,15 +2,17 @@
 
 import { FormEvent, useState } from "react";
 import { useSession } from "@/components/providers/session-provider";
-import { formatOsMoney } from "@/components/service-orders/service-order-workspace-view-model";
+import { formatOsInstant } from "@/components/service-orders/os-approval";
+import {
+  OS_PAYMENT_METHODS,
+  osPaymentMethodLabel,
+  osShowsFaltaPagamento,
+  type OsFinancialSummary,
+  type OsPaymentMethod,
+} from "@/components/service-orders/os-payment";
+import { applyOsMoneyTyping, formatOsMoney, parseOsMoney } from "@/components/service-orders/service-order-workspace-view-model";
 
-export type OsFinancialSummary = {
-  serviceOrderId: string;
-  orderTotal: string;
-  amountPaid: string;
-  outstandingBalance: string;
-  paymentStatus: "pending" | "partial" | "paid";
-};
+export type { OsFinancialSummary };
 
 type Props = {
   orderNo: string;
@@ -19,19 +21,32 @@ type Props = {
   onPaid: (summary: OsFinancialSummary) => void;
 };
 
+function toPaySummary(payload: OsFinancialSummary): OsFinancialSummary {
+  return {
+    serviceOrderId: payload.serviceOrderId,
+    orderTotal: payload.orderTotal,
+    amountPaid: payload.amountPaid,
+    outstandingBalance: payload.outstandingBalance,
+    paymentStatus: payload.paymentStatus,
+    deliveryBlocked: payload.deliveryBlocked,
+    payments: payload.payments ?? [],
+  };
+}
+
 export function OsPayPanel({ orderNo, summary, onClose, onPaid }: Props) {
   const { apiJson } = useSession();
   const outstanding = Number(summary.outstandingBalance);
-  const [amount, setAmount] = useState(outstanding > 0 ? String(outstanding) : "");
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash">("card");
+  const [amount, setAmount] = useState(outstanding > 0 ? applyOsMoneyTyping(String(Math.round(outstanding * 100))) : "");
+  const [paymentMethod, setPaymentMethod] = useState<OsPaymentMethod>("cash");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const payments = summary.payments ?? [];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsedAmount = Number(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Informe o valor recebido na maquininha ou em dinheiro.");
+    const parsedAmount = parseOsMoney(amount);
+    if (parsedAmount === undefined || parsedAmount <= 0) {
+      setError("Informe o valor já recebido no balcão.");
       return;
     }
 
@@ -47,7 +62,9 @@ export function OsPayPanel({ orderNo, summary, onClose, onPaid }: Props) {
           status: "received",
         }),
       });
-      onPaid(response);
+      const next = toPaySummary(response);
+      setAmount(Number(next.outstandingBalance) > 0 ? applyOsMoneyTyping(String(Math.round(Number(next.outstandingBalance) * 100))) : "");
+      onPaid(next);
     } catch (payError) {
       setError(payError instanceof Error ? payError.message : "O pagamento não pôde ser registrado.");
     } finally {
@@ -59,8 +76,13 @@ export function OsPayPanel({ orderNo, summary, onClose, onPaid }: Props) {
     <form className="os-pay-panel" onSubmit={handleSubmit}>
       <div className="workspace-toolbar__copy">
         <h4>Pagar OS {orderNo}</h4>
-        <p>Registra o valor já recebido na maquininha ou em dinheiro. Não processa cartão daqui.</p>
+        <p>Registra o que já entrou no caixa. Não cobra na maquininha e não abre Pix daqui.</p>
       </div>
+      {osShowsFaltaPagamento(summary) ? (
+        <p className="os-rule-banner">Falta pagamento. Isso não muda o status da OS.</p>
+      ) : (
+        <p className="table-subtle">OS quitada.</p>
+      )}
       <div className="os-totals-grid">
         <label className="field">
           <span>Total da OS</span>
@@ -80,21 +102,35 @@ export function OsPayPanel({ orderNo, summary, onClose, onPaid }: Props) {
           <span>Valor recebido</span>
           <input
             inputMode="decimal"
-            min="0.01"
-            step="0.01"
-            type="number"
+            placeholder="0,00"
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
+            onChange={(event) => setAmount(applyOsMoneyTyping(event.target.value))}
           />
         </label>
         <label className="field">
           <span>Forma</span>
-          <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as "card" | "cash")}>
-            <option value="card">Cartão na maquininha</option>
-            <option value="cash">Dinheiro</option>
+          <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as OsPaymentMethod)}>
+            {OS_PAYMENT_METHODS.map((method) => (
+              <option key={method} value={method}>
+                {osPaymentMethodLabel(method)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
+      {payments.length > 0 ? (
+        <ul className="os-pay-history">
+          {payments.map((payment) => (
+            <li key={payment.id}>
+              <span>
+                {osPaymentMethodLabel(payment.paymentMethod)}
+                {formatOsInstant(payment.receivedAt) ? ` · ${formatOsInstant(payment.receivedAt)}` : ""}
+              </span>
+              <strong>{formatOsMoney(Number(payment.paymentAmount))}</strong>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {error ? <p className="workspace-flash workspace-flash--error">{error}</p> : null}
       <div className="button-row">
         <button className="button" disabled={saving || outstanding <= 0} type="submit">

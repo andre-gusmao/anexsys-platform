@@ -181,6 +181,9 @@ describe('FinanceService', () => {
     assert.equal(result.items[0]?.outstandingBalance, '30.00');
     assert.equal(result.items[1]?.amountPaid, '0.00');
     assert.equal(result.deliveryBlocked, true);
+    assert.equal(result.payments?.length, 1);
+    assert.equal(result.payments?.[0]?.paymentMethod, PaymentMethod.PIX);
+    assert.equal(result.payments?.[0]?.paymentAmount, '20.00');
     assert.equal(audits.some((audit) => audit.action === 'payment_record.created'), true);
   });
 

@@ -410,8 +410,9 @@ Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
 - A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (Ordem de serviço / Ordem de produção) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
 - Não entrou endereço de entrega nem frete.
-- **Pagar** fica no bloco **Pagamento** da OS (e no rodapé). O botão **registra** o valor recebido na maquininha ou em dinheiro. Não processa cartão daqui e não abre QR Pix. À vista/parcelado, plano de contas e gerar parcelas **não** entram nesta fase.
-- **Condição** na OS e na OP: **Pago** só com a OS quitada; parcial ou em aberto = **Pagar na retirada**. Integração com a forma de pagamento vem depois.
+- **Pagar** fica no bloco **Pagamento** da OS (e no rodapé). O botão **registra** o valor já recebido no balcão. Formas: **Dinheiro**, **Cartão na maquininha**, **Pix**, **Transferência** e **Outro**. Não processa cartão daqui e não abre QR Pix. À vista/parcelado, plano de contas, gerar parcelas e Cielo **não** entram nesta fase.
+- **Condição** na OS e na OP: **Pago** só com a OS quitada; parcial ou em aberto = **Pagar na retirada**.
+- **Falta pagamento** é aviso na OS e na retirada, **não é status**. A entrega só bloqueia se a Conta estiver com **Bloquear entrega por inadimplência**. Liberação do gerente com motivo entra depois.
 - O formulário da OS começa pelo **Cliente**. Empresa e Filial não repetem o menu lateral. **Status** (não Situação), Entrada e Saída ficam numa linha; previsão e responsáveis em caixas no mesmo bloco. Prioridade fica na previsão.
 
 ## 15. Como o André valida no VS Code (07/10/2026)

@@ -58,6 +58,7 @@ import {
   isPickupWindowOpen,
   normalizePickupPhoto,
   pickupAcceptedText,
+  pickupBlockedByOutstanding,
   pickupWindowExpiresAt,
   type PickupMethod,
 } from './service-order-pickup';
@@ -1317,6 +1318,7 @@ export class ServiceOrderService {
     if (!canCompletePickup(serviceOrder.status)) {
       throw new DomainValidationError('Só é possível entregar OS pronta para retirada.');
     }
+    await this.assertPickupPaymentAllowed(tenantId, serviceOrder);
 
     const photo = normalizePickupPhoto(input.photo);
     if (input.method === 'paper' && !photo) {
@@ -1384,6 +1386,35 @@ export class ServiceOrderService {
       mimeType: pickup.photoMimeType,
       contentBase64: pickup.photoBase64,
     };
+  }
+
+  private async assertPickupPaymentAllowed(tenantId: string, serviceOrder: ServiceOrderEntity) {
+    const tenant = await this.tenantService.getById(tenantId);
+    if (!tenant.blockDeliveryWithOutstandingBalance) {
+      return;
+    }
+    const outstandingBalance = await this.readOutstandingBalance(serviceOrder);
+    if (pickupBlockedByOutstanding({ blockDeliveryWithOutstandingBalance: true, outstandingBalance })) {
+      throw new DomainValidationError('Falta pagamento. O saldo em aberto bloqueia a entrega.');
+    }
+  }
+
+  private async readOutstandingBalance(serviceOrder: ServiceOrderEntity) {
+    if (typeof this.dataSource?.query !== 'function') {
+      return 0;
+    }
+    const rows = (await this.dataSource.query(
+      `SELECT COALESCE(SUM(CASE
+          WHEN status IN ('failed', 'reversed') THEN 0
+          WHEN payment_direction = 'outbound' THEN -payment_amount
+          ELSE payment_amount
+        END), 0) AS paid
+       FROM payment_records
+       WHERE service_order_id = $1`,
+      [serviceOrder.id],
+    )) as Array<{ paid?: string | number }>;
+    const paid = Number(rows[0]?.paid ?? 0);
+    return Math.max(Number(serviceOrder.totalValue ?? 0) - paid, 0);
   }
 
   private async findLatestPickup(serviceOrderId: string) {

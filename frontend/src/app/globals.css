@@ -483,6 +483,21 @@ textarea {
   border: 1px solid rgba(15, 76, 92, 0.16);
 }
 
+.os-pay-history {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.os-pay-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
 .os-return-items {
   display: grid;
   gap: 8px;

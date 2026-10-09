@@ -75,7 +75,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Uma sacola por vez** | A técnica só abre outra sacola depois de terminar a anterior |
 | **Avanço automático** | Ao ler o QR, a OS vai para o próximo status permitido ao papel de quem leu |
 | **Refação** | Refazer o trabalho de uma OS reprovada, antes de entregar ao cliente |
-| **Aviso "Falta pagamento"** | Alerta na tela quando há saldo em aberto. **Não é status** |
+| **Aviso "Falta pagamento"** | Alerta na tela da OS e da retirada quando há saldo em aberto. **Não é status** |
 
 ## Cliente, prazo e garantia
 
@@ -93,6 +93,7 @@ Este glossário vale para as conversas, os documentos e as telas. A coluna "No c
 | **Limite de peças por versão** | Parâmetro da Conta (padrão 5). A atendente registra até esse limite, fecha a sacola e continua na próxima versão. Não é divisão automática no meio da digitação |
 | **Sugestão de cadastro** | Nos campos de busca e nos que vêm de tabela, o sistema sugere o que já está cadastrado. Se não houver sugestão, **Cadastrar** aparece na caixinha de “Nenhum registro encontrado” |
 | **Tela de parâmetros** | Tela onde o administrador altera as regras do sistema (graus e tempos, prazos, cortes, sobretaxas, status etc.), com histórico de quem mudou e quando |
+| **Forma de pagamento** | O que a atendente anota no balcão: **Dinheiro**, **Cartão na maquininha**, **Pix**, **Transferência** ou **Outro**. Só registro. Sem Cielo, sem QR Pix e sem parcelas nesta fase | `payment_records.payment_method` |
 | **Condição de pagamento** | Na OS e na OP: **Pago** só quando o financeiro está quitado; qualquer saldo (inclusive parcial) sai **Pagar na retirada**. Em OS de retorno dentro do prazo, a OP mostra **Reconserto** ou **Em garantia** no lugar dessa condição |
 | **Pagamento integrado** | A partir da OS, o sistema aciona a maquininha com o valor da OS e recebe o resultado online, sem digitar o valor. Funciona de nuvem a nuvem, pela internet |
 | **Estorno de cartão** | Devolução do pagamento feito na maquininha, pela operadora (Cielo). Só o gerente, com motivo. Não é o reembolso via Pix |

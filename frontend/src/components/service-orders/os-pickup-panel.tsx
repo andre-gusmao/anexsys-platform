@@ -2,11 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import { formatPickupWindow, type PickupSummary } from "@/components/service-orders/os-pickup";
+import { osShowsFaltaPagamento, type OsFinancialSummary } from "@/components/service-orders/os-payment";
 import { readOsPhotoFile } from "@/components/service-orders/os-photo";
 
 type Props = {
   orderNo: string;
   pickup: PickupSummary | null;
+  payment?: OsFinancialSummary | null;
   saving?: boolean;
   onClose: () => void;
   onCopyLink?: () => Promise<void> | void;
@@ -17,7 +19,16 @@ type Props = {
   }) => Promise<void> | void;
 };
 
-export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onCopyLink, onStart, onComplete }: Props) {
+export function OsPickupPanel({
+  orderNo,
+  pickup,
+  payment = null,
+  saving = false,
+  onClose,
+  onCopyLink,
+  onStart,
+  onComplete,
+}: Props) {
   const [photo, setPhoto] = useState<{ mimeType: string; contentBase64: string; fileName: string } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +68,12 @@ export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onCopy
           depois; o mesmo link já fica pronto. Sem clique do cliente, use o papel ou o Entregue do atendente.
         </p>
       </div>
+      {osShowsFaltaPagamento(payment) ? (
+        <p className="os-rule-banner">
+          Falta pagamento. Isso não muda o status da OS
+          {payment?.deliveryBlocked ? " e a entrega fica bloqueada até quitar ou o gerente liberar (depois)." : "."}
+        </p>
+      ) : null}
       <p className="table-subtle">
         {pickup?.windowOpen
           ? `Janela aberta até ${windowLabel}. O Recebi no link já pode confirmar.`
@@ -86,12 +103,12 @@ export function OsPickupPanel({ orderNo, pickup, saving = false, onClose, onCopy
       {preview ? <img alt="Foto da OP assinada" className="os-pickup-photo" src={preview} /> : null}
       {error ? <p className="workspace-flash workspace-flash--error">{error}</p> : null}
       <div className="button-row">
-        <button className="button" disabled={saving || !photo} type="submit">
+        <button className="button" disabled={saving || !photo || Boolean(payment?.deliveryBlocked)} type="submit">
           {saving ? "Registrando…" : "Entregue assinado"}
         </button>
         <button
           className="button-secondary"
-          disabled={saving}
+          disabled={saving || Boolean(payment?.deliveryBlocked)}
           onClick={() => void onComplete({ method: "attendant" })}
           type="button"
         >

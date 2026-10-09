@@ -214,6 +214,22 @@ export class FinanceService {
         ? ServiceOrderPaymentStatus.PARTIAL
         : ServiceOrderPaymentStatus.PENDING;
 
+    const recordedPayments = payments
+      .filter((payment) => ![PaymentRecordStatus.FAILED, PaymentRecordStatus.REVERSED].includes(payment.status))
+      .slice()
+      .sort((left, right) => {
+        const leftTime = new Date(left.receivedAt ?? left.createdAt).getTime();
+        const rightTime = new Date(right.receivedAt ?? right.createdAt).getTime();
+        return rightTime - leftTime;
+      })
+      .map((payment) => ({
+        id: payment.id,
+        paymentMethod: payment.paymentMethod,
+        paymentAmount: payment.paymentAmount,
+        receivedAt: payment.receivedAt,
+        status: payment.status,
+      }));
+
     return {
       serviceOrderId,
       orderTotal: this.formatMoney(orderTotal),
@@ -223,6 +239,7 @@ export class FinanceService {
       paymentStatus,
       paymentTermsDays: details.serviceOrder.paymentTermsDays,
       deliveryBlocked: tenant.blockDeliveryWithOutstandingBalance && outstandingBalance > 0,
+      payments: recordedPayments,
       items,
     };
   }

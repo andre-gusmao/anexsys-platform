@@ -40,6 +40,7 @@ import { approvalMethodLabel, canRecordOsApproval, formatOsInstant, type Approva
 import { OsPickupPanel } from "@/components/service-orders/os-pickup-panel";
 import { pickupMethodLabel, type PickupSummary } from "@/components/service-orders/os-pickup";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
+import { osPaymentMethodLabel, osShowsFaltaPagamento } from "@/components/service-orders/os-payment";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
   addServiceOrderItemGridRow,
@@ -2107,6 +2108,7 @@ export function ServiceOrdersWorkspace() {
           {pickupPickerOpen && selectedOrder ? (
             <OsPickupPanel
               orderNo={selectedOrder.orderNo}
+              payment={paymentSummary}
               pickup={details?.pickup ?? null}
               saving={saving}
               onClose={() => setPickupPickerOpen(false)}
@@ -2729,6 +2731,9 @@ export function ServiceOrdersWorkspace() {
 
               <div className="mini-section">
                 <h4>Pagamento</h4>
+                {osShowsFaltaPagamento(paymentSummary) ? (
+                  <p className="os-rule-banner">Falta pagamento. Isso não muda o status da OS.</p>
+                ) : null}
                 <div className="os-box">
                   <div className="os-pay-row">
                     <label className="field">
@@ -2767,6 +2772,21 @@ export function ServiceOrdersWorkspace() {
                       </button>
                     ) : null}
                   </div>
+                  {(paymentSummary?.payments ?? []).length > 0 ? (
+                    <ul className="os-pay-history">
+                      {(paymentSummary?.payments ?? []).map((payment) => (
+                        <li key={payment.id}>
+                          <span>
+                            {osPaymentMethodLabel(payment.paymentMethod)}
+                            {formatOsInstant(payment.receivedAt) ? ` · ${formatOsInstant(payment.receivedAt)}` : ""}
+                          </span>
+                          <strong>{formatOsMoney(Number(payment.paymentAmount))}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="table-subtle">Nenhum pagamento registrado. O Pagar só anota o que já entrou no caixa.</p>
+                  )}
                 </div>
                 {selectedOrder && payTarget?.summary.serviceOrderId === selectedOrder.id ? (
                   <OsPayPanel
