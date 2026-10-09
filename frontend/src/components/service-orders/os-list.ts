@@ -19,6 +19,7 @@ export type OsListRecord = {
   operationalPriority: string | null;
   status: string;
   totalValue: string | null;
+  hasAttachments?: boolean;
 };
 
 export function osDeliveryTypeLabel(type: string) {
