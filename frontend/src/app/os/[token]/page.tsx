@@ -13,9 +13,14 @@ import {
 import { formatOsMoney } from "@/components/service-orders/service-order-workspace-view-model";
 
 async function publicJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/backend-api${path}`, {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (init?.method && init.method !== "GET") {
+    headers["Content-Type"] = "application/json";
+  }
+  const response = await fetch(path, {
+    cache: "no-store",
     ...init,
-    headers: { Accept: "application/json", "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) },
   });
   const payload = (await response.json().catch(() => null)) as { message?: string } | T | null;
   if (!response.ok) {
@@ -46,7 +51,7 @@ export default function PublicOsPage() {
       return;
     }
     try {
-      setView(await publicJson<PublicOsTrackingView>(`/public/service-orders/${token}`));
+      setView(await publicJson<PublicOsTrackingView>(`/os/${token}/data`));
       setError(null);
     } catch (loadError) {
       setView(null);
@@ -65,7 +70,7 @@ export default function PublicOsPage() {
   async function confirmRecebi() {
     setSaving(true);
     try {
-      setView(await publicJson<PublicOsTrackingView>(`/public/service-orders/${token}/recebi`, { method: "POST" }));
+      setView(await publicJson<PublicOsTrackingView>(`/os/${token}/recebi`, { method: "POST" }));
       setError(null);
     } catch (confirmError) {
       setError(describePublicOsError(confirmError));

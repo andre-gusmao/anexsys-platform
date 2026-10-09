@@ -34,12 +34,11 @@ export function describePublicOsError(error: unknown): string {
   if (/não encontrado|not found|uuid is expected/i.test(raw)) {
     return "Este link não foi encontrado.";
   }
-  if (
-    /getAllAndOverride|assertAllowed|porta 3000|internal server|failed to fetch|network|não concluiu a operação/i.test(
-      raw,
-    )
-  ) {
-    return "A ordem de serviço não pôde ser aberta agora. Tente de novo em instantes.";
+  if (/não respondeu na porta 3000|econnrefused|failed to fetch/i.test(raw)) {
+    return "O servidor da OS não está no ar. Deixe o npm run start:dev rodando e recarregue esta página.";
+  }
+  if (/getAllAndOverride|assertAllowed|porta 3000|internal server|não concluiu a operação/i.test(raw)) {
+    return "O servidor da OS ainda está com a versão antiga. Pare o processo da porta 3000, rode npm run start:dev e recarregue esta página.";
   }
   return raw || "Não foi possível abrir esta OS.";
 }

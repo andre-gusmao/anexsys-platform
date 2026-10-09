@@ -1,5 +1,7 @@
 import { Controller, Get, Header, Headers, Ip, Param, Post, UnauthorizedException } from '@nestjs/common';
 import { Public } from 'src/platform/auth/public.decorator';
+import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
+import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { ServiceOrderService } from '../application/service-order/service-order.service';
 
 @Public()
@@ -11,7 +13,15 @@ export class PublicServiceOrdersController {
   @Get(':publicToken')
   @Header('X-Robots-Tag', 'noindex, nofollow')
   async getTracking(@Param('publicToken') publicToken: string) {
-    return this.serviceOrderService.getPublicTrackingView(publicToken);
+    try {
+      return await this.serviceOrderService.getPublicTrackingView(publicToken);
+    } catch (error) {
+      if (error instanceof EntityNotFoundError || error instanceof DomainValidationError) {
+        throw error;
+      }
+      console.error('[public-os] GET failed', publicToken, error);
+      throw error;
+    }
   }
 
   @Public()
@@ -25,6 +35,17 @@ export class PublicServiceOrdersController {
     if (!publicToken) {
       throw new UnauthorizedException('O link da OS é obrigatório.');
     }
-    return this.serviceOrderService.confirmPublicRecebi(publicToken, { userAgent: userAgent ?? null, ip: ip ?? null });
+    try {
+      return await this.serviceOrderService.confirmPublicRecebi(publicToken, {
+        userAgent: userAgent ?? null,
+        ip: ip ?? null,
+      });
+    } catch (error) {
+      if (error instanceof EntityNotFoundError || error instanceof DomainValidationError) {
+        throw error;
+      }
+      console.error('[public-os] POST recebi failed', publicToken, error);
+      throw error;
+    }
   }
 }

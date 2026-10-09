@@ -8,7 +8,11 @@ export function isPublicHttpPath(url: string | undefined | null): boolean {
     return false;
   }
   const path = url.split('?')[0];
-  return /(?:^|\/)api\/v1\/public(?:\/|$)/.test(path) || /(?:^|\/)public\/service-orders(?:\/|$)/.test(path);
+  return (
+    /(?:^|\/)api\/v1\/public(?:\/|$)/.test(path) ||
+    /(?:^|\/)public\/service-orders(?:\/|$)/.test(path) ||
+    path.includes("/public/service-orders/")
+  );
 }
 
 export function isPublicExecutionContext(context: ExecutionContext): boolean {

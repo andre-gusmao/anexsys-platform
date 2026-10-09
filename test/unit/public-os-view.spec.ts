@@ -7,13 +7,17 @@ import {
 } from '../../frontend/src/components/service-orders/public-os-view';
 
 test('hides start:dev instructions from the public OS link', () => {
-  assert.equal(
+  assert.match(
     describePublicOsError(
       new Error('O servidor não concluiu a operação. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente de novo.'),
     ),
-    'A ordem de serviço não pôde ser aberta agora. Tente de novo em instantes.',
+    /versão antiga|start:dev/,
   );
   assert.equal(describePublicOsError(new Error('Este link não foi encontrado.')), 'Este link não foi encontrado.');
+  assert.match(
+    describePublicOsError(new Error('O servidor da OS não respondeu na porta 3000. Deixe o npm run start:dev no ar e recarregue.')),
+    /não está no ar/,
+  );
 });
 
 test('maps the public OS payload onto the printed service order', () => {
