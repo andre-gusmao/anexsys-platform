@@ -26,6 +26,7 @@ import {
   IsUUID,
   Matches,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
@@ -262,6 +263,21 @@ class ClientReturnBody {
   @ArrayMinSize(1)
   @IsUUID('4', { each: true })
   itemIds!: string[];
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+class CounterReworkBody {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID('4', { each: true })
+  itemIds!: string[];
+
+  @IsString()
+  @MinLength(1)
+  reason!: string;
 }
 
 class CompleteProofNoteBody {
@@ -710,6 +726,29 @@ export class ServiceOrdersController {
     const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
     this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
     return this.serviceOrderService.createClientReturn(tenantId, serviceOrderId, principal.userId, body.itemIds);
+  }
+
+  @Permissions('service_orders.write')
+  @Post(':serviceOrderId/counter-rework')
+  async createCounterRework(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @Body() body: CounterReworkBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, principal.effectiveBranchIds);
+    return this.serviceOrderService.createCounterRework(
+      tenantId,
+      serviceOrderId,
+      principal.userId,
+      body.itemIds,
+      body.reason,
+    );
   }
 
   @Permissions('service_orders.write')

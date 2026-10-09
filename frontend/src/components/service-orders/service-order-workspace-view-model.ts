@@ -41,6 +41,7 @@ export type PersistedServiceOrderItem = {
   unitPrice: string | null;
   discountValue: string | null;
   status: string;
+  heldForRework?: boolean;
 };
 
 export type ServiceOrderItemGridRow = {
@@ -129,21 +130,20 @@ export function applyOsMoneyTyping(raw: string) {
 }
 
 export function previewNextLinkedServiceOrderNo(orderNo: string, existingOrderNos: string[] = []) {
-  const base = orderNo.replace(/-[A-Z]$/i, "");
-  const used = new Set(
-    [orderNo, ...existingOrderNos]
-      .map((value) => value.match(/-([A-Z])$/i)?.[1]?.toUpperCase())
-      .filter((letter): letter is string => Boolean(letter)),
-  );
-
-  for (let index = 0; index < 26; index += 1) {
-    const letter = String.fromCharCode(65 + index);
-    if (!used.has(letter)) {
-      return `${base}-${letter}`;
+  const base = orderNo.replace(/-(?:\d+|[A-Za-z]\d*)$/i, "");
+  let max = 0;
+  for (const value of [orderNo, ...existingOrderNos]) {
+    const numeric = value.match(/-(\d+)$/)?.[1];
+    if (numeric) {
+      max = Math.max(max, Number(numeric));
+      continue;
+    }
+    const legacy = value.match(/-([A-Z])$/i)?.[1];
+    if (legacy && !/^[CGR]$/i.test(legacy)) {
+      max = Math.max(max, legacy.toUpperCase().charCodeAt(0) - 64);
     }
   }
-
-  return `${base}-Z`;
+  return `${base}-${max + 1}`;
 }
 
 function buildPayload(row: ServiceOrderItemGridRow): ItemPayload {
@@ -314,12 +314,14 @@ export function osReturnKindLabel(kind?: string | null) {
   if (kind === "reconserto") return "Reconserto";
   if (kind === "warranty") return "Em garantia";
   if (kind === "charged") return "Cobrada";
+  if (kind === "counter") return "Refação no balcão";
   return null;
 }
 
 export function osOpHeaderTerm(input: { returnKind?: string | null; paymentStatus?: string | null }) {
   if (input.returnKind === "reconserto") return "Reconserto";
   if (input.returnKind === "warranty") return "Em garantia";
+  if (input.returnKind === "counter") return "Refação no balcão";
   return osPaymentConditionLabel(input.paymentStatus);
 }
 

@@ -77,6 +77,8 @@ describe('applyPendingMigrations', () => {
       true,
     );
     assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS public_token')), true);
+    assert.equal(executedQueries.some((sql) => sql.includes('held_for_rework')), true);
+    assert.equal(executedQueries.some((sql) => sql.includes('version_suffix TYPE varchar(8)')), true);
   });
 
   it('still repairs the schema when TypeORM cannot load the migration files', async () => {

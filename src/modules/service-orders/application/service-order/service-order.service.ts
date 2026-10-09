@@ -62,11 +62,25 @@ import {
   pickupWindowExpiresAt,
   type PickupMethod,
 } from './service-order-pickup';
-import { osListPaymentFromTotals } from './service-order-finance';
+import {
+  osGroupPaymentFromMembers,
+  osHasPendingProcessSibling,
+  osListPaymentFromTotals,
+  osPayLockedOnParent,
+} from './service-order-finance';
 import { publicCustomerFirstName, publicOsStatusLabel } from './service-order-public';
 import { buildClientReturnPreview, osReturnKindLabel, todayDateOnly } from './service-order-return';
 import { TenantContext } from 'src/platform/tenancy/tenant-context';
-import { DEFAULT_MAX_PIECES_PER_BAG, formatServiceOrderNo, nextVersionSuffix, withVersionSuffix } from './service-order-version';
+import {
+  DEFAULT_MAX_PIECES_PER_BAG,
+  formatServiceOrderNo,
+  isProcessRow,
+  nextBagVersionSuffix,
+  nextProcessSuffix,
+  PROCESS_SUFFIX,
+  processLetterForReturnKind,
+  withVersionSuffix,
+} from './service-order-version';
 import { ServiceOrderEntity } from '../../infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from '../../infrastructure/persistence/entities/service-order-item.entity';
 import { ServiceOrderItemRepository } from '../../infrastructure/persistence/repositories/service-order-item.repository';
@@ -295,13 +309,41 @@ export class ServiceOrderService {
       this.pickupRepository?.findIdsWithPhoto?.(ids) ?? [],
     ]);
     const withPhoto = new Set([...approvalPhotoIds, ...pickupPhotoIds]);
-    const paidById = await this.readPaidByOrderIds(ids);
-    return orders.map((order) =>
-      Object.assign(order, {
+    const groupIds = [...new Set(orders.map((order) => order.groupId ?? order.id))];
+    const siblings =
+      typeof this.serviceOrderRepository.findByGroupIds === 'function'
+        ? await this.serviceOrderRepository.findByGroupIds(tenantId, groupIds)
+        : typeof this.serviceOrderRepository.findByGroupId === 'function'
+          ? (await Promise.all(groupIds.map((groupId) => this.serviceOrderRepository.findByGroupId(tenantId, groupId)))).flat()
+          : orders;
+    const membersByGroup = new Map<string, ServiceOrderEntity[]>();
+    for (const member of siblings.length > 0 ? siblings : orders) {
+      const groupId = member.groupId ?? member.id;
+      const current = membersByGroup.get(groupId) ?? [];
+      current.push(member);
+      membersByGroup.set(groupId, current);
+    }
+    const memberIds = [...new Set((siblings.length > 0 ? siblings : orders).map((order) => order.id))];
+    const paidById = await this.readPaidByOrderIds(memberIds);
+    return orders.map((order) => {
+      const members = membersByGroup.get(order.groupId ?? order.id) ?? [order];
+      const finance = osGroupPaymentFromMembers(members, paidById);
+      return Object.assign(order, {
         hasAttachments: withPhoto.has(order.id),
-        ...osListPaymentFromTotals(order.totalValue, paidById.get(order.id) ?? 0),
-      }),
-    );
+        payLockedOnParent: osPayLockedOnParent({
+          isProcessRow: isProcessRow(order),
+          hasPendingProcessSibling: osHasPendingProcessSibling(order.id, members),
+        }),
+        ...finance,
+      });
+    });
+  }
+
+  async listGroupMembers(tenantId: string, serviceOrderId: string): Promise<ServiceOrderEntity[]> {
+    const serviceOrder = await this.getById(serviceOrderId, tenantId);
+    const groupId = serviceOrder.groupId ?? serviceOrder.id;
+    const siblings = await this.serviceOrderRepository.findByGroupId?.(tenantId, groupId);
+    return siblings && siblings.length > 0 ? siblings : [serviceOrder];
   }
 
   async getById(id: string, tenantId: string): Promise<ServiceOrderEntity> {
@@ -388,9 +430,13 @@ export class ServiceOrderService {
       serviceOrder.status === ServiceOrderStatus.PICKED_UP && serviceOrder.actualPickupDate
         ? buildClientReturnPreview(serviceOrder.actualPickupDate, adjustmentPeriodDays, executionPeriodDays)
         : null;
+    const payLockedOnParent = osPayLockedOnParent({
+      isProcessRow: isProcessRow(serviceOrder),
+      hasPendingProcessSibling: osHasPendingProcessSibling(serviceOrder.id, groupVersions),
+    });
 
     return {
-      serviceOrder,
+      serviceOrder: Object.assign(serviceOrder, { payLockedOnParent }),
       items,
       customer,
       commercialResponsible,
@@ -403,7 +449,10 @@ export class ServiceOrderService {
         id: order.id,
         orderNo: order.orderNo,
         versionSuffix: order.versionSuffix,
+        returnKind: order.returnKind,
+        status: order.status,
       })),
+      payLockedOnParent,
       origin:
         origin && origin.tenantId === tenantId && !origin.isDeleted
           ? {
@@ -528,7 +577,7 @@ export class ServiceOrderService {
     const members = siblings.length > 0 ? siblings : [source];
     const root = members.find((order) => !order.versionSuffix) ?? source;
     const groupSeq = source.groupSeq ?? root.groupSeq ?? (await this.serviceOrderRepository.nextGroupSeq(tenantId));
-    const versionSuffix = nextVersionSuffix(members.map((order) => order.versionSuffix));
+    const versionSuffix = nextBagVersionSuffix(members.map((order) => order.versionSuffix));
     const orderNo = withVersionSuffix(root.orderNo, versionSuffix);
 
     const nextId = randomUUID();
@@ -1347,23 +1396,37 @@ export class ServiceOrderService {
       ip: input.ip ?? null,
     });
 
-    serviceOrder.status = ServiceOrderStatus.PICKED_UP;
-    serviceOrder.actualPickupDate = serviceOrder.actualPickupDate ?? todayDateOnly();
+    const items = (await this.serviceOrderItemRepository.findByServiceOrder(serviceOrder.id)).filter(
+      (item) => item.status !== ServiceOrderItemStatus.CANCELLED && !item.isDeleted,
+    );
+    const groupMembers = await this.listGroupMembers(tenantId, serviceOrder.id);
+    const pendingProcess = osHasPendingProcessSibling(serviceOrder.id, groupMembers);
+    const heldCount = items.filter((item) => item.heldForRework).length;
+    const partialPickup = !isProcessRow(serviceOrder) && (pendingProcess || heldCount > 0);
+
+    if (!partialPickup) {
+      serviceOrder.status = ServiceOrderStatus.PICKED_UP;
+      serviceOrder.actualPickupDate = serviceOrder.actualPickupDate ?? todayDateOnly();
+    }
     serviceOrder.updatedBy = actorUserId;
     const saved = await this.serviceOrderRepository.save(serviceOrder);
+    if (isProcessRow(saved)) {
+      await this.tryCloseOriginAfterProcessPickup(tenantId, saved, actorUserId);
+    }
     await this.auditService.record({
       tenantId,
       branchId: saved.branchId,
       actorUserId,
       entityType: 'service_order',
       entityId: saved.id,
-      action: 'service_order.delivered',
+      action: partialPickup ? 'service_order.delivered_partial' : 'service_order.delivered',
       eventType: 'service_order.workflow',
       metadata: {
         status: saved.status,
         actualPickupDate: saved.actualPickupDate,
         pickupMethod: input.method,
         pickupPhoto: Boolean(photo),
+        partialPickup,
       },
     });
     return this.getDetails(tenantId, saved.id);
@@ -1545,6 +1608,7 @@ export class ServiceOrderService {
       acceptedText: pickup?.acceptedText ?? null,
       photoAvailable: Boolean(pickup?.photoBase64),
       recebiReady: canConfirmPickupFromLink(serviceOrder.status, pickup?.windowOpenedAt, pickup?.windowExpiresAt),
+      partial: serviceOrder.status === ServiceOrderStatus.READY_FOR_PICKUP && Boolean(pickup?.confirmedAt),
     };
   }
 
@@ -1620,108 +1684,21 @@ export class ServiceOrderService {
       tenant.warrantyExecutionPeriodDays ?? 7,
     );
     const charged = preview.kind === ServiceOrderReturnKind.CHARGED;
+    const processLetter = processLetterForReturnKind(preview.kind);
     const returnLabel = osReturnKindLabel(preview.kind) ?? 'Retorno';
-    const openedAt = new Date();
-    const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
-      tenantId,
-      origin.branchId,
-      openedAt,
-      { deliveryType: origin.deliveryType, itemCount: selectedItems.length },
-    );
-    const groupSeq = await this.serviceOrderRepository.nextGroupSeq(tenantId);
-    const orderId = randomUUID();
     const returnNote = `Retorno da OS ${origin.orderNo} (${returnLabel}).`;
-    const commercialNotes = [returnNote, origin.commercialNotes?.trim()].filter(Boolean).join('\n') || null;
-    const copiedItems = selectedItems.map((item) => ({
-      itemType: item.itemType,
-      description: item.description,
-      quantity: 1,
-      unitPrice: charged ? (item.unitPrice === null ? null : Number(item.unitPrice)) : null,
-      discountValue: charged ? Number(item.discountValue ?? 0) : 0,
-    }));
-    const orderTotals = charged
-      ? this.calculateOrderTotal(
-          copiedItems,
-          Number(origin.discountValue ?? 0),
-          origin.deliverySurchargeMethod,
-          Number(origin.deliverySurchargeValue ?? 0),
-        )
-      : null;
 
-    const saved = await this.dataSource.transaction(async (manager) => {
-      const persistedOrder = manager.create(ServiceOrderEntity, {
-        id: orderId,
-        tenantId: origin.tenantId,
-        branchId: origin.branchId,
-        customerId: origin.customerId,
-        workflowDefinitionId: origin.workflowDefinitionId,
-        currentStatusDefinitionId: null,
-        orderNo: formatServiceOrderNo(groupSeq),
-        groupId: orderId,
-        groupSeq,
-        versionSuffix: null,
-        bagClosed: false,
-        openedAt,
-        deliveryCommitmentSourceAt: openedAt,
-        promisedDeliveryDate: suggestedDelivery.promisedDeliveryDate,
-        promisedDeliveryTime: normalizeClockTime(suggestedDelivery.promisedDeliveryTime) ?? currentClockTime(openedAt),
-        actualPickupDate: null,
-        originServiceOrderId: origin.id,
-        returnKind: preview.kind,
-        actualDeliveryDate: null,
-        actualDeliveryTime: null,
-        paymentTermsDays: charged ? origin.paymentTermsDays : 0,
-        deliveryType: origin.deliveryType,
-        operationalPriority: origin.operationalPriority,
-        commercialResponsibleActorId: origin.commercialResponsibleActorId,
-        technicalMeasurementResponsibleActorId: origin.technicalMeasurementResponsibleActorId,
-        deliverySurchargeMethod: charged ? origin.deliverySurchargeMethod : null,
-        deliverySurchargeValue: charged ? origin.deliverySurchargeValue : null,
-        commercialNotes,
-        customerNotes: origin.customerNotes,
-        publicToken: randomUUID(),
-        status: ServiceOrderStatus.OPEN,
-        totalValue: orderTotals,
-        discountValue: charged && origin.discountValue != null ? origin.discountValue : null,
-        isDeleted: false,
-        deletedAt: null,
-        deletedBy: null,
-        createdBy: actorUserId,
-        updatedBy: actorUserId,
-      });
-      await manager.save(ServiceOrderEntity, persistedOrder);
-
-      for (const [index, item] of selectedItems.entries()) {
-        const serviceOrderItem = manager.create(ServiceOrderItemEntity, {
-          id: randomUUID(),
-          tenantId: origin.tenantId,
-          branchId: origin.branchId,
-          serviceOrderId: persistedOrder.id,
-          itemNo: index + 1,
-          itemType: item.itemType,
-          productId: item.productId,
-          serviceId: item.serviceId,
-          description: item.description,
-          complement: item.complement,
-          brand: item.brand,
-          model: item.model,
-          serialNo: item.serialNo,
-          quantity: this.formatQuantity(1),
-          unitPrice: charged ? item.unitPrice : null,
-          discountValue: this.formatMoney(charged ? Number(item.discountValue ?? 0) : 0),
-          deliveryType: item.deliveryType,
-          operationalPriority: item.operationalPriority,
-          status: ServiceOrderItemStatus.OPEN,
-          isDeleted: false,
-          deletedAt: null,
-          deletedBy: null,
-          createdBy: actorUserId,
-          updatedBy: actorUserId,
-        });
-        await manager.save(ServiceOrderItemEntity, serviceOrderItem);
-      }
-
-      return persistedOrder;
+    const saved = await this.persistLinkedProcessOrder({
+      tenantId,
+      origin,
+      actorUserId,
+      selectedItems,
+      returnKind: preview.kind,
+      processLetter,
+      sameFamily: Boolean(processLetter),
+      charged,
+      holdOriginItems: false,
+      commercialNote: returnNote,
     });
 
     await this.auditService.record({
@@ -1738,10 +1715,256 @@ export class ServiceOrderService {
         returnKind: preview.kind,
         daysSincePickup: preview.daysSincePickup,
         itemCount: selectedItems.length,
+        versionSuffix: saved.versionSuffix,
       },
     });
 
     return this.getDetails(tenantId, saved.id);
+  }
+
+  async createCounterRework(
+    tenantId: string,
+    originServiceOrderId: string,
+    actorUserId: string,
+    itemIds: string[],
+    reason: string,
+  ) {
+    const origin = await this.getById(originServiceOrderId, tenantId);
+    if (origin.status !== ServiceOrderStatus.READY_FOR_PICKUP) {
+      throw new DomainValidationError('A refação no balcão só vale com a OS pronta para retirada.');
+    }
+
+    const selectedIds = [...new Set(itemIds.filter(Boolean))];
+    if (selectedIds.length === 0) {
+      throw new DomainValidationError('Selecione pelo menos uma peça recusada no balcão.');
+    }
+    const clientReason = reason.trim();
+    if (!clientReason) {
+      throw new DomainValidationError('Informe o motivo do cliente para a refação no balcão.');
+    }
+
+    const originItems = (await this.serviceOrderItemRepository.findByServiceOrder(origin.id)).filter(
+      (item) => item.status !== ServiceOrderItemStatus.CANCELLED && !item.isDeleted,
+    );
+    const originItemById = new Map(originItems.map((item) => [item.id, item]));
+    const selectedItems = selectedIds.map((itemId) => {
+      const item = originItemById.get(itemId);
+      if (!item) {
+        throw new DomainValidationError('Uma das peças não pertence à OS original.');
+      }
+      if (item.heldForRework) {
+        throw new DomainValidationError('Esta peça já foi para a refação no balcão.');
+      }
+      return item;
+    });
+
+    const tenant = await this.tenantService.getById(tenantId);
+    const maxPiecesPerBag = tenant.maxPiecesPerBag ?? DEFAULT_MAX_PIECES_PER_BAG;
+    this.assertItemCount(selectedItems.length, maxPiecesPerBag);
+
+    const returnNote = `Refação no balcão da OS ${origin.orderNo}. Motivo do cliente: ${clientReason}`;
+    const saved = await this.persistLinkedProcessOrder({
+      tenantId,
+      origin,
+      actorUserId,
+      selectedItems,
+      returnKind: ServiceOrderReturnKind.COUNTER,
+      processLetter: PROCESS_SUFFIX.COUNTER,
+      sameFamily: true,
+      charged: false,
+      holdOriginItems: true,
+      commercialNote: returnNote,
+    });
+
+    await this.auditService.record({
+      tenantId,
+      branchId: saved.branchId,
+      actorUserId,
+      entityType: 'service_order',
+      entityId: saved.id,
+      action: 'service_order.counter_rework.created',
+      eventType: 'service_order.write',
+      metadata: {
+        originServiceOrderId: origin.id,
+        originOrderNo: origin.orderNo,
+        returnKind: ServiceOrderReturnKind.COUNTER,
+        itemCount: selectedItems.length,
+        versionSuffix: saved.versionSuffix,
+        reason: clientReason,
+      },
+    });
+
+    return this.getDetails(tenantId, saved.id);
+  }
+
+  private async persistLinkedProcessOrder(input: {
+    tenantId: string;
+    origin: ServiceOrderEntity;
+    actorUserId: string;
+    selectedItems: ServiceOrderItemEntity[];
+    returnKind: ServiceOrderReturnKind;
+    processLetter: string | null;
+    sameFamily: boolean;
+    charged: boolean;
+    holdOriginItems: boolean;
+    commercialNote: string;
+  }) {
+    const openedAt = new Date();
+    const suggestedDelivery = await this.deliveryDateService.suggestDelivery(
+      input.tenantId,
+      input.origin.branchId,
+      openedAt,
+      { deliveryType: input.origin.deliveryType, itemCount: input.selectedItems.length },
+    );
+    const groupId = input.sameFamily ? (input.origin.groupId ?? input.origin.id) : randomUUID();
+    const siblings = input.sameFamily
+      ? await this.serviceOrderRepository.findByGroupId(input.tenantId, groupId)
+      : [];
+    const members = siblings.length > 0 ? siblings : [input.origin];
+    const root = members.find((order) => !order.versionSuffix) ?? input.origin;
+    const versionSuffix =
+      input.sameFamily && input.processLetter
+        ? nextProcessSuffix(
+            input.processLetter as typeof PROCESS_SUFFIX.COUNTER,
+            members.map((order) => order.versionSuffix),
+          )
+        : null;
+    const groupSeq = input.sameFamily
+      ? (input.origin.groupSeq ?? root.groupSeq ?? (await this.serviceOrderRepository.nextGroupSeq(input.tenantId)))
+      : await this.serviceOrderRepository.nextGroupSeq(input.tenantId);
+    const orderNo = input.sameFamily && versionSuffix
+      ? withVersionSuffix(root.orderNo, versionSuffix)
+      : formatServiceOrderNo(groupSeq);
+    const orderId = input.sameFamily ? randomUUID() : groupId;
+    const commercialNotes = [input.commercialNote, input.origin.commercialNotes?.trim()].filter(Boolean).join('\n') || null;
+    const copiedItems = input.selectedItems.map((item) => ({
+      itemType: item.itemType,
+      description: item.description,
+      quantity: 1,
+      unitPrice: input.charged ? (item.unitPrice === null ? null : Number(item.unitPrice)) : null,
+      discountValue: input.charged ? Number(item.discountValue ?? 0) : 0,
+    }));
+    const orderTotals = input.charged
+      ? this.calculateOrderTotal(
+          copiedItems,
+          Number(input.origin.discountValue ?? 0),
+          input.origin.deliverySurchargeMethod,
+          Number(input.origin.deliverySurchargeValue ?? 0),
+        )
+      : null;
+
+    return this.dataSource.transaction(async (manager) => {
+      const persistedOrder = manager.create(ServiceOrderEntity, {
+        id: orderId,
+        tenantId: input.origin.tenantId,
+        branchId: input.origin.branchId,
+        customerId: input.origin.customerId,
+        workflowDefinitionId: input.origin.workflowDefinitionId,
+        currentStatusDefinitionId: null,
+        orderNo,
+        groupId,
+        groupSeq,
+        versionSuffix,
+        bagClosed: false,
+        openedAt,
+        deliveryCommitmentSourceAt: openedAt,
+        promisedDeliveryDate: suggestedDelivery.promisedDeliveryDate,
+        promisedDeliveryTime: normalizeClockTime(suggestedDelivery.promisedDeliveryTime) ?? currentClockTime(openedAt),
+        actualPickupDate: null,
+        originServiceOrderId: input.origin.id,
+        returnKind: input.returnKind,
+        actualDeliveryDate: null,
+        actualDeliveryTime: null,
+        paymentTermsDays: input.charged ? input.origin.paymentTermsDays : 0,
+        deliveryType: input.origin.deliveryType,
+        operationalPriority: input.origin.operationalPriority,
+        commercialResponsibleActorId: input.origin.commercialResponsibleActorId,
+        technicalMeasurementResponsibleActorId: input.origin.technicalMeasurementResponsibleActorId,
+        deliverySurchargeMethod: input.charged ? input.origin.deliverySurchargeMethod : null,
+        deliverySurchargeValue: input.charged ? input.origin.deliverySurchargeValue : null,
+        commercialNotes,
+        customerNotes: input.origin.customerNotes,
+        publicToken: randomUUID(),
+        status: ServiceOrderStatus.OPEN,
+        totalValue: orderTotals,
+        discountValue: input.charged && input.origin.discountValue != null ? input.origin.discountValue : null,
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        createdBy: input.actorUserId,
+        updatedBy: input.actorUserId,
+      });
+      await manager.save(ServiceOrderEntity, persistedOrder);
+
+      for (const [index, item] of input.selectedItems.entries()) {
+        const serviceOrderItem = manager.create(ServiceOrderItemEntity, {
+          id: randomUUID(),
+          tenantId: input.origin.tenantId,
+          branchId: input.origin.branchId,
+          serviceOrderId: persistedOrder.id,
+          itemNo: index + 1,
+          itemType: item.itemType,
+          productId: item.productId,
+          serviceId: item.serviceId,
+          description: item.description,
+          complement: item.complement,
+          brand: item.brand,
+          model: item.model,
+          serialNo: item.serialNo,
+          quantity: this.formatQuantity(1),
+          unitPrice: input.charged ? item.unitPrice : null,
+          discountValue: this.formatMoney(input.charged ? Number(item.discountValue ?? 0) : 0),
+          deliveryType: item.deliveryType,
+          operationalPriority: item.operationalPriority,
+          status: ServiceOrderItemStatus.OPEN,
+          heldForRework: false,
+          originServiceOrderItemId: item.id,
+          isDeleted: false,
+          deletedAt: null,
+          deletedBy: null,
+          createdBy: input.actorUserId,
+          updatedBy: input.actorUserId,
+        });
+        await manager.save(ServiceOrderItemEntity, serviceOrderItem);
+        if (input.holdOriginItems) {
+          item.heldForRework = true;
+          item.updatedBy = input.actorUserId;
+          await manager.save(ServiceOrderItemEntity, item);
+        }
+      }
+
+      return persistedOrder;
+    });
+  }
+
+  private async tryCloseOriginAfterProcessPickup(
+    tenantId: string,
+    processOrder: ServiceOrderEntity,
+    actorUserId: string,
+  ) {
+    if (!processOrder.originServiceOrderId) {
+      return;
+    }
+    const origin = await this.serviceOrderRepository.findById(processOrder.originServiceOrderId);
+    if (!origin || origin.tenantId !== tenantId || origin.status !== ServiceOrderStatus.READY_FOR_PICKUP) {
+      return;
+    }
+    const members = await this.listGroupMembers(tenantId, origin.id);
+    if (osHasPendingProcessSibling(origin.id, members)) {
+      return;
+    }
+    const originItems = (await this.serviceOrderItemRepository.findByServiceOrder(origin.id)).filter(
+      (item) => item.status !== ServiceOrderItemStatus.CANCELLED && !item.isDeleted,
+    );
+    const latestPickup = await this.findLatestPickup(origin.id);
+    const allHeld = originItems.length > 0 && originItems.every((item) => item.heldForRework);
+    if (!latestPickup && !allHeld) {
+      return;
+    }
+    origin.status = ServiceOrderStatus.PICKED_UP;
+    origin.actualPickupDate = origin.actualPickupDate ?? todayDateOnly();
+    origin.updatedBy = actorUserId;
+    await this.serviceOrderRepository.save(origin);
   }
 
   async cancel(serviceOrderId: string, tenantId: string, actorUserId: string): Promise<ServiceOrderEntity> {

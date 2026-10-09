@@ -178,11 +178,30 @@ export class FinanceService {
       this.partialPaymentRepository.findByServiceOrder(serviceOrderId),
     ]);
 
-    const orderTotal = this.toMoney(details.serviceOrder.totalValue ?? this.calculateItemsTotal(details.items));
-    const amountPaid = this.calculateNetPaid(payments);
+    const members =
+      typeof this.serviceOrderService.listGroupMembers === 'function'
+        ? await this.serviceOrderService.listGroupMembers(tenantId, serviceOrderId)
+        : [details.serviceOrder];
+    const groupPayments =
+      members.length > 1
+        ? (
+            await Promise.all(
+              members.map((member) =>
+                member.id === serviceOrderId
+                  ? Promise.resolve(payments)
+                  : this.paymentRecordRepository.findByServiceOrder(member.id),
+              ),
+            )
+          ).flat()
+        : payments;
+    const orderTotal =
+      members.length > 1
+        ? members.reduce((sum, member) => sum + this.toMoney(member.totalValue), 0)
+        : this.toMoney(details.serviceOrder.totalValue ?? this.calculateItemsTotal(details.items));
+    const amountPaid = this.calculateNetPaid(groupPayments);
     const outstandingBalance = Math.max(orderTotal - amountPaid, 0);
     const effectivePayments = new Map(
-      payments
+      groupPayments
         .filter((payment) => ![PaymentRecordStatus.FAILED, PaymentRecordStatus.REVERSED].includes(payment.status))
         .map((payment) => [payment.id, payment] as const),
     );
@@ -214,7 +233,7 @@ export class FinanceService {
         ? ServiceOrderPaymentStatus.PARTIAL
         : ServiceOrderPaymentStatus.PENDING;
 
-    const recordedPayments = payments
+    const recordedPayments = groupPayments
       .filter((payment) => ![PaymentRecordStatus.FAILED, PaymentRecordStatus.REVERSED].includes(payment.status))
       .slice()
       .sort((left, right) => {

@@ -96,6 +96,7 @@ type ServiceOrderRecord = {
   paymentStatus?: "pending" | "partial" | "paid";
   outstandingBalance?: string | null;
   amountPaid?: string | null;
+  payLockedOnParent?: boolean;
 };
 
 type ActorSummary = {
@@ -122,7 +123,14 @@ type ServiceOrderDetail = {
   qualityReviewer?: ActorSummary | null;
   items: PersistedServiceOrderItem[];
   maxPiecesPerBag?: number;
-  groupVersions?: Array<{ id: string; orderNo: string; versionSuffix: string | null }>;
+  groupVersions?: Array<{
+    id: string;
+    orderNo: string;
+    versionSuffix: string | null;
+    returnKind?: string | null;
+    status?: string;
+  }>;
+  payLockedOnParent?: boolean;
   origin?: { id: string; orderNo: string; status: string; actualPickupDate: string | null } | null;
   linkedReturns?: Array<{ id: string; orderNo: string; returnKind: string | null; status: string }>;
   clientReturnPreview?: {
@@ -304,6 +312,7 @@ export function ServiceOrdersWorkspace() {
   const [previewOrderNo, setPreviewOrderNo] = useState("—");
   const [wantsNextVersion, setWantsNextVersion] = useState(false);
   const [returnPickerOpen, setReturnPickerOpen] = useState(false);
+  const [counterPickerOpen, setCounterPickerOpen] = useState(false);
   const [proofPickerOpen, setProofPickerOpen] = useState(false);
   const [pickupPickerOpen, setPickupPickerOpen] = useState(false);
   const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
@@ -962,8 +971,11 @@ export function ServiceOrdersWorkspace() {
         setPickupPickerOpen(false);
         await loadOrders(isListWorkspace ? undefined : delivered.serviceOrder.id);
         const method = pickupMethodLabel(delivered.pickup?.method) ?? "atendente";
+        const partial = delivered.serviceOrder.status === "ready_for_pickup" || delivered.pickup?.partial;
         setMessage(
-          `OS ${delivered.serviceOrder.orderNo} retirada (${method}). Use Cliente voltou se o cliente reclamar depois.`,
+          partial
+            ? `Retirada parcial da OS ${delivered.serviceOrder.orderNo}. A mãe não fica Retirado enquanto a refação no balcão estiver aberta.`
+            : `OS ${delivered.serviceOrder.orderNo} retirada (${method}). Use Cliente voltou se o cliente reclamar depois.`,
         );
       } catch (error) {
         setMessage(formatWorkspaceMessage(error, "A OS não pôde ser entregue."));
@@ -1446,6 +1458,33 @@ export function ServiceOrdersWorkspace() {
         setMessage(`OS ${next.serviceOrder.orderNo} aberta como ${term}. Feche a sacola e salve para imprimir a OP.`);
       } catch (error) {
         setMessage(formatWorkspaceMessage(error, "O retorno do cliente não pôde ser aberto."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, loadOrders, openServiceOrderWorkspace, selectedOrder],
+  );
+
+  const handleCounterRework = useCallback(
+    async (itemIds: string[], reason?: string) => {
+      if (!canWrite || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/counter-rework`, {
+          method: "POST",
+          body: JSON.stringify({ itemIds, reason }),
+        });
+        setCounterPickerOpen(false);
+        openServiceOrderWorkspace(next.serviceOrder);
+        await loadOrders(selectedOrder.id);
+        setMessage(
+          `OS ${next.serviceOrder.orderNo} aberta como Refação no balcão. A mãe permanece parcial, sem Pagar, até quitar esta OS.`,
+        );
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A refação no balcão não pôde ser aberta."));
       } finally {
         setSaving(false);
       }
@@ -2131,6 +2170,19 @@ export function ServiceOrdersWorkspace() {
             />
           ) : null}
 
+          {counterPickerOpen && selectedOrder ? (
+            <OsClientReturnPanel
+              items={details?.items ?? []}
+              maxPiecesPerBag={maxPiecesPerBag}
+              mode="counter"
+              orderNo={selectedOrder.orderNo}
+              preview={null}
+              saving={saving}
+              onClose={() => setCounterPickerOpen(false)}
+              onConfirm={(itemIds, reason) => handleCounterRework(itemIds, reason)}
+            />
+          ) : null}
+
           {proofPickerOpen && selectedOrder ? (
             <OsProofNotesPanel
               items={details?.items ?? []}
@@ -2800,7 +2852,12 @@ export function ServiceOrdersWorkspace() {
                         className="button"
                         disabled={
                           saving ||
-                          !osCanOpenPay({ status: selectedOrder.status, paymentStatus: paymentSummary?.paymentStatus })
+                          !osCanOpenPay({
+                            status: selectedOrder.status,
+                            paymentStatus: paymentSummary?.paymentStatus,
+                            payLockedOnParent:
+                              selectedOrder.payLockedOnParent ?? details?.payLockedOnParent ?? details?.serviceOrder.payLockedOnParent,
+                          })
                         }
                         onClick={() => {
                           void openPay(selectedOrder);
@@ -3019,6 +3076,16 @@ export function ServiceOrdersWorkspace() {
                           Retirada
                         </button>
                       ) : null}
+                      {selectedOrder.status === "ready_for_pickup" && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => setCounterPickerOpen(true)}
+                          type="button"
+                        >
+                          Refação no balcão
+                        </button>
+                      ) : null}
                       {selectedOrder.status === "picked_up" && canWrite ? (
                         <button
                           className="button"
@@ -3032,7 +3099,17 @@ export function ServiceOrdersWorkspace() {
                       {canWriteFinance ? (
                         <button
                           className="button"
-                          disabled={saving || selectedOrder.status === "cancelled"}
+                          disabled={
+                            saving ||
+                            !osCanOpenPay({
+                              status: selectedOrder.status,
+                              paymentStatus: paymentSummary?.paymentStatus,
+                              payLockedOnParent:
+                                selectedOrder.payLockedOnParent ??
+                                details?.payLockedOnParent ??
+                                details?.serviceOrder.payLockedOnParent,
+                            })
+                          }
                           onClick={() => {
                             void openPay(selectedOrder);
                           }}
@@ -3083,7 +3160,17 @@ export function ServiceOrdersWorkspace() {
                       {canWriteFinance ? (
                         <button
                           className="button"
-                          disabled={saving || selectedOrder.status === "cancelled"}
+                          disabled={
+                            saving ||
+                            !osCanOpenPay({
+                              status: selectedOrder.status,
+                              paymentStatus: paymentSummary?.paymentStatus,
+                              payLockedOnParent:
+                                selectedOrder.payLockedOnParent ??
+                                details?.payLockedOnParent ??
+                                details?.serviceOrder.payLockedOnParent,
+                            })
+                          }
                           onClick={() => {
                             void openPay(selectedOrder);
                           }}

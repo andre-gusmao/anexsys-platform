@@ -58,11 +58,13 @@ Há **dois prazos diferentes**, ambos contados **da retirada pelo cliente** (dec
 - Prazo de **ajuste** (reconserto; padrão 7 dias).
 - Prazo de **execução** (garantia de defeito; o André quer 90; o cadastro da Conta é que vale).
 
-Isto **não** é a versão `-A` da sacola e **não** é a refação da qualidade.
+Isto **não** é a versão `-1` da sacola e **não** é a refação da qualidade.
 
 **Retirada:** Pronto para retirada → janela de 10 min → **Recebi** no link, **Entregue assinado** com foto, ou **Entregue** do atendente. Grava o método.
 
-**Cliente voltou:** a atendente marca as peças. Nasce **OS filha com placa nova**, mesmo cliente, mesmo técnico, ligada à original.
+**Refação no balcão:** o cliente prova e recusa peça **antes de levar**. Mesma família, letra **C**. A mãe fica parcial (não Retirado). Pagar só na filha; as duas saem Pago juntas.
+
+**Cliente voltou:** depois do Retirado. Reconserto `-R` e garantia `-G` na mesma família. Cobrada (fora do prazo) ainda abre placa nova.
 
 - Dentro do ajuste: sem valor; OP com **Reconserto**.
 - Depois do ajuste e dentro da execução: sem valor; OP com **Em garantia**.

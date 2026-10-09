@@ -306,6 +306,8 @@ test('uses Reconserto or Em garantia on the OP header for in-window returns', ()
   assert.equal(osOpHeaderTerm({ returnKind: 'reconserto', paymentStatus: 'paid' }), 'Reconserto');
   assert.equal(osOpHeaderTerm({ returnKind: 'warranty', paymentStatus: 'pending' }), 'Em garantia');
   assert.equal(osOpHeaderTerm({ returnKind: 'charged', paymentStatus: 'paid' }), 'Pago');
+  assert.equal(osReturnKindLabel('counter'), 'Refação no balcão');
+  assert.equal(osOpHeaderTerm({ returnKind: 'counter', paymentStatus: 'pending' }), 'Refação no balcão');
 });
 
 test('fails the save when print is blocked and no next version was requested', async () => {
@@ -335,9 +337,10 @@ test('types valor and desconto as Brazilian money with cents', () => {
 });
 
 test('previews the next linked OS number from the current plate', () => {
-  assert.equal(previewNextLinkedServiceOrderNo('AAA000001'), 'AAA000001-A');
-  assert.equal(previewNextLinkedServiceOrderNo('AAA000001-A', ['AAA000001', 'AAA000001-A']), 'AAA000001-B');
-  assert.equal(previewNextLinkedServiceOrderNo('00002', ['00002']), '00002-A');
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001'), 'AAA000001-1');
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001-1', ['AAA000001', 'AAA000001-1']), 'AAA000001-2');
+  assert.equal(previewNextLinkedServiceOrderNo('00002', ['00002']), '00002-1');
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001-C', ['AAA000001', 'AAA000001-C']), 'AAA000001-1');
 });
 
 test('does not rebind the open OS when the list refreshes without a preferred id', () => {

@@ -56,6 +56,16 @@ export class ServiceOrderRepository {
     });
   }
 
+  async findByGroupIds(tenantId: string, groupIds: string[]): Promise<ServiceOrderEntity[]> {
+    if (groupIds.length === 0) {
+      return [];
+    }
+    return this.repository.find({
+      where: { tenantId, groupId: In(groupIds), isDeleted: false },
+      order: { versionSuffix: 'ASC', openedAt: 'ASC' },
+    });
+  }
+
   async findByOriginServiceOrderId(tenantId: string, originServiceOrderId: string): Promise<ServiceOrderEntity[]> {
     return this.repository.find({
       where: { tenantId, originServiceOrderId, isDeleted: false },

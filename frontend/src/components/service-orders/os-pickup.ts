@@ -13,6 +13,7 @@ export type PickupSummary = {
   acceptedText?: string | null;
   photoAvailable?: boolean;
   recebiReady?: boolean;
+  partial?: boolean;
 };
 
 export function pickupMethodLabel(method: string | null | undefined) {

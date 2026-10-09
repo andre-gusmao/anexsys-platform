@@ -31,7 +31,7 @@ export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'group_seq', type: 'integer', nullable: true })
   groupSeq!: number | null;
 
-  @Column({ name: 'version_suffix', type: 'varchar', length: 2, nullable: true })
+  @Column({ name: 'version_suffix', type: 'varchar', length: 8, nullable: true })
   versionSuffix!: string | null;
 
   @Column({ name: 'bag_closed', type: 'boolean', default: false })

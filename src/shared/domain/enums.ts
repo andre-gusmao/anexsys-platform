@@ -95,6 +95,7 @@ export enum ServiceOrderReturnKind {
   RECONSERTO = 'reconserto',
   WARRANTY = 'warranty',
   CHARGED = 'charged',
+  COUNTER = 'counter',
 }
 
 export enum ServiceOrderItemStatus {

@@ -357,7 +357,7 @@ describe('ServiceOrderService', () => {
     );
   });
 
-  it('spawns the next linked OS version with the same header and an A suffix', async () => {
+  it('spawns the next linked OS version with the same header and a numeric suffix', async () => {
     const saved: Array<Record<string, unknown>> = [];
     const source = {
       id: 'so-1',
@@ -414,12 +414,12 @@ describe('ServiceOrderService', () => {
     );
 
     const spawned = await service.spawnNextVersion('tenant-1', 'so-1', 'user-1');
-    assert.equal(saved[0]?.orderNo, '00002-A');
-    assert.equal(saved[0]?.versionSuffix, 'A');
+    assert.equal(saved[0]?.orderNo, '00002-1');
+    assert.equal(saved[0]?.versionSuffix, '1');
     assert.equal(saved[0]?.bagClosed, false);
     assert.equal(saved[0]?.customerId, 'customer-1');
     assert.equal(saved[0]?.customerNotes, 'Garantia 90 dias');
-    assert.equal(spawned.serviceOrder.orderNo, '00002-A');
+    assert.equal(spawned.serviceOrder.orderNo, '00002-1');
   });
 
   it('rejects spawning the next version before the bag is closed', async () => {
@@ -998,7 +998,7 @@ describe('ServiceOrderService', () => {
     );
   });
 
-  it('opens a child OS with a new plate and zero prices inside the reconserto window', async () => {
+  it('opens a reconserto in the same family with letter R and zero prices', async () => {
     const origin = {
       id: 'so-1',
       tenantId: 'tenant-1',
@@ -1007,6 +1007,9 @@ describe('ServiceOrderService', () => {
       status: 'picked_up',
       bagClosed: true,
       orderNo: 'AAA000001',
+      groupId: 'so-1',
+      groupSeq: 1,
+      versionSuffix: null,
       actualPickupDate: todayDateOnly(),
       deliveryType: DeliveryType.STANDARD,
       operationalPriority: null,
@@ -1096,14 +1099,123 @@ describe('ServiceOrderService', () => {
     );
 
     const child = await service.createClientReturn('tenant-1', 'so-1', 'user-1', ['item-1']);
-    assert.equal(created[0]?.orderNo, 'AAA000009');
+    assert.equal(created[0]?.orderNo, 'AAA000001-R');
     assert.equal(created[0]?.originServiceOrderId, 'so-1');
     assert.equal(created[0]?.returnKind, 'reconserto');
-    assert.equal(created[0]?.versionSuffix, null);
+    assert.equal(created[0]?.versionSuffix, 'R');
+    assert.equal(created[0]?.groupId, 'so-1');
     assert.equal(created[0]?.technicalMeasurementResponsibleActorId, 'tech-1');
     assert.equal(created[0]?.totalValue, null);
     assert.equal(items[0]?.unitPrice, null);
-    assert.equal(child.serviceOrder.orderNo, 'AAA000009');
+    assert.equal(child.serviceOrder.orderNo, 'AAA000001-R');
+  });
+
+  it('opens counter rework in the same family with letter C and keeps the mother ready for pickup', async () => {
+    const origin = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      status: 'ready_for_pickup',
+      bagClosed: true,
+      orderNo: 'AAA000001',
+      groupId: 'so-1',
+      groupSeq: 1,
+      versionSuffix: null,
+      deliveryType: DeliveryType.STANDARD,
+      operationalPriority: null,
+      paymentTermsDays: 0,
+      commercialResponsibleActorId: 'tech-1',
+      technicalMeasurementResponsibleActorId: 'tech-1',
+      workflowDefinitionId: null,
+      deliverySurchargeMethod: null,
+      deliverySurchargeValue: null,
+      commercialNotes: null,
+      customerNotes: null,
+      discountValue: null,
+    };
+    const created: Array<Record<string, unknown>> = [];
+    const items: Array<Record<string, unknown>> = [];
+    const originItem = {
+      id: 'item-1',
+      itemNo: 1,
+      itemType: 'Calça',
+      description: 'Bainha',
+      complement: 'Barra 4 cm',
+      brand: 'Levi',
+      model: '501',
+      serialNo: 'SN-1',
+      productId: null,
+      serviceId: null,
+      quantity: '1.0000',
+      unitPrice: '90.00',
+      discountValue: '0.00',
+      deliveryType: null,
+      operationalPriority: null,
+      status: 'open',
+      isDeleted: false,
+      heldForRework: false,
+    };
+    const service = new ServiceOrderService(
+      {
+        async transaction(callback: (manager: any) => Promise<unknown>) {
+          const manager = {
+            create(_entity: unknown, payload: Record<string, unknown>) {
+              return payload;
+            },
+            async save(_entity: unknown, payload: Record<string, unknown>) {
+              if (payload.orderNo) {
+                created.push(payload);
+              } else {
+                items.push(payload);
+              }
+              return payload;
+            },
+          };
+          return callback(manager);
+        },
+      } as never,
+      {
+        async findById(id: string) {
+          if (created[0] && id === created[0].id) {
+            return created[0];
+          }
+          return origin;
+        },
+        async findByGroupId() {
+          return created;
+        },
+        async findByOriginServiceOrderId() {
+          return [];
+        },
+      } as never,
+      {
+        async findByServiceOrder(serviceOrderId: string) {
+          if (serviceOrderId === 'so-1') {
+            return [originItem];
+          }
+          return items;
+        },
+      } as never,
+      { async getById() { return { id: 'tenant-1', maxPiecesPerBag: 5 }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'customer-1', tenantId: 'tenant-1', branchId: 'branch-1', legalName: 'Maria' }; } } as never,
+      { async getById() { return { id: 'tech-1', tenantId: 'tenant-1', status: UserStatus.ACTIVE }; } } as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-15', promisedDeliveryTime: '18:00' }; } } as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {} as never,
+    );
+
+    const child = await service.createCounterRework('tenant-1', 'so-1', 'user-1', ['item-1'], 'Bainha ficou curta');
+    assert.equal(created[0]?.orderNo, 'AAA000001-C');
+    assert.equal(created[0]?.versionSuffix, 'C');
+    assert.equal(created[0]?.returnKind, 'counter');
+    assert.equal(created[0]?.groupId, 'so-1');
+    assert.equal(created[0]?.originServiceOrderId, 'so-1');
+    assert.equal(origin.status, 'ready_for_pickup');
+    assert.equal(originItem.heldForRework, true);
+    assert.match(String(created[0]?.commercialNotes), /Bainha ficou curta/);
+    assert.equal(child.serviceOrder.orderNo, 'AAA000001-C');
   });
 
   it('exposes the printed OS on the public link and confirms Recebi only with an open window', async () => {

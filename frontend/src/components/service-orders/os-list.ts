@@ -23,6 +23,7 @@ export type OsListRecord = {
   paymentStatus?: "pending" | "partial" | "paid";
   outstandingBalance?: string | null;
   amountPaid?: string | null;
+  payLockedOnParent?: boolean;
 };
 
 export function osDeliveryTypeLabel(type: string) {

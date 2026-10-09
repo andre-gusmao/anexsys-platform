@@ -1,3 +1,5 @@
+import { isProcessRow } from './service-order-version';
+
 export type OsListPaymentStatus = 'pending' | 'partial' | 'paid';
 
 export function osListPaymentFromTotals(
@@ -12,4 +14,29 @@ export function osListPaymentFromTotals(
     outstandingBalance: outstanding.toFixed(2),
     paymentStatus: outstanding <= 0 ? 'paid' : paid > 0 ? 'partial' : 'pending',
   };
+}
+
+export function osGroupPaymentFromMembers(
+  members: Array<{ id: string; totalValue?: string | number | null }>,
+  paidById: Map<string, number>,
+) {
+  const total = members.reduce((sum, member) => sum + Number(member.totalValue ?? 0), 0);
+  const paid = members.reduce((sum, member) => sum + (paidById.get(member.id) ?? 0), 0);
+  return osListPaymentFromTotals(total, paid);
+}
+
+export function osHasPendingProcessSibling(
+  selfId: string,
+  members: Array<{ id: string; versionSuffix?: string | null; returnKind?: string | null; status?: string | null }>,
+) {
+  return members.some(
+    (member) => member.id !== selfId && member.status !== 'cancelled' && isProcessRow(member),
+  );
+}
+
+export function osPayLockedOnParent(input: {
+  isProcessRow?: boolean;
+  hasPendingProcessSibling?: boolean;
+}) {
+  return !input.isProcessRow && Boolean(input.hasPendingProcessSibling);
 }

@@ -50,7 +50,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 1. **Atendimento / OS aberta**: gera a OS; não gera etiqueta nem leitura de QR. A OS é enviada ao cliente por WhatsApp com status **Em aberto (público)**. O cliente recebe um link para acompanhar e para aprovar.
 2. **Medição das roupas**: não gera etiqueta, não lê QR, sem WhatsApp. É a etapa que origina a abertura da OS.
 3. **Aprovação do cliente**: o status continua Em aberto; a aprovação não é status, é uma **assinatura "concordo com o serviço e preço"**, registrada por escrito.
-4. **Sacola física**: a sacola é **só o transporte**. O sistema limita as peças **por versão da OS** (parâmetro da Conta, padrão 5). Cada linha é uma peça. A atendente registra até o limite e aperta **Fechar sacola** (trava; pode **Abrir sacola** se errou). **Salvar** com a sacola fechada imprime a OP. Se ainda houver peças, marca **Abrir nova versão** e **Salvar** abre `AAA000001-A` em outra aba. A última versão pode ter só o que restou (sem mínimo). A sacola vai para a esteira de "a fazer". Quando o técnico lê o QR, o status vai para **Em produção (público)**.
+4. **Sacola física**: a sacola é **só o transporte**. O sistema limita as peças **por versão da OS** (parâmetro da Conta, padrão 5). Cada linha é uma peça. A atendente registra até o limite e aperta **Fechar sacola** (trava; pode **Abrir sacola** se errou). **Salvar** com a sacola fechada imprime a OP. Se ainda houver peças, marca **Abrir nova versão** e **Salvar** abre `AAA000001-1` em outra aba. A última versão pode ter só o que restou (sem mínimo). A sacola vai para a esteira de "a fazer". Quando o técnico lê o QR, o status vai para **Em produção (público)**.
 5. Não existe essa etapa (numeração do André).
 6. **Acabamento/passadoria**: ao terminar, o técnico lê o QR, leva a sacola para a esteira de finalizadas e o status vai para **Aguardando controle de qualidade (público)**.
 7. **Revisão de qualidade**: o revisor tira a sacola da esteira, lê o QR e o status vai para **Controle de qualidade (público)**. Aprova (vai para Pronto para retirada) ou reprova.
@@ -175,12 +175,12 @@ Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[AS
 
 **Versões da OS e Fechar sacola**
 - A sacola **não é um objeto do sistema**. É o saco físico que leva as peças e a OP no bolso transparente.
-- Cada versão da OS aceita até o **limite parametrizado da Conta** (padrão **5**). **Cada linha é uma peça** (quantidade sempre 1, não editável). Exemplo: 13 peças viram `AAA000001` (5) → Fechar → Abrir nova versão → Salvar (imprime OP e abre `-A`) → de novo até `AAA000001-B` (3) → Fechar → Salvar (só imprime).
-- **Número da OS:** três letras e seis dígitos, como placa (`AAA000001` … `AAA999999`, depois `AAB000001`). Não reinicia no dia. A versão da sacola só acrescenta `-A`, `-B`.
+- Cada versão da OS aceita até o **limite parametrizado da Conta** (padrão **5**). **Cada linha é uma peça** (quantidade sempre 1, não editável). Exemplo: 13 peças viram `AAA000001` (5) → Fechar → Abrir nova versão → Salvar (imprime OP e abre `-1`) → de novo até `AAA000001-2` (3) → Fechar → Salvar (só imprime).
+- **Número da OS:** três letras e seis dígitos, como placa (`AAA000001` … `AAA999999`, depois `AAB000001`). Não reinicia no dia. A versão da sacola acrescenta `-1`, `-2`. Processos usam letra: **C** balcão, **R** reconserto, **G** garantia.
 - **Salvar** com a sacola aberta grava só o rascunho: não trava e não gera OP.
 - **Fechar sacola** grava e **trava** a versão. O botão vira **Abrir sacola**. **Não** imprime e **não** cria outra OS.
 - **Abrir sacola** destrava para corrigir ou incluir peça.
-- **Abrir nova versão** só aparece na **grade de itens**, depois de fechar. É a marca. Não há o mesmo botão no rodapé. Quando está marcado, o rodapé avisa que **Salvar** gera a próxima versão (já com o número, ex. `AAA000001-A`) em **outra aba**.
+- **Abrir nova versão** só aparece na **grade de itens**, depois de fechar. É a marca. Não há o mesmo botão no rodapé. Quando está marcado, o rodapé avisa que **Salvar** gera a próxima versão (já com o número, ex. `AAA000001-1`) em **outra aba**.
 - **Salvar** com a sacola fechada imprime a Ordem de Produção (popup de impressão). Se **Abrir nova versão** estiver marcado na grade, também abre a próxima versão ligada.
 - **Valor** e **desconto** da peça são digitados no formato de dinheiro (centavos, `15.000,00`).
 - Sem mínimo de peças na última versão.
@@ -405,7 +405,7 @@ A conexão bancária depende de contrato com o banco ou intermediário; detalha-
 Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 
 - Na mesma linha: **Produto** e **Serviço**. O serviço da linha **só lista o que já tem preço** para aquele produto. O preço vem da tabela **Preços** (par produto + serviço) e o atendente pode alterar. O tempo previsto da combinação é cadastro para o PCP; **não** mexe em Normal / Expresso / Urgente. Depois o **Detalhamento do ajuste** (o combinado com o cliente; no código `complement`), **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros. Na tela, o mouse em cima do detalhamento abre o texto completo.
-- Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
+- Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-1`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
 - A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (Ordem de serviço / Ordem de produção) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
@@ -445,7 +445,7 @@ O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois d
 - Se **todas** as peças da OS estão aprovadas, o status vai para **Pronto para retirada**.
 - Se uma ou várias são reprovadas, a **OS original permanece em Controle de qualidade**. O sistema imprime uma **nova versão da OP só com as peças reprovadas**, com o **motivo da reprovação** em cada linha para o técnico refazer o ponto exato.
 - Quando a sacola volta, o revisor puxa a **mesma OS**. A tela mostra a versão da refação. Aprova ou reprova de novo. Nova reprovação gera a versão 3, e assim por diante.
-- Isto **não** é a versão da OS (`AAA000001-A`, que é sacola). É versão da **OP** de refação.
+- Isto **não** é a versão da OS (`AAA000001-1`, que é sacola). É versão da **OP** de refação.
 - Leitura de QR no celular e catálogo completo de status (Em produção, Aguardando qualidade) continuam no Ciclo 4.
 
 ## 18. Três voltas que não se misturam (08/10/2026)
@@ -454,8 +454,18 @@ Confirmado com o André. São caminhos distintos:
 
 1. **Refação (qualidade).** Mesma OS, nova **versão da OP** só com as peças reprovadas. O cliente continua vendo Controle de qualidade. Já existe.
 2. **Prova / pré-preparação.** Mesma OS e versão da OP, status **Aguardando prova**. A técnica em produção usa **Enviar para prova**. **Prova feita** abre **Anotações de prova** (texto opcional por peça) e volta sempre para produção. Se anotou, a mesma OP é reimpressa com o marcador **Prova**. A qualidade só entra no **Terminei**. WhatsApp 3 fica em aberto.
-3. **Cliente voltou (reconserto / garantia).** Depois da **retirada**. **OS filha com placa nova**, ligada à original. `-A` continua sendo só peças a mais na mesma visita.
+3. **Cliente voltou (reconserto / garantia).** Depois da **retirada**. Reconserto `AAA000001-R` e garantia `AAA000001-G` na **mesma família**. Cobrada (fora do prazo) ainda abre placa nova. `-1` continua sendo só peças a mais na mesma visita.
 
 Prazos contados da retirada, pelos parâmetros da Conta (`warranty_adjustment_period_days` e `warranty_execution_period_days`). Dentro do ajuste → **Reconserto** sem valor. Depois do ajuste e dentro da execução → **Em garantia** sem valor. Fora dos dois → **cobrada**. Liberação do gerente com motivo fica para depois.
 
 **Retirada (09/10/2026):** botão **Retirada** na OS. Inicia a janela do **Recebi**, aceita foto + **Entregue assinado**, ou **Entregue** pelo atendente. **Cliente voltou** continua depois do status Retirado.
+
+## 19. Número da sacola e letra do processo (09/10/2026)
+
+O André viu o conflito: versão `-G` e garantia com **G na frente** da placa. `GAA000001` já é uma placa válida. Decisão:
+
+1. **Versão de sacola** (mais peças na mesma visita): número. `AAA000001`, `AAA000001-1`, `AAA000001-2`.
+2. **Processo diferenciado**: uma letra depois da placa. **C** refação / reprovado no balcão. **R** reconserto (Cliente voltou no prazo de ajuste). **G** garantia (Cliente voltou no prazo de execução). Sem prefixo `G`.
+3. **Refação no balcão** (Pronto para retirada, cliente prova e recusa): mesma família, letra **C**, motivo do cliente. Não é Cliente voltou e não é prova.
+4. Se o cliente leva parte das peças: a **mãe fica parcial** (não Retirado) enquanto a filha de processo estiver aberta. **Pagar some na mãe**. Pagar a filha quita o **grupo** (as duas linhas saem Pago).
+5. Devolução/reembolso de peça já paga e abandonada fica para depois.

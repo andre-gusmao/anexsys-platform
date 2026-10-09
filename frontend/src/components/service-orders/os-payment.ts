@@ -33,8 +33,12 @@ export function osHasOutstandingBalance(summary?: Pick<OsFinancialSummary, "outs
   return Number(summary?.outstandingBalance ?? 0) > 0;
 }
 
-export function osCanOpenPay(row?: { status?: string | null; paymentStatus?: string | null } | null) {
-  return row?.status !== "cancelled" && row?.paymentStatus !== "paid";
+export function osCanOpenPay(row?: {
+  status?: string | null;
+  paymentStatus?: string | null;
+  payLockedOnParent?: boolean | null;
+} | null) {
+  return row?.status !== "cancelled" && row?.paymentStatus !== "paid" && !row?.payLockedOnParent;
 }
 
 export function osShowsFaltaPagamento(summary?: Pick<OsFinancialSummary, "outstandingBalance" | "paymentStatus"> | null) {

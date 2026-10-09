@@ -57,4 +57,10 @@ export class ServiceOrderItemEntity extends SoftDeletableBusinessEntity {
 
   @Column({ name: 'status', type: 'varchar', length: 30, default: ServiceOrderItemStatus.OPEN })
   status!: ServiceOrderItemStatus;
+
+  @Column({ name: 'held_for_rework', type: 'boolean', default: false })
+  heldForRework!: boolean;
+
+  @Column({ name: 'origin_service_order_item_id', type: 'uuid', nullable: true })
+  originServiceOrderItemId!: string | null;
 }

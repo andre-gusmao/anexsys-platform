@@ -40,6 +40,9 @@ export function osReturnKindLabel(kind: string | null | undefined): string | nul
   if (kind === ServiceOrderReturnKind.CHARGED) {
     return 'Cobrada';
   }
+  if (kind === ServiceOrderReturnKind.COUNTER) {
+    return 'Refação no balcão';
+  }
   return null;
 }
 
@@ -52,6 +55,9 @@ export function osOpHeaderTerm(input: {
   }
   if (input.returnKind === ServiceOrderReturnKind.WARRANTY) {
     return 'Em garantia';
+  }
+  if (input.returnKind === ServiceOrderReturnKind.COUNTER) {
+    return 'Refação no balcão';
   }
   return input.paymentStatus === 'paid' ? 'Pago' : 'Pagar na retirada';
 }
