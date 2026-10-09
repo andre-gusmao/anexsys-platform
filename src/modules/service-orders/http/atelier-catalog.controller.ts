@@ -48,20 +48,45 @@ class PatchCatalogNameBody {
   status?: MeasurementCatalogStatus;
 }
 
-class CreateAtelierServiceBody extends CreateCatalogNameBody {
+class CreateProductServiceBody {
+  @IsString()
+  productId!: string;
+
   @IsOptional()
+  @IsString()
+  serviceId?: string;
+
+  @IsOptional()
+  @IsString()
+  serviceName?: string;
+
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  defaultPrice?: number;
+  suggestedPrice!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  estimatedMinutes!: number;
 }
 
-class PatchAtelierServiceBody extends PatchCatalogNameBody {
+class PatchProductServiceBody {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  defaultPrice?: number | null;
+  suggestedPrice?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  estimatedMinutes?: number;
+
+  @IsOptional()
+  @IsEnum(MeasurementCatalogStatus)
+  status?: MeasurementCatalogStatus;
 }
 
 function requirePrincipal(tenantId: string | null, request: PlatformRequest) {
@@ -203,7 +228,6 @@ export class AtelierServicesController {
     return this.atelierCatalogService.createService({
       tenantId: tenantId as string,
       displayName: body.displayName,
-      defaultPrice: body.defaultPrice,
       sortOrder: body.sortOrder,
       actorUserId: principal.userId,
     });
@@ -221,7 +245,6 @@ export class AtelierServicesController {
     return this.atelierCatalogService.updateService(serviceId, {
       tenantId: tenantId as string,
       displayName: body.displayName,
-      defaultPrice: body.defaultPrice,
       sortOrder: body.sortOrder,
       status: body.status,
       actorUserId: principal.userId,
@@ -238,5 +261,73 @@ export class AtelierServicesController {
     const principal = requirePrincipal(tenantId, request);
     await this.atelierCatalogService.removeService(serviceId, tenantId as string, principal.userId);
     return { id: serviceId, deleted: true };
+  }
+}
+
+@Controller('product-services')
+export class ProductServicesController {
+  constructor(
+    @Inject(AtelierCatalogService)
+    private readonly atelierCatalogService: AtelierCatalogService,
+  ) {}
+
+  @Permissions('service_orders.read')
+  @Get()
+  async list(
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+    @Query('productId') productId?: string,
+  ) {
+    const principal = requirePrincipal(tenantId, request);
+    return this.atelierCatalogService.listProductServices(tenantId as string, principal.userId, productId);
+  }
+
+  @Permissions('service_orders.write')
+  @Post()
+  async create(
+    @Body() body: CreateProductServiceBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = requirePrincipal(tenantId, request);
+    return this.atelierCatalogService.createProductService({
+      tenantId: tenantId as string,
+      productId: body.productId,
+      serviceId: body.serviceId,
+      serviceName: body.serviceName,
+      suggestedPrice: body.suggestedPrice,
+      estimatedMinutes: body.estimatedMinutes,
+      actorUserId: principal.userId,
+    });
+  }
+
+  @Permissions('service_orders.write')
+  @Patch(':priceId')
+  async update(
+    @Param('priceId', new ParseUUIDPipe()) priceId: string,
+    @Body() body: PatchProductServiceBody,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = requirePrincipal(tenantId, request);
+    return this.atelierCatalogService.updateProductService(priceId, {
+      tenantId: tenantId as string,
+      suggestedPrice: body.suggestedPrice,
+      estimatedMinutes: body.estimatedMinutes,
+      status: body.status,
+      actorUserId: principal.userId,
+    });
+  }
+
+  @Permissions('service_orders.write')
+  @Delete(':priceId')
+  async remove(
+    @Param('priceId', new ParseUUIDPipe()) priceId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = requirePrincipal(tenantId, request);
+    await this.atelierCatalogService.removeProductService(priceId, tenantId as string, principal.userId);
+    return { id: priceId, deleted: true };
   }
 }

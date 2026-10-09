@@ -13,6 +13,7 @@ import { ServiceOrderProofNotes1760000033000 } from './migrations/1760000033000-
 import { ServiceOrderPickup1760000034000 } from './migrations/1760000034000-service-order-pickup';
 import { ServiceOrderPublicToken1760000035000 } from './migrations/1760000035000-service-order-public-token';
 import { ServiceOrderApproval1760000036000 } from './migrations/1760000036000-service-order-approval';
+import { GarmentProductServices1760000037000 } from './migrations/1760000037000-garment-product-services';
 
 export async function applyPendingMigrations(dataSource: DataSource): Promise<void> {
   if (typeof dataSource.runMigrations === 'function') {
@@ -44,6 +45,7 @@ export async function ensureAtelierOsSchema(dataSource: DataSource): Promise<voi
     await new ServiceOrderPickup1760000034000().up(queryRunner);
     await new ServiceOrderPublicToken1760000035000().up(queryRunner);
     await new ServiceOrderApproval1760000036000().up(queryRunner);
+    await new GarmentProductServices1760000037000().up(queryRunner);
   } finally {
     await queryRunner.release();
   }

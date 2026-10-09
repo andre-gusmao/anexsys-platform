@@ -210,6 +210,30 @@ async function main() {
       ON service_order_approvals (service_order_id)
     `);
     await client.query(`
+      CREATE TABLE IF NOT EXISTS garment_product_services (
+        id uuid PRIMARY KEY,
+        tenant_id uuid NOT NULL,
+        product_id uuid NOT NULL,
+        service_id uuid NOT NULL,
+        suggested_price numeric(18, 2) NOT NULL,
+        estimated_minutes integer NOT NULL,
+        status varchar(30) NOT NULL DEFAULT 'active',
+        is_deleted boolean NOT NULL DEFAULT false,
+        deleted_at timestamptz,
+        deleted_by uuid,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        created_by uuid NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        updated_by uuid NOT NULL,
+        row_version bigint NOT NULL DEFAULT 1
+      )
+    `);
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_garment_product_services_live_pair
+      ON garment_product_services (tenant_id, product_id, service_id)
+      WHERE is_deleted = false
+    `);
+    await client.query(`
       ALTER TABLE IF EXISTS service_orders
       ADD COLUMN IF NOT EXISTS public_token uuid
     `);
@@ -238,7 +262,7 @@ async function main() {
       WHERE orders.id = numbered.id
         AND orders.group_seq IS NULL
     `);
-    console.log('Banco da OS conferido (horário de saída, produto, serviço, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada, aprovação, link público e retorno do cliente).');
+    console.log('Banco da OS conferido (horário de saída, produto, serviço, preços por combinação, versões da sacola, trava, marca, modelo, série, qualidade, prova, anotações de prova, retirada, aprovação, link público e retorno do cliente).');
   } finally {
     await client.end();
   }

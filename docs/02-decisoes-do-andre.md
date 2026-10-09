@@ -404,7 +404,7 @@ A conexão bancária depende de contrato com o banco ou intermediário; detalha-
 
 Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
 
-- Na mesma linha: **Produto** (cadastro: Calça, Saia, Vestido de festa, Vestido, Terno, Paletó, Camisa, Jaqueta) e **Serviço** (cadastro com preço padrão). Depois o **Serviço a realizar** (o combinado com o cliente; no código `complement`), **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros.
+- Na mesma linha: **Produto** e **Serviço**. O serviço da linha **só lista o que já tem preço** para aquele produto. O preço vem da tabela **Preços** (par produto + serviço) e o atendente pode alterar. O tempo previsto da combinação é cadastro para o PCP; **não** mexe em Normal / Expresso / Urgente. Depois o **Serviço a realizar** (o combinado com o cliente; no código `complement`), **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros.
 - Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-A`) em outra aba.
 - **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
 - A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.

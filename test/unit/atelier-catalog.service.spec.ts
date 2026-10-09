@@ -9,6 +9,7 @@ function createService(
     services?: object;
     assertGarmentProductCanDelete?: () => Promise<void>;
     assertAtelierServiceCanDelete?: () => Promise<void>;
+    prices?: object;
   } = {},
 ) {
   return new AtelierCatalogService(
@@ -86,6 +87,30 @@ function createService(
         await repos.assertAtelierServiceCanDelete?.();
       },
     } as never,
+    {
+      create(payload: Record<string, unknown>) {
+        return payload;
+      },
+      async save(payload: Record<string, unknown>) {
+        return payload;
+      },
+      async findById() {
+        return null;
+      },
+      async findListedByTenant() {
+        return [];
+      },
+      async findActiveByProduct() {
+        return [];
+      },
+      async findByProductAndService() {
+        return null;
+      },
+      async findActiveByProductAndService() {
+        return null;
+      },
+      ...repos.prices,
+    } as never,
   );
 }
 
@@ -133,6 +158,80 @@ describe('AtelierCatalogService', () => {
     await assert.rejects(
       () => service.createProduct({ tenantId: 'tenant-1', displayName: 'Calça', actorUserId: 'user-1' }),
       DomainValidationError,
+    );
+  });
+
+  it('stores price and minutes on the product-service pair, not on the service', async () => {
+    const saved: Record<string, unknown>[] = [];
+    const service = createService({
+      products: {
+        async findByIds() {
+          return [{ id: 'product-1', displayName: 'Calça', status: 'active' }];
+        },
+      },
+      services: {
+        async findByIds() {
+          return [{ id: 'service-1', displayName: 'Barra Original', status: 'active' }];
+        },
+      },
+      prices: {
+        async save(payload: Record<string, unknown>) {
+          saved.push(payload);
+          return payload;
+        },
+      },
+    });
+
+    const created = await service.createProductService({
+      tenantId: 'tenant-1',
+      productId: 'product-1',
+      serviceId: 'service-1',
+      suggestedPrice: 25,
+      estimatedMinutes: 15,
+      actorUserId: 'user-1',
+    });
+
+    assert.equal(created.suggestedPrice, '25.00');
+    assert.equal(created.estimatedMinutes, 15);
+    assert.equal(created.productName, 'Calça');
+    assert.equal(created.serviceName, 'Barra Original');
+    assert.equal(saved[0]?.suggestedPrice, '25.00');
+  });
+
+  it('rejects a duplicate product-service pair', async () => {
+    const service = createService({
+      products: {
+        async findByIds() {
+          return [{ id: 'product-1', displayName: 'Calça', status: 'active' }];
+        },
+      },
+      services: {
+        async findByIds() {
+          return [{ id: 'service-1', displayName: 'Barra Original', status: 'active' }];
+        },
+      },
+      prices: {
+        async findByProductAndService() {
+          return { id: 'price-1' };
+        },
+      },
+    });
+
+    await assert.rejects(
+      () =>
+        service.createProductService({
+          tenantId: 'tenant-1',
+          productId: 'product-1',
+          serviceId: 'service-1',
+          suggestedPrice: 40,
+          estimatedMinutes: 25,
+          actorUserId: 'user-1',
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof DomainValidationError);
+        assert.match(error.message, /Já existe preço/);
+        return true;
+      },
     );
   });
 });

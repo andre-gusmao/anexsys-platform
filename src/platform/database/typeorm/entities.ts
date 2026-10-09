@@ -54,6 +54,7 @@ import { TemporaryPickupCodeEntity } from 'src/modules/pickup/infrastructure/per
 import { AtelierServiceEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/atelier-service.entity';
 import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
 import { GarmentProductEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/garment-product.entity';
+import { GarmentProductServiceEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/garment-product-service.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
 import { ServiceOrderApprovalEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-approval.entity';
@@ -116,6 +117,7 @@ export const typeOrmEntities = [
   CameraSnapshotEntity,
   BusinessCalendarDayEntity,
   GarmentProductEntity,
+  GarmentProductServiceEntity,
   AtelierServiceEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,

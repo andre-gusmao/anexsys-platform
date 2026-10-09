@@ -71,7 +71,13 @@ const navSections: NavSection[] = [
       {
         href: "/services",
         label: "Serviços",
-        hint: "Bainha, ajuste, preço padrão",
+        hint: "Bainha, ajuste, barra",
+        requiredPermissions: ["service_orders.read"],
+      },
+      {
+        href: "/prices",
+        label: "Preços",
+        hint: "Produto + serviço, preço e tempo",
         requiredPermissions: ["service_orders.read"],
       },
     ],

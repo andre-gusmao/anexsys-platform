@@ -1792,8 +1792,14 @@ export class ServiceOrderService {
     if (serviceId) {
       const service = await this.atelierCatalogService.resolveActiveService(tenantId, serviceId, actorUserId);
       description = service.displayName;
-      if (unitPrice === null && service.defaultPrice !== null) {
-        unitPrice = Number(service.defaultPrice);
+    }
+    if (productId && serviceId) {
+      const priced = await this.atelierCatalogService.findActiveProductService(tenantId, productId, serviceId);
+      if (priced && unitPrice === null) {
+        unitPrice = Number(priced.suggestedPrice);
+      }
+      if (!priced && unitPrice === null) {
+        throw new DomainValidationError('Cadastre o preço deste produto e serviço.');
       }
     }
 

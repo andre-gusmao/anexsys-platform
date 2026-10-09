@@ -72,6 +72,10 @@ describe('applyPendingMigrations', () => {
       executedQueries.some((sql) => sql.includes('CREATE TABLE IF NOT EXISTS service_order_approvals')),
       true,
     );
+    assert.equal(
+      executedQueries.some((sql) => sql.includes('CREATE TABLE IF NOT EXISTS garment_product_services')),
+      true,
+    );
     assert.equal(executedQueries.some((sql) => sql.includes('ADD COLUMN IF NOT EXISTS public_token')), true);
   });
 

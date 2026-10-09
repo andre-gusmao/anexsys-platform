@@ -82,7 +82,7 @@ export function AtelierCatalogWorkspace({ mode }: Props) {
           }
         : {
             title: "Serviços",
-            description: "Catálogo de serviços com preço padrão. O atendente pode ajustar o valor na OS.",
+            description: "O que se faz na peça. O preço fica no cadastro Preços, no par produto + serviço.",
             endpoint: "/atelier-services",
             entityLabel: "serviço",
             createLabel: "Serviço: Novo",
@@ -354,7 +354,6 @@ export function AtelierCatalogWorkspace({ mode }: Props) {
         body: JSON.stringify({
           displayName: form.displayName,
           sortOrder: Number(form.sortOrder || 0),
-          ...(mode === "services" && form.defaultPrice.trim() ? { defaultPrice: Number(form.defaultPrice) } : {}),
         }),
       });
       const mapped = toListRecord(created);
@@ -396,7 +395,6 @@ export function AtelierCatalogWorkspace({ mode }: Props) {
         body: JSON.stringify({
           displayName: form.displayName,
           sortOrder: Number(form.sortOrder || 0),
-          ...(mode === "services" ? { defaultPrice: form.defaultPrice.trim() ? Number(form.defaultPrice) : null } : {}),
         }),
       });
       const mapped = toListRecord(updated);
@@ -440,7 +438,7 @@ export function AtelierCatalogWorkspace({ mode }: Props) {
       {isListWorkspace ? (
         <CadastroListPanel
           applyFilters={applyAtelierCatalogFilters}
-          buildExcelCsv={(rows) => buildAtelierCatalogExcelCsv(rows, mode === "services")}
+          buildExcelCsv={(rows) => buildAtelierCatalogExcelCsv(rows)}
           canInactivate={(row) => row.status !== "inactive"}
           canWrite={canWrite}
           columnStorageKey={`anexsys.frontend.${mode}.grid-columns.v1`}
@@ -457,9 +455,6 @@ export function AtelierCatalogWorkspace({ mode }: Props) {
               ),
             },
             { id: "code", label: "Código", render: (row) => row.code || "—" },
-            ...(mode === "services"
-              ? [{ id: "price", label: "Preço padrão", render: (row: AtelierCatalogRecord) => row.defaultPrice ?? "—" }]
-              : []),
             { id: "sortOrder", label: "Ordem", render: (row) => String(row.sortOrder) },
             {
               id: "status",
@@ -471,7 +466,7 @@ export function AtelierCatalogWorkspace({ mode }: Props) {
               ),
             },
           ]}
-          defaultColumnIds={mode === "services" ? ["name", "price", "status"] : ["name", "status"]}
+          defaultColumnIds={["name", "status"]}
           emptyFilters={{ name: "", code: "", status: "" }}
           emptyMessage="Nenhum registro encontrado para os filtros informados."
           excelFileName={mode === "products" ? "produtos.csv" : "servicos.csv"}
@@ -544,20 +539,6 @@ export function AtelierCatalogWorkspace({ mode }: Props) {
                 status={duplicateStatus}
                 variant="warning"
               />
-              {mode === "services" ? (
-                <label className="field">
-                  <span>Preço padrão</span>
-                  <input
-                    inputMode="decimal"
-                    min="0"
-                    placeholder="0,00"
-                    step="0.01"
-                    type="number"
-                    value={form.defaultPrice}
-                    onChange={(event) => setForm((current) => ({ ...current, defaultPrice: event.target.value }))}
-                  />
-                </label>
-              ) : null}
               <label className="field">
                 <span>Ordem</span>
                 <input

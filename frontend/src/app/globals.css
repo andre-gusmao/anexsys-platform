@@ -607,6 +607,12 @@ textarea {
   object-fit: cover;
 }
 
+.os-price-quick-create {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
 .os-attachments {
   display: grid;
   grid-template-columns: 1fr 1fr;

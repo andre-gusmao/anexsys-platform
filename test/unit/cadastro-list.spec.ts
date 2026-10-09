@@ -3,6 +3,7 @@ import test from 'node:test';
 import { applyFilialListFilters, buildFilialExcelCsv } from '../../frontend/src/components/admin/filial-list';
 import { applyContaListFilters, buildContaExcelCsv } from '../../frontend/src/components/admin/conta-list';
 import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from '../../frontend/src/components/service-orders/os-list';
+import { applyProductPriceFilters, buildProductPriceExcelCsv } from '../../frontend/src/components/catalog/product-price-list';
 import { applyMeasurementListFilters, buildMeasurementExcelCsv } from '../../frontend/src/components/measurements/measurement-list';
 import {
   applyAccessCommunityListFilters,
@@ -56,6 +57,17 @@ test('filters OS by number and status', () => {
   assert.equal(osStatusLabel('in_rework'), 'Em refação');
   assert.equal(osStatusLabel('ready_for_pickup'), 'Pronto para retirada');
   assert.equal(osStatusLabel('picked_up'), 'Retirado');
+});
+
+test('filters product-service prices by product and service', () => {
+  const records = [
+    { id: '1', productId: 'p1', serviceId: 's1', productName: 'Calça', serviceName: 'Barra Original', suggestedPrice: '25.00', estimatedMinutes: 15, status: 'active' as const },
+    { id: '2', productId: 'p2', serviceId: 's1', productName: 'Vestido', serviceName: 'Barra Original', suggestedPrice: '40.00', estimatedMinutes: 25, status: 'inactive' as const },
+  ];
+  assert.deepEqual(applyProductPriceFilters(records, { product: 'calça', service: '', status: '' }).map((item) => item.id), ['1']);
+  assert.deepEqual(applyProductPriceFilters(records, { product: '', service: 'barra', status: 'inactive' }).map((item) => item.id), ['2']);
+  assert.match(buildProductPriceExcelCsv([records[0]]), /Calça/);
+  assert.match(buildProductPriceExcelCsv([records[0]]), /15/);
 });
 
 test('filters measurement catalog records by name, code and status', () => {

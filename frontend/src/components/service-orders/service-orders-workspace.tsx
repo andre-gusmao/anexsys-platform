@@ -31,6 +31,8 @@ import {
 import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
 import { OsProofNotesPanel } from "@/components/service-orders/os-proof-notes-panel";
 import { OsAnexoButton } from "@/components/service-orders/os-anexo-button";
+import { OsProductPriceQuickCreate, formatSuggestedPrice } from "@/components/service-orders/os-product-price-quick-create";
+import type { ProductPriceRecord } from "@/components/catalog/product-price-list";
 import { OsApprovalPanel } from "@/components/service-orders/os-approval-panel";
 import { OsAttachmentsPanel } from "@/components/service-orders/os-attachments-panel";
 import { approvalMethodLabel, canRecordOsApproval, formatOsInstant, type ApprovalSummary } from "@/components/service-orders/os-approval";
@@ -49,7 +51,6 @@ import {
   createEmptyServiceOrderItemGridRow,
   DEFAULT_CUSTOMER_NOTE,
   formatOsMoney,
-  formatOsMoneyInput,
   getVisibleServiceOrderItemGridRows,
   mapServiceOrderItemsToGridRows,
   MAX_SERVICE_ORDER_ITEMS,
@@ -147,7 +148,6 @@ type CustomerLookupRecord = {
 type CatalogLookupRecord = {
   id: string;
   displayName: string;
-  defaultPrice?: string | null;
   status?: string;
 };
 
@@ -278,6 +278,7 @@ export function ServiceOrdersWorkspace() {
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
   const [products, setProducts] = useState<CatalogLookupRecord[]>([]);
   const [services, setServices] = useState<CatalogLookupRecord[]>([]);
+  const [productPrices, setProductPrices] = useState<ProductPriceRecord[]>([]);
   const [users, setUsers] = useState<ActorSummary[]>([]);
   const [payTarget, setPayTarget] = useState<{ orderNo: string; summary: OsFinancialSummary } | null>(null);
   const [paymentSummary, setPaymentSummary] = useState<OsFinancialSummary | null>(null);
@@ -428,21 +429,36 @@ export function ServiceOrdersWorkspace() {
     return options;
   }, [products, visibleItemRows]);
 
-  const serviceLookupOptions = useMemo<SmartLookupOption[]>(() => {
-    const options = services
-      .filter((service) => service.status !== "inactive")
-      .map((service) => ({
-        id: service.id,
-        label: service.displayName,
-        hint: service.defaultPrice ? formatOsMoney(Number(service.defaultPrice)) : undefined,
-      }));
-    for (const row of visibleItemRows) {
+  const serviceLookupOptionsFor = useCallback(
+    (row: { productId: string; serviceId: string; description: string }) => {
+      const options: SmartLookupOption[] = productPrices
+        .filter((price) => price.productId === row.productId && price.status !== "inactive")
+        .map((price) => ({
+          id: price.serviceId,
+          label: price.serviceName,
+          hint: formatOsMoney(Number(price.suggestedPrice)),
+        }));
       if (row.serviceId && !options.some((option) => option.id === row.serviceId)) {
-        options.unshift({ id: row.serviceId, label: row.description || "Serviço", hint: undefined });
+        const fallback = services.find((service) => service.id === row.serviceId);
+        options.unshift({
+          id: row.serviceId,
+          label: fallback?.displayName || row.description || "Serviço",
+        });
       }
-    }
-    return options;
-  }, [services, visibleItemRows]);
+      return options;
+    },
+    [productPrices, services],
+  );
+
+  const suggestedPriceFor = useCallback(
+    (productId: string, serviceId: string) => {
+      const priced = productPrices.find(
+        (price) => price.productId === productId && price.serviceId === serviceId && price.status !== "inactive",
+      );
+      return priced ? formatSuggestedPrice(priced.suggestedPrice) : "";
+    },
+    [productPrices],
+  );
 
   const laborTotal = useMemo(() => calculateServiceOrderLaborTotal(itemRows), [itemRows]);
   const nextVersionNo = useMemo(
@@ -601,18 +617,22 @@ export function ServiceOrdersWorkspace() {
     if (!canRead) {
       setProducts([]);
       setServices([]);
+      setProductPrices([]);
       return;
     }
     try {
-      const [productResponse, serviceResponse] = await Promise.all([
+      const [productResponse, serviceResponse, priceResponse] = await Promise.all([
         apiJson<CatalogLookupRecord[]>("/garment-products"),
         apiJson<CatalogLookupRecord[]>("/atelier-services"),
+        apiJson<ProductPriceRecord[]>("/product-services"),
       ]);
       setProducts(productResponse);
       setServices(serviceResponse);
+      setProductPrices(priceResponse);
     } catch {
       setProducts([]);
       setServices([]);
+      setProductPrices([]);
     }
   }, [apiJson, canRead]);
 
@@ -2397,12 +2417,25 @@ export function ServiceOrdersWorkspace() {
                                 label="Produto"
                                 required
                                 onChange={(option) =>
-                                  setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, {
-                                      productId: option?.id ?? "",
+                                  setItemRows((current) => {
+                                    const nextProductId = option?.id ?? "";
+                                    const stillValid = Boolean(
+                                      row.serviceId &&
+                                        productPrices.some(
+                                          (price) =>
+                                            price.productId === nextProductId &&
+                                            price.serviceId === row.serviceId &&
+                                            price.status !== "inactive",
+                                        ),
+                                    );
+                                    return updateServiceOrderItemGridRow(current, row.localId, {
+                                      productId: nextProductId,
                                       itemType: option?.label ?? "",
-                                    }),
-                                  )
+                                      ...(stillValid
+                                        ? { unitPrice: suggestedPriceFor(nextProductId, row.serviceId) }
+                                        : { serviceId: "", description: "", unitPrice: "" }),
+                                    });
+                                  })
                                 }
                                 onCreate={(query) => {
                                   const params = new URLSearchParams();
@@ -2427,40 +2460,63 @@ export function ServiceOrdersWorkspace() {
                             <td>
                               <SmartLookup
                                 compact
-                                canCreate={canWrite}
+                                canCreate={canWrite && Boolean(row.productId)}
                                 createLabel="Cadastrar"
-                                disabled={!editable}
+                                disabled={!editable || !row.productId}
+                                emptyMessage={
+                                  row.productId
+                                    ? "Nenhum serviço cadastrado para este produto."
+                                    : "Escolha o produto primeiro."
+                                }
                                 entityType="services"
                                 label="Serviço"
                                 required
                                 onChange={(option) => {
-                                  const selected = services.find((service) => service.id === option?.id);
                                   setItemRows((current) =>
                                     updateServiceOrderItemGridRow(current, row.localId, {
                                       serviceId: option?.id ?? "",
                                       description: option?.label ?? "",
-                                      unitPrice: row.unitPrice || formatOsMoneyInput(selected?.defaultPrice),
+                                      unitPrice: option?.id ? suggestedPriceFor(row.productId, option.id) : "",
                                     }),
                                   );
-                                }}
-                                onCreate={(query) => {
-                                  const params = new URLSearchParams();
-                                  params.set("workspaceMode", "new");
-                                  if (query.trim()) params.set("prefillName", query.trim());
-                                  const targetPath = `/services?${params.toString()}`;
-                                  if (isMobile) {
-                                    navigateWithinWorkspace(targetPath);
-                                    return;
-                                  }
-                                  openWorkspaceInNewTab(targetPath, "Serviço: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
                                 }}
                                 onOpen={() => {
                                   void loadCatalogs();
                                 }}
-                                options={serviceLookupOptions}
-                                placeholder="Bainha, ajuste lateral"
+                                options={serviceLookupOptionsFor(row)}
+                                placeholder={row.productId ? "Serviços deste produto" : "Escolha o produto"}
                                 searchPlaceholder="Digite o serviço"
                                 value={row.serviceId}
+                                renderQuickCreate={
+                                  row.productId
+                                    ? ({ cancelCreate, completeCreate, initialValue }) => (
+                                        <OsProductPriceQuickCreate
+                                          initialServiceName={initialValue}
+                                          productId={row.productId}
+                                          productName={row.itemType || "Produto"}
+                                          onCancel={cancelCreate}
+                                          onCreated={(created) => {
+                                            setProductPrices((current) => [
+                                              created,
+                                              ...current.filter((item) => item.id !== created.id),
+                                            ]);
+                                            setItemRows((current) =>
+                                              updateServiceOrderItemGridRow(current, row.localId, {
+                                                serviceId: created.serviceId,
+                                                description: created.serviceName,
+                                                unitPrice: formatSuggestedPrice(created.suggestedPrice),
+                                              }),
+                                            );
+                                            completeCreate({
+                                              id: created.serviceId,
+                                              label: created.serviceName,
+                                              hint: formatOsMoney(Number(created.suggestedPrice)),
+                                            });
+                                          }}
+                                        />
+                                      )
+                                    : undefined
+                                }
                               />
                             </td>
                             <td>

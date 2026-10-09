@@ -8,8 +8,21 @@ import { DomainValidationError } from 'src/shared/errors/domain-validation.error
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { AtelierServiceEntity } from '../../infrastructure/persistence/entities/atelier-service.entity';
 import { GarmentProductEntity } from '../../infrastructure/persistence/entities/garment-product.entity';
+import { GarmentProductServiceEntity } from '../../infrastructure/persistence/entities/garment-product-service.entity';
 import { AtelierServiceRepository } from '../../infrastructure/persistence/repositories/atelier-service.repository';
 import { GarmentProductRepository } from '../../infrastructure/persistence/repositories/garment-product.repository';
+import { GarmentProductServiceRepository } from '../../infrastructure/persistence/repositories/garment-product-service.repository';
+
+export type ProductServicePriceView = {
+  id: string;
+  productId: string;
+  serviceId: string;
+  productName: string;
+  serviceName: string;
+  suggestedPrice: string;
+  estimatedMinutes: number;
+  status: MeasurementCatalogStatus;
+};
 
 export const DEFAULT_GARMENT_PRODUCTS = [
   'Calça',
@@ -43,6 +56,8 @@ export class AtelierCatalogService {
     private readonly auditService: AuditService,
     @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
+    @Inject(GarmentProductServiceRepository)
+    private readonly productServiceRepository: GarmentProductServiceRepository,
   ) {}
 
   async listProducts(tenantId: string, actorUserId: string) {
@@ -187,7 +202,6 @@ export class AtelierCatalogService {
   async createService(input: {
     tenantId: string;
     displayName: string;
-    defaultPrice?: number | null;
     actorUserId: string;
     sortOrder?: number;
   }) {
@@ -209,7 +223,7 @@ export class AtelierCatalogService {
         tenantId: input.tenantId,
         code,
         displayName,
-        defaultPrice: this.formatOptionalMoney(input.defaultPrice),
+        defaultPrice: null,
         sortOrder: input.sortOrder ?? 0,
         status: MeasurementCatalogStatus.ACTIVE,
         isDeleted: false,
@@ -236,7 +250,6 @@ export class AtelierCatalogService {
     input: {
       tenantId: string;
       displayName?: string;
-      defaultPrice?: number | null;
       sortOrder?: number;
       status?: MeasurementCatalogStatus;
       actorUserId: string;
@@ -255,9 +268,6 @@ export class AtelierCatalogService {
       }
       entity.displayName = displayName;
       entity.code = code;
-    }
-    if (input.defaultPrice !== undefined) {
-      entity.defaultPrice = this.formatOptionalMoney(input.defaultPrice);
     }
     if (input.sortOrder !== undefined) {
       entity.sortOrder = input.sortOrder;
@@ -316,6 +326,209 @@ export class AtelierCatalogService {
     return service;
   }
 
+  async listProductServices(tenantId: string, actorUserId: string, productId?: string): Promise<ProductServicePriceView[]> {
+    await this.ensureTenantDefaults(tenantId, actorUserId);
+    const rows = productId
+      ? await this.productServiceRepository.findActiveByProduct(tenantId, productId)
+      : await this.productServiceRepository.findListedByTenant(tenantId);
+    return this.toPriceViews(tenantId, rows);
+  }
+
+  async findActiveProductService(
+    tenantId: string,
+    productId: string,
+    serviceId: string,
+  ): Promise<GarmentProductServiceEntity | null> {
+    return this.productServiceRepository.findActiveByProductAndService(tenantId, productId, serviceId);
+  }
+
+  async createProductService(input: {
+    tenantId: string;
+    productId: string;
+    serviceId?: string;
+    serviceName?: string;
+    suggestedPrice: number;
+    estimatedMinutes: number;
+    actorUserId: string;
+  }): Promise<ProductServicePriceView> {
+    await this.tenantService.getById(input.tenantId);
+    const product = await this.resolveActiveProduct(input.tenantId, input.productId, input.actorUserId);
+    const service = await this.resolveOrCreateService(input);
+    const suggestedPrice = this.requireSuggestedPrice(input.suggestedPrice);
+    const estimatedMinutes = this.requireEstimatedMinutes(input.estimatedMinutes);
+
+    const existing = await this.productServiceRepository.findByProductAndService(
+      input.tenantId,
+      product.id,
+      service.id,
+    );
+    if (existing) {
+      throw new DomainValidationError('Já existe preço para este produto e serviço.');
+    }
+
+    const saved = await this.productServiceRepository.save(
+      this.productServiceRepository.create({
+        id: randomUUID(),
+        tenantId: input.tenantId,
+        productId: product.id,
+        serviceId: service.id,
+        suggestedPrice,
+        estimatedMinutes,
+        status: MeasurementCatalogStatus.ACTIVE,
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        createdBy: input.actorUserId,
+        updatedBy: input.actorUserId,
+      }),
+    );
+    await this.auditService.record({
+      tenantId: input.tenantId,
+      actorUserId: input.actorUserId,
+      entityType: 'garment_product_service',
+      entityId: saved.id,
+      action: 'atelier.product_service.created',
+      eventType: 'service_order.write',
+      metadata: { productId: product.id, serviceId: service.id },
+    });
+    return {
+      id: saved.id,
+      productId: product.id,
+      serviceId: service.id,
+      productName: product.displayName,
+      serviceName: service.displayName,
+      suggestedPrice: saved.suggestedPrice,
+      estimatedMinutes: saved.estimatedMinutes,
+      status: saved.status,
+    };
+  }
+
+  async updateProductService(
+    id: string,
+    input: {
+      tenantId: string;
+      suggestedPrice?: number;
+      estimatedMinutes?: number;
+      status?: MeasurementCatalogStatus;
+      actorUserId: string;
+    },
+  ): Promise<ProductServicePriceView> {
+    const entity = await this.getProductService(input.tenantId, id);
+    if (input.suggestedPrice !== undefined) {
+      entity.suggestedPrice = this.requireSuggestedPrice(input.suggestedPrice);
+    }
+    if (input.estimatedMinutes !== undefined) {
+      entity.estimatedMinutes = this.requireEstimatedMinutes(input.estimatedMinutes);
+    }
+    if (input.status !== undefined) {
+      entity.status = input.status;
+    }
+    entity.updatedBy = input.actorUserId;
+    const saved = await this.productServiceRepository.save(entity);
+    await this.auditService.record({
+      tenantId: input.tenantId,
+      actorUserId: input.actorUserId,
+      entityType: 'garment_product_service',
+      entityId: saved.id,
+      action: 'atelier.product_service.updated',
+      eventType: 'service_order.write',
+      metadata: { productId: saved.productId, serviceId: saved.serviceId },
+    });
+    const [view] = await this.toPriceViews(input.tenantId, [saved]);
+    return view;
+  }
+
+  async removeProductService(id: string, tenantId: string, actorUserId: string): Promise<void> {
+    const entity = await this.getProductService(tenantId, id);
+    entity.isDeleted = true;
+    entity.deletedAt = new Date();
+    entity.deletedBy = actorUserId;
+    entity.updatedBy = actorUserId;
+    await this.productServiceRepository.save(entity);
+    await this.auditService.record({
+      tenantId,
+      actorUserId,
+      entityType: 'garment_product_service',
+      entityId: entity.id,
+      action: 'atelier.product_service.deleted',
+      eventType: 'service_order.write',
+      metadata: { productId: entity.productId, serviceId: entity.serviceId },
+    });
+  }
+
+  private async getProductService(tenantId: string, id: string): Promise<GarmentProductServiceEntity> {
+    const entity = await this.productServiceRepository.findById(id);
+    if (!entity || entity.tenantId !== tenantId) {
+      throw new EntityNotFoundError('O preço deste produto e serviço não foi encontrado.');
+    }
+    return entity;
+  }
+
+  private async resolveOrCreateService(input: {
+    tenantId: string;
+    serviceId?: string;
+    serviceName?: string;
+    actorUserId: string;
+  }): Promise<AtelierServiceEntity> {
+    if (input.serviceId) {
+      return this.resolveActiveService(input.tenantId, input.serviceId, input.actorUserId);
+    }
+    const displayName = input.serviceName?.trim() ?? '';
+    if (!displayName) {
+      throw new DomainValidationError('O serviço é obrigatório.');
+    }
+    const existing = await this.serviceRepository.findByTenantAndCode(input.tenantId, this.normalizeCode(displayName));
+    if (existing) {
+      if (existing.status !== MeasurementCatalogStatus.ACTIVE) {
+        throw new DomainValidationError('O serviço está inativo ou não pertence a esta Conta.');
+      }
+      return existing;
+    }
+    return this.createService({
+      tenantId: input.tenantId,
+      displayName,
+      actorUserId: input.actorUserId,
+    });
+  }
+
+  private async toPriceViews(
+    tenantId: string,
+    rows: GarmentProductServiceEntity[],
+  ): Promise<ProductServicePriceView[]> {
+    const productIds = [...new Set(rows.map((row) => row.productId))];
+    const serviceIds = [...new Set(rows.map((row) => row.serviceId))];
+    const [products, services] = await Promise.all([
+      this.productRepository.findListedByTenant(tenantId),
+      this.serviceRepository.findListedByTenant(tenantId),
+    ]);
+    const productById = new Map(products.filter((item) => productIds.includes(item.id)).map((item) => [item.id, item]));
+    const serviceById = new Map(services.filter((item) => serviceIds.includes(item.id)).map((item) => [item.id, item]));
+    return rows.map((row) => ({
+      id: row.id,
+      productId: row.productId,
+      serviceId: row.serviceId,
+      productName: productById.get(row.productId)?.displayName ?? 'Produto',
+      serviceName: serviceById.get(row.serviceId)?.displayName ?? 'Serviço',
+      suggestedPrice: row.suggestedPrice,
+      estimatedMinutes: row.estimatedMinutes,
+      status: row.status,
+    }));
+  }
+
+  private requireSuggestedPrice(value: number) {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new DomainValidationError('O preço sugerido é obrigatório.');
+    }
+    return value.toFixed(2);
+  }
+
+  private requireEstimatedMinutes(value: number) {
+    if (!Number.isInteger(value) || value < 1) {
+      throw new DomainValidationError('O tempo previsto é obrigatório.');
+    }
+    return value;
+  }
+
   private async ensureTenantDefaults(tenantId: string, actorUserId: string) {
     await this.tenantService.getById(tenantId);
     const [listedProducts, listedServices, existingProductCodes, existingServiceCodes] = await Promise.all([
@@ -369,13 +582,6 @@ export class AtelierCatalogService {
         ),
       );
     }
-  }
-
-  private formatOptionalMoney(value: number | null | undefined) {
-    if (value === null || value === undefined) {
-      return null;
-    }
-    return value.toFixed(2);
   }
 
   private normalizeCode(value: string) {

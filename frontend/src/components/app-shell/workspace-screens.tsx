@@ -11,6 +11,7 @@ import { getWorkspaceBasePath } from "@/components/app-shell/workspace-manager-s
 import { WorkspacePaneProvider } from "@/components/app-shell/workspace-pane";
 import { CustomerWorkspace } from "@/components/customers/customer-workspace";
 import { AtelierCatalogWorkspace } from "@/components/catalog/atelier-catalog-workspace";
+import { ProductPricesWorkspace } from "@/components/catalog/product-prices-workspace";
 import { MeasurementMasterDataWorkspace } from "@/components/measurements/measurement-master-data-workspace";
 import { PickBagWorkspace } from "@/components/production/pick-bag-workspace";
 import { QualityWorkspace } from "@/components/quality/quality-workspace";
@@ -37,6 +38,10 @@ function ServicesWorkspaceScreen() {
   return <AtelierCatalogWorkspace mode="services" />;
 }
 
+function PricesWorkspaceScreen() {
+  return <ProductPricesWorkspace />;
+}
+
 const workspaceScreens: Record<string, ComponentType> = {
   "/dashboard": DashboardWorkspace,
   "/admin/tenants": CompaniesWorkspace,
@@ -48,6 +53,7 @@ const workspaceScreens: Record<string, ComponentType> = {
   "/measurement-units": MeasurementUnitsWorkspaceScreen,
   "/products": ProductsWorkspaceScreen,
   "/services": ServicesWorkspaceScreen,
+  "/prices": PricesWorkspaceScreen,
   "/service-orders": ServiceOrdersWorkspace,
   "/pick-bag": PickBagWorkspace,
   "/quality": QualityWorkspace,
