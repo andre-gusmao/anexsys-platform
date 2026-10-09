@@ -1,3 +1,4 @@
+import { approvalMethodLabel, formatOsInstant } from "./os-approval";
 import { osDeliveryTypeLabel, osStatusLabel } from "./os-list";
 import { formatOsMoney, OS_WORK_MAX_CHARS } from "./service-order-workspace-view-model";
 
@@ -27,6 +28,8 @@ export type OsPrintView = {
   }>;
   totalValue: string | null;
   customerNotes: string | null;
+  approvedAt?: string | Date | null;
+  approvalMethod?: string | null;
 };
 
 export type OpPrintView = {
@@ -468,6 +471,13 @@ export function buildServiceOrderPrintHtml(view: OsPrintView, companyName: strin
      <p>Cliente: <strong>${escapeHtml(view.customer.legalName)}</strong></p>
      <p>Status: ${escapeHtml(statusLabel)} · Tipo: ${escapeHtml(osDeliveryTypeLabel(view.deliveryType))}</p>
      <p>Entrada: ${escapeHtml(formatDateTime(view.openedAt))} · Saída: ${escapeHtml(formatDateTime(view.promisedDeliveryDate, view.promisedDeliveryTime))}</p>
+     ${
+       view.approvedAt
+         ? `<p>Aprovação: ${escapeHtml(
+             [formatOsInstant(view.approvedAt), approvalMethodLabel(view.approvalMethod)].filter(Boolean).join(" · "),
+           )}</p>`
+         : ""
+     }
      <table>
        <thead><tr><th title="Sequência">S</th><th>Produto</th><th>Serviço</th><th>Serviço a realizar</th><th>Qtd</th><th>Valor</th><th>Desconto</th><th>Subtotal</th></tr></thead>
        <tbody>${rows}</tbody>

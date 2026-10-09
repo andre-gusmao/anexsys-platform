@@ -224,4 +224,30 @@ test('builds the public OS sheet with the same fields as the printed service ord
   assert.match(html, /R\$\s*90,00/);
   assert.match(html, /Barra original/);
   assert.doesNotMatch(html, /Ana|atendente|audit/i);
+  assert.doesNotMatch(html, /Aprovação:/);
+});
+
+test('prints the approval date and time on the service order', () => {
+  const html = buildServiceOrderPrintHtml(
+    {
+      documentType: 'service_order',
+      serviceOrderId: 'so-1',
+      orderNo: 'AAA000012-A',
+      status: 'open',
+      openedAt: '2026-10-03T10:00:00.000Z',
+      promisedDeliveryDate: '2026-10-18',
+      promisedDeliveryTime: '18:00',
+      deliveryType: 'Standard',
+      customer: { legalName: 'Sandra Legramanti', phone: null, email: null },
+      items: [],
+      totalValue: '90.00',
+      customerNotes: null,
+      approvedAt: '2026-10-09T03:15:00.000Z',
+      approvalMethod: 'paper',
+    },
+    'Ateliê A',
+  );
+
+  assert.match(html, /Aprovação:/);
+  assert.match(html, /Papel/);
 });

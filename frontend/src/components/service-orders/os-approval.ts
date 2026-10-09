@@ -23,3 +23,14 @@ export function approvalMethodLabel(method: string | null | undefined) {
   if (method === "link") return "Link do cliente";
   return null;
 }
+
+export function formatOsInstant(value?: string | Date | null) {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { approvalMethodLabel, type ApprovalSummary } from "@/components/service-orders/os-approval";
+import { approvalMethodLabel, formatOsInstant, type ApprovalSummary } from "@/components/service-orders/os-approval";
 import { readOsPhotoFile } from "@/components/service-orders/os-photo";
 
 type Props = {
@@ -64,12 +64,14 @@ export function OsApprovalPanel({ orderNo, approval, saving = false, onClose, on
       {signed ? (
         <p className="table-subtle">
           Assinado
+          {formatOsInstant(approval?.confirmedAt) ? ` em ${formatOsInstant(approval?.confirmedAt)}` : ""}
           {approval?.method ? ` · ${approvalMethodLabel(approval.method)}` : ""}
           {approval?.acceptedText ? ` · ${approval.acceptedText}` : ""}
         </p>
       ) : released ? (
         <p className="table-subtle">
           Produção liberada sem assinatura
+          {formatOsInstant(approval?.confirmedAt) ? ` em ${formatOsInstant(approval?.confirmedAt)}` : ""}
           {approval?.releaseReason ? ` · ${approval.releaseReason}` : ""}. Ainda pode assinar no balcão ou no papel.
         </p>
       ) : (

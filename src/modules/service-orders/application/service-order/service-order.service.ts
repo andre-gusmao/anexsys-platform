@@ -342,6 +342,8 @@ export class ServiceOrderService {
       items,
       totalValue: details.serviceOrder.totalValue,
       customerNotes: details.serviceOrder.customerNotes,
+      approvedAt: details.approval?.confirmedAt ?? null,
+      approvalMethod: details.approval?.method ?? null,
     };
   }
 

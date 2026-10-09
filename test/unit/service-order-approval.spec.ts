@@ -12,7 +12,7 @@ import {
   normalizeApprovalPhoto,
   normalizeReleaseReason,
 } from '../../src/modules/service-orders/application/service-order/service-order-approval';
-import { approvalMethodLabel as approvalMethodLabelUi } from '../../frontend/src/components/service-orders/os-approval';
+import { approvalMethodLabel as approvalMethodLabelUi, formatOsInstant } from '../../frontend/src/components/service-orders/os-approval';
 import { DomainValidationError } from '../../src/shared/errors/domain-validation.error';
 import { UserStatus } from '../../src/shared/domain/enums';
 import { ServiceOrderService } from '../../src/modules/service-orders/application/service-order/service-order.service';
@@ -32,6 +32,8 @@ test('approval is a signature, not a status change', () => {
   assert.equal(approvalMethodLabel('release'), 'Liberação');
   assert.equal(approvalMethodLabelUi('counter'), 'Balcão');
   assert.equal(APPROVAL_PHOTO_MAX_BYTES, 4 * 1024 * 1024);
+  assert.match(String(formatOsInstant('2026-10-09T03:15:00.000Z')), /\d/);
+  assert.equal(formatOsInstant(null), null);
 });
 
 test('paper approval requires a photo and release requires a reason', () => {

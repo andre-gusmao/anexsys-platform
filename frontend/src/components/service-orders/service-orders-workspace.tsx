@@ -31,7 +31,8 @@ import {
 import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
 import { OsProofNotesPanel } from "@/components/service-orders/os-proof-notes-panel";
 import { OsApprovalPanel } from "@/components/service-orders/os-approval-panel";
-import { approvalMethodLabel, canRecordOsApproval, type ApprovalSummary } from "@/components/service-orders/os-approval";
+import { OsAttachmentsPanel } from "@/components/service-orders/os-attachments-panel";
+import { approvalMethodLabel, canRecordOsApproval, formatOsInstant, type ApprovalSummary } from "@/components/service-orders/os-approval";
 import { OsPickupPanel } from "@/components/service-orders/os-pickup-panel";
 import { pickupMethodLabel, type PickupSummary } from "@/components/service-orders/os-pickup";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
@@ -257,6 +258,7 @@ export function ServiceOrdersWorkspace() {
   const openProof = searchParams.get("openProof") === "1";
   const openPickup = searchParams.get("openPickup") === "1";
   const openApproval = searchParams.get("openApproval") === "1";
+  const openAnexo = searchParams.get("openAnexo") === "1";
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
@@ -296,6 +298,7 @@ export function ServiceOrdersWorkspace() {
   const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
   const [approvalPickerOpen, setApprovalPickerOpen] = useState(false);
   const [approvalPhoto, setApprovalPhoto] = useState<string | null>(null);
+  const [anexoPickerOpen, setAnexoPickerOpen] = useState(false);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
@@ -768,6 +771,22 @@ export function ServiceOrdersWorkspace() {
     [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
   );
 
+  const openAnexoPanel = useCallback(
+    (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (isListWorkspace) {
+        const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openAnexo=1`;
+        if (isMobile) {
+          navigateWithinWorkspace(targetPath);
+        } else {
+          openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
+        }
+        return;
+      }
+      setAnexoPickerOpen(true);
+    },
+    [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
   const copyPublicLink = useCallback(async () => {
     const token = selectedOrder?.publicToken;
     if (!token) {
@@ -1051,6 +1070,13 @@ export function ServiceOrdersWorkspace() {
           ]
         : []),
       {
+        id: "anexo",
+        label: "Anexo",
+        onSelect: () => {
+          openAnexoPanel(row);
+        },
+      },
+      {
         id: "print",
         label: "Imprimir",
         children: [
@@ -1104,6 +1130,7 @@ export function ServiceOrdersWorkspace() {
       canWriteProduction,
       canWriteProof,
       handleProofAction,
+      openAnexoPanel,
       openApprovalPanel,
       openPickupPanel,
       printProductionOrder,
@@ -1233,6 +1260,14 @@ export function ServiceOrdersWorkspace() {
     setApprovalPickerOpen(true);
     navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
   }, [details, focusServiceOrderId, navigateWithinWorkspace, openApproval]);
+
+  useEffect(() => {
+    if (!openAnexo || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
+      return;
+    }
+    setAnexoPickerOpen(true);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
+  }, [details, focusServiceOrderId, navigateWithinWorkspace, openAnexo]);
 
   useEffect(() => {
     if (!details?.pickup?.photoAvailable || !details.serviceOrder.id) {
@@ -2009,6 +2044,17 @@ export function ServiceOrdersWorkspace() {
             />
           ) : null}
 
+          {anexoPickerOpen && selectedOrder ? (
+            <OsAttachmentsPanel
+              orderNo={selectedOrder.orderNo}
+              approval={details?.approval ?? null}
+              approvalPhoto={approvalPhoto}
+              pickup={details?.pickup ?? null}
+              pickupPhoto={pickupPhoto}
+              onClose={() => setAnexoPickerOpen(false)}
+            />
+          ) : null}
+
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
@@ -2102,6 +2148,21 @@ export function ServiceOrdersWorkspace() {
                             disabled
                             type="time"
                             value={toTimeInput(selectedOrder?.actualDeliveryTime)}
+                          />
+                        </div>
+                      </div>
+                      <div className="field" title="Data e hora em que o cliente concordou com o serviço e o valor, ou a produção foi liberada.">
+                        <span>Aprovação</span>
+                        <div className="os-datetime">
+                          <input
+                            disabled
+                            type="date"
+                            value={toDateInput(details?.approval?.confirmedAt as string | undefined)}
+                          />
+                          <input
+                            disabled
+                            type="time"
+                            value={toTimeInput(null, details?.approval?.confirmedAt as string | undefined)}
                           />
                         </div>
                       </div>
@@ -2651,7 +2712,9 @@ export function ServiceOrdersWorkspace() {
                     {details.approval.releasedWithoutSignature
                       ? "Produção liberada sem assinatura"
                       : approvalMethodLabel(details.approval.method)}
-                    {details.approval.confirmedAt ? ` · ${formatDateTime(details.approval.confirmedAt)}` : ""}
+                    {formatOsInstant(details.approval.confirmedAt)
+                      ? ` · ${formatOsInstant(details.approval.confirmedAt)}`
+                      : ""}
                     {details.approval.acceptedText ? ` · ${details.approval.acceptedText}` : ""}
                     {details.approval.releaseReason ? ` · ${details.approval.releaseReason}` : ""}
                     {details.approval.measurementsLocked ? " · Medida travada" : ""}
