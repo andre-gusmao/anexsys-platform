@@ -19,7 +19,7 @@
 | Financeiro | Existe | **Não existe** | Idem | Maquininha só como interface, sem integração real |
 | Fiscal | Só esqueleto | **Não existe** | Idem | Nenhum adaptador real |
 | Retirada por terceiros e custódia | Existe | **Não existe** | Idem | Aviso "enviado" é só um registro, não envio |
-| Concierge e portal do cliente | Existe | Página pública `/os/{token}` | Unitários passam | Sem login: a **OS impressa** (peças e valores), status público e **Recebi** quando a atendente inicia a retirada. O cliente pode imprimir / salvar PDF no navegador. WhatsApp oficial ainda não envia o link; a atendente copia o endereço na OS |
+| Concierge e portal do cliente | Existe | Página pública `/os/{token}` | Unitários passam | Sem login: **microformulário** no celular (status, peças, valores, **Recebi**). Via impressa é opcional. WhatsApp oficial ainda não envia o link; no computador o endereço é localhost e no celular do cliente só abre quando houver domínio |
 | **WhatsApp** | **Não existe** | **Não existe** | n/a | Só há o campo de telefone. Registros marcados como "enviado" **não foram enviados** |
 | Migração/importação de dados | **Não existe** | **Não existe** | n/a | |
 | LGPD (consentimento, retenção) | **Não existe** | **Não existe** | n/a | |

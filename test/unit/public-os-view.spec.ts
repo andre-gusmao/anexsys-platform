@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   describePublicOsError,
+  publicOsCta,
   toPublicOsPrintView,
 } from '../../frontend/src/components/service-orders/public-os-view';
 
@@ -36,4 +37,11 @@ test('maps the public OS payload onto the printed service order', () => {
   assert.equal(printView.customer.legalName, 'Sandra Legramanti');
   assert.equal(printView.statusLabel, 'Em produção');
   assert.equal(printView.items[0].unitPrice, '90.00');
+});
+
+test('the public micro-form only enables Recebi while the counter window is open', () => {
+  assert.equal(publicOsCta({ pickedUp: false, recebiReady: false, status: 'in_production' }), 'follow');
+  assert.equal(publicOsCta({ pickedUp: false, recebiReady: false, status: 'ready_for_pickup' }), 'waiting_counter');
+  assert.equal(publicOsCta({ pickedUp: false, recebiReady: true, status: 'ready_for_pickup' }), 'recebi');
+  assert.equal(publicOsCta({ pickedUp: true, recebiReady: false, status: 'picked_up' }), 'picked_up');
 });

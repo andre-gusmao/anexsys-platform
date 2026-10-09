@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  OS_PRINT_CSS,
-  buildServiceOrderPrintHtml,
-  printServiceOrderDocument,
-} from "@/components/service-orders/os-documents";
+import { printServiceOrderDocument } from "@/components/service-orders/os-documents";
 import {
   describePublicOsError,
+  formatPublicOsDate,
+  publicOsCta,
   toPublicOsPrintView,
   type PublicOsTrackingView,
 } from "@/components/service-orders/public-os-view";
+import { formatOsMoney } from "@/components/service-orders/service-order-workspace-view-model";
 
 async function publicJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/backend-api${path}`, {
@@ -27,6 +26,12 @@ async function publicJson<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message);
   }
   return payload as T;
+}
+
+function money(value: string | null | undefined) {
+  if (value == null || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? formatOsMoney(amount) : null;
 }
 
 export default function PublicOsPage() {
@@ -54,6 +59,8 @@ export default function PublicOsPage() {
   }, [load]);
 
   const printView = useMemo(() => (view ? toPublicOsPrintView(view) : null), [view]);
+  const cta = view ? publicOsCta(view) : null;
+  const total = view ? money(view.totalValue) : null;
 
   async function confirmRecebi() {
     setSaving(true);
@@ -68,45 +75,62 @@ export default function PublicOsPage() {
   }
 
   return (
-    <div className="screen-shell">
-      <style>{OS_PRINT_CSS}</style>
+    <div className="screen-shell public-os-shell">
       <section className="auth-card public-os">
         {error ? <p className="workspace-flash workspace-flash--error">{error}</p> : null}
         {!view && !error ? <p className="subtitle">Carregando a sua OS…</p> : null}
-        {view && printView ? (
+        {view ? (
           <>
             <div className="auth-card__header">
               <div className="eyebrow">{view.companyName}</div>
               <h1 className="title">Olá, {view.customerFirstName}</h1>
               <p className="subtitle">
-                Esta é a ordem de serviço <strong>{view.orderNo}</strong>, igual à via impressa. Não compartilhe este
-                link.
+                OS <strong>{view.orderNo}</strong>. Não compartilhe este link.
               </p>
             </div>
             <div className="auth-card__body">
-              <article
-                className="public-os__sheet"
-                dangerouslySetInnerHTML={{ __html: buildServiceOrderPrintHtml(printView, view.companyName) }}
-              />
+              <p className="public-os__status">{view.statusLabel}</p>
+              <p className="table-subtle">
+                Entrada {formatPublicOsDate(view.openedAt)} · Previsão {formatPublicOsDate(view.promisedDeliveryDate)}
+                {view.promisedDeliveryTime ? ` ${view.promisedDeliveryTime.slice(0, 5)}` : ""}
+              </p>
               <p className="table-subtle">{view.paymentLabel}</p>
-              {view.pickedUp ? (
-                <p className="os-rule-banner">Retirada confirmada. Obrigada.</p>
-              ) : view.recebiReady ? (
-                <button className="button" disabled={saving} onClick={() => void confirmRecebi()} type="button">
+              <ul className="public-os__items">
+                {view.items.map((item) => {
+                  const price = money(item.subtotal ?? item.unitPrice);
+                  return (
+                    <li key={`${item.itemNo}-${item.description}`}>
+                      <strong>
+                        {item.itemType} · {item.description}
+                      </strong>
+                      {item.complement ? <span>{item.complement}</span> : null}
+                      {price ? <span className="public-os__price">{price}</span> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+              {total ? <p className="public-os__total">Total {total}</p> : null}
+              {cta === "picked_up" ? <p className="os-rule-banner">Retirada confirmada. Obrigada.</p> : null}
+              {cta === "recebi" ? (
+                <button className="button public-os__cta" disabled={saving} onClick={() => void confirmRecebi()} type="button">
                   {saving ? "Confirmando…" : "Recebi"}
                 </button>
-              ) : view.status === "ready_for_pickup" ? (
+              ) : null}
+              {cta === "waiting_counter" ? (
                 <p className="os-rule-banner">Quando estiver no balcão, a atendente libera o botão Recebi neste link.</p>
-              ) : (
-                <p className="os-rule-banner">Avisaremos por WhatsApp quando estiver pronto. Este link já mostra a OS.</p>
-              )}
-              <button
-                className="button-secondary"
-                onClick={() => printServiceOrderDocument(printView, view.companyName)}
-                type="button"
-              >
-                Imprimir / salvar PDF
-              </button>
+              ) : null}
+              {cta === "follow" ? (
+                <p className="os-rule-banner">Avisaremos por WhatsApp quando estiver pronto. Você acompanha o status aqui.</p>
+              ) : null}
+              {printView ? (
+                <button
+                  className="button-secondary public-os__print"
+                  onClick={() => printServiceOrderDocument(printView, view.companyName)}
+                  type="button"
+                >
+                  Ver a via impressa
+                </button>
+              ) : null}
             </div>
           </>
         ) : null}

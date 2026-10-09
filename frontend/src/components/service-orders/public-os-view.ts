@@ -44,6 +44,20 @@ export function describePublicOsError(error: unknown): string {
   return raw || "Não foi possível abrir esta OS.";
 }
 
+export function formatPublicOsDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+export function publicOsCta(view: Pick<PublicOsTrackingView, "pickedUp" | "recebiReady" | "status">) {
+  if (view.pickedUp) return "picked_up" as const;
+  if (view.recebiReady) return "recebi" as const;
+  if (view.status === "ready_for_pickup") return "waiting_counter" as const;
+  return "follow" as const;
+}
+
 export function toPublicOsPrintView(view: PublicOsTrackingView): OsPrintView {
   return {
     documentType: "service_order",

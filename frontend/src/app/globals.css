@@ -522,43 +522,69 @@ textarea {
   background: #fff;
 }
 
+.public-os-shell {
+  align-items: flex-start;
+  padding: 16px;
+}
+
 .public-os {
-  max-width: 720px;
+  max-width: 420px;
+  width: 100%;
 }
 
 .public-os .auth-card__body {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
-.public-os__sheet {
-  padding: 8px 4px 4px;
-  background: #fff;
-}
-
-.public-os__sheet h1 {
+.public-os__status {
   font-size: 22px;
-  margin: 0 0 6px;
+  font-weight: 800;
+  color: #0f4c5c;
 }
 
-.public-os__sheet table {
+.public-os__items {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.public-os__items li {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+
+.public-os__items span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.public-os__price,
+.public-os__total {
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.public-os__cta,
+.public-os__print {
   width: 100%;
-  border-collapse: collapse;
-  margin: 16px 0;
+  min-height: 48px;
 }
 
-.public-os__sheet th,
-.public-os__sheet td {
-  border-bottom: 1px solid #d7dfeb;
-  text-align: left;
-  padding: 8px 6px;
-  vertical-align: top;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
+@media (max-width: 640px) {
+  .public-os-shell {
+    padding: 12px;
+  }
 
-.public-os .button-secondary {
-  justify-self: start;
+  .public-os .title {
+    font-size: 26px;
+  }
 }
 
 .os-pickup-photo {
