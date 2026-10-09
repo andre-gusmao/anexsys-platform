@@ -281,6 +281,11 @@ Todas as cinco foram **confirmadas**:
 
 - **Grau 1 = 30 minutos, grau 2 = 60, grau 3 = 90, grau 4 = 180.**
 
+### 11.7b Prazos de entrega (homologado em 09/10/2026)
+
+- O cálculo **Normal / Expresso / Urgente** na OS está **validado**.
+- Os prazos ainda são **fixos no código** (Normal = +7 dias, Urgente = 3 dias úteis, Expresso = 2 horas por peça). O **painel de parâmetros** para o André definir esses valores entra depois.
+
 ### 11.8 Princípio transversal: tela de parâmetros
 
 - **Para todas as regras deve existir uma tela de parâmetros**, **administrável pelo André**: graus e tempos (inclusive **aumentar ou diminuir graus**), **parâmetros de logística de produção**, prazos, cortes, sobretaxas, status e demais regras.

@@ -14,6 +14,11 @@ export type DeliverySuggestion = {
   promisedDeliveryTime: string;
 };
 
+/** Defaults until the parameters panel exists. Homologated 09/10/2026. */
+export const STANDARD_DELIVERY_CALENDAR_DAYS = 7;
+export const PRIORITY_DELIVERY_WORKING_DAYS = 3;
+export const EXPRESS_MINUTES_PER_PIECE = 120;
+
 type HoursDay = {
   weekday: number;
   isOpen: boolean;
@@ -63,11 +68,22 @@ export class DeliveryDateService {
     }
 
     if (deliveryType === DeliveryType.PRIORITY) {
-      const promisedDeliveryDate = await this.addWorkingDays(tenantId, branchId, hours.days, effectiveDate, 3);
+      const promisedDeliveryDate = await this.addWorkingDays(
+        tenantId,
+        branchId,
+        hours.days,
+        effectiveDate,
+        PRIORITY_DELIVERY_WORKING_DAYS,
+      );
       return { promisedDeliveryDate, promisedDeliveryTime: this.closingTime(hours.days, promisedDeliveryDate) };
     }
 
-    const promisedDeliveryDate = await this.nextValidCalendarDate(tenantId, branchId, hours.days, addDays(effectiveDate, 7));
+    const promisedDeliveryDate = await this.nextValidCalendarDate(
+      tenantId,
+      branchId,
+      hours.days,
+      addDays(effectiveDate, STANDARD_DELIVERY_CALENDAR_DAYS),
+    );
     return { promisedDeliveryDate, promisedDeliveryTime: this.closingTime(hours.days, promisedDeliveryDate) };
   }
 
@@ -88,7 +104,7 @@ export class DeliveryDateService {
       sourceDate === effectiveDate && this.toMinutes(local.time) >= this.toMinutes(opensAt)
         ? this.toMinutes(local.time)
         : this.toMinutes(opensAt);
-    let remaining = 120 * itemCount;
+    let remaining = EXPRESS_MINUTES_PER_PIECE * itemCount;
 
     for (let guard = 0; guard < 366 && remaining > 0; guard += 1) {
       const closeMinutes = this.toMinutes(this.closingTime(days, currentDate));

@@ -3,7 +3,12 @@ import { describe, it } from 'node:test';
 import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
 import { defaultOperatingHours } from 'src/modules/company/application/company.defaults';
 import { DeliveryType } from 'src/shared/domain/enums';
-import { DeliveryDateService } from 'src/modules/service-orders/application/delivery-date/delivery-date.service';
+import {
+  DeliveryDateService,
+  EXPRESS_MINUTES_PER_PIECE,
+  PRIORITY_DELIVERY_WORKING_DAYS,
+  STANDARD_DELIVERY_CALENDAR_DAYS,
+} from 'src/modules/service-orders/application/delivery-date/delivery-date.service';
 
 function hoursService(closesAt?: string) {
   const service = new BranchHoursService(
@@ -28,6 +33,12 @@ function hoursService(closesAt?: string) {
 }
 
 describe('DeliveryDateService', () => {
+  it('keeps the homologated prazo defaults until the parameters panel exists', () => {
+    assert.equal(STANDARD_DELIVERY_CALENDAR_DAYS, 7);
+    assert.equal(PRIORITY_DELIVERY_WORKING_DAYS, 3);
+    assert.equal(EXPRESS_MINUTES_PER_PIECE, 120);
+  });
+
   it('moves the suggested date to the next valid business day when calendar rules block it', async () => {
     const service = new DeliveryDateService(
       { async getById() { return { id: 'tenant-1' }; } } as never,

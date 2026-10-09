@@ -101,7 +101,7 @@ e vai por WhatsApp     e preço"). Produção pode   impressa no bolso          
 - **Urgente:** o atendente escolhe **2 ou 3 dias úteis**, com **sugestão de 3**.
 - **Sobretaxa:** **percentual configurável por tipo** de entrega (Normal, Expresso, Urgente).
 - O sistema **sugere** a data e o atendente **pode alterar** (fica registrado quem alterou e por quê).
-- **Todos os valores acima são parâmetros** editáveis na tela de parâmetros (seção 4.5).
+- **Todos os valores acima são parâmetros** editáveis na tela de parâmetros (seção 4.5). **Homologado em 09/10/2026** o cálculo com os defaults atuais (Normal +7 dias, Urgente 3 dias úteis, Expresso 2 h/peça). O painel para o André mudar esses números entra depois.
 
 ### 2.4 Garantia e reconserto
 
