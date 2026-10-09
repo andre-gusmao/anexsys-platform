@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   ForbiddenException,
@@ -187,7 +188,9 @@ class CreateProductionOrderVersionBody {
 @Controller('production-orders')
 export class ProductionOrdersController {
   constructor(
+    @Inject(ProductionOrderService)
     private readonly productionOrderService: ProductionOrderService,
+    @Inject(OperationalResourceService)
     private readonly operationalResourceService: OperationalResourceService,
   ) {}
 

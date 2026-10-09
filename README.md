@@ -23,11 +23,28 @@ Os nomes no código estão em inglês. O equivalente em português de cada termo
 
 **A conta na nuvem e o domínio `atelierizagusmao.com.br` são do André.** Este guia só cobre o ambiente local (computador de quem desenvolve).
 
+A **última versão** (combos Conta/Empresa/Filial, abas pelo menu, login no Dashboard) está na branch `cursor/sidebar-combos-abas-a1bd`. Não use `main` nem `cursor/multi-empresa-contexto-a1bd` no dia a dia.
+
+```bash
+git checkout cursor/sidebar-combos-abas-a1bd
+git pull origin cursor/sidebar-combos-abas-a1bd
+```
+
+Depois, **no VS Code**:
+
+1. Abra o terminal que está com `npm run start:dev`.
+2. Aperte `Ctrl+C` para parar. Digite de novo `npm run start:dev` e Enter.
+3. Se a tela também mudou, faça o mesmo no terminal de `npm run frontend:dev`.
+4. Só então atualize o navegador em `http://127.0.0.1:3001`.
+
+`git pull` sozinho não atualiza o banco nem o servidor que já está no ar. O `start:dev` aplica as colunas novas (por exemplo o horário de saída da OS). As abas ficam no navegador: um login novo (ou outro navegador) começa limpo, no Dashboard.
+
 ### 1. Pré-requisitos
 
 - Node.js 22
 - PostgreSQL 16 (Docker ou instalação local)
 - Copie `.env.example` para `.env` e preencha `DB_PASSWORD`, `JWT_SECRET`, `BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD`. **Não há senha padrão.**
+- **Não** cole `DATABASE_URL` do Neon no `.env` local. Use `DB_HOST` / `DB_PASSWORD` do Postgres da sua máquina.
 
 ### 2. Primeira vez
 
@@ -35,13 +52,14 @@ Com Docker:
 
 ```bash
 cp .env.example .env
-# edite o .env
-export BOOTSTRAP_ADMIN_EMAIL='seu-email@local'
-export BOOTSTRAP_ADMIN_PASSWORD='uma-senha-forte'
+# edite o .env (DB_PASSWORD, JWT_SECRET, BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD)
+cp frontend/.env.example frontend/.env.local
 bash scripts/dev-setup.sh
 ```
 
-Sem Docker: instale o PostgreSQL, crie o banco `anexsys`, defina as mesmas variáveis e rode `bash scripts/dev-setup.sh`.
+O `dev-setup.sh` lê o `.env` da raiz. Sem Docker: instale o PostgreSQL, crie o banco `anexsys` e rode o mesmo script.
+
+`npm run migration:run` também lê o `.env` (a senha local, por exemplo `postgree`, não precisa ser a padrão `postgres`).
 
 O `npm run build` do servidor usa `tsc` (não o `nest build`, que quebra neste Node). `npm run start:dev` sobe o servidor em modo observação.
 
@@ -56,15 +74,15 @@ npm run start:dev
 npm run frontend:dev
 ```
 
-A tela abre em `http://127.0.0.1:3001`. O servidor responde em `http://127.0.0.1:3000`. Entre com o e-mail e a senha definidos no bootstrap.
+A tela abre em `http://127.0.0.1:3001`. O servidor responde em `http://127.0.0.1:3000`. Entre com o e-mail e a senha definidos no bootstrap. Depois do login abre o **Dashboard**, com os combos Conta / Empresa / Filial no menu.
 
 Ajuste `frontend/.env.local` a partir de `frontend/.env.example` (`BACKEND_ORIGIN=http://127.0.0.1:3000`).
 
 ## Homologação gratuita (Render + Neon)
 
-Não usa `atelierizagusmao.com.br` nem `anexsys.com.br`. Um serviço web gratuito no Render e um PostgreSQL gratuito no Neon.
+Não usa `atelierizagusmao.com.br` nem `anexsys.com.br`. Um serviço web gratuito no Render e um PostgreSQL gratuito no Neon. **Não é o ciclo diário:** o dia a dia é localhost.
 
-Arquivos: `render.yaml`, `Dockerfile`, `scripts/start-web.cjs`. A branch a publicar é `cursor/homologacao-gratuita-a1bd` (inclui o Ciclo 1 / PR #9).
+Arquivos: `render.yaml`, `Dockerfile`, `scripts/start-web.cjs`. A branch publicada no Render ainda pode ser `cursor/homologacao-gratuita-a1bd` (Ciclo 1 / PR #9) ou `main`. A última tela validada no PC está em `cursor/sidebar-combos-abas-a1bd`.
 
 No Render, escolha o plano **Free**, cole a `DATABASE_URL` **direta** do Neon (host **sem** `-pooler`) e as variáveis `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`. O primeiro acesso pode demorar cerca de um minuto (o site dorme após ~15 min sem uso).
 

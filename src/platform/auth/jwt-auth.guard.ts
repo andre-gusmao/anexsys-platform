@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -15,21 +16,24 @@ import {
   resolveTenantId,
 } from 'src/platform/http/request-context';
 import { TokenFactoryService } from './token-factory.service';
-import { IS_PUBLIC_KEY } from './public.decorator';
+import { IS_PUBLIC_KEY, isPublicExecutionContext } from './public.decorator';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
+    @Inject(TokenFactoryService)
     private readonly tokenFactoryService: TokenFactoryService,
+    @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const isPublic =
+      Boolean(
+        this.reflector?.getAllAndOverride?.<boolean>(IS_PUBLIC_KEY, [context.getHandler(), context.getClass()]),
+      ) || isPublicExecutionContext(context);
 
     if (isPublic) {
       return true;

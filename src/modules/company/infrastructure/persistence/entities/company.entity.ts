@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { TenantEntity } from 'src/modules/tenant/infrastructure/persistence/entities/tenant.entity';
 import { BranchEntity } from 'src/modules/branch/infrastructure/persistence/entities/branch.entity';
+import { CompanyStatus } from 'src/shared/domain/enums';
 import { SoftDeletableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'companies' })
@@ -59,6 +60,9 @@ export class CompanyEntity extends SoftDeletableBusinessEntity {
 
   @Column({ name: 'is_default', type: 'boolean', default: false })
   isDefault!: boolean;
+
+  @Column({ name: 'status', type: 'varchar', length: 30, default: CompanyStatus.ACTIVE })
+  status!: CompanyStatus;
 
   @OneToMany(() => BranchEntity, (branch) => branch.company)
   branches?: BranchEntity[];

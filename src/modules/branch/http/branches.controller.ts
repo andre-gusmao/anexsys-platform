@@ -4,6 +4,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Inject,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -119,8 +120,11 @@ class ReplaceOperatingHoursBody {
 @Controller('branches')
 export class BranchesController {
   constructor(
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
+    @Inject(BranchHoursService)
     private readonly branchHoursService: BranchHoursService,
   ) {}
 

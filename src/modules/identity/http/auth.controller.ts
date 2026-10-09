@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -47,8 +48,11 @@ class FirstAccessCompleteBody extends FirstAccessValidateBody {
 @Controller('auth')
 export class AuthController {
   constructor(
+    @Inject(AuthService)
     private readonly authService: AuthService,
+    @Inject(IdentityService)
     private readonly identityService: IdentityService,
+    @Inject(LoginAttemptLimiterService)
     private readonly loginAttemptLimiter: LoginAttemptLimiterService,
   ) {}
 

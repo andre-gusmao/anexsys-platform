@@ -1,7 +1,27 @@
+import { extname, join, resolve } from 'node:path';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import { ensureSslModeRequire, resolveRemoteSsl } from '../postgres-url';
 import { typeOrmEntities } from './entities';
+
+export function resolveTypeOrmMigrationFiles(): string {
+  const migrationExtension = extname(__filename) === '.ts' ? 'ts' : 'js';
+  return join(__dirname, 'migrations', `*.${migrationExtension}`);
+}
+
+function loadLocalEnvFile(): void {
+  const candidates = [resolve(process.cwd(), '.env'), resolve(__dirname, '../../../../.env')];
+  for (const filePath of candidates) {
+    try {
+      process.loadEnvFile(filePath);
+      return;
+    } catch {
+      // Sem .env: o Nest, o Render e o CI já injetam as variáveis no processo.
+    }
+  }
+}
+
+loadLocalEnvFile();
 
 export function buildTypeOrmOptions(): TypeOrmModuleOptions & PostgresConnectionOptions {
   const rawUrl = process.env.DATABASE_URL?.trim() || undefined;
@@ -11,7 +31,7 @@ export function buildTypeOrmOptions(): TypeOrmModuleOptions & PostgresConnection
     type: 'postgres' as const,
     schema: process.env.DB_SCHEMA ?? 'public',
     entities: [...typeOrmEntities],
-    migrations: ['dist/platform/database/typeorm/migrations/*.js'],
+    migrations: [resolveTypeOrmMigrationFiles()],
     autoLoadEntities: true,
     synchronize: false,
     logging: process.env.DB_LOGGING === 'true',

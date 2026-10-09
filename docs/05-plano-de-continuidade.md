@@ -101,7 +101,7 @@ e vai por WhatsApp     e preço"). Produção pode   impressa no bolso          
 - **Urgente:** o atendente escolhe **2 ou 3 dias úteis**, com **sugestão de 3**.
 - **Sobretaxa:** **percentual configurável por tipo** de entrega (Normal, Expresso, Urgente).
 - O sistema **sugere** a data e o atendente **pode alterar** (fica registrado quem alterou e por quê).
-- **Todos os valores acima são parâmetros** editáveis na tela de parâmetros (seção 4.5).
+- **Todos os valores acima são parâmetros** editáveis na tela de parâmetros (seção 4.5). **Homologado em 09/10/2026** o cálculo com os defaults atuais (Normal +7 dias, Urgente 3 dias úteis, Expresso 2 h/peça). O painel para o André mudar esses números entra depois.
 
 ### 2.4 Garantia e reconserto
 
@@ -555,7 +555,7 @@ Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você v
 
 **Objetivo:** acompanhar produção e produtividade pelo próprio sistema.
 
-**Feito:** D21. **Dashboard** por técnica, por quantidade de peças e dificuldade; **tempo médio** por grau (medido ou informado); **dimensionamento de grade**; **alertas de atraso** antes de vencer; **alerta de aprovação pendente** ao atendente; base do **bônus por produtividade** (regra de cálculo a definir).
+**Feito:** D21. **Dashboard** por técnica, por quantidade de peças e dificuldade; **tempo médio** por grau (medido ou informado); **dimensionamento de grade**; **alertas de atraso** antes de vencer; **alerta de aprovação pendente** ao atendente; base do **bônus por produtividade** (regra de cálculo a definir). A **grade diária** (ativar técnico, comparecimento, contas a pagar e Pix ao prestador) completa esse dimensionamento; está no escopo futuro em `docs/02-decisoes-do-andre.md` seção 13, **sem construir agora**.
 
 **Valida:** configura o alerta de "2 horas antes do prazo"; deixa uma OS atrasar e confere o alerta; confere que os **tempos médios por grau** (30, 60, 90 e 180 minutos) alimentam as estimativas e **muda um deles** na tela de parâmetros; compara o dashboard com o diário de bordo de um dia.
 
@@ -591,7 +591,7 @@ Cada ciclo traz: **objetivo**, **o que será feito**, **banco**, **o que você v
 
 ### Depois do piloto (Ciclo 11 em diante)
 
-Entrega em domicílio completa (com a Guia de entrega, preço por faixa ou geolocalização, comprovante), retirada por terceiros, cobrança do ANEXSYS (D24), Pix QR (se não entrou), concierge com câmera e reconhecimento facial, segundo tipo de negócio, Stone e Rede.
+Entrega em domicílio completa (com a Guia de entrega, preço por faixa ou geolocalização, comprovante), retirada por terceiros, cobrança do ANEXSYS (D24), Pix QR do cliente (se não entrou; **não confundir** com o **Pix automático de saída**), concierge com câmera e reconhecimento facial, segundo tipo de negócio, Stone e Rede. **Grade diária de técnicos** e **Pix automático / reembolso ao cliente** (aprovação do administrador): ver `docs/02-decisoes-do-andre.md` seção 13.
 
 ---
 

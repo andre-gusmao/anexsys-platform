@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuthorizationService } from 'src/modules/authorization/application/authorization/authorization.service';
 import { PermissionRepository } from 'src/modules/authorization/infrastructure/persistence/repositories/permission.repository';
@@ -14,13 +14,21 @@ import { CompanyService } from './company.service';
 @Injectable()
 export class TenantProvisioningService {
   constructor(
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(CompanyService)
     private readonly companyService: CompanyService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
+    @Inject(RoleRepository)
     private readonly roleRepository: RoleRepository,
+    @Inject(PermissionRepository)
     private readonly permissionRepository: PermissionRepository,
+    @Inject(RolePermissionRepository)
     private readonly rolePermissionRepository: RolePermissionRepository,
+    @Inject(TenantModuleRepository)
     private readonly tenantModuleRepository: TenantModuleRepository,
   ) {}
 

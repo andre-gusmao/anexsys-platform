@@ -8,6 +8,11 @@ export enum BranchStatus {
   INACTIVE = 'inactive',
 }
 
+export enum CompanyStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
 export enum UserStatus {
   ACTIVE = 'active',
   INVITED = 'invited',
@@ -42,6 +47,11 @@ export enum CustomerStatus {
   BLOCKED = 'blocked',
 }
 
+export enum MeasurementCatalogStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
+
 export enum CustomerInteractionType {
   PROFILE_CREATED = 'profile_created',
   PROFILE_UPDATED = 'profile_updated',
@@ -72,6 +82,20 @@ export enum ServiceOrderStatus {
   OPEN = 'open',
   APPROVED = 'approved',
   CANCELLED = 'cancelled',
+  IN_PRODUCTION = 'in_production',
+  AWAITING_PROOF = 'awaiting_proof',
+  AWAITING_QUALITY = 'awaiting_quality',
+  QUALITY = 'quality',
+  IN_REWORK = 'in_rework',
+  READY_FOR_PICKUP = 'ready_for_pickup',
+  PICKED_UP = 'picked_up',
+}
+
+export enum ServiceOrderReturnKind {
+  RECONSERTO = 'reconserto',
+  WARRANTY = 'warranty',
+  CHARGED = 'charged',
+  COUNTER = 'counter',
 }
 
 export enum ServiceOrderItemStatus {

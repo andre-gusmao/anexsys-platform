@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { CustomerService } from 'src/modules/crm/application/customer/customer.service';
@@ -30,18 +30,31 @@ import { StatusVisibilityMappingRepository } from '../../infrastructure/persiste
 @Injectable()
 export class CustomerPortalService {
   constructor(
+    @Inject(CustomerPortalProfileRepository)
     private readonly customerPortalProfileRepository: CustomerPortalProfileRepository,
+    @Inject(StatusVisibilityMappingRepository)
     private readonly statusVisibilityMappingRepository: StatusVisibilityMappingRepository,
+    @Inject(CustomerService)
     private readonly customerService: CustomerService,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(ServiceOrderRepository)
     private readonly serviceOrderRepository: ServiceOrderRepository,
+    @Inject(DigitalApprovalRepository)
     private readonly digitalApprovalRepository: DigitalApprovalRepository,
+    @Inject(CommunicationEventRepository)
     private readonly communicationEventRepository: CommunicationEventRepository,
+    @Inject(PickupAuthorizationRepository)
     private readonly pickupAuthorizationRepository: PickupAuthorizationRepository,
+    @Inject(PickupService)
     private readonly pickupService: PickupService,
+    @Inject(CustodyService)
     private readonly custodyService: CustodyService,
+    @Inject(WarrantyService)
     private readonly warrantyService: WarrantyService,
+    @Inject(FinanceService)
     private readonly financeService: FinanceService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

@@ -1,5 +1,8 @@
 import {
+  Inject,
   Controller,
+  Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -12,7 +15,32 @@ import { ProductionOrderService } from '../application/production-order/producti
 
 @Controller('service-orders/:serviceOrderId/production-order')
 export class ServiceOrderProductionOrderController {
-  constructor(private readonly productionOrderService: ProductionOrderService) {}
+  constructor(
+    @Inject(ProductionOrderService)
+    private readonly productionOrderService: ProductionOrderService,
+  ) {}
+
+  @Permissions('production_orders.read')
+  @Get()
+  async getByServiceOrder(
+    @Param('serviceOrderId', new ParseUUIDPipe()) serviceOrderId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const principal = request.requestContext.authenticatedPrincipal;
+    if (!tenantId || !principal) {
+      throw new UnauthorizedException('Authenticated tenant context is required.');
+    }
+    const details = await this.productionOrderService.getDetailsByServiceOrder(
+      tenantId,
+      serviceOrderId,
+      principal.effectiveBranchIds,
+    );
+    if (!details) {
+      throw new NotFoundException('Esta OS ainda não tem Ordem de Produção.');
+    }
+    return details;
+  }
 
   @Permissions('production_orders.write')
   @Post('generate')

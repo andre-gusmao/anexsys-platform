@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/master-data-duplicate-guard";
 import { DependencyGuardPanel, type DependencyValidationResult } from "@/components/ui/dependency-guard-panel";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
+import { CustomerListPanel } from "@/components/customers/customer-list-panel";
+import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 
 type CustomerType = "person" | "company";
 type CustomerStatus = "active" | "inactive" | "blocked";
@@ -175,6 +177,8 @@ const defaultCustomerForm = (): CustomerFormState => ({
   status: "active",
 });
 
+const EMPTY_CUSTOMER_LIST_QUERY = { q: "", status: "", customerType: "" };
+
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
 
 function normalizePostalCode(value: string) {
@@ -255,10 +259,9 @@ export function CustomerWorkspace() {
   const focusCustomerId = searchParams.get("focusCustomerId");
   const focusSection = searchParams.get("focusSection");
   const workspaceMode = searchParams.get("workspaceMode");
+  const prefillName = searchParams.get("prefillName") ?? "";
 
-  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("customers.searchQuery", "");
-  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("customers.statusFilter", "");
-  const [typeFilter, setTypeFilter] = useWorkspaceScopedState("customers.typeFilter", "");
+  const [listQuery, setListQuery] = useWorkspaceScopedState("customers.listQuery", EMPTY_CUSTOMER_LIST_QUERY);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [activeCustomerId, setActiveCustomerId] = useWorkspaceScopedState<string | null>("customers.activeCustomerId", null);
@@ -276,6 +279,7 @@ export function CustomerWorkspace() {
   const [customerDuplicateStatus, setCustomerDuplicateStatus] = useState<"idle" | "checking" | "duplicate">("idle");
   const [customerDuplicateMatch, setCustomerDuplicateMatch] = useState<CustomerRecord | null>(null);
   const customerDuplicateCheckRef = useRef(0);
+  const [actingCustomerId, setActingCustomerId] = useState<string | null>(null);
   const [measurementForm, setMeasurementForm] = useWorkspaceScopedState("customers.measurementForm", {
     measurementDate: todayIsoDate(),
     notes: "",
@@ -323,7 +327,7 @@ export function CustomerWorkspace() {
   const selectedCustomer = profile?.customer ?? null;
   const { closeWorkspace } = useWorkspaceManager();
   const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
-    label: showCreateForm ? "Customer: New" : selectedCustomer ? `Customer: ${selectedCustomer.legalName}` : "Customers",
+    label: showCreateForm ? "Cliente: Novo" : selectedCustomer ? `Cliente: ${selectedCustomer.legalName}` : "Clientes",
     subtitle: showCreateForm ? "Novo cadastro" : focusSection === "measurements" && selectedCustomer ? "Measurements" : selectedCustomer?.cpfCnpj ?? null,
   });
   const isFormWorkspace = workspaceMode === "new" || Boolean(focusCustomerId);
@@ -342,7 +346,7 @@ export function CustomerWorkspace() {
             : [createMeasurementDraft(response.defaultUnitId)],
       }));
     } catch (error) {
-      setWorkspaceMessage(error instanceof Error ? error.message : "Measurement catalog could not be loaded.");
+      setWorkspaceMessage(describeWorkspaceError(error, "O catálogo de medidas não pôde ser carregado."));
     }
   }, [apiJson, canReadMeasurements, setMeasurementForm]);
 
@@ -350,19 +354,19 @@ export function CustomerWorkspace() {
     setLoadingCustomers(true);
     try {
       const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (statusFilter) params.set("status", statusFilter);
-      if (typeFilter) params.set("customerType", typeFilter);
+      if (listQuery.q.trim()) params.set("q", listQuery.q.trim());
+      if (listQuery.status) params.set("status", listQuery.status);
+      if (listQuery.customerType) params.set("customerType", listQuery.customerType);
       const suffix = params.toString() ? `?${params}` : "";
       const response = await apiJson<CustomerRecord[]>(`/customers${suffix}`);
       setCustomers(response);
       setWorkspaceMessage(null);
     } catch (error) {
-      setWorkspaceMessage(error instanceof Error ? error.message : "Customers could not be loaded.");
+      setWorkspaceMessage(describeWorkspaceError(error, "Os clientes não puderam ser carregados."));
     } finally {
       setLoadingCustomers(false);
     }
-  }, [apiJson, searchQuery, statusFilter, typeFilter]);
+  }, [apiJson, listQuery]);
 
   const loadCustomerDetails = useCallback(
     async (customerId: string) => {
@@ -435,12 +439,12 @@ export function CustomerWorkspace() {
     setDetailError(null);
   }, [isListWorkspace, setActiveCustomerId, setMeasurements, setProfile, setShowCreateForm]);
 
-  const openCreateCustomerForm = useCallback(() => {
+  const openCreateCustomerForm = useCallback((prefillName?: string) => {
     setShowCreateForm(true);
     setActiveCustomerId(null);
     setProfile(null);
     setMeasurements(null);
-    setCustomerForm(defaultCustomerForm());
+    setCustomerForm({ ...defaultCustomerForm(), fullName: prefillName?.trim() ?? "" });
     clearCustomerDuplicate();
     resetMeasurementForm();
   }, [clearCustomerDuplicate, resetMeasurementForm, setActiveCustomerId, setCustomerForm, setMeasurements, setProfile, setShowCreateForm]);
@@ -451,21 +455,29 @@ export function CustomerWorkspace() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      openCreateCustomerForm();
+      openCreateCustomerForm(prefillName);
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [openCreateCustomerForm, workspaceMode]);
+  }, [openCreateCustomerForm, prefillName, workspaceMode]);
 
-  const openCreateCustomerWorkspace = useCallback(() => {
-    const targetPath = "/customers?workspaceMode=new";
-    if (isMobile) {
-      navigateWithinWorkspace(targetPath);
-      return;
-    }
+  const openCreateCustomerWorkspace = useCallback(
+    (prefillName?: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (prefillName?.trim()) {
+        params.set("prefillName", prefillName.trim());
+      }
+      const targetPath = `/customers?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
 
-    openWorkspaceInNewTab(targetPath, "Customer: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
-  }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
+      openWorkspaceInNewTab(targetPath, "Cliente: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
 
   const openCustomerWorkspace = useCallback(
     (customer: CustomerRecord) => {
@@ -475,12 +487,114 @@ export function CustomerWorkspace() {
         return;
       }
 
-      openWorkspaceInNewTab(targetPath, `Customer: ${customer.legalName}`, {
+      openWorkspaceInNewTab(targetPath, `Cliente: ${customer.legalName}`, {
         cloneCurrent: false,
         subtitle: customer.cpfCnpj ?? undefined,
       });
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const handleInactivateCustomer = useCallback(
+    async (customer: CustomerRecord) => {
+      if (customer.status === "inactive") {
+        return;
+      }
+      if (!window.confirm(`Inativar ${customer.legalName}? O cadastro deixa de aparecer como ativo.`)) {
+        return;
+      }
+
+      setActingCustomerId(customer.id);
+      setWorkspaceMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `/customers/${customer.id}/dependency-check?action=inactivate`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setWorkspaceMessage(validation.message);
+          return;
+        }
+        await apiJson<CustomerRecord>(`/customers/${customer.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "inactive" }),
+        });
+        setWorkspaceMessage(`${customer.legalName} foi inativado.`);
+        await loadCustomers();
+      } catch (error) {
+        setWorkspaceMessage(error instanceof Error ? error.message : "O cliente não pôde ser inativado.");
+      } finally {
+        setActingCustomerId(null);
+      }
+    },
+    [apiJson, loadCustomers],
+  );
+
+  const handleDeleteCustomer = useCallback(
+    async (customer: CustomerRecord, options: { skipConfirm?: boolean } = {}) => {
+      if (
+        !options.skipConfirm &&
+        !window.confirm(
+          `Excluir ${customer.legalName}? Só é possível se não houver OS, medidas ou financeiro. O cliente some da lista.`,
+        )
+      ) {
+        return false;
+      }
+
+      setActingCustomerId(customer.id);
+      setWorkspaceMessage(null);
+      setDependencyValidation(null);
+      try {
+        const validation = await apiJson<DependencyValidationResult>(
+          `/customers/${customer.id}/dependency-check?action=delete`,
+        );
+        if (!validation.allowed) {
+          setDependencyValidation(validation);
+          setWorkspaceMessage(validation.message);
+          return false;
+        }
+        await apiJson(`/customers/${customer.id}`, { method: "DELETE" });
+        setWorkspaceMessage(`${customer.legalName} foi excluído da lista.`);
+        await loadCustomers();
+        return true;
+      } catch (error) {
+        setWorkspaceMessage(error instanceof Error ? error.message : "O cliente não pôde ser excluído.");
+        return false;
+      } finally {
+        setActingCustomerId(null);
+      }
+    },
+    [apiJson, loadCustomers],
+  );
+
+  const handleDeleteCustomers = useCallback(
+    async (selected: CustomerRecord[]) => {
+      if (selected.length === 0) {
+        return;
+      }
+      if (
+        !window.confirm(
+          `Excluir ${selected.length} cliente(s) selecionado(s)? Só é possível se não houver OS, medidas ou financeiro.`,
+        )
+      ) {
+        return;
+      }
+
+      let deleted = 0;
+      for (const customer of selected) {
+        const ok = await handleDeleteCustomer(customer, { skipConfirm: true });
+        if (ok) {
+          deleted += 1;
+        } else {
+          break;
+        }
+      }
+      if (deleted > 1) {
+        setWorkspaceMessage(`${deleted} cliente(s) foram excluídos da lista.`);
+      }
+    },
+    [handleDeleteCustomer],
   );
 
   const closeCustomerWorkspace = useCallback(() => {
@@ -495,7 +609,7 @@ export function CustomerWorkspace() {
     }
 
     const closingTabId = currentTabId;
-    openWorkspaceInNewTab("/customers", "Customers", { cloneCurrent: false });
+    openWorkspaceInNewTab("/customers", "Clientes", { cloneCurrent: false });
     window.setTimeout(() => {
       closeWorkspace(closingTabId);
     }, 0);
@@ -522,15 +636,6 @@ export function CustomerWorkspace() {
 
     return () => window.cancelAnimationFrame(frameId);
   }, [focusCustomerId, focusSection, selectedCustomer?.id]);
-
-  const customerSuggestions = useMemo(
-    () =>
-      customers.map((customer) => ({
-        id: customer.id,
-        label: customer.tradeName ? `${customer.legalName} · ${customer.tradeName}` : customer.legalName,
-      })),
-    [customers],
-  );
 
   const handlePostalCodeLookup = useCallback(async () => {
     const postalCode = normalizePostalCode(customerForm.postalCode);
@@ -751,126 +856,51 @@ export function CustomerWorkspace() {
 
   return (
     <>
-      <section className="hero-card">
-        <div className="eyebrow">Módulo operacional</div>
-        <h1 className="title">Cadastro de clientes</h1>
-        <p>Cadastre clientes do tenant, pesquise rapidamente, edite dados cadastrais completos e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
-      </section>
-
-      {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
-
-      {workspaceMessage ? (
-        <div className="mini-card">
-          <p>{workspaceMessage}</p>
-        </div>
-      ) : null}
-
-      {isListWorkspace ? (
-        <section className="mini-card">
-          <div className="workspace-toolbar">
-            <div className="workspace-toolbar__copy">
-              <h3>Pesquisa de clientes</h3>
-              <p>O autocomplete ajuda a localizar clientes rapidamente sem sair do fluxo operacional.</p>
-            </div>
-            {canWriteCustomers ? (
-              <button className="button" onClick={openCreateCustomerWorkspace} type="button">
-                Novo cliente
-              </button>
-            ) : null}
-          </div>
-
-          <div className="filters-grid">
-            <label className="field">
-              <span>Busca</span>
-              <input list="customer-suggestions" placeholder="Nome, telefone, CPF/CNPJ ou email" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
-              <datalist id="customer-suggestions">
-                {customerSuggestions.map((customer) => (
-                  <option key={customer.id} value={customer.label} />
-                ))}
-              </datalist>
-            </label>
-
-            <label className="field">
-              <span>Status</span>
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="">Todos</option>
-                <option value="active">Ativo</option>
-                <option value="inactive">Inativo</option>
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Tipo de cliente</span>
-              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-                <option value="">Todos</option>
-                <option value="person">Pessoa</option>
-                <option value="company">Empresa</option>
-              </select>
-            </label>
-          </div>
+      {!isListWorkspace ? (
+        <section className="hero-card">
+          <div className="eyebrow">Módulo operacional</div>
+          <h1 className="title">Cadastro de clientes</h1>
+          <p>Cadastre clientes do tenant, pesquise rapidamente, edite dados cadastrais completos e mantenha Measurement Sets versionados com partes do corpo e unidades padronizadas.</p>
         </section>
       ) : null}
 
-      <section className="workspace-split">
-        {isListWorkspace ? (
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Grade de clientes</h3>
-                <p>{loadingCustomers ? "Carregando clientes…" : `${customers.length} cliente(s) encontrado(s)`}</p>
-              </div>
-            </div>
+      {dependencyValidation && !dependencyValidation.allowed ? <DependencyGuardPanel validation={dependencyValidation} /> : null}
 
-            <div className="data-table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Tipo</th>
-                    <th>Documento</th>
-                    <th>Status</th>
-                    <th>Telefone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((customer) => (
-                    <tr key={customer.id}>
-                      <td>
-                        <button
-                          className="button-ghost"
-                          onClick={() => openCustomerWorkspace(customer)}
-                          style={{ alignItems: "start", display: "grid", justifyItems: "start", textAlign: "left" }}
-                          type="button"
-                        >
-                          <strong>{customer.legalName}</strong>
-                          <div className="table-subtle">{customer.tradeName ?? customer.email ?? "Sem referência secundária"}</div>
-                        </button>
-                      </td>
-                      <td>{customer.customerType === "company" ? "Empresa" : "Pessoa"}</td>
-                      <td>{customer.cpfCnpj ?? "—"}</td>
-                      <td>
-                        <span className={`status-chip status-chip--${customer.status}`}>{customer.status}</span>
-                      </td>
-                      <td>{formatPhone(customer.phone)}</td>
-                    </tr>
-                  ))}
-                  {!loadingCustomers && customers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5}>
-                        <div className="empty-state">Nenhum cliente encontrado para os filtros informados.</div>
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        ) : null}
+      {workspaceMessage ? <WorkspaceFlash message={workspaceMessage} /> : null}
+
+      {isListWorkspace ? (
+        <CustomerListPanel
+          actingCustomerId={actingCustomerId}
+          canWrite={canWriteCustomers}
+          customers={customers}
+          loading={loadingCustomers}
+          onApplyQuery={(query) => setListQuery(query)}
+          onCreate={openCreateCustomerWorkspace}
+          onDelete={(row) => {
+            const customer = customers.find((item) => item.id === row.id);
+            if (customer) void handleDeleteCustomer(customer);
+          }}
+          onDeleteMany={(rows) => {
+            const selected = rows
+              .map((row) => customers.find((item) => item.id === row.id))
+              .filter((item): item is CustomerRecord => Boolean(item));
+            void handleDeleteCustomers(selected);
+          }}
+          onEdit={(row) => {
+            const customer = customers.find((item) => item.id === row.id);
+            if (customer) openCustomerWorkspace(customer);
+          }}
+          onInactivate={(row) => {
+            const customer = customers.find((item) => item.id === row.id);
+            if (customer) void handleInactivateCustomer(customer);
+          }}
+        />
+      ) : null}
 
         {!isListWorkspace ? (
         <div className="workspace-stack">
           {showCreateForm ? (
-            <article className="mini-card">
+            <article className="mini-card cadastro-form">
               <h3>Novo cliente</h3>
               <p className="subtitle">Cadastre o cliente uma única vez no tenant e mantenha o endereço completo para uso operacional futuro.</p>
               <form className="form-grid" onSubmit={handleCreateCustomer}>
@@ -931,7 +961,7 @@ export function CustomerWorkspace() {
           ) : null}
 
           {!showCreateForm ? (
-            <article className="mini-card">
+            <article className="mini-card cadastro-form">
               <div className="workspace-toolbar">
                 <div className="workspace-toolbar__copy">
                   <h3>Detalhes do cliente</h3>
@@ -1093,7 +1123,7 @@ export function CustomerWorkspace() {
                               <div className="field">
                                 <SmartLookup
                                   canCreate={canWriteMeasurements}
-                                  createLabel="Criar nova parte do corpo"
+                                  createLabel="Cadastrar"
                                   entityType="body-parts"
                                   label="Parte do corpo"
                                   options={bodyPartLookupOptions}
@@ -1148,7 +1178,7 @@ export function CustomerWorkspace() {
                                 <SmartLookup
                                   allowClear
                                   canCreate={canWriteMeasurements}
-                                  createLabel="Criar nova unidade"
+                                  createLabel="Cadastrar"
                                   entityType="measurement-units"
                                   label={`Unidade (padrão ${catalog?.defaultUnitCode ?? "CM"})`}
                                   options={unitLookupOptions}
@@ -1270,7 +1300,6 @@ export function CustomerWorkspace() {
           ) : null}
         </div>
         ) : null}
-      </section>
     </>
   );
 }

@@ -2,13 +2,22 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
 import { defaultOperatingHours } from 'src/modules/company/application/company.defaults';
-import { DeliveryDateService } from 'src/modules/service-orders/application/delivery-date/delivery-date.service';
+import { DeliveryType } from 'src/shared/domain/enums';
+import {
+  DeliveryDateService,
+  EXPRESS_MINUTES_PER_PIECE,
+  PRIORITY_DELIVERY_WORKING_DAYS,
+  STANDARD_DELIVERY_CALENDAR_DAYS,
+} from 'src/modules/service-orders/application/delivery-date/delivery-date.service';
 
-function hoursService() {
+function hoursService(closesAt?: string) {
   const service = new BranchHoursService(
     {
       async listByBranch() {
-        return defaultOperatingHours().map((day) => ({ ...day }));
+        return defaultOperatingHours().map((day) => ({
+          ...day,
+          closesAt: closesAt && day.closesAt ? closesAt : day.closesAt,
+        }));
       },
     } as never,
     {
@@ -24,6 +33,12 @@ function hoursService() {
 }
 
 describe('DeliveryDateService', () => {
+  it('keeps the homologated prazo defaults until the parameters panel exists', () => {
+    assert.equal(STANDARD_DELIVERY_CALENDAR_DAYS, 7);
+    assert.equal(PRIORITY_DELIVERY_WORKING_DAYS, 3);
+    assert.equal(EXPRESS_MINUTES_PER_PIECE, 120);
+  });
+
   it('moves the suggested date to the next valid business day when calendar rules block it', async () => {
     const service = new DeliveryDateService(
       { async getById() { return { id: 'tenant-1' }; } } as never,
@@ -68,5 +83,58 @@ describe('DeliveryDateService', () => {
 
     const promised = await service.suggestDeliveryDate('tenant-1', 'branch-1', new Date('2026-09-21T22:00:00.000Z'));
     assert.equal(promised, '2026-09-29');
+  });
+
+  it('suggests urgent delivery after three working days at closing time', async () => {
+    const service = new DeliveryDateService(
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1', timezone: 'America/Sao_Paulo' }; } } as never,
+      { async findApplicable() { return []; } } as never,
+      hoursService(),
+    );
+
+    const promised = await service.suggestDelivery(
+      'tenant-1',
+      'branch-1',
+      new Date('2026-09-21T12:00:00.000Z'),
+      { deliveryType: DeliveryType.PRIORITY },
+    );
+    assert.equal(promised.promisedDeliveryDate, '2026-09-24');
+    assert.equal(promised.promisedDeliveryTime, '18:00');
+  });
+
+  it('cuts branch closing time with seconds down to HH:MM', async () => {
+    const service = new DeliveryDateService(
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1', timezone: 'America/Sao_Paulo' }; } } as never,
+      { async findApplicable() { return []; } } as never,
+      hoursService('18:00:00'),
+    );
+
+    const promised = await service.suggestDelivery(
+      'tenant-1',
+      'branch-1',
+      new Date('2026-09-21T12:00:00.000Z'),
+      { deliveryType: DeliveryType.PRIORITY },
+    );
+    assert.equal(promised.promisedDeliveryTime, '18:00');
+  });
+
+  it('suggests express delivery as two hours per piece inside opening hours', async () => {
+    const service = new DeliveryDateService(
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1', timezone: 'America/Sao_Paulo' }; } } as never,
+      { async findApplicable() { return []; } } as never,
+      hoursService(),
+    );
+
+    const promised = await service.suggestDelivery(
+      'tenant-1',
+      'branch-1',
+      new Date('2026-09-21T16:00:00.000Z'),
+      { deliveryType: DeliveryType.EXPRESS, itemCount: 1 },
+    );
+    assert.equal(promised.promisedDeliveryDate, '2026-09-21');
+    assert.equal(promised.promisedDeliveryTime, '15:00');
   });
 });

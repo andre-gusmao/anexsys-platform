@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -38,11 +38,17 @@ export type MeasurementSetView = {
 @Injectable()
 export class MeasurementService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(CustomerService)
     private readonly customerService: CustomerService,
+    @Inject(MeasurementSetRepository)
     private readonly measurementSetRepository: MeasurementSetRepository,
+    @Inject(MeasurementSetItemRepository)
     private readonly measurementSetItemRepository: MeasurementSetItemRepository,
+    @Inject(MeasurementCatalogService)
     private readonly measurementCatalogService: MeasurementCatalogService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

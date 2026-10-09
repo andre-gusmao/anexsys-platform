@@ -1,19 +1,69 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
 import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
+import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
+import { HoverPeek } from "@/components/ui/hover-peek";
+import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 import {
+  buildOsWhatsAppMessage,
+  openEmailResend,
+  openWhatsAppResend,
+  printProductionOrderDocument,
+  printServiceOrderDocument,
+  reservePrintWindow,
+  type OpPrintView,
+  type OsPrintView,
+} from "@/components/service-orders/os-documents";
+import { canReopenBagAfterFloor } from "@/components/service-orders/os-floor";
+import { applyOsListFilters, buildOsExcelCsv, osDeliveryTypeLabel, osStatusLabel } from "@/components/service-orders/os-list";
+import {
+  canActOnProof,
+  canSendToProof,
+  proofActionLabel,
+  proofActionSuccessMessage,
+  proofNotesReprintMessage,
+  type ProofAction,
+} from "@/components/service-orders/os-proof";
+import { OsClientReturnPanel } from "@/components/service-orders/os-client-return-panel";
+import { OsProofNotesPanel } from "@/components/service-orders/os-proof-notes-panel";
+import { OsAnexoButton } from "@/components/service-orders/os-anexo-button";
+import { OsProductPriceQuickCreate, formatSuggestedPrice } from "@/components/service-orders/os-product-price-quick-create";
+import type { ProductPriceRecord } from "@/components/catalog/product-price-list";
+import { OsApprovalPanel } from "@/components/service-orders/os-approval-panel";
+import { OsAttachmentsPanel } from "@/components/service-orders/os-attachments-panel";
+import { approvalMethodLabel, canRecordOsApproval, formatOsInstant, type ApprovalSummary } from "@/components/service-orders/os-approval";
+import { OsPickupPanel } from "@/components/service-orders/os-pickup-panel";
+import { pickupMethodLabel, type PickupSummary } from "@/components/service-orders/os-pickup";
+import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
+import { osCanOpenPay, osPaymentMethodLabel, osShowsFaltaPagamento } from "@/components/service-orders/os-payment";
+import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
+import {
   addServiceOrderItemGridRow,
+  applyOsMoneyTyping,
   buildCreateServiceOrderItemsPayload,
   buildServiceOrderItemMutationPlan,
+  calculateServiceOrderItemSubtotal,
+  calculateServiceOrderLaborTotal,
+  canAddServiceOrderItemGridRow,
   createEmptyServiceOrderItemGridRow,
+  DEFAULT_CUSTOMER_NOTE,
+  formatOsMoney,
   getVisibleServiceOrderItemGridRows,
   mapServiceOrderItemsToGridRows,
+  MAX_SERVICE_ORDER_ITEMS,
+  OS_WORK_MAX_CHARS,
+  osOpHeaderTerm,
+  osReturnKindLabel,
+  osWorkPrintHint,
+  previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
+  runClosedBagCommit,
+  serviceOrderListLoadBinding,
   updateServiceOrderItemGridRow,
   type PersistedServiceOrderItem,
   type ServiceOrderItemGridRow,
@@ -26,6 +76,7 @@ type ServiceOrderRecord = {
   orderNo: string;
   openedAt: string;
   promisedDeliveryDate: string;
+  promisedDeliveryTime?: string | null;
   deliveryType: "Standard" | "Priority" | "Express";
   operationalPriority: string | null;
   status: string;
@@ -33,6 +84,25 @@ type ServiceOrderRecord = {
   paymentTermsDays?: number;
   commercialNotes?: string | null;
   customerNotes?: string | null;
+  commercialResponsibleActorId?: string;
+  actualDeliveryDate?: string | null;
+  actualDeliveryTime?: string | null;
+  bagClosed?: boolean;
+  publicToken?: string | null;
+  actualPickupDate?: string | null;
+  originServiceOrderId?: string | null;
+  returnKind?: string | null;
+  hasAttachments?: boolean;
+  paymentStatus?: "pending" | "partial" | "paid";
+  outstandingBalance?: string | null;
+  amountPaid?: string | null;
+  payLockedOnParent?: boolean;
+};
+
+type ActorSummary = {
+  id: string;
+  displayName: string;
+  email?: string | null;
 };
 
 type ServiceOrderDetail = {
@@ -48,7 +118,36 @@ type ServiceOrderDetail = {
     phone: string | null;
     email: string | null;
   };
+  commercialResponsible?: ActorSummary | null;
+  productionTechnician?: ActorSummary | null;
+  qualityReviewer?: ActorSummary | null;
   items: PersistedServiceOrderItem[];
+  maxPiecesPerBag?: number;
+  groupVersions?: Array<{
+    id: string;
+    orderNo: string;
+    versionSuffix: string | null;
+    returnKind?: string | null;
+    status?: string;
+  }>;
+  payLockedOnParent?: boolean;
+  origin?: { id: string; orderNo: string; status: string; actualPickupDate: string | null } | null;
+  linkedReturns?: Array<{ id: string; orderNo: string; returnKind: string | null; status: string }>;
+  clientReturnPreview?: {
+    kind: string;
+    daysSincePickup: number;
+    adjustmentPeriodDays: number;
+    executionPeriodDays: number;
+  } | null;
+  proofNotes?: Array<{
+    batchId: string;
+    createdAt: string | Date;
+    createdByName: string;
+    items: Array<{ itemId: string; itemNo: number; itemType: string; description: string; note: string }>;
+  }>;
+  reprintProof?: boolean;
+  pickup?: PickupSummary | null;
+  approval?: ApprovalSummary | null;
 };
 
 type CustomerLookupRecord = {
@@ -57,6 +156,12 @@ type CustomerLookupRecord = {
   tradeName: string | null;
   email: string | null;
   cpfCnpj: string | null;
+};
+
+type CatalogLookupRecord = {
+  id: string;
+  displayName: string;
+  status?: string;
 };
 
 type CreateServiceOrderResponse = {
@@ -76,9 +181,51 @@ type ServiceOrderHeaderForm = {
   customerId: string;
   deliveryType: "Standard" | "Priority" | "Express";
   operationalPriority: string;
+  promisedDeliveryDate: string;
+  promisedDeliveryTime: string;
+  attendantId: string;
   commercialNotes: string;
   customerNotes: string;
 };
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function toDateInput(value: string | null | undefined) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function toTimeInput(value: string | null | undefined, fromDate?: string | null) {
+  if (value && /^\d{2}:\d{2}/.test(value)) {
+    return value.slice(0, 5);
+  }
+  if (!fromDate) return "";
+  const date = new Date(fromDate);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function nowDateInput() {
+  const now = new Date();
+  return `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
+}
+
+function nowTimeInput() {
+  const now = new Date();
+  return `${padDatePart(now.getHours())}:${padDatePart(now.getMinutes())}`;
+}
+
+function formatDateTime(value: string | Date | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+}
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -87,13 +234,20 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
-function createEmptyHeaderForm(): ServiceOrderHeaderForm {
+function photoSrc(photo: { mimeType?: string | null; contentBase64?: string | null } | null | undefined) {
+  return photo?.contentBase64 ? `data:${photo.mimeType};base64,${photo.contentBase64}` : null;
+}
+
+function createEmptyHeaderForm(attendantId = ""): ServiceOrderHeaderForm {
   return {
     customerId: "",
     deliveryType: "Standard",
     operationalPriority: "",
+    promisedDeliveryDate: "",
+    promisedDeliveryTime: nowTimeInput(),
+    attendantId,
     commercialNotes: "",
-    customerNotes: "",
+    customerNotes: DEFAULT_CUSTOMER_NOTE,
   };
 }
 
@@ -102,22 +256,16 @@ function mapDetailsToHeaderForm(details: ServiceOrderDetail): ServiceOrderHeader
     customerId: details.serviceOrder.customerId,
     deliveryType: details.serviceOrder.deliveryType,
     operationalPriority: details.serviceOrder.operationalPriority ?? "",
+    promisedDeliveryDate: toDateInput(details.serviceOrder.promisedDeliveryDate),
+    promisedDeliveryTime: toTimeInput(details.serviceOrder.promisedDeliveryTime, details.serviceOrder.openedAt),
+    attendantId: details.serviceOrder.commercialResponsibleActorId ?? details.commercialResponsible?.id ?? "",
     commercialNotes: details.serviceOrder.commercialNotes ?? "",
     customerNotes: details.serviceOrder.customerNotes ?? "",
   };
 }
 
 function formatWorkspaceMessage(error: unknown, fallback: string) {
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-
-  const technicalHints = ["ECONN", "column ", "violates", "syntax error", "should not exist"];
-  if (technicalHints.some((hint) => error.message.includes(hint))) {
-    return fallback;
-  }
-
-  return error.message;
+  return describeWorkspaceError(error, fallback);
 }
 
 export function ServiceOrdersWorkspace() {
@@ -126,13 +274,27 @@ export function ServiceOrdersWorkspace() {
   const { isMobile } = useWorkspaceViewportMode();
   const focusServiceOrderId = searchParams.get("focusServiceOrderId");
   const workspaceMode = searchParams.get("workspaceMode");
+  const openProof = searchParams.get("openProof") === "1";
+  const openPickup = searchParams.get("openPickup") === "1";
+  const openApproval = searchParams.get("openApproval") === "1";
   const canRead = hasAnyPermission("service_orders.read");
   const canWrite = hasAnyPermission("service_orders.write");
   const canReadCustomers = hasAnyPermission("customers.read");
+  const canWriteCustomers = hasAnyPermission("customers.write");
+  const canReadUsers = hasAnyPermission("users.read");
+  const canReadFinance = hasAnyPermission("finance.read");
+  const canWriteFinance = hasAnyPermission("finance.write");
+  const canReadProduction = hasAnyPermission("production_orders.read");
+  const canWriteProduction = hasAnyPermission("production_orders.write");
+  const canWriteProof = canWrite || canWriteProduction;
   const [orders, setOrders] = useState<ServiceOrderRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerLookupRecord[]>([]);
-  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("service-orders.searchQuery", "");
-  const [statusFilter, setStatusFilter] = useWorkspaceScopedState("service-orders.statusFilter", "");
+  const [products, setProducts] = useState<CatalogLookupRecord[]>([]);
+  const [services, setServices] = useState<CatalogLookupRecord[]>([]);
+  const [productPrices, setProductPrices] = useState<ProductPriceRecord[]>([]);
+  const [users, setUsers] = useState<ActorSummary[]>([]);
+  const [payTarget, setPayTarget] = useState<{ orderNo: string; summary: OsFinancialSummary } | null>(null);
+  const [paymentSummary, setPaymentSummary] = useState<OsFinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -141,35 +303,54 @@ export function ServiceOrdersWorkspace() {
   const [activeOrderId, setActiveOrderId] = useWorkspaceScopedState<string | null>("service-orders.activeOrderId", null);
   const [showCreateForm, setShowCreateForm] = useWorkspaceScopedState("service-orders.showCreateForm", false);
   const [details, setDetails] = useState<ServiceOrderDetail | null>(null);
-  const [headerForm, setHeaderForm] = useWorkspaceScopedState<ServiceOrderHeaderForm>("service-orders.headerForm", createEmptyHeaderForm());
+  const [headerForm, setHeaderForm] = useWorkspaceScopedState<ServiceOrderHeaderForm>(
+    "service-orders.headerForm",
+    createEmptyHeaderForm(),
+  );
   const [itemRows, setItemRows] = useWorkspaceScopedState<ServiceOrderItemGridRow[]>("service-orders.itemRows", [createEmptyServiceOrderItemGridRow(1)]);
+  const [maxPiecesPerBag, setMaxPiecesPerBag] = useState(MAX_SERVICE_ORDER_ITEMS);
+  const [previewOrderNo, setPreviewOrderNo] = useState("—");
+  const [wantsNextVersion, setWantsNextVersion] = useState(false);
+  const [returnPickerOpen, setReturnPickerOpen] = useState(false);
+  const [counterPickerOpen, setCounterPickerOpen] = useState(false);
+  const [proofPickerOpen, setProofPickerOpen] = useState(false);
+  const [pickupPickerOpen, setPickupPickerOpen] = useState(false);
+  const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
+  const [approvalPickerOpen, setApprovalPickerOpen] = useState(false);
+  const [approvalPhoto, setApprovalPhoto] = useState<string | null>(null);
+  const [anexoViewer, setAnexoViewer] = useState<{
+    orderNo: string;
+    approval: ApprovalSummary | null;
+    approvalPhoto: string | null;
+    pickup: PickupSummary | null;
+    pickupPhoto: string | null;
+    loading: boolean;
+  } | null>(null);
   const latestDetailRequestId = useRef(0);
 
   const activeCompany = session?.companies.find((company) => company.tenantId === session?.tenantId) ?? null;
-  const activeBranch = session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
   const canPersistInContext = Boolean(session?.tenantId && session?.activeBranchId);
-
-  const filteredOrders = useMemo(() => {
-    const normalized = searchQuery.trim().toLowerCase();
-    return orders.filter((order) => {
-      if (statusFilter && order.status !== statusFilter) return false;
-      if (!normalized) return true;
-      return [order.orderNo, order.deliveryType, order.operationalPriority ?? "", order.status].some((value) =>
-        value.toLowerCase().includes(normalized),
-      );
-    });
-  }, [orders, searchQuery, statusFilter]);
 
   const selectedOrder = details?.serviceOrder ?? null;
   const selectedCustomerId = headerForm.customerId || selectedOrder?.customerId || null;
   const { closeWorkspace } = useWorkspaceManager();
-  const { currentTabId, navigateWithinWorkspace, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow, openWorkspaceInNewTab } = useWorkspaceRegistration({
-    label: showCreateForm ? "OS: New" : selectedOrder ? `OS #${selectedOrder.orderNo}` : "Service Orders",
-    subtitle: showCreateForm ? "Novo cadastro" : selectedOrder?.deliveryType ?? null,
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+    label: showCreateForm ? "OS: Nova" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordens de serviço",
+    subtitle: showCreateForm ? "Novo cadastro" : selectedOrder ? osDeliveryTypeLabel(selectedOrder.deliveryType) : null,
   });
   const isFormWorkspace = workspaceMode === "new" || Boolean(focusServiceOrderId);
   const isListWorkspace = !isFormWorkspace;
-  const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled";
+  const bagClosed = Boolean(selectedOrder?.bagClosed);
+  const canEditSelectedOrder = canWrite && selectedOrder !== null && selectedOrder.status !== "cancelled" && !bagClosed;
+  const canReopenSelectedBag = Boolean(selectedOrder && canWrite && bagClosed && canReopenBagAfterFloor(selectedOrder.status));
+
+  useEffect(() => {
+    setWantsNextVersion(false);
+    setReturnPickerOpen(false);
+    setProofPickerOpen(false);
+    setPickupPickerOpen(false);
+    setPickupPhoto(null);
+  }, [selectedOrder?.id, showCreateForm]);
   const visibleItemRows = useMemo(() => getVisibleServiceOrderItemGridRows(itemRows), [itemRows]);
 
   const openRelatedCustomerWorkspace = useCallback(
@@ -190,12 +371,35 @@ export function ServiceOrdersWorkspace() {
         return;
       }
 
-      openWorkspaceInNewTab(targetPath, focusSection === "measurements" ? "Measurements" : "Customer", {
+      openWorkspaceInNewTab(targetPath, focusSection === "measurements" ? "Medidas" : "Cliente", {
         cloneCurrent: false,
       });
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab, selectedCustomerId],
   );
+
+  const attendantLookupOptions = useMemo<SmartLookupOption[]>(() => {
+    const options = users.map((user) => ({
+      id: user.id,
+      label: user.displayName,
+      hint: user.email ?? undefined,
+    }));
+    const currentUser = session?.user;
+    if (currentUser && !options.some((option) => option.id === currentUser.id)) {
+      options.unshift({ id: currentUser.id, label: currentUser.displayName, hint: currentUser.email });
+    }
+    if (
+      details?.commercialResponsible &&
+      !options.some((option) => option.id === details.commercialResponsible?.id)
+    ) {
+      options.unshift({
+        id: details.commercialResponsible.id,
+        label: details.commercialResponsible.displayName,
+        hint: details.commercialResponsible.email ?? undefined,
+      });
+    }
+    return options;
+  }, [details?.commercialResponsible, session?.user, users]);
 
   const customerLookupOptions = useMemo<SmartLookupOption[]>(() => {
     const options = customers.map((customer) => ({
@@ -215,6 +419,90 @@ export function ServiceOrdersWorkspace() {
     return options;
   }, [customers, details]);
 
+  const orderLookupOptions = useMemo<SmartLookupOption[]>(
+    () =>
+      orders.map((order) => ({
+        id: order.id,
+        label: order.orderNo,
+        hint: [osStatusLabel(order.status), osDeliveryTypeLabel(order.deliveryType), order.operationalPriority]
+          .filter(Boolean)
+          .join(" · ") || undefined,
+      })),
+    [orders],
+  );
+
+  const productLookupOptions = useMemo<SmartLookupOption[]>(() => {
+    const options = products
+      .filter((product) => product.status !== "inactive")
+      .map((product) => ({ id: product.id, label: product.displayName }));
+    for (const row of visibleItemRows) {
+      if (row.productId && !options.some((option) => option.id === row.productId)) {
+        options.unshift({ id: row.productId, label: row.itemType || "Produto" });
+      }
+    }
+    return options;
+  }, [products, visibleItemRows]);
+
+  const serviceLookupOptionsFor = useCallback(
+    (row: { productId: string; serviceId: string; description: string }) => {
+      const options: SmartLookupOption[] = productPrices
+        .filter((price) => price.productId === row.productId && price.status !== "inactive")
+        .map((price) => ({
+          id: price.serviceId,
+          label: price.serviceName,
+          hint: formatOsMoney(Number(price.suggestedPrice)),
+        }));
+      if (row.serviceId && !options.some((option) => option.id === row.serviceId)) {
+        const fallback = services.find((service) => service.id === row.serviceId);
+        options.unshift({
+          id: row.serviceId,
+          label: fallback?.displayName || row.description || "Serviço",
+        });
+      }
+      return options;
+    },
+    [productPrices, services],
+  );
+
+  const suggestedPriceFor = useCallback(
+    (productId: string, serviceId: string) => {
+      const priced = productPrices.find(
+        (price) => price.productId === productId && price.serviceId === serviceId && price.status !== "inactive",
+      );
+      return priced ? formatSuggestedPrice(priced.suggestedPrice) : "";
+    },
+    [productPrices],
+  );
+
+  const laborTotal = useMemo(() => calculateServiceOrderLaborTotal(itemRows), [itemRows]);
+  const nextVersionNo = useMemo(
+    () =>
+      selectedOrder?.orderNo
+        ? previewNextLinkedServiceOrderNo(
+            selectedOrder.orderNo,
+            (details?.groupVersions ?? []).map((version) => version.orderNo),
+          )
+        : "",
+    [details?.groupVersions, selectedOrder?.orderNo],
+  );
+
+  const openCreateCustomerFromLookup = useCallback(
+    (query: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (query.trim()) {
+        params.set("prefillName", query.trim());
+      }
+      const targetPath = `/customers?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, "Cliente: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
   const loadDetails = useCallback(
     async (serviceOrderId: string) => {
       const requestId = latestDetailRequestId.current + 1;
@@ -226,9 +514,27 @@ export function ServiceOrdersWorkspace() {
           return;
         }
         setDetails(response);
+        if (response.maxPiecesPerBag) {
+          setMaxPiecesPerBag(response.maxPiecesPerBag);
+        }
         if (!showCreateForm) {
           setHeaderForm(mapDetailsToHeaderForm(response));
-          setItemRows(mapServiceOrderItemsToGridRows(response.items));
+          const mapped = mapServiceOrderItemsToGridRows(response.items);
+          setItemRows(mapped.length > 0 ? mapped : [createEmptyServiceOrderItemGridRow(1)]);
+        }
+        if (canReadFinance || canWriteFinance) {
+          try {
+            const summary = await apiJson<OsFinancialSummary>(`/service-orders/${serviceOrderId}/financial-summary`);
+            if (latestDetailRequestId.current === requestId) {
+              setPaymentSummary(summary);
+            }
+          } catch {
+            if (latestDetailRequestId.current === requestId) {
+              setPaymentSummary(null);
+            }
+          }
+        } else {
+          setPaymentSummary(null);
         }
         if (focusServiceOrderId !== serviceOrderId || workspaceMode === "new") {
           navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(serviceOrderId)}`);
@@ -239,7 +545,7 @@ export function ServiceOrdersWorkspace() {
           return;
         }
         setMessage(
-          formatWorkspaceMessage(error, "The Service Order details could not be loaded. Review your access and try again."),
+          formatWorkspaceMessage(error, "A OS não pôde ser carregada. Confira o acesso e tente de novo."),
         );
       } finally {
         if (latestDetailRequestId.current === requestId) {
@@ -247,7 +553,7 @@ export function ServiceOrdersWorkspace() {
         }
       }
     },
-    [apiJson, focusServiceOrderId, navigateWithinWorkspace, setHeaderForm, setItemRows, showCreateForm, workspaceMode],
+    [apiJson, canReadFinance, canWriteFinance, focusServiceOrderId, navigateWithinWorkspace, setHeaderForm, setItemRows, showCreateForm, workspaceMode],
   );
 
   const loadOrders = useCallback(
@@ -257,34 +563,33 @@ export function ServiceOrdersWorkspace() {
         return;
       }
       setLoading(true);
+      const binding = serviceOrderListLoadBinding(preferredActiveId);
       try {
         const response = await apiJson<ServiceOrderRecord[]>("/service-orders");
         setOrders(response);
-        const nextActiveId =
-          preferredActiveId !== undefined
-            ? preferredActiveId
-            : activeOrderId && response.some((order) => order.id === activeOrderId)
-              ? activeOrderId
-              : null;
-        setActiveOrderId(nextActiveId);
-        if (nextActiveId) {
-          await loadDetails(nextActiveId);
-        } else {
-          setDetails(null);
+        if (binding.bind) {
+          setActiveOrderId(binding.activeId);
+          if (binding.activeId) {
+            await loadDetails(binding.activeId);
+          } else {
+            setDetails(null);
+          }
         }
         setMessage(null);
       } catch (error) {
         setOrders([]);
-        setActiveOrderId(null);
-        setDetails(null);
+        if (binding.bind) {
+          setActiveOrderId(null);
+          setDetails(null);
+        }
         setMessage(
-          formatWorkspaceMessage(error, "Service Orders could not be loaded. Review filters, access, and branch context."),
+          formatWorkspaceMessage(error, "As OS não puderam ser carregadas. Confira filtros, acesso e a Filial do contexto."),
         );
       } finally {
         setLoading(false);
       }
     },
-    [activeOrderId, apiJson, canRead, loadDetails, setActiveOrderId],
+    [apiJson, canRead, loadDetails, setActiveOrderId],
   );
 
   const loadCustomers = useCallback(async () => {
@@ -301,7 +606,7 @@ export function ServiceOrdersWorkspace() {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "Customer lookup could not be loaded. Review access to Customers before creating a Service Order.",
+          "A busca de clientes não pôde ser carregada. Confira o acesso a Clientes antes de criar a OS.",
         ),
       );
     } finally {
@@ -309,12 +614,603 @@ export function ServiceOrdersWorkspace() {
     }
   }, [apiJson, canReadCustomers, canWrite]);
 
+  const loadUsers = useCallback(async () => {
+    if (!canReadUsers) {
+      setUsers(session?.user ? [{ id: session.user.id, displayName: session.user.displayName, email: session.user.email }] : []);
+      return;
+    }
+    try {
+      const response = await apiJson<ActorSummary[]>("/users");
+      setUsers(response);
+    } catch {
+      setUsers(session?.user ? [{ id: session.user.id, displayName: session.user.displayName, email: session.user.email }] : []);
+    }
+  }, [apiJson, canReadUsers, session?.user]);
+
+  const loadCatalogs = useCallback(async () => {
+    if (!canRead) {
+      setProducts([]);
+      setServices([]);
+      setProductPrices([]);
+      return;
+    }
+    try {
+      const [productResponse, serviceResponse, priceResponse] = await Promise.all([
+        apiJson<CatalogLookupRecord[]>("/garment-products"),
+        apiJson<CatalogLookupRecord[]>("/atelier-services"),
+        apiJson<ProductPriceRecord[]>("/product-services"),
+      ]);
+      setProducts(productResponse);
+      setServices(serviceResponse);
+      setProductPrices(priceResponse);
+    } catch {
+      setProducts([]);
+      setServices([]);
+      setProductPrices([]);
+    }
+  }, [apiJson, canRead]);
+
+  const loadBagSettings = useCallback(async () => {
+    if (!canRead) {
+      return;
+    }
+    try {
+      const settings = await apiJson<{ maxPiecesPerBag: number }>("/service-orders/settings");
+      if (settings.maxPiecesPerBag > 0) {
+        setMaxPiecesPerBag(settings.maxPiecesPerBag);
+      }
+    } catch {
+      /* o padrão da Conta continua valendo na grade */
+    }
+  }, [apiJson, canRead]);
+
+  const loadNextOrderNo = useCallback(async () => {
+    if (!canRead) {
+      return;
+    }
+    try {
+      const next = await apiJson<{ orderNo: string }>("/service-orders/next-number");
+      setPreviewOrderNo(next.orderNo);
+    } catch {
+      setPreviewOrderNo("—");
+    }
+  }, [apiJson, canRead]);
+
+  const openPay = useCallback(
+    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (!canReadFinance && !canWriteFinance) {
+        setMessage("O pagamento depende da permissão financeira.");
+        return;
+      }
+      try {
+        const summary = await apiJson<OsFinancialSummary>(`/service-orders/${order.id}/financial-summary`);
+        setPayTarget({ orderNo: order.orderNo, summary });
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O resumo financeiro não pôde ser carregado."));
+      }
+    },
+    [apiJson, canReadFinance, canWriteFinance],
+  );
+
+  const companyName = activeCompany?.displayName ?? "ANEXSYS";
+
+  const printServiceOrder = useCallback(
+    async (serviceOrderId: string) => {
+      try {
+        const view = await apiJson<OsPrintView>(`/service-orders/${serviceOrderId}/print-view`);
+        printServiceOrderDocument(view, companyName);
+        setMessage(`OS ${view.orderNo} enviada para impressão.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A OS não pôde ser impressa."));
+      }
+    },
+    [apiJson, companyName],
+  );
+
+  const printProductionOrder = useCallback(
+    async (serviceOrderId: string, reservedWindow?: Window | null) => {
+      let productionOrderId = "";
+      try {
+        const existing = await apiJson<{ productionOrder: { id: string } }>(`/service-orders/${serviceOrderId}/production-order`);
+        productionOrderId = existing.productionOrder.id;
+      } catch {
+        if (!canWriteProduction) {
+          throw new Error("Esta OS ainda não tem Ordem de Produção.");
+        }
+        const created = await apiJson<{ productionOrder: { id: string } }>(
+          `/service-orders/${serviceOrderId}/production-order/generate`,
+          { method: "POST" },
+        );
+        productionOrderId = created.productionOrder.id;
+      }
+      const view = await apiJson<OpPrintView>(`/production-orders/${productionOrderId}/print-view`);
+      let paymentCondition = osOpHeaderTerm({
+        returnKind: view.serviceOrder.returnKind,
+        paymentStatus: paymentSummary?.paymentStatus,
+      });
+      try {
+        const summary = await apiJson<OsFinancialSummary>(`/service-orders/${serviceOrderId}/financial-summary`);
+        paymentCondition = osOpHeaderTerm({
+          returnKind: view.serviceOrder.returnKind,
+          paymentStatus: summary.paymentStatus,
+        });
+        setPaymentSummary(summary);
+      } catch {
+        /* a OP sai mesmo se o financeiro não puder ser lido; parcial e em aberto = Pagar na retirada */
+      }
+      printProductionOrderDocument(view, companyName, reservedWindow, paymentCondition);
+      return view;
+    },
+    [apiJson, canWriteProduction, companyName, paymentSummary?.paymentStatus],
+  );
+
+  const resendWhatsApp = useCallback(
+    async (serviceOrderId: string) => {
+      try {
+        const view = await apiJson<OsPrintView>(`/service-orders/${serviceOrderId}/print-view`);
+        openWhatsAppResend(
+          view.customer.phone,
+          buildOsWhatsAppMessage({
+            customerName: view.customer.legalName,
+            companyName,
+            orderNo: view.orderNo,
+          }),
+        );
+        setMessage(`WhatsApp da OS ${view.orderNo} aberto para reenvio.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O WhatsApp não pôde ser aberto para reenvio."));
+      }
+    },
+    [apiJson, companyName],
+  );
+
+  const resendEmail = useCallback(
+    async (serviceOrderId: string) => {
+      try {
+        const view = await apiJson<OsPrintView>(`/service-orders/${serviceOrderId}/print-view`);
+        openEmailResend(
+          view.customer.email,
+          `Ordem de serviço ${view.orderNo}`,
+          buildOsWhatsAppMessage({
+            customerName: view.customer.legalName,
+            companyName,
+            orderNo: view.orderNo,
+          }),
+        );
+        setMessage(`E-mail da OS ${view.orderNo} aberto para reenvio.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O e-mail não pôde ser aberto para reenvio."));
+      }
+    },
+    [apiJson, companyName],
+  );
+
+  const openPickupPanel = useCallback(
+    (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (isListWorkspace) {
+        const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openPickup=1`;
+        if (isMobile) {
+          navigateWithinWorkspace(targetPath);
+        } else {
+          openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
+        }
+        return;
+      }
+      setPickupPickerOpen(true);
+    },
+    [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openApprovalPanel = useCallback(
+    (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      if (isListWorkspace) {
+        const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openApproval=1`;
+        if (isMobile) {
+          navigateWithinWorkspace(targetPath);
+        } else {
+          openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
+        }
+        return;
+      }
+      setApprovalPickerOpen(true);
+    },
+    [isListWorkspace, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openAnexoPanel = useCallback(
+    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">) => {
+      setMessage(null);
+      setAnexoViewer({
+        orderNo: order.orderNo,
+        approval: null,
+        approvalPhoto: null,
+        pickup: null,
+        pickupPhoto: null,
+        loading: true,
+      });
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}`);
+        const [approvalFile, pickupFile] = await Promise.all([
+          next.approval?.photoAvailable
+            ? apiJson<{ mimeType: string; contentBase64: string } | null>(`/service-orders/${order.id}/approval/photo`)
+            : Promise.resolve(null),
+          next.pickup?.photoAvailable
+            ? apiJson<{ mimeType: string; contentBase64: string } | null>(`/service-orders/${order.id}/pickup/photo`)
+            : Promise.resolve(null),
+        ]);
+        setAnexoViewer({
+          orderNo: next.serviceOrder.orderNo,
+          approval: next.approval ?? null,
+          approvalPhoto: photoSrc(approvalFile),
+          pickup: next.pickup ?? null,
+          pickupPhoto: photoSrc(pickupFile),
+          loading: false,
+        });
+      } catch (error) {
+        setAnexoViewer(null);
+        setMessage(formatWorkspaceMessage(error, "Os anexos não puderam ser abertos."));
+      }
+    },
+    [apiJson],
+  );
+
+  const copyPublicLink = useCallback(async () => {
+    const token = selectedOrder?.publicToken;
+    if (!token) {
+      setMessage("Esta OS ainda não tem o link do cliente. Salve de novo depois de atualizar o sistema.");
+      return;
+    }
+    const url = `${window.location.origin}/os/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setMessage(`Link copiado para colar no WhatsApp Web: ${url}`);
+    } catch {
+      setMessage(url);
+    }
+  }, [selectedOrder?.publicToken]);
+
+  const handleRecalculateDelivery = useCallback(async () => {
+    if (!canWrite) {
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      if (showCreateForm) {
+        if (!session?.activeBranchId) {
+          throw new Error("Selecione a Filial para recalcular o prazo.");
+        }
+        const params = new URLSearchParams({
+          branchId: session.activeBranchId,
+          deliveryType: headerForm.deliveryType,
+          itemCount: String(visibleItemRows.length || 1),
+        });
+        const suggestion = await apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
+          `/service-orders/delivery-preview?${params.toString()}`,
+        );
+        setHeaderForm((current) => ({
+          ...current,
+          promisedDeliveryDate: suggestion.promisedDeliveryDate,
+          promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
+        }));
+        setMessage(
+          `Previsão sugerida: ${formatDate(suggestion.promisedDeliveryDate)} ${toTimeInput(suggestion.promisedDeliveryTime)}. Você pode ajustar.`,
+        );
+        return;
+      }
+      if (!selectedOrder) {
+        return;
+      }
+      const saved = await apiJson<{ orderNo: string; promisedDeliveryDate: string; promisedDeliveryTime?: string | null }>(
+        `/service-orders/${selectedOrder.id}/delivery-date/recalculate`,
+        { method: "POST" },
+      );
+      setHeaderForm((current) => ({
+        ...current,
+        promisedDeliveryDate: toDateInput(saved.promisedDeliveryDate),
+        promisedDeliveryTime: toTimeInput(saved.promisedDeliveryTime),
+      }));
+      await loadOrders(isListWorkspace ? undefined : selectedOrder.id);
+      setMessage(
+        `Previsão da OS ${saved.orderNo} recalculada para ${formatDate(saved.promisedDeliveryDate)} ${toTimeInput(saved.promisedDeliveryTime)}. Você pode ajustar.`,
+      );
+    } catch (error) {
+      setMessage(formatWorkspaceMessage(error, "O prazo não pôde ser recalculado."));
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    apiJson,
+    canWrite,
+    headerForm.deliveryType,
+    isListWorkspace,
+    loadOrders,
+    selectedOrder,
+    session?.activeBranchId,
+    showCreateForm,
+    visibleItemRows.length,
+  ]);
+
+  const handleStartPickup = useCallback(async () => {
+    if (!canWrite || !selectedOrder) {
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/pickup/start`, {
+        method: "POST",
+      });
+      await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+      setPickupPickerOpen(true);
+      setMessage(
+        `Janela de retirada aberta na OS ${next.serviceOrder.orderNo}. O Recebi no link do cliente fica pronto; o envio por WhatsApp entra depois.`,
+      );
+    } catch (error) {
+      setMessage(formatWorkspaceMessage(error, "A retirada não pôde ser iniciada."));
+    } finally {
+      setSaving(false);
+    }
+  }, [apiJson, canWrite, isListWorkspace, loadOrders, selectedOrder]);
+
+  const handleCompletePickup = useCallback(
+    async (input: {
+      method: "paper" | "attendant";
+      photo?: { mimeType: string; contentBase64: string; fileName: string } | null;
+    }) => {
+      if (!canWrite || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const delivered = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/pickup/complete`, {
+          method: "POST",
+          body: JSON.stringify(input),
+        });
+        setPickupPickerOpen(false);
+        await loadOrders(isListWorkspace ? undefined : delivered.serviceOrder.id);
+        const method = pickupMethodLabel(delivered.pickup?.method) ?? "atendente";
+        const partial = delivered.serviceOrder.status === "ready_for_pickup" || delivered.pickup?.partial;
+        setMessage(
+          partial
+            ? `Retirada parcial da OS ${delivered.serviceOrder.orderNo}. A mãe não fica Retirado enquanto a refação no balcão estiver aberta.`
+            : `OS ${delivered.serviceOrder.orderNo} retirada (${method}). Use Cliente voltou se o cliente reclamar depois.`,
+        );
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A OS não pôde ser entregue."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, isListWorkspace, loadOrders, selectedOrder],
+  );
+
+  const handleCompleteApproval = useCallback(
+    async (input: {
+      method: "counter" | "paper" | "release";
+      photo?: { mimeType: string; contentBase64: string; fileName: string } | null;
+      releaseReason?: string;
+    }) => {
+      if (!canWrite || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/approval`, {
+          method: "POST",
+          body: JSON.stringify(input),
+        });
+        setApprovalPickerOpen(false);
+        await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+        if (next.approval?.releasedWithoutSignature) {
+          setMessage(
+            `Produção da OS ${next.serviceOrder.orderNo} liberada sem assinatura. A OS continua Em aberto.`,
+          );
+          return;
+        }
+        const method = approvalMethodLabel(next.approval?.method) ?? "balcão";
+        setMessage(
+          `OS ${next.serviceOrder.orderNo} assinada (${method}). A OS continua Em aberto e a medida ficou travada.`,
+        );
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A aprovação não pôde ser registrada."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, isListWorkspace, loadOrders, selectedOrder],
+  );
+
+  const handleProofAction = useCallback(
+    async (order: Pick<ServiceOrderRecord, "id" | "orderNo">, action: ProofAction) => {
+      if (!canWriteProof) {
+        return;
+      }
+      if (action === "complete_proof") {
+        if (isListWorkspace) {
+          const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}&openProof=1`;
+          if (isMobile) {
+            navigateWithinWorkspace(targetPath);
+          } else {
+            openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, { cloneCurrent: false });
+          }
+          return;
+        }
+        setProofPickerOpen(true);
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${order.id}/send-to-proof`, {
+          method: "POST",
+        });
+        await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+        setMessage(proofActionSuccessMessage(action, next.serviceOrder.orderNo));
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A prova desta OS não pôde ser atualizada."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWriteProof, isListWorkspace, isMobile, loadOrders, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const handleCompleteProof = useCallback(
+    async (notes: Array<{ itemId: string; note: string }>) => {
+      if (!canWriteProof || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/complete-proof`, {
+          method: "POST",
+          body: JSON.stringify({ notes }),
+        });
+        setProofPickerOpen(false);
+        await loadOrders(isListWorkspace ? undefined : next.serviceOrder.id);
+        if (next.reprintProof) {
+          try {
+            await printProductionOrder(next.serviceOrder.id);
+            setMessage(proofNotesReprintMessage(next.serviceOrder.orderNo));
+          } catch (error) {
+            setMessage(
+              formatWorkspaceMessage(error, "A OS voltou para produção, mas a OP não pôde ser reimpressa."),
+            );
+          }
+        } else {
+          setMessage(proofActionSuccessMessage("complete_proof", next.serviceOrder.orderNo));
+        }
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A prova desta OS não pôde ser atualizada."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWriteProof, isListWorkspace, loadOrders, printProductionOrder, selectedOrder],
+  );
+
+  const buildOsRowMenu = useCallback(
+    (row: Pick<ServiceOrderRecord, "id" | "orderNo" | "status" | "bagClosed">): RowMenuItem[] => [
+      ...(canSendToProof(row.status, Boolean(row.bagClosed)) && canWriteProof
+        ? [
+            {
+              id: "send-to-proof",
+              label: proofActionLabel("send_to_proof"),
+              onSelect: () => {
+                void handleProofAction(row, "send_to_proof");
+              },
+            },
+          ]
+        : []),
+      ...(canActOnProof(row.status) && canWriteProof
+        ? [
+            {
+              id: "complete-proof",
+              label: proofActionLabel("complete_proof"),
+              onSelect: () => {
+                void handleProofAction(row, "complete_proof");
+              },
+            },
+          ]
+        : []),
+      ...(canRecordOsApproval(row.status) && canWrite
+        ? [
+            {
+              id: "approval",
+              label: "Aprovação",
+              onSelect: () => {
+                openApprovalPanel(row);
+              },
+            },
+          ]
+        : []),
+      ...(row.status === "ready_for_pickup" && canWrite
+        ? [
+            {
+              id: "deliver",
+              label: "Retirada",
+              onSelect: () => {
+                openPickupPanel(row);
+              },
+            },
+          ]
+        : []),
+      {
+        id: "print",
+        label: "Imprimir",
+        children: [
+          {
+            id: "print-os",
+            label: "Ordem de serviço",
+            onSelect: () => {
+              void printServiceOrder(row.id);
+            },
+          },
+          {
+            id: "print-op",
+            label: "Ordem de produção",
+            disabled: !canReadProduction && !canWriteProduction,
+            onSelect: () => {
+              void printProductionOrder(row.id)
+                .then((view) => {
+                  setMessage(`Ordem de produção ${view.productionNo} enviada para impressão.`);
+                })
+                .catch((error) => {
+                  setMessage(formatWorkspaceMessage(error, "A Ordem de Produção não pôde ser impressa."));
+                });
+            },
+          },
+        ],
+      },
+      {
+        id: "resend",
+        label: "Reenviar",
+        children: [
+          {
+            id: "whatsapp",
+            label: "Por WhatsApp",
+            onSelect: () => {
+              void resendWhatsApp(row.id);
+            },
+          },
+          {
+            id: "email",
+            label: "Por e-mail",
+            onSelect: () => {
+              void resendEmail(row.id);
+            },
+          },
+        ],
+      },
+    ],
+    [
+      canReadProduction,
+      canWrite,
+      canWriteProduction,
+      canWriteProof,
+      handleProofAction,
+      openApprovalPanel,
+      openPickupPanel,
+      printProductionOrder,
+      printServiceOrder,
+      resendEmail,
+      resendWhatsApp,
+    ],
+  );
+
   useEffect(() => {
+    if (!isListWorkspace) {
+      return;
+    }
     const timeoutId = window.setTimeout(() => {
       void loadOrders();
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [loadOrders, session?.activeBranchId, session?.tenantId]);
+  }, [isListWorkspace, loadOrders, session?.activeBranchId, session?.tenantId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -322,6 +1218,64 @@ export function ServiceOrdersWorkspace() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadCustomers, session?.tenantId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadUsers();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadUsers, session?.tenantId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadCatalogs();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadCatalogs, session?.tenantId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadBagSettings();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadBagSettings, session?.tenantId]);
+
+  useEffect(() => {
+    if (!headerForm.attendantId && session?.user?.id) {
+      setHeaderForm((current) => ({ ...current, attendantId: session.user?.id ?? current.attendantId }));
+    }
+  }, [headerForm.attendantId, session?.user?.id, setHeaderForm]);
+
+  useEffect(() => {
+    if (!canRead || !session?.activeBranchId) {
+      return;
+    }
+    if (!showCreateForm) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({
+            branchId: session.activeBranchId ?? "",
+            deliveryType: headerForm.deliveryType,
+            itemCount: String(visibleItemRows.length || 1),
+          });
+          const suggestion = await apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
+            `/service-orders/delivery-preview?${params.toString()}`,
+          );
+          setHeaderForm((current) => ({
+            ...current,
+            promisedDeliveryDate: suggestion.promisedDeliveryDate,
+            promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime) || current.promisedDeliveryTime,
+          }));
+        } catch {
+          /* a atendente ainda pode preencher a saída na mão */
+        }
+      })();
+    }, 200);
+    return () => window.clearTimeout(timeoutId);
+  }, [apiJson, canRead, headerForm.deliveryType, session?.activeBranchId, setHeaderForm, showCreateForm, visibleItemRows.length]);
 
   useEffect(() => {
     if (!focusServiceOrderId || focusServiceOrderId === activeOrderId || showCreateForm) {
@@ -337,6 +1291,103 @@ export function ServiceOrdersWorkspace() {
   }, [activeOrderId, focusServiceOrderId, loadDetails, setActiveOrderId, showCreateForm]);
 
   useEffect(() => {
+    if (!openProof || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
+      return;
+    }
+    if (!canActOnProof(details.serviceOrder.status)) {
+      return;
+    }
+    setProofPickerOpen(true);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
+  }, [details, focusServiceOrderId, navigateWithinWorkspace, openProof]);
+
+  useEffect(() => {
+    if (!openPickup || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
+      return;
+    }
+    if (details.serviceOrder.status !== "ready_for_pickup") {
+      return;
+    }
+    setPickupPickerOpen(true);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
+  }, [details, focusServiceOrderId, navigateWithinWorkspace, openPickup]);
+
+  useEffect(() => {
+    if (!openApproval || !focusServiceOrderId || !details || details.serviceOrder.id !== focusServiceOrderId) {
+      return;
+    }
+    if (!canRecordOsApproval(details.serviceOrder.status)) {
+      return;
+    }
+    setApprovalPickerOpen(true);
+    navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(focusServiceOrderId)}`);
+  }, [details, focusServiceOrderId, navigateWithinWorkspace, openApproval]);
+
+  useEffect(() => {
+    if (!details?.pickup?.photoAvailable || !details.serviceOrder.id) {
+      setPickupPhoto(null);
+      return;
+    }
+    let cancelled = false;
+    void apiJson<{ mimeType: string; contentBase64: string } | null>(
+      `/service-orders/${details.serviceOrder.id}/pickup/photo`,
+    )
+      .then((photo) => {
+        if (!cancelled && photo?.contentBase64) {
+          setPickupPhoto(`data:${photo.mimeType};base64,${photo.contentBase64}`);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPickupPhoto(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiJson, details?.pickup?.photoAvailable, details?.serviceOrder.id]);
+
+  useEffect(() => {
+    if (!details?.approval?.photoAvailable || !details.serviceOrder.id) {
+      setApprovalPhoto(null);
+      return;
+    }
+    let cancelled = false;
+    void apiJson<{ mimeType: string; contentBase64: string } | null>(
+      `/service-orders/${details.serviceOrder.id}/approval/photo`,
+    )
+      .then((photo) => {
+        if (!cancelled && photo?.contentBase64) {
+          setApprovalPhoto(`data:${photo.mimeType};base64,${photo.contentBase64}`);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setApprovalPhoto(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiJson, details?.approval?.photoAvailable, details?.serviceOrder.id]);
+
+  useEffect(() => {
+    if (!anexoViewer && !payTarget) {
+      return;
+    }
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAnexoViewer(null);
+        if (isListWorkspace) {
+          setPayTarget(null);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [anexoViewer, isListWorkspace, payTarget]);
+
+  useEffect(() => {
     if (!isListWorkspace) {
       return;
     }
@@ -344,16 +1395,19 @@ export function ServiceOrdersWorkspace() {
     setShowCreateForm(false);
     setActiveOrderId(null);
     setDetails(null);
+    setPaymentSummary(null);
   }, [isListWorkspace, setActiveOrderId, setShowCreateForm]);
 
   const openCreateForm = useCallback(() => {
     setShowCreateForm(true);
     setDetails(null);
     setActiveOrderId(null);
-    setHeaderForm(createEmptyHeaderForm());
+    setPaymentSummary(null);
+    setHeaderForm(createEmptyHeaderForm(session?.user?.id ?? ""));
     setItemRows([createEmptyServiceOrderItemGridRow(1)]);
     setMessage(null);
-  }, [setActiveOrderId, setHeaderForm, setItemRows, setShowCreateForm]);
+    void loadNextOrderNo();
+  }, [loadNextOrderNo, session?.user?.id, setActiveOrderId, setHeaderForm, setItemRows, setShowCreateForm]);
 
   const openCreateWorkspace = useCallback(() => {
     const targetPath = "/service-orders?workspaceMode=new";
@@ -362,26 +1416,96 @@ export function ServiceOrdersWorkspace() {
       return;
     }
 
-    openWorkspaceInNewTab(targetPath, "OS: New", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    openWorkspaceInNewTab(targetPath, "OS: Nova", { cloneCurrent: false, subtitle: "Novo cadastro" });
   }, [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab]);
 
   const openServiceOrderWorkspace = useCallback(
-    (order: ServiceOrderRecord) => {
-      const targetPath = `/service-orders?focusServiceOrderId=${encodeURIComponent(order.id)}`;
+    (order: { id: string; orderNo: string; deliveryType?: string }, extras?: { openProof?: boolean }) => {
+      const params = new URLSearchParams({ focusServiceOrderId: order.id });
+      if (extras?.openProof) {
+        params.set("openProof", "1");
+      }
+      const targetPath = `/service-orders?${params.toString()}`;
       if (isMobile) {
         navigateWithinWorkspace(targetPath);
         return;
       }
 
-      openWorkspaceInNewTab(targetPath, `OS #${order.orderNo}`, {
+      openWorkspaceInNewTab(targetPath, `OS ${order.orderNo}`, {
         cloneCurrent: false,
-        subtitle: order.deliveryType,
+        subtitle: order.deliveryType ? osDeliveryTypeLabel(order.deliveryType) : null,
       });
     },
     [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
   );
 
+  const handleClientReturn = useCallback(
+    async (itemIds: string[]) => {
+      if (!canWrite || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/client-return`, {
+          method: "POST",
+          body: JSON.stringify({ itemIds }),
+        });
+        setReturnPickerOpen(false);
+        openServiceOrderWorkspace(next.serviceOrder);
+        await loadOrders(selectedOrder.id);
+        const term = osReturnKindLabel(next.serviceOrder.returnKind) ?? "retorno";
+        setMessage(`OS ${next.serviceOrder.orderNo} aberta como ${term}. Feche a sacola e salve para imprimir a OP.`);
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "O retorno do cliente não pôde ser aberto."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, loadOrders, openServiceOrderWorkspace, selectedOrder],
+  );
+
+  const handleCounterRework = useCallback(
+    async (itemIds: string[], reason?: string) => {
+      if (!canWrite || !selectedOrder) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const next = await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/counter-rework`, {
+          method: "POST",
+          body: JSON.stringify({ itemIds, reason }),
+        });
+        setCounterPickerOpen(false);
+        openServiceOrderWorkspace(next.serviceOrder);
+        await loadOrders(selectedOrder.id);
+        setMessage(
+          `OS ${next.serviceOrder.orderNo} aberta como Refação no balcão. A mãe permanece parcial, sem Pagar, até quitar esta OS.`,
+        );
+      } catch (error) {
+        setMessage(formatWorkspaceMessage(error, "A refação no balcão não pôde ser aberta."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, canWrite, loadOrders, openServiceOrderWorkspace, selectedOrder],
+  );
+
   const closeServiceOrderWorkspace = useCallback(() => {
+    const discardEmptyLinkedVersion = () => {
+      if (
+        canWrite &&
+        selectedOrder &&
+        (details?.items.length ?? 0) === 0 &&
+        (details?.groupVersions?.length ?? 0) > 1
+      ) {
+        void apiJson(`/service-orders/${selectedOrder.id}/cancel`, { method: "POST" }).catch(() => undefined);
+      }
+    };
+
+    discardEmptyLinkedVersion();
+
     if (!currentTabId || isMobile) {
       setShowCreateForm(false);
       setActiveOrderId(null);
@@ -391,11 +1515,24 @@ export function ServiceOrdersWorkspace() {
     }
 
     const closingTabId = currentTabId;
-    openWorkspaceInNewTab("/service-orders", "Service Orders", { cloneCurrent: false });
+    openWorkspaceInNewTab("/service-orders", "Ordens de serviço", { cloneCurrent: false });
     window.setTimeout(() => {
       closeWorkspace(closingTabId);
     }, 0);
-  }, [closeWorkspace, currentTabId, isMobile, navigateWithinWorkspace, openWorkspaceInNewTab, setActiveOrderId, setShowCreateForm]);
+  }, [
+    apiJson,
+    canWrite,
+    closeWorkspace,
+    currentTabId,
+    details?.groupVersions?.length,
+    details?.items.length,
+    isMobile,
+    navigateWithinWorkspace,
+    openWorkspaceInNewTab,
+    selectedOrder,
+    setActiveOrderId,
+    setShowCreateForm,
+  ]);
 
   useEffect(() => {
     if (workspaceMode !== "new") {
@@ -411,50 +1548,55 @@ export function ServiceOrdersWorkspace() {
 
   function validateItems(requireAtLeastOneItem: boolean) {
     if (requireAtLeastOneItem && visibleItemRows.length === 0) {
-      return "Add at least one item before saving the Service Order.";
+      return "Inclua pelo menos uma peça antes de salvar a OS.";
+    }
+
+    if (visibleItemRows.length > maxPiecesPerBag) {
+      return `Esta versão da OS aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`;
     }
 
     for (const row of visibleItemRows) {
       if (!row.itemType.trim() || !row.description.trim()) {
-        return "Each item must include Product and Service / Notes before saving.";
+        return "Cada peça precisa de produto e serviço antes de salvar.";
       }
-      const quantity = Number(row.quantity);
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        return "Each item quantity must be greater than zero.";
+      if (!row.brand.trim()) {
+        return "Cada peça precisa da marca.";
+      }
+      if (Number(row.quantity) !== 1) {
+        return "Cada linha é uma peça. A quantidade fica em 1.";
       }
     }
 
     return null;
   }
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!canWrite) return;
-
-    if (!canPersistInContext || !session?.activeBranchId) {
-      setMessage("Select the active Branch in the header before saving the Service Order.");
-      return;
-    }
-    if (!headerForm.customerId) {
-      setMessage("Select the customer before saving the Service Order.");
-      return;
+  async function persistCurrentServiceOrder(requireAtLeastOneItem: boolean) {
+    if (!canWrite) {
+      throw new Error("Você não tem permissão para gravar a OS.");
     }
 
-    const itemValidation = validateItems(true);
-    if (itemValidation) {
-      setMessage(itemValidation);
-      return;
-    }
+    if (showCreateForm) {
+      if (!canPersistInContext || !session?.activeBranchId) {
+        throw new Error("Escolha a Filial no contexto antes de salvar a OS.");
+      }
+      if (!headerForm.customerId) {
+        throw new Error("Escolha o cliente antes de salvar a OS.");
+      }
 
-    setSaving(true);
-    setMessage(null);
-    try {
+      const itemValidation = validateItems(requireAtLeastOneItem);
+      if (itemValidation) {
+        throw new Error(itemValidation);
+      }
+
       const created = await apiJson<CreateServiceOrderResponse>("/service-orders", {
         method: "POST",
         body: JSON.stringify({
           branchId: session.activeBranchId,
           customerId: headerForm.customerId,
           deliveryType: headerForm.deliveryType,
+          promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
+          promisedDeliveryTime: toTimeInput(headerForm.promisedDeliveryTime) || undefined,
+          commercialResponsibleActorId: headerForm.attendantId || session?.user?.id || undefined,
           operationalPriority: headerForm.operationalPriority || undefined,
           commercialNotes: headerForm.commercialNotes || undefined,
           customerNotes: headerForm.customerNotes || undefined,
@@ -464,14 +1606,91 @@ export function ServiceOrdersWorkspace() {
       const createdId = created.serviceOrder.id;
       setShowCreateForm(false);
       setActiveOrderId(createdId);
-      await loadOrders(createdId);
-      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(createdId)}`);
-      setMessage("Service Order saved. The header and item grid were persisted, the grid was refreshed, and the new record is already selected.");
+      return { id: createdId, orderNo: created.serviceOrder.orderNo };
+    }
+
+    if (!selectedOrder || !canEditSelectedOrder) {
+      throw new Error("Esta OS não pode ser alterada.");
+    }
+    if (!headerForm.customerId) {
+      throw new Error("Escolha o cliente antes de atualizar a OS.");
+    }
+
+    const itemValidation = validateItems(requireAtLeastOneItem);
+    if (itemValidation) {
+      throw new Error(itemValidation);
+    }
+
+    await apiJson<ServiceOrderRecord>(`/service-orders/${selectedOrder.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        customerId: headerForm.customerId,
+        deliveryType: headerForm.deliveryType,
+        promisedDeliveryDate: headerForm.promisedDeliveryDate || undefined,
+        promisedDeliveryTime: toTimeInput(headerForm.promisedDeliveryTime) || undefined,
+        commercialResponsibleActorId: headerForm.attendantId || undefined,
+        operationalPriority: headerForm.operationalPriority || undefined,
+        commercialNotes: headerForm.commercialNotes || null,
+        customerNotes: headerForm.customerNotes || null,
+      }),
+    });
+
+    const plan = buildServiceOrderItemMutationPlan(itemRows, details?.items ?? []);
+
+    for (const item of plan.update) {
+      await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          itemType: item.itemType,
+          productId: item.productId,
+          serviceId: item.serviceId,
+          description: item.description,
+          complement: item.complement,
+          brand: item.brand,
+          model: item.model,
+          serialNo: item.serialNo,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discountValue: item.discountValue,
+        }),
+      });
+    }
+
+    for (const item of plan.remove) {
+      await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: item.status }),
+      });
+    }
+
+    for (const item of plan.create) {
+      await apiJson(`/service-orders/${selectedOrder.id}/items`, {
+        method: "POST",
+        body: JSON.stringify(item),
+      });
+    }
+
+    return { id: selectedOrder.id, orderNo: selectedOrder.orderNo };
+  }
+
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (bagClosed) {
+      await handleClosedBagSave();
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      const persisted = await persistCurrentServiceOrder(true);
+      await loadOrders(persisted.id);
+      navigateWithinWorkspace(`/service-orders?focusServiceOrderId=${encodeURIComponent(persisted.id)}`);
+      setMessage("OS salva como rascunho. A sacola ainda está aberta e a OP ainda não foi gerada.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "The Service Order could not be saved. Review the active context, customer, and item grid, then try again.",
+          "A OS não pôde ser salva. Confira o contexto ativo, o cliente e as peças, e tente de novo.",
         ),
       );
     } finally {
@@ -481,69 +1700,21 @@ export function ServiceOrdersWorkspace() {
 
   async function handleUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedOrder || !canEditSelectedOrder) return;
-
-    if (!headerForm.customerId) {
-      setMessage("Select the customer before updating the Service Order.");
+    if (bagClosed) {
+      await handleClosedBagSave();
       return;
     }
-
-    const itemValidation = validateItems(false);
-    if (itemValidation) {
-      setMessage(itemValidation);
-      return;
-    }
-
     setSaving(true);
     setMessage(null);
     try {
-      await apiJson<ServiceOrderRecord>(`/service-orders/${selectedOrder.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          customerId: headerForm.customerId,
-          deliveryType: headerForm.deliveryType,
-          operationalPriority: headerForm.operationalPriority || undefined,
-          commercialNotes: headerForm.commercialNotes || null,
-          customerNotes: headerForm.customerNotes || null,
-        }),
-      });
-
-      const plan = buildServiceOrderItemMutationPlan(itemRows, details?.items ?? []);
-
-      for (const item of plan.update) {
-        await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            itemType: item.itemType,
-            description: item.description,
-            quantity: item.quantity,
-          }),
-        });
-      }
-
-      for (const item of plan.remove) {
-        await apiJson(`/service-orders/${selectedOrder.id}/items/${item.itemId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ status: item.status }),
-        });
-      }
-
-      for (const item of plan.create) {
-        await apiJson(`/service-orders/${selectedOrder.id}/items`, {
-          method: "POST",
-          body: JSON.stringify(item),
-        });
-      }
-
-      await loadOrders(selectedOrder.id);
-      setMessage(
-        `Service Order updated. Header synchronized and item grid applied with ${plan.create.length} addition(s), ${plan.update.length} edit(s), and ${plan.remove.length} removal(s).`,
-      );
+      const persisted = await persistCurrentServiceOrder(false);
+      await loadOrders(persisted.id);
+      setMessage("OS atualizada como rascunho. A sacola ainda está aberta e a OP ainda não foi gerada.");
     } catch (error) {
       setMessage(
         formatWorkspaceMessage(
           error,
-          "The Service Order could not be updated. Review the header data and item grid, then try again.",
+          "A OS não pôde ser atualizada. Confira o cabeçalho e as peças, e tente de novo.",
         ),
       );
     } finally {
@@ -551,359 +1722,1003 @@ export function ServiceOrdersWorkspace() {
     }
   }
 
+  async function persistAndCloseBag() {
+    const persisted = await persistCurrentServiceOrder(true);
+    const closed = await apiJson<ServiceOrderDetail>(`/service-orders/${persisted.id}/close-bag`, {
+      method: "POST",
+    });
+    return closed;
+  }
+
+  async function openNextVersionInNewTab(sourceServiceOrderId: string) {
+    const next = await apiJson<ServiceOrderDetail>(`/service-orders/${sourceServiceOrderId}/next-version`, {
+      method: "POST",
+    });
+    openServiceOrderWorkspace(next.serviceOrder);
+    return next;
+  }
+
+  async function commitClosedBag(serviceOrder: ServiceOrderRecord, reservedWindow?: Window | null) {
+    const result = await runClosedBagCommit({
+      wantsNextVersion,
+      spawnNext: () => openNextVersionInNewTab(serviceOrder.id),
+      print: () => printProductionOrder(serviceOrder.id, reservedWindow),
+    });
+    if (result.next) {
+      setWantsNextVersion(false);
+    }
+    return {
+      printed: result.printed,
+      nextOrderNo: result.next?.serviceOrder.orderNo ?? null,
+      printError: result.printError,
+    };
+  }
+
+  async function handleCloseBag() {
+    if (!canWrite) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const closed = await persistAndCloseBag();
+      setWantsNextVersion(false);
+      await loadOrders(closed.serviceOrder.id);
+      setMessage(
+        "Sacola fechada. Esta versão ficou travada. Se errou, use Abrir sacola. Para imprimir a OP, clique em Salvar. Se ainda houver peças, marque Abrir nova versão e depois Salvar.",
+      );
+    } catch (error) {
+      setMessage(
+        formatWorkspaceMessage(
+          error,
+          "A sacola não pôde ser fechada. Confira as peças, grave de novo e tente fechar outra vez.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleOpenBag() {
+    if (!canReopenSelectedBag || !selectedOrder?.bagClosed) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      await apiJson<ServiceOrderDetail>(`/service-orders/${selectedOrder.id}/open-bag`, {
+        method: "POST",
+      });
+      setWantsNextVersion(false);
+      await loadOrders(selectedOrder.id);
+      setMessage("Sacola reaberta. Você pode corrigir as peças ou incluir a que o cliente pediu.");
+    } catch (error) {
+      setMessage(
+        formatWorkspaceMessage(
+          error,
+          "A sacola não pôde ser reaberta. Tente de novo.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleClosedBagSave() {
+    if (!canWrite || !selectedOrder?.bagClosed) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    const reservedPrintWindow = reservePrintWindow();
+    try {
+      const result = await commitClosedBag(selectedOrder, reservedPrintWindow);
+      await loadOrders(selectedOrder.id);
+      if (result.nextOrderNo && result.printError) {
+        reservedPrintWindow?.close();
+        setMessage(
+          `A versão ${result.nextOrderNo} abriu em outra aba, já editável. A impressão da OP foi bloqueada pelo navegador. Permita pop-ups e reimprima pelo menu ⋮.`,
+        );
+        return;
+      }
+      setMessage(
+        result.nextOrderNo
+          ? `OP ${result.printed?.productionNo} da ${selectedOrder.orderNo} enviada para impressão. A versão ${result.nextOrderNo} abriu em outra aba, já editável.`
+          : `OP ${result.printed?.productionNo} da ${selectedOrder.orderNo} enviada para impressão e já pode ir no bolso transparente.`,
+      );
+    } catch (error) {
+      reservedPrintWindow?.close();
+      setMessage(
+        formatWorkspaceMessage(
+          error,
+          "A Ordem de Produção não pôde ser impressa. Confira a sacola e tente salvar de novo.",
+        ),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const canMutateItems = showCreateForm || canEditSelectedOrder;
+
+  function focusItemRow(localId: string) {
+    window.requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(`[data-os-item-row="${localId}"]`);
+      row?.querySelector<HTMLInputElement>("input:not([disabled])")?.focus();
+    });
+  }
+
+  function addPieceRow() {
+    if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
+      setMessage(
+        `Esta versão aceita no máximo ${maxPiecesPerBag} peças. Feche a sacola para abrir a próxima versão.`,
+      );
+      return false;
+    }
+    const nextItemNo = itemRows.reduce((maxItemNo, row) => Math.max(maxItemNo, row.itemNo), 0) + 1;
+    setItemRows((current) => addServiceOrderItemGridRow(current, maxPiecesPerBag));
+    focusItemRow(`draft-${nextItemNo}`);
+    return true;
+  }
+
+  function handleDiscountTab(event: KeyboardEvent<HTMLInputElement>, localId: string) {
+    if (event.key !== "Tab" || event.shiftKey) {
+      return;
+    }
+    const lastVisible = visibleItemRows[visibleItemRows.length - 1];
+    if (lastVisible?.localId !== localId) {
+      return;
+    }
+    if (!canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)) {
+      return;
+    }
+    event.preventDefault();
+    addPieceRow();
+  }
+
   if (!canRead) {
     return (
       <section className="mini-card">
-        <h3>Service Orders indisponíveis</h3>
-        <p>Você não possui acesso à área operacional de Service Orders no contexto atual.</p>
+        <h3>Ordens de serviço indisponíveis</h3>
+        <p>Você não possui acesso às OS no contexto atual.</p>
       </section>
     );
   }
 
   return (
     <>
-      <section className="hero-card">
-        <div className="eyebrow">Operações</div>
-        <h1 className="title">Service Orders</h1>
-        <p>Estrutura operacional com contexto herdado de Company/Branch, Order Header e editable Items Grid no mesmo fluxo ANEXSYS.</p>
-      </section>
-
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
+      {!isListWorkspace && !showCreateForm && !selectedOrder && !detailLoading ? (
+        <section className="hero-card">
+          <div className="eyebrow">Operações</div>
+          <h1 className="title">Ordem de serviço</h1>
+          <p>A Empresa e a Filial vêm do contexto ativo. Abra uma OS na grade ou clique em Nova OS.</p>
         </section>
       ) : null}
 
-      <section className="workspace-split">
-        {isListWorkspace ? (
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Operational grid</h3>
-                <p>{loading ? "Loading…" : `${filteredOrders.length} Service Order(s) visible`}</p>
-              </div>
-              {canWrite ? (
-                <button className="button" onClick={openCreateWorkspace} type="button">
-                  Add
-                </button>
-              ) : null}
-            </div>
+      {message ? <WorkspaceFlash message={message} /> : null}
 
-            <div className="filters-grid">
-              <label className="field">
-                <span>Search</span>
-                <input placeholder="Number, status or priority" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>Status</span>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="">All</option>
-                  <option value="open">Open</option>
-                  <option value="approved">Approved</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </label>
-            </div>
+      {anexoViewer ? (
+        <div aria-labelledby="os-anexo-title" aria-modal="true" className="os-anexo-lightbox" role="dialog">
+          <button
+            aria-label="Fechar anexos"
+            className="os-anexo-lightbox__backdrop"
+            onClick={() => setAnexoViewer(null)}
+            type="button"
+          />
+          <div className="os-anexo-lightbox__card">
+            <OsAttachmentsPanel
+              orderNo={anexoViewer.orderNo}
+              approval={anexoViewer.approval}
+              approvalPhoto={anexoViewer.approvalPhoto}
+              pickup={anexoViewer.pickup}
+              pickupPhoto={anexoViewer.pickupPhoto}
+              loading={anexoViewer.loading}
+              onClose={() => setAnexoViewer(null)}
+            />
+          </div>
+        </div>
+      ) : null}
 
-            <div className="data-table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Service Order</th>
-                    <th>Delivery</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id} onClick={() => openServiceOrderWorkspace(order)}>
-                      <td>
-                        <strong>{order.orderNo}</strong>
-                        <div className="table-subtle">
-                          {order.deliveryType}
-                          {order.operationalPriority ? ` · ${order.operationalPriority}` : ""}
-                        </div>
-                      </td>
-                      <td>{formatDate(order.promisedDeliveryDate)}</td>
-                      <td>
-                        <span className={`status-chip status-chip--${order.status === "cancelled" ? "inactive" : "active"}`}>{order.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                  {!loading && filteredOrders.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>
-                        <div className="empty-state">No Service Orders found for the current filters.</div>
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        ) : null}
+      {isListWorkspace ? (
+        <CadastroListPanel
+          applyFilters={applyOsListFilters}
+          buildExcelCsv={buildOsExcelCsv}
+          canWrite={canWrite}
+          columnStorageKey="anexsys.frontend.os.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "OS",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.orderNo}</strong>
+                  <div className="table-subtle">
+                    {osDeliveryTypeLabel(row.deliveryType)}
+                    {row.operationalPriority ? ` · ${row.operationalPriority}` : ""}
+                  </div>
+                </>
+              ),
+            },
+            { id: "delivery", label: "Entrega", render: (row) => formatDate(row.promisedDeliveryDate) },
+            { id: "type", label: "Tipo", render: (row) => osDeliveryTypeLabel(row.deliveryType) },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => (
+                <span className={`status-chip status-chip--${row.status === "cancelled" ? "inactive" : "active"}`}>
+                  {osStatusLabel(row.status)}
+                </span>
+              ),
+            },
+            { id: "value", label: "Valor", render: (row) => row.totalValue ?? "—" },
+          ]}
+          defaultColumnIds={["name", "delivery", "status"]}
+          emptyFilters={{ name: "", status: "", deliveryType: "", payment: "" }}
+          emptyMessage="Nenhuma OS encontrada para os filtros informados."
+          excelFileName="ordens-de-servico.csv"
+          filterFields={[
+            { id: "name", label: "Número", lookup: true, placeholder: "Número já cadastrado" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "open", label: "Aberta" },
+                { value: "approved", label: "Aprovada" },
+                { value: "in_production", label: "Em produção" },
+                { value: "awaiting_proof", label: "Aguardando prova" },
+                { value: "awaiting_quality", label: "Aguardando controle de qualidade" },
+                { value: "quality", label: "Controle de qualidade" },
+                { value: "in_rework", label: "Em refação" },
+                { value: "ready_for_pickup", label: "Pronto para retirada" },
+                { value: "picked_up", label: "Retirado" },
+                { value: "cancelled", label: "Cancelada" },
+              ],
+            },
+            {
+              id: "deliveryType",
+              kind: "select",
+              label: "Tipo de entrega",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "Standard", label: "Normal" },
+                { value: "Priority", label: "Urgente" },
+                { value: "Express", label: "Expresso" },
+              ],
+            },
+            {
+              id: "payment",
+              kind: "select",
+              label: "Pagamento",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "open", label: "Em aberto" },
+                { value: "paid", label: "Pago" },
+              ],
+            },
+          ]}
+          loading={loading}
+          onCreate={openCreateWorkspace}
+          onEdit={openServiceOrderWorkspace}
+          onPay={
+            canWriteFinance
+              ? (row) => {
+                  void openPay(row);
+                }
+              : undefined
+          }
+          canPay={(row) => osCanOpenPay(row)}
+          extraActions={(row) => (
+            <OsAnexoButton
+              disabled={Boolean(anexoViewer?.loading)}
+              hasAttachments={Boolean(row.hasAttachments)}
+              onClick={() => {
+                void openAnexoPanel(row);
+              }}
+            />
+          )}
+          rowMenu={buildOsRowMenu}
+          records={orders}
+          rowLabel={(row) => row.orderNo}
+          searchKey="name"
+          searchOptions={orderLookupOptions}
+          searchPlaceholder="Buscar por número"
+          title="Ordens de serviço"
+        />
+      ) : null}
+
+      {isListWorkspace && payTarget ? (
+        <div aria-labelledby="os-pay-title" aria-modal="true" className="os-anexo-lightbox" role="dialog">
+          <button
+            aria-label="Fechar pagamento"
+            className="os-anexo-lightbox__backdrop"
+            onClick={() => setPayTarget(null)}
+            type="button"
+          />
+          <div className="os-anexo-lightbox__card">
+            <OsPayPanel
+              orderNo={payTarget.orderNo}
+              summary={payTarget.summary}
+              onClose={() => setPayTarget(null)}
+              onPaid={(summary) => {
+                const paid = Number(summary.outstandingBalance) <= 0;
+                setPayTarget(paid ? null : { orderNo: payTarget.orderNo, summary });
+                setPaymentSummary(summary);
+                setOrders((current) =>
+                  current.map((order) =>
+                    order.id === summary.serviceOrderId
+                      ? {
+                          ...order,
+                          paymentStatus: summary.paymentStatus,
+                          outstandingBalance: summary.outstandingBalance,
+                          amountPaid: summary.amountPaid,
+                        }
+                      : order,
+                  ),
+                );
+                setMessage(
+                  paid
+                    ? `Pagamento da OS ${payTarget.orderNo} registrado. A OS está quitada.`
+                    : `Pagamento parcial da OS ${payTarget.orderNo} registrado.`,
+                );
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
 
         {!isListWorkspace ? (
-        <article className="mini-card">
+        <article className="mini-card cadastro-form os-form">
           <div className="workspace-toolbar">
             <div className="workspace-toolbar__copy">
-              <h3>{showCreateForm ? "Create Service Order" : selectedOrder ? "Service Order Header + Items Grid" : "Service Order form"}</h3>
+              <h3>{showCreateForm ? "Nova OS" : selectedOrder ? `OS ${selectedOrder.orderNo}` : "Ordem de serviço"}</h3>
               <p>
                 {showCreateForm
-                  ? "Company and Branch are inherited automatically from the active header context while you build the order header and items grid."
-                  : selectedOrder
-                    ? "Review the order header and keep multiple items editable without leaving the selected Service Order."
-                    : "Select a Service Order in the grid or start a new one."}
+                  ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola só trava.`
+                  : selectedOrder?.bagClosed
+                    ? `Sacola fechada. Esta versão está travada. Se errou, abra a sacola. Salvar imprime a OP. Se ainda houver peças, marque Abrir nova versão na grade.`
+                    : selectedOrder
+                      ? `Cada linha é uma peça. Cada versão aceita até ${maxPiecesPerBag} peças. Salvar grava rascunho. Fechar sacola trava; a OP só sai ao salvar depois.`
+                      : "Abra uma OS na grade ou cadastre uma nova."}
               </p>
+              {!showCreateForm && selectedOrder?.publicToken ? (
+                <p className="table-subtle">
+                  Link para colar no WhatsApp Web:{" "}
+                  <button className="button-ghost" onClick={() => void copyPublicLink()} type="button">
+                    Copiar link
+                  </button>
+                </p>
+              ) : null}
+              {!showCreateForm && details?.origin ? (
+                <p className="table-subtle">
+                  Retorno{osReturnKindLabel(selectedOrder?.returnKind) ? ` (${osReturnKindLabel(selectedOrder?.returnKind)})` : ""} da{" "}
+                  <button
+                    className="button-ghost"
+                    onClick={() => openServiceOrderWorkspace(details.origin!)}
+                    type="button"
+                  >
+                    {details.origin.orderNo}
+                  </button>
+                </p>
+              ) : null}
+              {!showCreateForm && details?.linkedReturns && details.linkedReturns.length > 0 ? (
+                <p className="table-subtle">
+                  Retornos:{" "}
+                  {details.linkedReturns.map((linked, index) => (
+                    <span key={linked.id}>
+                      {index > 0 ? " · " : null}
+                      <button
+                        className="button-ghost"
+                        onClick={() => openServiceOrderWorkspace(linked)}
+                        type="button"
+                      >
+                        {linked.orderNo}
+                      </button>
+                      {osReturnKindLabel(linked.returnKind) ? ` (${osReturnKindLabel(linked.returnKind)})` : ""}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+              {!showCreateForm && details?.groupVersions && details.groupVersions.length > 1 ? (
+                <p className="table-subtle">
+                  Versões ligadas:{" "}
+                  {details.groupVersions.map((version, index) => (
+                    <span key={version.id}>
+                      {index > 0 ? " · " : null}
+                      {version.id === selectedOrder?.id ? (
+                        <strong>{version.orderNo}</strong>
+                      ) : (
+                        <button
+                          className="button-ghost"
+                          onClick={() => {
+                            setActiveOrderId(version.id);
+                            void loadDetails(version.id);
+                          }}
+                          type="button"
+                        >
+                          {version.orderNo}
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
             </div>
             {!showCreateForm && selectedOrder && canWrite ? (
               <button className="button-secondary" onClick={openCreateWorkspace} type="button">
-                New Service Order
+                Nova OS
               </button>
             ) : null}
           </div>
 
-          {detailLoading && !showCreateForm ? <div className="empty-state">Loading Service Order details…</div> : null}
+          {detailLoading && !showCreateForm ? <div className="empty-state">Carregando a OS…</div> : null}
+
+          {returnPickerOpen && selectedOrder ? (
+            <OsClientReturnPanel
+              items={details?.items ?? []}
+              maxPiecesPerBag={maxPiecesPerBag}
+              orderNo={selectedOrder.orderNo}
+              preview={details?.clientReturnPreview ?? null}
+              saving={saving}
+              onClose={() => setReturnPickerOpen(false)}
+              onConfirm={(itemIds) => handleClientReturn(itemIds)}
+            />
+          ) : null}
+
+          {counterPickerOpen && selectedOrder ? (
+            <OsClientReturnPanel
+              items={details?.items ?? []}
+              maxPiecesPerBag={maxPiecesPerBag}
+              mode="counter"
+              orderNo={selectedOrder.orderNo}
+              preview={null}
+              saving={saving}
+              onClose={() => setCounterPickerOpen(false)}
+              onConfirm={(itemIds, reason) => handleCounterRework(itemIds, reason)}
+            />
+          ) : null}
+
+          {proofPickerOpen && selectedOrder ? (
+            <OsProofNotesPanel
+              items={details?.items ?? []}
+              orderNo={selectedOrder.orderNo}
+              saving={saving}
+              onClose={() => setProofPickerOpen(false)}
+              onConfirm={(notes) => handleCompleteProof(notes)}
+            />
+          ) : null}
+
+          {pickupPickerOpen && selectedOrder ? (
+            <OsPickupPanel
+              orderNo={selectedOrder.orderNo}
+              payment={paymentSummary}
+              pickup={details?.pickup ?? null}
+              saving={saving}
+              onClose={() => setPickupPickerOpen(false)}
+              onCopyLink={() => copyPublicLink()}
+              onStart={() => handleStartPickup()}
+              onComplete={(input) => handleCompletePickup(input)}
+            />
+          ) : null}
+
+          {approvalPickerOpen && selectedOrder ? (
+            <OsApprovalPanel
+              orderNo={selectedOrder.orderNo}
+              approval={details?.approval ?? null}
+              saving={saving}
+              onClose={() => setApprovalPickerOpen(false)}
+              onComplete={(input) => handleCompleteApproval(input)}
+            />
+          ) : null}
 
           {showCreateForm || selectedOrder ? (
             <form className="form-grid" onSubmit={showCreateForm ? handleCreate : handleUpdate}>
               <div className="mini-section">
-                <h4>Order Header</h4>
-                <div className="detail-grid">
-                  <div className="detail-field">
-                    <span>Company</span>
-                    <strong>{activeCompany?.displayName ?? "Select Company in the header"}</strong>
+                <h4>Cliente</h4>
+                <div className="os-client-row">
+                  <div className="field">
+                    <SmartLookup
+                      allowClear={false}
+                      canCreate={canWriteCustomers}
+                      createLabel="Cadastrar"
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder) || !canReadCustomers}
+                      emptyMessage={
+                        loadingCustomers
+                          ? "Carregando clientes…"
+                          : canReadCustomers
+                            ? "Nenhum cliente encontrado."
+                            : "A busca de cliente depende da permissão de Clientes."
+                      }
+                      entityType="customers"
+                      label="Cliente"
+                      onChange={(option) => setHeaderForm((current) => ({ ...current, customerId: option?.id ?? "" }))}
+                      onCreate={openCreateCustomerFromLookup}
+                      onOpen={() => {
+                        void loadCustomers();
+                      }}
+                      options={customerLookupOptions}
+                      required
+                      searchPlaceholder="Digite o nome do cliente"
+                      value={headerForm.customerId}
+                    />
                   </div>
-                  <div className="detail-field">
-                    <span>Branch</span>
-                    <strong>{activeBranch?.label ?? "Select Branch in the header"}</strong>
-                  </div>
-                  <div className="detail-field">
-                    <span>Order Number</span>
-                    <strong>{selectedOrder?.orderNo ?? "Generated after Save"}</strong>
-                  </div>
-                  <div className="detail-field">
-                    <span>Status</span>
-                    <strong>{selectedOrder?.status ?? "draft"}</strong>
-                  </div>
-                  <div className="detail-field">
-                    <span>Opened At</span>
-                    <strong>{selectedOrder ? formatDate(selectedOrder.openedAt) : "Generated after Save"}</strong>
-                  </div>
-                  <div className="detail-field">
-                    <span>Promised Delivery</span>
-                    <strong>{selectedOrder ? formatDate(selectedOrder.promisedDeliveryDate) : "Calculated after Save"}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="field">
-                <SmartLookup
-                  allowClear={false}
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder) || !canReadCustomers}
-                  emptyMessage={
-                    loadingCustomers
-                      ? "Loading customers…"
-                      : canReadCustomers
-                        ? "No customers available."
-                        : "Customer lookup depends on Customers read permission."
-                  }
-                  entityType="customers"
-                  label="Customer"
-                  onChange={(option) => setHeaderForm((current) => ({ ...current, customerId: option?.id ?? "" }))}
-                  options={customerLookupOptions}
-                  searchPlaceholder="Search and select customer"
-                  value={headerForm.customerId}
-                />
-                <div className="button-row">
-                  <button
-                    className="button-secondary"
-                    disabled={!selectedCustomerId}
-                    onClick={() => openRelatedCustomerWorkspace()}
-                    type="button"
-                  >
-                    Abrir Customer
-                  </button>
-                  <button
-                    className="button-secondary"
-                    disabled={!selectedCustomerId}
-                    onClick={() => openRelatedCustomerWorkspace("measurements")}
-                    type="button"
-                  >
-                    Abrir Measurements
-                  </button>
-                  {!isMobile && selectedCustomerId ? (
-                    <>
-                      <button
-                        className="button-secondary"
-                        onClick={() =>
-                          openWorkspaceInBrowserTab(`/customers?focusCustomerId=${encodeURIComponent(selectedCustomerId)}`, "Customer", {
-                            cloneCurrent: false,
-                          })
-                        }
-                        type="button"
-                      >
-                        Customer em nova aba
-                      </button>
-                      <button
-                        className="button-secondary"
-                        onClick={() =>
-                          openWorkspaceInBrowserWindow(`/customers?focusCustomerId=${encodeURIComponent(selectedCustomerId)}`, "Customer", {
-                            cloneCurrent: false,
-                          })
-                        }
-                        type="button"
-                      >
-                        Customer em nova janela
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-
-              <label className="field">
-                <span>Delivery type</span>
-                <select
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  value={headerForm.deliveryType}
-                  onChange={(event) =>
-                    setHeaderForm((current) => ({
-                      ...current,
-                      deliveryType: event.target.value as ServiceOrderHeaderForm["deliveryType"],
-                    }))
-                  }
-                >
-                  <option value="Standard">Standard</option>
-                  <option value="Priority">Priority</option>
-                  <option value="Express">Express</option>
-                </select>
-              </label>
-
-              <label className="field">
-                <span>Operational information</span>
-                <input
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  placeholder="Operational priority or short execution context"
-                  value={headerForm.operationalPriority}
-                  onChange={(event) => setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))}
-                />
-              </label>
-
-              <label className="field">
-                <span>Commercial notes</span>
-                <textarea
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  rows={3}
-                  value={headerForm.commercialNotes}
-                  onChange={(event) => setHeaderForm((current) => ({ ...current, commercialNotes: event.target.value }))}
-                />
-              </label>
-
-              <label className="field">
-                <span>Customer notes</span>
-                <textarea
-                  disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
-                  rows={3}
-                  value={headerForm.customerNotes}
-                  onChange={(event) => setHeaderForm((current) => ({ ...current, customerNotes: event.target.value }))}
-                />
-              </label>
-
-              <div className="mini-section">
-                <div className="workspace-toolbar">
-                  <div className="workspace-toolbar__copy">
-                    <h4>Items Grid</h4>
-                    <p>Add, edit, and remove multiple items while staying inside the same Service Order.</p>
-                  </div>
-                  {(showCreateForm || canEditSelectedOrder) ? (
+                  <div className="button-row">
                     <button
                       className="button-secondary"
-                      disabled={saving}
-                      onClick={() => setItemRows((current) => addServiceOrderItemGridRow(current))}
+                      disabled={!selectedCustomerId}
+                      onClick={() => openRelatedCustomerWorkspace()}
                       type="button"
                     >
-                      Add Item
+                      Abrir cliente
                     </button>
-                  ) : null}
+                    <button
+                      className="button-secondary"
+                      disabled={!selectedCustomerId}
+                      onClick={() => openRelatedCustomerWorkspace("measurements")}
+                      type="button"
+                    >
+                      Abrir medidas
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mini-section">
+                <h4>Ordem de serviço</h4>
+                <div className="os-stack">
+                  <div className="os-box">
+                    <p className="os-box__title">Identificação</p>
+                    <div className="os-id-row">
+                      <label className="field">
+                        <span>Número</span>
+                        <input disabled value={selectedOrder?.orderNo ?? previewOrderNo} />
+                      </label>
+                      <label className="field">
+                        <span>Status</span>
+                        <input disabled value={selectedOrder ? osStatusLabel(selectedOrder.status) : "Aberta"} />
+                      </label>
+                      <div className="field">
+                        <span>Entrada</span>
+                        <div className="os-datetime">
+                          <input
+                            disabled
+                            type="date"
+                            value={selectedOrder ? toDateInput(selectedOrder.openedAt) : nowDateInput()}
+                          />
+                          <input
+                            disabled
+                            type="time"
+                            value={selectedOrder ? toTimeInput(null, selectedOrder.openedAt) : nowTimeInput()}
+                          />
+                        </div>
+                      </div>
+                      <div className="field" title="Preenche quando o cliente assina a retirada ou o atendente registra Recebido.">
+                        <span>Saída</span>
+                        <div className="os-datetime">
+                          <input
+                            disabled
+                            type="date"
+                            value={toDateInput(selectedOrder?.actualDeliveryDate)}
+                          />
+                          <input
+                            disabled
+                            type="time"
+                            value={toTimeInput(selectedOrder?.actualDeliveryTime)}
+                          />
+                        </div>
+                      </div>
+                      <div className="field" title="Data e hora em que o cliente concordou com o serviço e o valor, ou a produção foi liberada.">
+                        <span>Aprovação</span>
+                        <div className="os-datetime">
+                          <input
+                            disabled
+                            type="date"
+                            value={toDateInput(details?.approval?.confirmedAt as string | undefined)}
+                          />
+                          <input
+                            disabled
+                            type="time"
+                            value={toTimeInput(null, details?.approval?.confirmedAt as string | undefined)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="os-box">
+                    <p className="os-box__title">Previsão de entrega</p>
+                    <div className="os-forecast-row">
+                      <label className="field field--required">
+                        <span>Tipo</span>
+                        <select
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          required
+                          value={headerForm.deliveryType}
+                          onChange={(event) => {
+                            const deliveryType = event.target.value as ServiceOrderHeaderForm["deliveryType"];
+                            setHeaderForm((current) => ({ ...current, deliveryType }));
+                            if (session?.activeBranchId) {
+                              const params = new URLSearchParams({
+                                branchId: session.activeBranchId,
+                                deliveryType,
+                                itemCount: String(visibleItemRows.length || 1),
+                              });
+                              void apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
+                                `/service-orders/delivery-preview?${params.toString()}`,
+                              )
+                                .then((suggestion) => {
+                                  setHeaderForm((current) => ({
+                                    ...current,
+                                    promisedDeliveryDate: suggestion.promisedDeliveryDate,
+                                    promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
+                                  }));
+                                })
+                                .catch(() => undefined);
+                            }
+                          }}
+                        >
+                          <option value="Standard">Normal</option>
+                          <option value="Priority">Urgente</option>
+                          <option value="Express">Expresso</option>
+                        </select>
+                      </label>
+                      <label className="field field--required">
+                        <span>Data</span>
+                        <input
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          required
+                          type="date"
+                          value={headerForm.promisedDeliveryDate}
+                          onChange={(event) =>
+                            setHeaderForm((current) => ({ ...current, promisedDeliveryDate: event.target.value }))
+                          }
+                        />
+                      </label>
+                      <label className="field field--required">
+                        <span>Horário</span>
+                        <input
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          required
+                          type="time"
+                          value={headerForm.promisedDeliveryTime}
+                          onChange={(event) =>
+                            setHeaderForm((current) => ({
+                              ...current,
+                              promisedDeliveryTime: toTimeInput(event.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Prioridade</span>
+                        <input
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          placeholder="Opcional"
+                          value={headerForm.operationalPriority}
+                          onChange={(event) =>
+                            setHeaderForm((current) => ({ ...current, operationalPriority: event.target.value }))
+                          }
+                        />
+                      </label>
+                      <div className="field">
+                        <span>Prazo</span>
+                        <button
+                          className="button-secondary"
+                          disabled={saving || !canWrite || (!showCreateForm && !canEditSelectedOrder)}
+                          onClick={() => void handleRecalculateDelivery()}
+                          type="button"
+                        >
+                          Recalcular prazo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="os-box">
+                    <p className="os-box__title">Responsáveis</p>
+                    <div className="os-people-row">
+                      <div className="field">
+                        <SmartLookup
+                          allowClear={false}
+                          canCreate={false}
+                          disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                          emptyMessage="Nenhum atendente encontrado."
+                          entityType="employees"
+                          label="Atendente"
+                          onChange={(option) => setHeaderForm((current) => ({ ...current, attendantId: option?.id ?? "" }))}
+                          options={attendantLookupOptions}
+                          searchPlaceholder="Quem está abrindo a OS"
+                          value={headerForm.attendantId || session?.user?.id || ""}
+                        />
+                      </div>
+                      <label className="field">
+                        <span>Técnico</span>
+                        <input
+                          disabled
+                          placeholder="Assume ao ler o QR"
+                          value={details?.productionTechnician?.displayName ?? ""}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Qualidade</span>
+                        <input
+                          disabled
+                          placeholder="Ao revisar e aprovar"
+                          value={details?.qualityReviewer?.displayName ?? ""}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mini-section os-items-section">
+                <div className="workspace-toolbar">
+                  <div className="workspace-toolbar__copy">
+                    <h4>Serviços e mão de obra</h4>
+                    <p>
+                      Cada linha é uma peça (quantidade 1). A marca é obrigatória; modelo e série são opcionais. Até {maxPiecesPerBag} peças nesta versão. Fechar trava;
+                      Abrir sacola desfaz. Salvar com a sacola fechada imprime a OP.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="data-table-wrapper">
+                <div
+                  className="data-table-wrapper os-items-table"
+                  style={{ ["--os-item-limit" as string]: maxPiecesPerBag }}
+                >
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Item</th>
-                        <th>Product</th>
-                        <th>Service / Notes</th>
-                        <th>Qty</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th title="Sequência">S</th>
+                        <th>Produto</th>
+                        <th>Serviço</th>
+                        <th>Detalhamento do ajuste</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Série</th>
+                        <th>Valor</th>
+                        <th>Desconto</th>
+                        <th>Subtotal</th>
+                        <th>Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleItemRows.map((row) => {
+                      {visibleItemRows.map((row, index) => {
                         const editable = saving ? false : showCreateForm || row.isEditing;
                         const canMutateRow = showCreateForm || canEditSelectedOrder;
+                        const sequence = index + 1;
                         return (
-                          <tr key={row.localId}>
-                            <td>#{row.itemNo}</td>
+                          <tr data-os-item-row={row.localId} key={row.localId}>
+                            <td className="os-item-seq" title={`Sequência ${sequence}`}>
+                              {sequence}
+                            </td>
+                            <td>
+                              <SmartLookup
+                                compact
+                                canCreate={canWrite}
+                                createLabel="Cadastrar"
+                                disabled={!editable}
+                                entityType="products"
+                                label="Produto"
+                                required
+                                onChange={(option) =>
+                                  setItemRows((current) => {
+                                    const nextProductId = option?.id ?? "";
+                                    const stillValid = Boolean(
+                                      row.serviceId &&
+                                        productPrices.some(
+                                          (price) =>
+                                            price.productId === nextProductId &&
+                                            price.serviceId === row.serviceId &&
+                                            price.status !== "inactive",
+                                        ),
+                                    );
+                                    return updateServiceOrderItemGridRow(current, row.localId, {
+                                      productId: nextProductId,
+                                      itemType: option?.label ?? "",
+                                      ...(stillValid
+                                        ? { unitPrice: suggestedPriceFor(nextProductId, row.serviceId) }
+                                        : { serviceId: "", description: "", unitPrice: "" }),
+                                    });
+                                  })
+                                }
+                                onCreate={(query) => {
+                                  const params = new URLSearchParams();
+                                  params.set("workspaceMode", "new");
+                                  if (query.trim()) params.set("prefillName", query.trim());
+                                  const targetPath = `/products?${params.toString()}`;
+                                  if (isMobile) {
+                                    navigateWithinWorkspace(targetPath);
+                                    return;
+                                  }
+                                  openWorkspaceInNewTab(targetPath, "Produto: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+                                }}
+                                onOpen={() => {
+                                  void loadCatalogs();
+                                }}
+                                options={productLookupOptions}
+                                placeholder="Calça, saia, vestido"
+                                searchPlaceholder="Digite o produto"
+                                value={row.productId}
+                              />
+                            </td>
+                            <td>
+                              <SmartLookup
+                                compact
+                                canCreate={canWrite && Boolean(row.productId)}
+                                createLabel="Cadastrar"
+                                disabled={!editable || !row.productId}
+                                emptyMessage={
+                                  row.productId
+                                    ? "Nenhum serviço cadastrado para este produto."
+                                    : "Escolha o produto primeiro."
+                                }
+                                entityType="services"
+                                label="Serviço"
+                                required
+                                onChange={(option) => {
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      serviceId: option?.id ?? "",
+                                      description: option?.label ?? "",
+                                      unitPrice: option?.id ? suggestedPriceFor(row.productId, option.id) : "",
+                                    }),
+                                  );
+                                }}
+                                onOpen={() => {
+                                  void loadCatalogs();
+                                }}
+                                options={serviceLookupOptionsFor(row)}
+                                placeholder={row.productId ? "Serviços deste produto" : "Escolha o produto"}
+                                searchPlaceholder="Digite o serviço"
+                                value={row.serviceId}
+                                renderQuickCreate={
+                                  row.productId
+                                    ? ({ cancelCreate, completeCreate, initialValue }) => (
+                                        <OsProductPriceQuickCreate
+                                          initialServiceName={initialValue}
+                                          productId={row.productId}
+                                          productName={row.itemType || "Produto"}
+                                          onCancel={cancelCreate}
+                                          onCreated={(created) => {
+                                            setProductPrices((current) => [
+                                              created,
+                                              ...current.filter((item) => item.id !== created.id),
+                                            ]);
+                                            setItemRows((current) =>
+                                              updateServiceOrderItemGridRow(current, row.localId, {
+                                                serviceId: created.serviceId,
+                                                description: created.serviceName,
+                                                unitPrice: formatSuggestedPrice(created.suggestedPrice),
+                                              }),
+                                            );
+                                            completeCreate({
+                                              id: created.serviceId,
+                                              label: created.serviceName,
+                                              hint: formatOsMoney(Number(created.suggestedPrice)),
+                                            });
+                                          }}
+                                        />
+                                      )
+                                    : undefined
+                                }
+                              />
+                            </td>
+                            <td>
+                              <HoverPeek text={row.complement}>
+                                <textarea
+                                  className="os-item-input os-item-input--work"
+                                  disabled={!editable}
+                                  maxLength={OS_WORK_MAX_CHARS}
+                                  placeholder="Detalhe do ajuste combinado com o cliente"
+                                  rows={3}
+                                  value={row.complement}
+                                  onChange={(event) =>
+                                    setItemRows((current) =>
+                                      updateServiceOrderItemGridRow(current, row.localId, {
+                                        complement: event.target.value.slice(0, OS_WORK_MAX_CHARS),
+                                      }),
+                                    )
+                                  }
+                                />
+                                <small className="os-item-work-hint">{osWorkPrintHint(row.complement, sequence)}</small>
+                              </HoverPeek>
+                            </td>
                             <td>
                               <input
+                                className="os-item-input"
                                 disabled={!editable}
-                                placeholder="Jeans, Dress, Shirt"
-                                value={row.itemType}
+                                placeholder="Marca"
+                                required
+                                value={row.brand}
                                 onChange={(event) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { itemType: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, { brand: event.target.value }),
                                   )
                                 }
                               />
                             </td>
                             <td>
                               <input
+                                className="os-item-input"
                                 disabled={!editable}
-                                placeholder="Original Hem, Hem 58 cm, Left cuff only"
-                                value={row.description}
+                                placeholder="Modelo"
+                                value={row.model}
                                 onChange={(event) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { description: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, { model: event.target.value }),
                                   )
                                 }
                               />
                             </td>
                             <td>
                               <input
+                                className="os-item-input"
                                 disabled={!editable}
-                                inputMode="decimal"
-                                min="0.0001"
-                                step="0.0001"
-                                type="number"
-                                value={row.quantity}
+                                placeholder="Série"
+                                value={row.serialNo}
                                 onChange={(event) =>
                                   setItemRows((current) =>
-                                    updateServiceOrderItemGridRow(current, row.localId, { quantity: event.target.value }),
+                                    updateServiceOrderItemGridRow(current, row.localId, { serialNo: event.target.value }),
                                   )
                                 }
                               />
                             </td>
                             <td>
-                              <span className={`status-chip status-chip--${row.isNew ? "active" : row.status === "cancelled" ? "inactive" : "active"}`}>
-                                {row.isNew ? "new" : row.status}
-                              </span>
+                              <input
+                                className="os-item-input os-item-input--money"
+                                disabled={!editable}
+                                inputMode="numeric"
+                                placeholder="0,00"
+                                value={row.unitPrice}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      unitPrice: applyOsMoneyTyping(event.target.value),
+                                    }),
+                                  )
+                                }
+                              />
                             </td>
                             <td>
-                              <div className="button-row">
+                              <input
+                                className="os-item-input os-item-input--money"
+                                disabled={!editable}
+                                inputMode="numeric"
+                                placeholder="0,00"
+                                value={row.discountValue}
+                                onChange={(event) =>
+                                  setItemRows((current) =>
+                                    updateServiceOrderItemGridRow(current, row.localId, {
+                                      discountValue: applyOsMoneyTyping(event.target.value),
+                                    }),
+                                  )
+                                }
+                                onKeyDown={(event) => handleDiscountTab(event, row.localId)}
+                              />
+                            </td>
+                            <td>{formatOsMoney(calculateServiceOrderItemSubtotal(row))}</td>
+                            <td>
+                              <div className="os-item-actions">
                                 {canMutateRow ? (
                                   <button
                                     className="button-ghost"
                                     disabled={saving}
-                                    onClick={() =>
+                                    onClick={() => {
                                       setItemRows((current) =>
-                                        updateServiceOrderItemGridRow(current, row.localId, { isEditing: !row.isEditing }),
-                                      )
-                                    }
+                                        updateServiceOrderItemGridRow(current, row.localId, { isEditing: true }),
+                                      );
+                                      focusItemRow(row.localId);
+                                    }}
                                     type="button"
                                   >
-                                    {showCreateForm || row.isEditing ? "Finish Edit" : "Edit Item"}
+                                    Editar
                                   </button>
                                 ) : null}
                                 {canMutateRow ? (
@@ -913,7 +2728,7 @@ export function ServiceOrdersWorkspace() {
                                     onClick={() => setItemRows((current) => removeServiceOrderItemGridRow(current, row.localId))}
                                     type="button"
                                   >
-                                    Remove Item
+                                    Excluir
                                   </button>
                                 ) : null}
                               </div>
@@ -923,44 +2738,468 @@ export function ServiceOrdersWorkspace() {
                       })}
                       {visibleItemRows.length === 0 ? (
                         <tr>
-                          <td colSpan={6}>
-                            <div className="empty-state">No active items in the grid. Use Add Item to continue.</div>
+                          <td colSpan={10}>
+                            <div className="empty-state">Nenhuma peça na grade. Use Adicionar peça para continuar.</div>
                           </td>
                         </tr>
                       ) : null}
                     </tbody>
                   </table>
                 </div>
+                <div className="os-items-footer">
+                  {canMutateItems ? (
+                    <div className="button-row">
+                      <button
+                        className="os-add-item"
+                        disabled={saving || !canAddServiceOrderItemGridRow(itemRows, maxPiecesPerBag)}
+                        onClick={() => {
+                          addPieceRow();
+                        }}
+                        type="button"
+                      >
+                        + Adicionar peça
+                      </button>
+                      <button
+                        className="button"
+                        disabled={saving || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseBag();
+                        }}
+                        type="button"
+                      >
+                        Fechar sacola
+                      </button>
+                    </div>
+                  ) : bagClosed && canReopenSelectedBag ? (
+                    <div className="button-row">
+                      <button
+                        className="button"
+                        disabled={saving}
+                        onClick={() => {
+                          void handleOpenBag();
+                        }}
+                        type="button"
+                      >
+                        Abrir sacola
+                      </button>
+                      <button
+                        aria-pressed={wantsNextVersion}
+                        className={wantsNextVersion ? "button" : "button-secondary"}
+                        disabled={saving}
+                        onClick={() => setWantsNextVersion((current) => !current)}
+                        type="button"
+                      >
+                        Abrir nova versão
+                      </button>
+                    </div>
+                  ) : (
+                    <span />
+                  )}
+                  <strong className="os-labor-total">Total de mão de obra {formatOsMoney(laborTotal)}</strong>
+                </div>
               </div>
 
-              <div className="button-row">
-                {showCreateForm ? (
-                  <>
-                    <button className="button" disabled={saving || !canWrite} type="submit">
-                      {saving ? "Saving…" : "Save"}
-                    </button>
-                    <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
-                      Close
-                    </button>
-                  </>
-                ) : selectedOrder ? (
-                  <>
-                    <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
-                      {saving ? "Updating…" : "Save"}
-                    </button>
-                    <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
-                      Close
-                    </button>
-                  </>
+              <div className="mini-section">
+                <h4>Total da ordem de serviço</h4>
+                <div className="os-totals-grid">
+                  <label className="field">
+                    <span>Mão de obra</span>
+                    <input disabled value={formatOsMoney(laborTotal)} />
+                  </label>
+                  <label className="field">
+                    <span>Desconto</span>
+                    <input disabled value={formatOsMoney(Math.max(laborTotal - Number(selectedOrder?.totalValue ?? laborTotal), 0))} />
+                  </label>
+                  <label className="field">
+                    <span>Valor total</span>
+                    <input disabled value={formatOsMoney(Number(selectedOrder?.totalValue ?? laborTotal))} />
+                  </label>
+                </div>
+              </div>
+
+              <div className="mini-section">
+                <h4>Pagamento</h4>
+                {osShowsFaltaPagamento(paymentSummary) ? (
+                  <p className="os-rule-banner">Falta pagamento. Isso não muda o status da OS.</p>
+                ) : null}
+                <div className="os-box">
+                  <div className="os-pay-row">
+                    <label className="field">
+                      <span>Condição</span>
+                      <input
+                        disabled
+                        value={osOpHeaderTerm({
+                          returnKind: selectedOrder?.returnKind,
+                          paymentStatus: paymentSummary?.paymentStatus,
+                        })}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Já pago</span>
+                      <input disabled value={formatOsMoney(Number(paymentSummary?.amountPaid ?? 0))} />
+                    </label>
+                    <label className="field">
+                      <span>Em aberto</span>
+                      <input
+                        disabled
+                        value={formatOsMoney(
+                          Number(paymentSummary?.outstandingBalance ?? selectedOrder?.totalValue ?? laborTotal),
+                        )}
+                      />
+                    </label>
+                    {canWriteFinance && selectedOrder ? (
+                      <button
+                        className="button"
+                        disabled={
+                          saving ||
+                          !osCanOpenPay({
+                            status: selectedOrder.status,
+                            paymentStatus: paymentSummary?.paymentStatus,
+                            payLockedOnParent:
+                              selectedOrder.payLockedOnParent ?? details?.payLockedOnParent ?? details?.serviceOrder.payLockedOnParent,
+                          })
+                        }
+                        onClick={() => {
+                          void openPay(selectedOrder);
+                        }}
+                        type="button"
+                      >
+                        Pagar
+                      </button>
+                    ) : null}
+                  </div>
+                  {(paymentSummary?.payments ?? []).length > 0 ? (
+                    <ul className="os-pay-history">
+                      {(paymentSummary?.payments ?? []).map((payment) => (
+                        <li key={payment.id}>
+                          <span>
+                            {osPaymentMethodLabel(payment.paymentMethod)}
+                            {formatOsInstant(payment.receivedAt) ? ` · ${formatOsInstant(payment.receivedAt)}` : ""}
+                          </span>
+                          <strong>{formatOsMoney(Number(payment.paymentAmount))}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="table-subtle">Nenhum pagamento registrado. O Pagar só anota o que já entrou no caixa.</p>
+                  )}
+                </div>
+                {selectedOrder && payTarget?.summary.serviceOrderId === selectedOrder.id ? (
+                  <OsPayPanel
+                    orderNo={selectedOrder.orderNo}
+                    summary={payTarget.summary}
+                    onClose={() => setPayTarget(null)}
+                    onPaid={(summary) => {
+                      const paid = Number(summary.outstandingBalance) <= 0;
+                      setPayTarget(paid ? null : { orderNo: selectedOrder.orderNo, summary });
+                      setPaymentSummary(summary);
+                      setMessage(paid ? "Pagamento registrado. A OS está quitada." : "Pagamento parcial registrado.");
+                    }}
+                  />
                 ) : null}
               </div>
+
+              <div className="mini-section">
+                <h4>Observação e observação interna</h4>
+                <p className="os-rule-banner">
+                  A observação sai na OS do cliente. A observação interna não imprime e não vai para a Ordem de Produção.
+                </p>
+                <div className="os-notes-grid">
+                  <label className="field os-note-box">
+                    <span>Observação</span>
+                    <textarea
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      rows={5}
+                      value={headerForm.customerNotes}
+                      onChange={(event) => setHeaderForm((current) => ({ ...current, customerNotes: event.target.value }))}
+                    />
+                  </label>
+                  <label className="field os-note-box os-note-box--internal">
+                    <span>Observação interna</span>
+                    <textarea
+                      disabled={saving || (!showCreateForm && !canEditSelectedOrder)}
+                      placeholder="Uso interno, não sai na impressão"
+                      rows={5}
+                      value={headerForm.commercialNotes}
+                      onChange={(event) => setHeaderForm((current) => ({ ...current, commercialNotes: event.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {!showCreateForm && (details?.approval?.method || details?.approval?.signed) ? (
+                <div className="mini-section">
+                  <h4>Aprovação</h4>
+                  <p className="os-rule-banner">
+                    {details.approval.releasedWithoutSignature
+                      ? "Produção liberada sem assinatura"
+                      : approvalMethodLabel(details.approval.method)}
+                    {formatOsInstant(details.approval.confirmedAt)
+                      ? ` · ${formatOsInstant(details.approval.confirmedAt)}`
+                      : ""}
+                    {details.approval.acceptedText ? ` · ${details.approval.acceptedText}` : ""}
+                    {details.approval.releaseReason ? ` · ${details.approval.releaseReason}` : ""}
+                    {details.approval.measurementsLocked ? " · Medida travada" : ""}
+                  </p>
+                  {approvalPhoto ? <img alt="Foto da OS assinada" className="os-pickup-photo" src={approvalPhoto} /> : null}
+                </div>
+              ) : null}
+
+              {!showCreateForm && details?.pickup?.method ? (
+                <div className="mini-section">
+                  <h4>Retirada</h4>
+                  <p className="os-rule-banner">
+                    {pickupMethodLabel(details.pickup.method)}
+                    {details.pickup.confirmedAt ? ` · ${formatDateTime(details.pickup.confirmedAt)}` : ""}
+                    {details.pickup.customerPhone ? ` · ${details.pickup.customerPhone}` : ""}
+                    {details.pickup.acceptedText ? ` · ${details.pickup.acceptedText}` : ""}
+                  </p>
+                  {pickupPhoto ? <img alt="Foto da OP assinada" className="os-pickup-photo" src={pickupPhoto} /> : null}
+                </div>
+              ) : null}
+
+              {!showCreateForm && details?.proofNotes && details.proofNotes.length > 0 ? (
+                <div className="mini-section">
+                  <h4>Anotações de prova</h4>
+                  <p className="os-rule-banner">
+                    Histórico da nova medição. Não mistura com Observação nem com Detalhamento do ajuste.
+                  </p>
+                  <div className="os-return-items">
+                    {details.proofNotes.map((batch) => (
+                      <article className="os-proof-history" key={batch.batchId}>
+                        <p className="table-subtle">
+                          {formatDateTime(batch.createdAt)} · {batch.createdByName}
+                        </p>
+                        <ul>
+                          {batch.items.map((item) => (
+                            <li key={`${batch.batchId}-${item.itemId}`}>
+                              <strong>
+                                S{item.itemNo} · {item.itemType}
+                              </strong>
+                              {` · ${item.description} · ${item.note}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="os-form-footer">
+                {selectedOrder && bagClosed && wantsNextVersion ? (
+                  <p className="os-rule-banner os-form-footer__notice">
+                    Ao salvar, será gerada a nova versão <strong>{nextVersionNo}</strong>. Ela abre em outra aba. Esta OS imprime a OP.
+                  </p>
+                ) : null}
+                <div className="button-row">
+                  {showCreateForm ? (
+                    <>
+                      <button className="button" disabled={saving || !canWrite} type="submit">
+                        {saving ? "Salvando…" : "Salvar"}
+                      </button>
+                      <button
+                        className="button"
+                        disabled={saving || !canWrite || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseBag();
+                        }}
+                        type="button"
+                      >
+                        Fechar sacola
+                      </button>
+                      <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                        Cancelar
+                      </button>
+                    </>
+                  ) : selectedOrder && bagClosed ? (
+                    <>
+                      <button className="button" disabled={saving || !canWrite} type="submit">
+                        {saving ? "Salvando…" : "Salvar"}
+                      </button>
+                      {canReopenSelectedBag ? (
+                      <button
+                        className="button"
+                        disabled={saving || !canWrite}
+                        onClick={() => {
+                          void handleOpenBag();
+                        }}
+                        type="button"
+                      >
+                        Abrir sacola
+                      </button>
+                      ) : null}
+                      <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                        Cancelar
+                      </button>
+                      {canSendToProof(selectedOrder.status, bagClosed) && canWriteProof ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => {
+                            void handleProofAction(selectedOrder, "send_to_proof");
+                          }}
+                          type="button"
+                        >
+                          {proofActionLabel("send_to_proof")}
+                        </button>
+                      ) : null}
+                      {canActOnProof(selectedOrder.status) && canWriteProof ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => {
+                            void handleProofAction(selectedOrder, "complete_proof");
+                          }}
+                          type="button"
+                        >
+                          {proofActionLabel("complete_proof")}
+                        </button>
+                      ) : null}
+                      {canRecordOsApproval(selectedOrder.status) && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => openApprovalPanel(selectedOrder)}
+                          type="button"
+                        >
+                          Aprovação
+                        </button>
+                      ) : null}
+                      {selectedOrder.status === "ready_for_pickup" && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => openPickupPanel(selectedOrder)}
+                          type="button"
+                        >
+                          Retirada
+                        </button>
+                      ) : null}
+                      {selectedOrder.status === "ready_for_pickup" && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => setCounterPickerOpen(true)}
+                          type="button"
+                        >
+                          Refação no balcão
+                        </button>
+                      ) : null}
+                      {selectedOrder.status === "picked_up" && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => setReturnPickerOpen(true)}
+                          type="button"
+                        >
+                          Cliente voltou
+                        </button>
+                      ) : null}
+                      {canWriteFinance ? (
+                        <button
+                          className="button"
+                          disabled={
+                            saving ||
+                            !osCanOpenPay({
+                              status: selectedOrder.status,
+                              paymentStatus: paymentSummary?.paymentStatus,
+                              payLockedOnParent:
+                                selectedOrder.payLockedOnParent ??
+                                details?.payLockedOnParent ??
+                                details?.serviceOrder.payLockedOnParent,
+                            })
+                          }
+                          onClick={() => {
+                            void openPay(selectedOrder);
+                          }}
+                          type="button"
+                        >
+                          Pagar
+                        </button>
+                      ) : null}
+                      <RowOverflowMenu items={buildOsRowMenu(selectedOrder)} label={`Opções da OS ${selectedOrder.orderNo}`} />
+                      <OsAnexoButton
+                        disabled={Boolean(anexoViewer?.loading)}
+                        hasAttachments={Boolean(
+                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
+                        )}
+                        onClick={() => {
+                          void openAnexoPanel(selectedOrder);
+                        }}
+                      />
+                    </>
+                  ) : selectedOrder ? (
+                    <>
+                      <button className="button" disabled={saving || !canEditSelectedOrder} type="submit">
+                        {saving ? "Salvando…" : "Salvar alterações"}
+                      </button>
+                      <button
+                        className="button"
+                        disabled={saving || !canEditSelectedOrder || visibleItemRows.length === 0}
+                        onClick={() => {
+                          void handleCloseBag();
+                        }}
+                        type="button"
+                      >
+                        Fechar sacola
+                      </button>
+                      <button className="button-secondary" onClick={closeServiceOrderWorkspace} type="button">
+                        Cancelar
+                      </button>
+                      {canRecordOsApproval(selectedOrder.status) && canWrite ? (
+                        <button
+                          className="button"
+                          disabled={saving}
+                          onClick={() => openApprovalPanel(selectedOrder)}
+                          type="button"
+                        >
+                          Aprovação
+                        </button>
+                      ) : null}
+                      {canWriteFinance ? (
+                        <button
+                          className="button"
+                          disabled={
+                            saving ||
+                            !osCanOpenPay({
+                              status: selectedOrder.status,
+                              paymentStatus: paymentSummary?.paymentStatus,
+                              payLockedOnParent:
+                                selectedOrder.payLockedOnParent ??
+                                details?.payLockedOnParent ??
+                                details?.serviceOrder.payLockedOnParent,
+                            })
+                          }
+                          onClick={() => {
+                            void openPay(selectedOrder);
+                          }}
+                          type="button"
+                        >
+                          Pagar
+                        </button>
+                      ) : null}
+                      <RowOverflowMenu items={buildOsRowMenu(selectedOrder)} label={`Opções da OS ${selectedOrder.orderNo}`} />
+                      <OsAnexoButton
+                        disabled={Boolean(anexoViewer?.loading)}
+                        hasAttachments={Boolean(
+                          approvalPhoto || pickupPhoto || details?.approval?.photoAvailable || details?.pickup?.photoAvailable,
+                        )}
+                        onClick={() => {
+                          void openAnexoPanel(selectedOrder);
+                        }}
+                      />
+                    </>
+                  ) : null}
+                </div>
+                <strong className="os-form-footer__total">{formatOsMoney(Number(selectedOrder?.totalValue ?? laborTotal))}</strong>
+              </div>
             </form>
-          ) : (
-            <div className="empty-state">Use the grid to select a Service Order or click New Service Order to start a new header with an editable items grid.</div>
+          ) : detailLoading ? null : (
+            <div className="empty-state">Abra uma OS na grade ou clique em Nova OS para começar.</div>
           )}
         </article>
         ) : null}
-      </section>
     </>
   );
 }

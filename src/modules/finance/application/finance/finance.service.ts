@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -30,12 +30,19 @@ import { PaymentRecordRepository } from '../../infrastructure/persistence/reposi
 @Injectable()
 export class FinanceService {
   constructor(
+    @Inject(PaymentRecordRepository)
     private readonly paymentRecordRepository: PaymentRecordRepository,
+    @Inject(PartialPaymentRepository)
     private readonly partialPaymentRepository: PartialPaymentRepository,
+    @Inject(FinancialExceptionRepository)
     private readonly financialExceptionRepository: FinancialExceptionRepository,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 
@@ -171,11 +178,30 @@ export class FinanceService {
       this.partialPaymentRepository.findByServiceOrder(serviceOrderId),
     ]);
 
-    const orderTotal = this.toMoney(details.serviceOrder.totalValue ?? this.calculateItemsTotal(details.items));
-    const amountPaid = this.calculateNetPaid(payments);
+    const members =
+      typeof this.serviceOrderService.listGroupMembers === 'function'
+        ? await this.serviceOrderService.listGroupMembers(tenantId, serviceOrderId)
+        : [details.serviceOrder];
+    const groupPayments =
+      members.length > 1
+        ? (
+            await Promise.all(
+              members.map((member) =>
+                member.id === serviceOrderId
+                  ? Promise.resolve(payments)
+                  : this.paymentRecordRepository.findByServiceOrder(member.id),
+              ),
+            )
+          ).flat()
+        : payments;
+    const orderTotal =
+      members.length > 1
+        ? members.reduce((sum, member) => sum + this.toMoney(member.totalValue), 0)
+        : this.toMoney(details.serviceOrder.totalValue ?? this.calculateItemsTotal(details.items));
+    const amountPaid = this.calculateNetPaid(groupPayments);
     const outstandingBalance = Math.max(orderTotal - amountPaid, 0);
     const effectivePayments = new Map(
-      payments
+      groupPayments
         .filter((payment) => ![PaymentRecordStatus.FAILED, PaymentRecordStatus.REVERSED].includes(payment.status))
         .map((payment) => [payment.id, payment] as const),
     );
@@ -207,6 +233,22 @@ export class FinanceService {
         ? ServiceOrderPaymentStatus.PARTIAL
         : ServiceOrderPaymentStatus.PENDING;
 
+    const recordedPayments = groupPayments
+      .filter((payment) => ![PaymentRecordStatus.FAILED, PaymentRecordStatus.REVERSED].includes(payment.status))
+      .slice()
+      .sort((left, right) => {
+        const leftTime = new Date(left.receivedAt ?? left.createdAt).getTime();
+        const rightTime = new Date(right.receivedAt ?? right.createdAt).getTime();
+        return rightTime - leftTime;
+      })
+      .map((payment) => ({
+        id: payment.id,
+        paymentMethod: payment.paymentMethod,
+        paymentAmount: payment.paymentAmount,
+        receivedAt: payment.receivedAt,
+        status: payment.status,
+      }));
+
     return {
       serviceOrderId,
       orderTotal: this.formatMoney(orderTotal),
@@ -216,6 +258,7 @@ export class FinanceService {
       paymentStatus,
       paymentTermsDays: details.serviceOrder.paymentTermsDays,
       deliveryBlocked: tenant.blockDeliveryWithOutstandingBalance && outstandingBalance > 0,
+      payments: recordedPayments,
       items,
     };
   }

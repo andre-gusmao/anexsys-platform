@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   ForbiddenException,
@@ -43,7 +44,9 @@ class ScanQrEventBody {
 @Controller('qr-events')
 export class QrEventsController {
   constructor(
+    @Inject(QrTrackingService)
     private readonly qrTrackingService: QrTrackingService,
+    @Inject(OperationalResourceService)
     private readonly operationalResourceService: OperationalResourceService,
   ) {}
 

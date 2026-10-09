@@ -29,6 +29,9 @@ export class TenantEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'default_measurement_unit_code', type: 'varchar', length: 20, default: 'CM' })
   defaultMeasurementUnitCode!: string;
 
+  @Column({ name: 'max_pieces_per_bag', type: 'integer', default: 5 })
+  maxPiecesPerBag!: number;
+
   @OneToMany(() => BranchEntity, (branch) => branch.tenant)
   branches?: BranchEntity[];
 }

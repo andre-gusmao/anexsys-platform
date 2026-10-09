@@ -321,4 +321,71 @@ describe('CustomerService', () => {
       DomainValidationError,
     );
   });
+
+  it('soft-deletes a customer without movement', async () => {
+    const auditCalls: Array<Record<string, unknown>> = [];
+    const customer = {
+      id: 'customer-1',
+      tenantId: 'tenant-1',
+      legalName: 'Maria Silva',
+      status: CustomerStatus.ACTIVE,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
+    };
+    const service = new CustomerService(
+      {} as never,
+      {
+        async findById() {
+          return customer;
+        },
+        async save(payload: Record<string, unknown>) {
+          return payload;
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { async record(payload: Record<string, unknown>) { auditCalls.push(payload); } } as never,
+      { async assertCustomerCanDelete() {} } as never,
+    );
+
+    await service.remove('customer-1', 'tenant-1', 'actor-1');
+    assert.equal(customer.isDeleted, true);
+    assert.equal(customer.deletedBy, 'actor-1');
+    assert.equal(auditCalls[0]?.action, 'customer.deleted');
+  });
+
+  it('blocks customer deletion when dependency validation fails', async () => {
+    const customer = {
+      id: 'customer-1',
+      tenantId: 'tenant-1',
+      legalName: 'Maria Silva',
+      status: CustomerStatus.ACTIVE,
+      isDeleted: false,
+    };
+    const service = new CustomerService(
+      {} as never,
+      {
+        async findById() {
+          return customer;
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { async record() {} } as never,
+      {
+        async assertCustomerCanDelete() {
+          throw new DomainValidationError('Cliente vinculado a service orders.');
+        },
+      } as never,
+    );
+
+    await assert.rejects(
+      () => service.remove('customer-1', 'tenant-1', 'actor-1'),
+      DomainValidationError,
+    );
+    assert.equal(customer.isDeleted, false);
+  });
 });

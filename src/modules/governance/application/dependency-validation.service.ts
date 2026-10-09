@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 
@@ -19,7 +19,7 @@ export type DependencyValidationResult = {
 
 @Injectable()
 export class DependencyValidationService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(@Inject(DataSource) private readonly dataSource: DataSource) {}
 
   async validateTenantDeactivation(tenantId: string): Promise<DependencyValidationResult> {
     const [branches, customers, serviceOrders, users] = await Promise.all([
@@ -99,39 +99,11 @@ export class DependencyValidationService {
   }
 
   async validateCustomerInactivation(tenantId: string, customerId: string): Promise<DependencyValidationResult> {
-    const [serviceOrders, measurementSets, financialRecords] = await Promise.all([
-      this.count(`
-        SELECT COUNT(*)::int AS total
-        FROM service_orders
-        WHERE tenant_id = $1
-          AND customer_id = $2
-          AND is_deleted = false
-      `, [tenantId, customerId]),
-      this.count(`
-        SELECT COUNT(*)::int AS total
-        FROM measurement_sets
-        WHERE tenant_id = $1
-          AND customer_id = $2
-      `, [tenantId, customerId]),
-      this.count(`
-        SELECT COUNT(DISTINCT payment_records.id)::int AS total
-        FROM payment_records
-        INNER JOIN service_orders ON service_orders.id = payment_records.service_order_id
-        WHERE service_orders.tenant_id = $1
-          AND service_orders.customer_id = $2
-          AND service_orders.is_deleted = false
-      `, [tenantId, customerId]),
-    ]);
+    return this.buildCustomerLifecycleResult(tenantId, customerId, 'Inativar');
+  }
 
-    return this.buildResult({
-      entityLabel: 'Cliente',
-      actionLabel: 'Inativar',
-      blockers: [
-        { code: 'service-orders', label: 'Service Orders', count: serviceOrders, workspacePath: '/service-orders' },
-        { code: 'measurements', label: 'Medições', count: measurementSets, workspacePath: '/customers' },
-        { code: 'financial-records', label: 'Registros financeiros', count: financialRecords, workspacePath: '/service-orders' },
-      ],
-    });
+  async validateCustomerDeletion(tenantId: string, customerId: string): Promise<DependencyValidationResult> {
+    return this.buildCustomerLifecycleResult(tenantId, customerId, 'Excluir');
   }
 
   async assertTenantCanDeactivate(tenantId: string): Promise<void> {
@@ -147,6 +119,230 @@ export class DependencyValidationService {
   async assertCustomerCanInactivate(tenantId: string, customerId: string): Promise<void> {
     const validation = await this.validateCustomerInactivation(tenantId, customerId);
     this.assertAllowed(validation);
+  }
+
+  async assertCustomerCanDelete(tenantId: string, customerId: string): Promise<void> {
+    const validation = await this.validateCustomerDeletion(tenantId, customerId);
+    this.assertAllowed(validation);
+  }
+
+  async validateCompanyInactivation(tenantId: string, companyId: string): Promise<DependencyValidationResult> {
+    return this.buildCompanyLifecycleResult(tenantId, companyId, 'Inativar');
+  }
+
+  async validateCompanyDeletion(tenantId: string, companyId: string): Promise<DependencyValidationResult> {
+    return this.buildCompanyLifecycleResult(tenantId, companyId, 'Excluir');
+  }
+
+  async assertCompanyCanInactivate(tenantId: string, companyId: string): Promise<void> {
+    const validation = await this.validateCompanyInactivation(tenantId, companyId);
+    this.assertAllowed(validation);
+  }
+
+  async assertCompanyCanDelete(tenantId: string, companyId: string): Promise<void> {
+    const validation = await this.validateCompanyDeletion(tenantId, companyId);
+    this.assertAllowed(validation);
+  }
+
+  async validateBodyPartInactivation(tenantId: string, bodyPartId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'body_part_id', bodyPartId, 'Parte do corpo', 'Inativar');
+  }
+
+  async validateBodyPartDeletion(tenantId: string, bodyPartId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'body_part_id', bodyPartId, 'Parte do corpo', 'Excluir');
+  }
+
+  async validateMeasurementUnitInactivation(tenantId: string, unitId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'measurement_unit_id', unitId, 'Unidade de medida', 'Inativar');
+  }
+
+  async validateMeasurementUnitDeletion(tenantId: string, unitId: string): Promise<DependencyValidationResult> {
+    return this.buildMeasurementCatalogResult(tenantId, 'measurement_unit_id', unitId, 'Unidade de medida', 'Excluir');
+  }
+
+  async assertBodyPartCanInactivate(tenantId: string, bodyPartId: string): Promise<void> {
+    this.assertAllowed(await this.validateBodyPartInactivation(tenantId, bodyPartId));
+  }
+
+  async assertBodyPartCanDelete(tenantId: string, bodyPartId: string): Promise<void> {
+    this.assertAllowed(await this.validateBodyPartDeletion(tenantId, bodyPartId));
+  }
+
+  async assertMeasurementUnitCanInactivate(tenantId: string, unitId: string): Promise<void> {
+    this.assertAllowed(await this.validateMeasurementUnitInactivation(tenantId, unitId));
+  }
+
+  async assertMeasurementUnitCanDelete(tenantId: string, unitId: string): Promise<void> {
+    this.assertAllowed(await this.validateMeasurementUnitDeletion(tenantId, unitId));
+  }
+
+  async validateGarmentProductInactivation(_tenantId: string, _productId: string): Promise<DependencyValidationResult> {
+    return this.buildResult({
+      entityLabel: 'Produto',
+      actionLabel: 'Inativar',
+      blockers: [],
+    });
+  }
+
+  async validateGarmentProductDeletion(tenantId: string, productId: string): Promise<DependencyValidationResult> {
+    return this.buildAtelierCatalogResult(tenantId, 'product_id', productId, 'Produto', 'Excluir');
+  }
+
+  async validateAtelierServiceInactivation(_tenantId: string, _serviceId: string): Promise<DependencyValidationResult> {
+    return this.buildResult({
+      entityLabel: 'Serviço',
+      actionLabel: 'Inativar',
+      blockers: [],
+    });
+  }
+
+  async validateAtelierServiceDeletion(tenantId: string, serviceId: string): Promise<DependencyValidationResult> {
+    return this.buildAtelierCatalogResult(tenantId, 'service_id', serviceId, 'Serviço', 'Excluir');
+  }
+
+  async assertGarmentProductCanDelete(tenantId: string, productId: string): Promise<void> {
+    this.assertAllowed(await this.validateGarmentProductDeletion(tenantId, productId));
+  }
+
+  async assertAtelierServiceCanDelete(tenantId: string, serviceId: string): Promise<void> {
+    this.assertAllowed(await this.validateAtelierServiceDeletion(tenantId, serviceId));
+  }
+
+  private async buildCustomerLifecycleResult(
+    tenantId: string,
+    customerId: string,
+    actionLabel: 'Inativar' | 'Excluir',
+  ): Promise<DependencyValidationResult> {
+    const [serviceOrders, measurementSets, financialRecords] = await Promise.all([
+      this.count(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM service_orders
+        WHERE tenant_id = $1
+          AND customer_id = $2
+          AND is_deleted = false
+      `,
+        [tenantId, customerId],
+      ),
+      this.count(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM measurement_sets
+        WHERE tenant_id = $1
+          AND customer_id = $2
+      `,
+        [tenantId, customerId],
+      ),
+      this.count(
+        `
+        SELECT COUNT(DISTINCT payment_records.id)::int AS total
+        FROM payment_records
+        INNER JOIN service_orders ON service_orders.id = payment_records.service_order_id
+        WHERE service_orders.tenant_id = $1
+          AND service_orders.customer_id = $2
+          AND service_orders.is_deleted = false
+      `,
+        [tenantId, customerId],
+      ),
+    ]);
+
+    return this.buildResult({
+      entityLabel: 'Cliente',
+      actionLabel,
+      blockers: [
+        { code: 'service-orders', label: 'Service Orders', count: serviceOrders, workspacePath: '/service-orders' },
+        { code: 'measurements', label: 'Medições', count: measurementSets, workspacePath: '/customers' },
+        { code: 'financial-records', label: 'Registros financeiros', count: financialRecords, workspacePath: '/service-orders' },
+      ],
+    });
+  }
+
+  private async buildCompanyLifecycleResult(
+    tenantId: string,
+    companyId: string,
+    actionLabel: 'Inativar' | 'Excluir',
+  ): Promise<DependencyValidationResult> {
+    const [serviceOrders, financialRecords] = await Promise.all([
+      this.count(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM service_orders
+        INNER JOIN branches ON branches.id = service_orders.branch_id
+        WHERE service_orders.tenant_id = $1
+          AND branches.company_id = $2
+          AND service_orders.is_deleted = false
+      `,
+        [tenantId, companyId],
+      ),
+      this.count(
+        `
+        SELECT COUNT(DISTINCT payment_records.id)::int AS total
+        FROM payment_records
+        INNER JOIN branches ON branches.id = payment_records.branch_id
+        WHERE branches.tenant_id = $1
+          AND branches.company_id = $2
+      `,
+        [tenantId, companyId],
+      ),
+    ]);
+
+    return this.buildResult({
+      entityLabel: 'Empresa',
+      actionLabel,
+      blockers: [
+        { code: 'service-orders', label: 'Ordens de serviço', count: serviceOrders, workspacePath: '/service-orders' },
+        { code: 'financial-records', label: 'Registros financeiros', count: financialRecords, workspacePath: '/service-orders' },
+      ],
+    });
+  }
+
+  private async buildAtelierCatalogResult(
+    tenantId: string,
+    column: 'product_id' | 'service_id',
+    recordId: string,
+    entityLabel: string,
+    actionLabel: 'Inativar' | 'Excluir',
+  ): Promise<DependencyValidationResult> {
+    const items = await this.count(
+      `
+        SELECT COUNT(*)::int AS total
+        FROM service_order_items
+        WHERE tenant_id = $1
+          AND ${column} = $2
+          AND is_deleted = false
+      `,
+      [tenantId, recordId],
+    );
+
+    return this.buildResult({
+      entityLabel,
+      actionLabel,
+      blockers: [{ code: 'service-orders', label: 'Ordens de serviço', count: items, workspacePath: '/service-orders' }],
+    });
+  }
+
+  private async buildMeasurementCatalogResult(
+    tenantId: string,
+    column: 'body_part_id' | 'measurement_unit_id',
+    recordId: string,
+    entityLabel: string,
+    actionLabel: 'Inativar' | 'Excluir',
+  ): Promise<DependencyValidationResult> {
+    const items = await this.count(
+      `
+        SELECT COUNT(*)::int AS total
+        FROM measurement_set_items
+        WHERE tenant_id = $1
+          AND ${column} = $2
+      `,
+      [tenantId, recordId],
+    );
+
+    return this.buildResult({
+      entityLabel,
+      actionLabel,
+      blockers: [{ code: 'measurements', label: 'Medições de clientes', count: items, workspacePath: '/customers' }],
+    });
   }
 
   private async count(sql: string, params: Array<string>): Promise<number> {

@@ -14,6 +14,35 @@ export type WorkspaceStore = {
 };
 
 export const WORKSPACE_QUERY_PARAM = "workspaceTab";
+export const HOME_WORKSPACE_PATH = "/dashboard";
+/** Home destinations live in the topbar chip tray, not in the work-tab strip. */
+export const PINNED_WORKSPACE_BASE_PATHS = [] as const;
+
+export function isPinnedWorkspacePath(pathname: string): boolean {
+  return (PINNED_WORKSPACE_BASE_PATHS as readonly string[]).includes(getWorkspaceBasePath(pathname));
+}
+
+export function isHomeWorkspacePath(pathname: string): boolean {
+  return getWorkspaceBasePath(pathname) === HOME_WORKSPACE_PATH;
+}
+
+export function arrangeWorkspaceTabs(tabs: WorkspaceTab[]): WorkspaceTab[] {
+  const pinned: WorkspaceTab[] = [];
+  const rest: WorkspaceTab[] = [];
+  for (const tab of tabs) {
+    if (isPinnedWorkspacePath(tab.pathname)) {
+      pinned.push(tab);
+    } else {
+      rest.push(tab);
+    }
+  }
+  pinned.sort(
+    (left, right) =>
+      (PINNED_WORKSPACE_BASE_PATHS as readonly string[]).indexOf(getWorkspaceBasePath(left.pathname)) -
+      (PINNED_WORKSPACE_BASE_PATHS as readonly string[]).indexOf(getWorkspaceBasePath(right.pathname)),
+  );
+  return [...pinned, ...rest];
+}
 
 export function normalizeWorkspacePathname(pathname: string): string {
   const [pathWithQuery, hashFragment = ""] = pathname.trim().split("#");
@@ -38,7 +67,7 @@ export function resolveActiveWorkspaceTabId(tabs: WorkspaceTab[], activeTabId?: 
     return activeTabId;
   }
 
-  return tabs[0]?.id ?? null;
+  return null;
 }
 
 export function createWorkspaceTab(input: {
@@ -60,15 +89,20 @@ export function isMeaningfulWorkspaceTab(tab: WorkspaceTab): boolean {
 }
 
 export function normalizeWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
-  const tabs = store.tabs.map((tab) => createWorkspaceTab(tab)).filter(isMeaningfulWorkspaceTab);
+  const stripped = stripHomeWorkspaceTabs({
+    tabs: store.tabs.map((tab) => createWorkspaceTab(tab)).filter(isMeaningfulWorkspaceTab),
+    activeTabId: store.activeTabId,
+    stateByTabId: store.stateByTabId ?? {},
+  });
+  const tabs = arrangeWorkspaceTabs(stripped.tabs);
   const validTabIds = new Set(tabs.map((tab) => tab.id));
   const stateByTabId = Object.fromEntries(
-    Object.entries(store.stateByTabId ?? {}).filter(([tabId]) => validTabIds.has(tabId)),
+    Object.entries(stripped.stateByTabId).filter(([tabId]) => validTabIds.has(tabId)),
   );
 
   return {
     tabs,
-    activeTabId: resolveActiveWorkspaceTabId(tabs, store.activeTabId),
+    activeTabId: resolveActiveWorkspaceTabId(tabs, stripped.activeTabId),
     stateByTabId,
   };
 }
@@ -87,8 +121,21 @@ export function upsertWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): Wo
 
   return normalizeWorkspaceStore({
     ...store,
-    tabs: [...store.tabs, tab],
+    tabs: [tab, ...store.tabs],
   });
+}
+
+export function moveWorkspaceTabToFront(store: WorkspaceStore, tabId: string): WorkspaceStore {
+  const index = store.tabs.findIndex((tab) => tab.id === tabId);
+  if (index <= 0) {
+    return store;
+  }
+
+  const tab = store.tabs[index];
+  return {
+    ...store,
+    tabs: [tab, ...store.tabs.filter((candidate) => candidate.id !== tabId)],
+  };
 }
 
 export function setActiveWorkspaceTab(store: WorkspaceStore, tabId: string | null): WorkspaceStore {
@@ -98,15 +145,24 @@ export function setActiveWorkspaceTab(store: WorkspaceStore, tabId: string | nul
   });
 }
 
+export function revealWorkspaceTab(store: WorkspaceStore, tabId: string): WorkspaceStore {
+  return setActiveWorkspaceTab(moveWorkspaceTabToFront(store, tabId), tabId);
+}
+
 export function activateWorkspaceTab(store: WorkspaceStore, tab: WorkspaceTab): WorkspaceStore {
   return setActiveWorkspaceTab(upsertWorkspaceTab(store, tab), tab.id);
 }
 
 export function removeWorkspaceTab(store: WorkspaceStore, tabId: string): WorkspaceStore {
+  const tab = store.tabs.find((candidate) => candidate.id === tabId);
+  if (tab && isPinnedWorkspacePath(tab.pathname)) {
+    return store;
+  }
+
   const remainingState = { ...store.stateByTabId };
   delete remainingState[tabId];
   return normalizeWorkspaceStore({
-    tabs: store.tabs.filter((tab) => tab.id !== tabId),
+    tabs: store.tabs.filter((candidate) => candidate.id !== tabId),
     activeTabId: store.activeTabId === tabId ? null : store.activeTabId,
     stateByTabId: remainingState,
   });
@@ -168,6 +224,70 @@ export function clearWorkspaceScopedState(store: WorkspaceStore, tabId: string, 
 
 export function getWorkspaceBasePath(pathname: string): string {
   return normalizeWorkspacePathname(pathname).split("?")[0] || "/";
+}
+
+export function listWorkspaceTabsForNavItem(tabs: WorkspaceTab[], href: string): WorkspaceTab[] {
+  return tabs.filter((tab) => getWorkspaceBasePath(tab.pathname) === href);
+}
+
+export function shouldShowWorkspaceNavSubmenu(tabs: WorkspaceTab[], href: string): boolean {
+  if (isHomeWorkspacePath(href)) {
+    return false;
+  }
+
+  return listWorkspaceTabsForNavItem(tabs, href).some(
+    (tab) => normalizeWorkspacePathname(tab.pathname) !== href,
+  );
+}
+
+export function isDashboardWorkspacePath(pathname: string): boolean {
+  return isHomeWorkspacePath(pathname);
+}
+
+export function findWorkspaceTabByBasePath(tabs: WorkspaceTab[], pathname: string): WorkspaceTab | undefined {
+  const basePath = getWorkspaceBasePath(pathname);
+  return tabs.find((tab) => getWorkspaceBasePath(tab.pathname) === basePath);
+}
+
+export function resolveLandingWorkspaceTab(
+  store: WorkspaceStore,
+  currentPathname: string,
+  urlTabId: string | null,
+): { activeTabId: string | null; goHome: boolean } {
+  if (urlTabId && store.tabs.some((tab) => tab.id === urlTabId)) {
+    return { activeTabId: urlTabId, goHome: false };
+  }
+
+  if (isHomeWorkspacePath(currentPathname)) {
+    return { activeTabId: null, goHome: true };
+  }
+
+  return { activeTabId: store.activeTabId, goHome: false };
+}
+
+export function stripHomeWorkspaceTabs(store: WorkspaceStore): WorkspaceStore {
+  const dropIds = new Set(
+    store.tabs.filter((tab) => isHomeWorkspacePath(tab.pathname)).map((tab) => tab.id),
+  );
+  if (dropIds.size === 0) {
+    return store;
+  }
+
+  const remainingState = { ...store.stateByTabId };
+  for (const tabId of dropIds) {
+    delete remainingState[tabId];
+  }
+
+  return {
+    ...store,
+    tabs: store.tabs.filter((tab) => !dropIds.has(tab.id)),
+    activeTabId: store.activeTabId && dropIds.has(store.activeTabId) ? null : store.activeTabId,
+    stateByTabId: remainingState,
+  };
+}
+
+export function collapseDuplicateDashboardTabs(store: WorkspaceStore): WorkspaceStore {
+  return stripHomeWorkspaceTabs(store);
 }
 
 export function getWorkspaceSearchParams(pathname: string): URLSearchParams {

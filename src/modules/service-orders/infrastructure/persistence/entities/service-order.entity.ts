@@ -1,5 +1,5 @@
 import { Column, Entity } from 'typeorm';
-import { DeliveryType, ServiceOrderStatus, SurchargeMethod } from 'src/shared/domain/enums';
+import { DeliveryType, ServiceOrderReturnKind, ServiceOrderStatus, SurchargeMethod } from 'src/shared/domain/enums';
 import { SoftDeletableBusinessEntity } from 'src/shared/persistence/base.entity';
 
 @Entity({ name: 'service_orders' })
@@ -22,6 +22,21 @@ export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'order_no', type: 'varchar', length: 50 })
   orderNo!: string;
 
+  @Column({ name: 'public_token', type: 'uuid', nullable: true })
+  publicToken!: string | null;
+
+  @Column({ name: 'group_id', type: 'uuid', nullable: true })
+  groupId!: string | null;
+
+  @Column({ name: 'group_seq', type: 'integer', nullable: true })
+  groupSeq!: number | null;
+
+  @Column({ name: 'version_suffix', type: 'varchar', length: 8, nullable: true })
+  versionSuffix!: string | null;
+
+  @Column({ name: 'bag_closed', type: 'boolean', default: false })
+  bagClosed!: boolean;
+
   @Column({ name: 'opened_at', type: 'timestamptz' })
   openedAt!: Date;
 
@@ -31,11 +46,23 @@ export class ServiceOrderEntity extends SoftDeletableBusinessEntity {
   @Column({ name: 'promised_delivery_date', type: 'date' })
   promisedDeliveryDate!: string;
 
+  @Column({ name: 'promised_delivery_time', type: 'varchar', length: 5, nullable: true })
+  promisedDeliveryTime!: string | null;
+
   @Column({ name: 'actual_pickup_date', type: 'date', nullable: true })
   actualPickupDate!: string | null;
 
+  @Column({ name: 'origin_service_order_id', type: 'uuid', nullable: true })
+  originServiceOrderId!: string | null;
+
+  @Column({ name: 'return_kind', type: 'varchar', length: 20, nullable: true })
+  returnKind!: ServiceOrderReturnKind | null;
+
   @Column({ name: 'actual_delivery_date', type: 'date', nullable: true })
   actualDeliveryDate!: string | null;
+
+  @Column({ name: 'actual_delivery_time', type: 'varchar', length: 5, nullable: true })
+  actualDeliveryTime!: string | null;
 
   @Column({ name: 'payment_terms_days', type: 'integer', default: 0 })
   paymentTermsDays!: number;

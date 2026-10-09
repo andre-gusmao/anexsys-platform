@@ -2,6 +2,11 @@ export const DEFAULT_BRANCH_TIMEZONE = 'America/Sao_Paulo';
 export const DEFAULT_BRANCH_CODE = 'MATRIZ';
 export const DEFAULT_BRANCH_DISPLAY_NAME = 'Matriz';
 
+export function defaultBranchFallbackCode(companyId: string): string {
+  const suffix = companyId.replace(/-/g, '').slice(0, 6).toUpperCase();
+  return `${DEFAULT_BRANCH_CODE}-${suffix}`;
+}
+
 export type WeekdayHoursInput = {
   weekday: number;
   isOpen: boolean;
@@ -64,7 +69,14 @@ export const ATELIER_ROLES = [
     code: 'QUALIDADE',
     displayName: 'Qualidade',
     description: 'Revisa e reprova peças.',
-    permissions: ['quality.read', 'quality.write', 'rework.read', 'rework.write', 'production_orders.read'],
+    permissions: [
+      'quality.read',
+      'quality.write',
+      'rework.read',
+      'rework.write',
+      'production_orders.read',
+      'service_orders.read',
+    ],
   },
   {
     code: 'GERENTE',

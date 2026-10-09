@@ -1,6 +1,6 @@
 # Decisões do André
 
-**Atualizado em:** 05/10/2026 (noite)
+**Atualizado em:** 09/10/2026
 **Substitui:** as regras de negócio da documentação antiga (`docs/arquivo/`) nos pontos em que elas divergem deste documento.
 **Valor:** este é o documento **oficial** das regras de negócio. Quando outro documento discordar, vale este.
 
@@ -50,7 +50,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 1. **Atendimento / OS aberta**: gera a OS; não gera etiqueta nem leitura de QR. A OS é enviada ao cliente por WhatsApp com status **Em aberto (público)**. O cliente recebe um link para acompanhar e para aprovar.
 2. **Medição das roupas**: não gera etiqueta, não lê QR, sem WhatsApp. É a etapa que origina a abertura da OS.
 3. **Aprovação do cliente**: o status continua Em aberto; a aprovação não é status, é uma **assinatura "concordo com o serviço e preço"**, registrada por escrito.
-4. **Sacola física**: após a OS, as peças vão para uma sacola física, sem controle sistêmico, com **limite de até 5 peças por OS** e um bolso transparente com a **Ordem de Produção impressa e um QR code**. A sacola vai para a esteira de "a fazer", por ordem de chegada. Quando o técnico pega a sacola e lê o QR, o status vai para **Em produção (público)** com data, hora e técnico registrados, para controle de produtividade.
+4. **Sacola física**: a sacola é **só o transporte**. O sistema limita as peças **por versão da OS** (parâmetro da Conta, padrão 5). Cada linha é uma peça. A atendente registra até o limite e aperta **Fechar sacola** (trava; pode **Abrir sacola** se errou). **Salvar** com a sacola fechada imprime a OP. Se ainda houver peças, marca **Abrir nova versão** e **Salvar** abre `AAA000001-1` em outra aba. A última versão pode ter só o que restou (sem mínimo). A sacola vai para a esteira de "a fazer". Quando o técnico lê o QR, o status vai para **Em produção (público)**.
 5. Não existe essa etapa (numeração do André).
 6. **Acabamento/passadoria**: ao terminar, o técnico lê o QR, leva a sacola para a esteira de finalizadas e o status vai para **Aguardando controle de qualidade (público)**.
 7. **Revisão de qualidade**: o revisor tira a sacola da esteira, lê o QR e o status vai para **Controle de qualidade (público)**. Aprova (vai para Pronto para retirada) ou reprova.
@@ -69,7 +69,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 - Cada funcionário tem o leitor de QR no celular, cadastrado, e muda o status seguindo uma **ordem sem pular nem retroagir** (resposta 32: C, fluxo rígido). A reprovação é o único retorno previsto.
 - **Quem faz o quê:** costureiras (técnicas) fazem a produção; atendentes fazem medição, revisão e controle de qualidade. Só o papel responsável pela fase avança (resposta 31: B).
 - Reprovado: volta para a mesma técnica, se estiver escalada no dia, ou para outra; ao ler o QR a outra técnica **assume a refação**.
-- Quando a peça é produzida em tempo diferente, o André controla por **quantidade de peças da OS** (para dimensionar a grade de costureiros e contratar) e por **grau de dificuldade 1, 2, 3, 4** (para definir tempo médio).
+- Quando a peça é produzida em tempo diferente, o André controla por **quantidade de peças da OS** (para dimensionar a grade de costureiros e contratar) e por **grau de dificuldade 1, 2, 3, 4** (para definir tempo médio). O fluxo completo da **grade diária** (ativar o técnico do dia, comparecimento, contas a pagar e Pix) está na **seção 13**.
 - **Diaristas/terceiros (35 C)**: hoje se identificam anotando dia e hora na OS e em caderno. Querem log próprio (login) como **diário de bordo**, para saber o que produziram e para um **bônus por produtividade**. O diário de bordo deve mostrar a **descrição do serviço** de cada peça, como alternativa ao papel.
 
 ### Controle da unidade (pergunta 10)
@@ -85,7 +85,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 
 ## 3. Prazos, garantia e fluxos de entrega
 
-- **Prazo Normal**: entrega no **mesmo dia da semana da semana seguinte** (segunda para segunda, terça para terça, etc., inclusive sábado). Em feriado, antecipa ou adia. O sistema **sugere a data** pela regra, e o atendente pode **alterar**.
+- **Prazo Normal**: entrega no **mesmo dia da semana da semana seguinte** (segunda para segunda, terça para terça, etc., inclusive sábado). Em feriado, antecipa ou adia. O sistema **sugere a data**; o **horário padrão é o da gravação da OS**. O atendente pode **alterar os dois**. Na OS, **Situação** é o status; o quadro **Previsão de entrega** é essa sugestão; **Saída** é a retirada real (quando o cliente assina a OP ou o atendente registra Recebido). **Técnico** e **Controle de qualidade** não são obrigatórios na abertura.
 - Feriados fechados, cadastrados por Filial (a). Horário de corte (b): A (sim, depois de certa hora; horário não informado). Tipos de entrega (c): A, diferentes. Prazo padrão (d): 7.
 - **Tipos de entrega**: Normal (mesmo dia da semana seguinte); **Expresso** (até 2 horas por peça); **Urgente** (2 a 3 dias depois, foge da regra do mesmo dia da semana).
 - **Garantia**: 7 dias para reparos (cliente que não provou na hora da retirada pode voltar para refação, como reconserto, contados em dias úteis no texto das observações e "corridos" na resposta 27b). **Garantia de serviço por peça: 90 dias** (descosturou, barra se desfez), negociável no balcão; conta a partir da conclusão da peça (27 c: C).
@@ -110,6 +110,7 @@ Os números citados em "resposta N" ou "pergunta N" referem-se ao questionário 
 
 - **Dashboard de produtividade** na tela do sistema (por técnico e por quantidade de peças da OS) e **alertas de atraso** antes que a entrega atrase, com parâmetros configuráveis.
 - Validação: quer receber pelo próprio sistema o painel e os alertas, não só link e roteiro.
+- **Lugar na tela (06/10/2026):** chips na **barra superior** (sempre visíveis, em qualquer aba). Ver seção 13.
 
 ## 7. Dados do sistema atual (55)
 - Importação (C): o sistema atual gera tudo em Excel; ele pensa em importar histórico completo, **depois da validação**.
@@ -172,9 +173,18 @@ Fonte: respostas do André às 15 perguntas complementares. Itens marcados **[AS
 - **Lista de status confirmada**, com o status **interno** **"Em refação"**: quando a técnica lê o QR de uma OS reprovada, o status vira **Em refação**; ao terminar e ler de novo, vai para **Aguardando controle de qualidade**.
 - **Regra de uma sacola por vez:** a técnica só abre outra sacola (lê o QR de outra OS) depois de terminar a anterior.
 
-**Divisão automática de OS**
-- Mais de **5 peças**: o sistema **divide automaticamente em uma segunda OS ligada à primeira**.
-- **[ASSUMIDO]** As OS ligadas formam um **grupo**: o cliente recebe **um só link** que lista as OS do grupo, **um só aviso** de OS aberta, e o pagamento pode ser único. Cada OS tem sua sacola, sua Ordem de Produção e seu QR.
+**Versões da OS e Fechar sacola**
+- A sacola **não é um objeto do sistema**. É o saco físico que leva as peças e a OP no bolso transparente.
+- Cada versão da OS aceita até o **limite parametrizado da Conta** (padrão **5**). **Cada linha é uma peça** (quantidade sempre 1, não editável). Exemplo: 13 peças viram `AAA000001` (5) → Fechar → Abrir nova versão → Salvar (imprime OP e abre `-1`) → de novo até `AAA000001-2` (3) → Fechar → Salvar (só imprime).
+- **Número da OS:** três letras e seis dígitos, como placa (`AAA000001` … `AAA999999`, depois `AAB000001`). Não reinicia no dia. A versão da sacola acrescenta `-1`, `-2`. Processos usam letra: **C** balcão, **R** reconserto, **G** garantia.
+- **Salvar** com a sacola aberta grava só o rascunho: não trava e não gera OP.
+- **Fechar sacola** grava e **trava** a versão. O botão vira **Abrir sacola**. **Não** imprime e **não** cria outra OS.
+- **Abrir sacola** destrava para corrigir ou incluir peça.
+- **Abrir nova versão** só aparece na **grade de itens**, depois de fechar. É a marca. Não há o mesmo botão no rodapé. Quando está marcado, o rodapé avisa que **Salvar** gera a próxima versão (já com o número, ex. `AAA000001-1`) em **outra aba**.
+- **Salvar** com a sacola fechada imprime a Ordem de Produção (popup de impressão). Se **Abrir nova versão** estiver marcado na grade, também abre a próxima versão ligada.
+- **Valor** e **desconto** da peça são digitados no formato de dinheiro (centavos, `15.000,00`).
+- Sem mínimo de peças na última versão.
+- **[ASSUMIDO]** As versões ligadas formam um **grupo**: o cliente recebe **um só link**, **um só aviso** de OS aberta, e o pagamento pode ser único. Cada versão tem sua sacola física, sua Ordem de Produção e seu QR.
 
 **Dificuldade**
 - **Por serviço**, com **valor padrão no catálogo**. A **OS mostra a maior** dificuldade entre seus serviços. O **atendente pode ajustar**.
@@ -240,8 +250,8 @@ Fonte: respostas do André às perguntas complementares da segunda rodada. Esta 
 
 ### 11.2 Retirada
 
-- **Só assinatura no papel nesta primeira fase.** O cliente assina a **Ordem de Produção em papel**, o atendente **anexa a foto na OS** e clica **"entregue assinado"**.
-- **Sem token e sem janela de confirmação por ora.** (O parecer sobre token permanece como análise para uma versão futura.)
+- **Dois caminhos, mais um escape.** Digital: o cliente aperta **Recebi** no **mesmo link** da OS, só depois que a atendente **inicia a retirada** (janela de 10 min). Papel: foto da OP assinada + **Entregue assinado**. Se o cliente não clicou, a atendente pode **Entregue** (baixa do atendente, não é assinatura do cliente).
+- A API oficial do WhatsApp entra depois. **Homologado em 09/10:** o envio hoje é pelo **WhatsApp Web** (mensagem certa). O link público existe; o microformulário ainda não abre no celular e os botões novos (Concordo, etc.) ficam para a próxima fase desse formulário.
 
 ### 11.3 Entrega em domicílio
 
@@ -271,6 +281,19 @@ Todas as cinco foram **confirmadas**:
 
 - **Grau 1 = 30 minutos, grau 2 = 60, grau 3 = 90, grau 4 = 180.**
 
+### 11.7b Prazos de entrega (homologado em 09/10/2026)
+
+- O cálculo **Normal / Expresso / Urgente** na OS está **validado**.
+- Os prazos ainda são **fixos no código** (Normal = +7 dias, Urgente = 3 dias úteis, Expresso = 2 horas por peça). O **painel de parâmetros** para o André definir esses valores entra depois.
+
+### 11.7c Aprovação na entrada da OS (a validar)
+
+- A aprovação é **concordo com o serviço e o valor**. **Não é status**: a OS continua **Em aberto**.
+- Nesta fase: **balcão** (**Concordou**) e **papel** (foto da OS assinada + **Assinado no papel**). O **Concordo** no celular entra depois, no mesmo link.
+- Cada registro guarda quem, quando, o texto aceito, valor e serviços na hora, e a foto (no papel). A **medida usada fica travada**.
+- A produção **pode começar sem assinatura**, com **Liberar produção** e **motivo**. Depois ainda dá para assinar no balcão ou no papel.
+- Lista visível e aviso diário de aprovação pendente entram depois.
+
 ### 11.8 Princípio transversal: tela de parâmetros
 
 - **Para todas as regras deve existir uma tela de parâmetros**, **administrável pelo André**: graus e tempos (inclusive **aumentar ou diminuir graus**), **parâmetros de logística de produção**, prazos, cortes, sobretaxas, status e demais regras.
@@ -288,3 +311,161 @@ Estão nas perguntas complementares da terceira rodada (fora do repositório).
 ### 11.10 O que o André precisa verificar com a operadora (da pesquisa)
 
 Modelo exato da LIO e compatibilidade com a integração remota; se o pedido aparece sozinho na maquininha; se o resultado volta por aviso automático ou só por consulta; custos (aluguel, taxas, integração); prazo do token de produção; modelo de parceria para vender o ANEXSYS a outros ateliês. Lista completa em `docs/07-parecer-integracao-maquininha.md`, seção 9.
+
+## 12. Navegação e cadastros (06/10/2026)
+
+Validado no ambiente local. Vale para **todos** os cadastros de uma vez: mesma lista (Adicionar, Mais ações, busca, colunas, lupa de filtro, zebrinha, paginação), Novo/Alterar em aba interna, menu lateral com submenu, e **formulário com fundo ciano**. O formulário da **OS** (cabeçalho e peças) e os textos da tela de Acesso ficam em **português**. Não homologar tela por tela. Clientes, Empresas, Filiais, Contas, OS, **Partes do corpo**, **Unidades de medida**, **Produtos**, **Serviços**, **Usuários**, **Papéis**, **Permissões** e **Comunidades** já usam esse padrão. Empresas, Partes do corpo, Unidades e **Usuários** têm **Alterar / Excluir / Inativar** como Clientes. **Papéis** têm Alterar e Inativar (papel de sistema não inativa). **Permissões** só Alterar — não há exclusão nem status. **Comunidades** estão congeladas: a grade segue o padrão, sem escrever. **Filiais** e **Contas** têm Alterar e Inativar na grade (a API ainda não exclui). Usuário não exclui a si mesmo nem o último usuário da Conta. Parte do corpo ou unidade com medida de cliente não pode ser inativada nem excluída. A unidade padrão da Conta (CM) também não. Combo Empresa esconde as inativas; a lista continua mostrando. A última Empresa ativa da Conta não pode ser inativada nem excluída. Só inativa a Conta do contexto ativo.
+
+**Homologação local (06/10/2026):** Atelier A, Atelier B e Atelier C estão cadastradas **na mesma Conta**, cada uma com **CNPJ diferente**. A faixa **verde** de confirmação permanece como está. Hierarquia: **Conta** (quem assina) → **Empresa** (pai, CNPJ) → **Filiais** (filhos). **Não existe Filial pai:** as unidades de uma Empresa ficam no mesmo nível. Ao cadastrar a Empresa, o sistema cria a primeira Filial filha, a **Matriz**. Você não cadastra a Matriz como se fosse outra Empresa; outras Filiais nascem em Administração → Filiais, sempre debaixo da Empresa. O código MATRIZ é único **por Empresa**. Se o banco antigo ainda travar o código na Conta inteira, a Matriz da segunda Empresa nasce com um código reserva. Duas **Contas** Ateliê A/B (isolamento do Ciclo 1) ficam para a tela de Contas, já com o mesmo padrão de lista. Mensagem de erro na tela aparece **em vermelho**, inclusive quando o texto for técnico. Confirmação fica **verde**.
+
+### Abas internas
+
+- O **menu** abre ou volta para a aba daquela tela. Dashboard não empilha.
+- **Cadastrar novo** e **Alterar** abrem **outra aba interna**. A lista **permanece aberta**.
+- Assim o atendente não perde um cadastro de cliente se precisar abrir uma OS no meio do atendimento.
+- Não se usa “nova aba do navegador” nem “nova janela”.
+- **Combos** Conta / Empresa / Filial só mudam o contexto. Ficam fixos no alto da barra esquerda.
+- O **menu lateral** usa fundo **ciano-turquesa** e letras **pretas**.
+- As faixas de título das telas (**hero**) também usam ciano e letras pretas.
+- Quando um cadastro tem **mais de uma aba** (lista + Novo ou Alterar), o **menu lateral** mostra um submenu com essas abas. O clique no item do menu volta para a grade; o clique no submenu ativa a aba correspondente. O **X** do submenu fecha aquela aba (o mesmo que o X do topo). No celular não há submenu.
+- As abas do topo **nascem à esquerda**, empurrando as já abertas para a direita, para a última tela aberta ficar visível. Reabrir pelo menu traz essa aba de volta à esquerda. Trocar de aba pelo clique nela não reordena.
+- **Dashboard** é chip fixo na **barra superior**, ao lado do nome da sessão (no vão até o Sair). Não é aba. Clicar nele volta para casa **sem fechar** as abas de trabalho. O que entrar depois nesse vão (alertas, técnicos do dia, produtividade) também será chip, não aba. A faixa de abas fica **só para telas abertas**; some quando não houver nenhuma.
+- O menu **encolhe e expande** como pasta: a seta abre/fecha o ramo; o nome do item continua abrindo a tela. Assim os submenus futuros cabem na barra.
+- Se houver **subaba aberta**, aquele ramo **permanece aberto**. Só some quando o usuário fecha a aba (X).
+- Cada função do menu tem uma **borda discreta** para separar visualmente um item do outro.
+
+### Tela principal de cada cadastro
+
+De cima para baixo:
+
+1. **Cabeçalho da grade:** **Adicionar** à esquerda; **Mais ações** (exportar Excel, exportar e-mails e excluir) só vale com linhas **marcadas**; à direita busca por nome, ícone para **escolher colunas** e botão para **abrir o filtro**.
+2. **Filtro:** o botão é uma **lupa com +** para abrir e vira **lupa com −** para fechar. O painel é uma caixa **ciano-turquesa**, à parte do fundo, com **Buscar** e **Limpar**.
+3. **Grade** com caixa de seleção, colunas configuráveis, **Alterar / Excluir / Inativar**, zebrinha **ciano-turquesa claro / branco**, e **paginação** com números de página, anterior e próxima.
+
+### Campos que vêm de tabela
+
+Em **busca, cadastro e movimentação** (OS incluída): o campo sugere registros já cadastrados enquanto se digita.
+
+- Se a lista sugerir, a atendente escolhe o item.
+- Se **não sugerir**, a caixinha de “Nenhum registro encontrado” traz o botão **Cadastrar**. O atalho abre o cadastro (aba interna, com o texto já preenchido).
+- Vale para **todo campo que vem de outra tabela** (cliente na OS, filial, parte do corpo, unidade, etc.).
+
+### Excluir e inativar
+
+- **Inativar:** o registro deixa de ser usado no dia a dia, mas o histórico permanece.
+- **Excluir:** só se **não houver movimento** (OS, medidas, financeiro). Com movimento, a tela avisa e não apaga; use Inativar quando a regra permitir.
+
+## 13. Escopo futuro registrado (06/10/2026)
+
+Confirmado pelo André. **Não construir agora.** Fica no escopo para não esquecer.
+
+### Barra superior operacional
+
+O topo (hoje nome da sessão, chip **Dashboard** e Sair) vira acompanhamento para **atendente e gerente**, visível em qualquer aba. O Dashboard já ocupa esse vão; o restante abaixo **não construir agora**:
+
+- **Técnicos do dia** — quem está em operação (alimentado pela grade diária, abaixo).
+- **Concierge** — chegada dos clientes (versão futura; o piloto atual não tem fila).
+- **Alerta operacional** — fica vermelho se houver OS parada, produção atrasada ou prazo perto sem finalizar.
+- **Produtividade** — recorte do dia por técnico/costureira.
+
+São **chips compactos**; o clique abre o detalhe. A regra do que é atraso mora na **tela de parâmetros**. Sem botão de mentira até existir dado real de produção.
+
+### Estilização para comercializar
+
+A paleta atual (ciano-turquesa e letras pretas) vale para o homologador. **Quando o ANEXSYS for vendido a outros ateliês**, precisa existir um **lugar de estilização** (identidade visual da Conta: cores, logo, faixa, menu, grade). O padrão de hoje é o tema inicial, não o único.
+
+### Grade diária de técnicos
+
+No questionário já existia o **dimensionamento** da equipe (quantidade de peças + grau de dificuldade), o **diário de bordo**, o login das diaristas e o dashboard de produtividade. **Não estava** o dia a dia de convocar, confirmar presença e pagar.
+
+Fluxo registrado em 06/10/2026:
+
+1. **Cadastro de prestador de serviço** — pessoa que trabalha para o ateliê. No cadastro: **cargo** (costureiro, gerente, atendente e assim por diante), **média de performance**, **valor contratado do dia** e dados para **Pix**. “Técnico” é o prestador convocado para produzir. O **papel** (permissão) continua sendo outro cadastro: recepção, atendente/medidor, produção, qualidade, gerente.
+2. **Grade diária** — escolhe o **dia** a analisar. O sistema mostra a **demanda futura** (OS, peças, dificuldade, prazo). O André **marca os técnicos** que vai convocar (eles aparecem de forma variável, conforme planejamento e demanda). Com os marcados, vê se **atende a demanda** ou se precisa chamar mais. Objetivo: contratar só as pessoas necessárias, otimizar o resultado e **garantir o prazo do cliente**.
+3. **Comparecimento** — no dia, confirma quem veio trabalhar.
+4. **Contas a pagar** — quem compareceu gera um título no **valor contratado**. Pagamento **no fim do dia via Pix**. Este Pix é **ao técnico**, não o QR Pix da OS do cliente (esse saiu na seção 11). O envio automático pela conexão bancária está no item seguinte.
+
+Alimenta o chip **Técnicos do dia** da barra superior. Completa o “dimensionamento de grade” previsto no Ciclo 8. **Não construir agora.**
+
+### Pix automático de saída e reembolso ao cliente
+
+**É possível.** O sistema se conecta ao banco (ou a um intermediário Pix) para **enviar** Pix. Isso **não** volta o QR Pix na tela da OS: o cliente continua pagando na **maquininha**.
+
+Dois usos da mesma conexão:
+
+1. **Pagar o técnico** no fim do dia (grade diária, acima) — o título aprovado dispara o Pix no valor contratado.
+2. **Reembolso ao cliente** — o sistema abre a ação na OS (motivo e valor). O dinheiro **só sai** depois da **aprovação do administrador**. Aí o Pix vai para a chave do cliente.
+
+O **estorno de cartão** na maquininha Cielo continua sendo outro caminho (já previsto no Ciclo 7: gerente + motivo). Reembolso via Pix é para quando o dinheiro precisa **sair da conta** para o cliente.
+
+A conexão bancária depende de contrato com o banco ou intermediário; detalha-se na hora de construir. **Não construir agora.**
+
+## 14. Linha da OS, catálogos e Pagar (07/10/2026)
+
+Confirmado no formulário da OS, inspirado nos prints e sem perder o plano:
+
+- Na mesma linha: **Produto** e **Serviço**. O serviço da linha **só lista o que já tem preço** para aquele produto. O preço vem da tabela **Preços** (par produto + serviço) e o atendente pode alterar. O tempo previsto da combinação é cadastro para o PCP; **não** mexe em Normal / Expresso / Urgente. Depois o **Detalhamento do ajuste** (o combinado com o cliente; no código `complement`), **marca** (obrigatória; o ateliê pode cadastrar **Não Informado**), **modelo** e **série** (opcionais na maioria das peças). Obrigatoriedade de modelo/série por estabelecimento fica para a tela de parâmetros. Na tela, o mouse em cima do detalhamento abre o texto completo.
+- Até o **limite parametrizado** de peças **por versão** (padrão 5). Cada linha é uma peça. A sacola é só transporte. **Fechar sacola** trava. **Salvar** com a sacola fechada imprime a OP. **Abrir nova versão** + **Salvar** abre a próxima versão ligada (`AAA000001-1`) em outra aba.
+- **Observação** sai para o cliente e já vem com a regra de garantia (90 dias / reconserto 7 dias úteis). **Observação interna** não imprime.
+- A **OS impressa sai com valores**. A **Ordem de Produção não mostra valores** — o técnico não vê o que foi cobrado.
+- A grade e o formulário da OS têm o menu **⋮** para **reimprimir** (Ordem de serviço / Ordem de produção) e **reenviar** (WhatsApp ou e-mail). Não entram etiqueta adesiva, NFS-e, SMS, link de cobrança nem os demais itens do sistema antigo que ainda não existem de verdade.
+- Não entrou endereço de entrega nem frete.
+- **Pagar** fica no bloco **Pagamento** da OS (e no rodapé). O botão **registra** o valor já recebido no balcão. Formas: **Dinheiro**, **Cartão na maquininha**, **Pix**, **Transferência** e **Outro**. Não processa cartão daqui e não abre QR Pix. À vista/parcelado, plano de contas, gerar parcelas e Cielo **não** entram nesta fase.
+- **Condição** na OS e na OP: **Pago** só com a OS quitada; parcial ou em aberto = **Pagar na retirada**.
+- **Falta pagamento** é aviso na OS e na retirada, **não é status**. A entrega só bloqueia se a Conta estiver com **Bloquear entrega por inadimplência**. Liberação do gerente com motivo entra depois.
+- O formulário da OS começa pelo **Cliente**. Empresa e Filial não repetem o menu lateral. **Status** (não Situação), Entrada e Saída ficam numa linha; previsão e responsáveis em caixas no mesmo bloco. Prioridade fica na previsão.
+
+## 15. Como o André valida no VS Code (07/10/2026)
+
+O André homologa no PC, no VS Code. **`git pull` sozinho não basta.** Depois de cada entrega, o aviso precisa listar o que fazer no VS Code:
+
+1. Terminal: `git pull`.
+2. Terminal do servidor: `Ctrl+C` e `npm run start:dev` de novo. É isso que atualiza o banco (colunas novas, produto, serviço, horário de saída, versões da OS e limite de peças).
+3. Se a tela mudou: no terminal da tela, `Ctrl+C` e `npm run frontend:dev` de novo.
+4. Só então atualizar o navegador em `http://127.0.0.1:3001`.
+
+## 16. Ordem de Produção impressa A5 (07/10/2026)
+
+- A bandeja **A5 é da impressora**. O papel já nasce no tamanho A5 (`@page A5`) para caber no bolso da sacola.
+- Duas faces na mesma folha: **cabeçalho** (balcão/técnico) e **prateleira** (câmera da esteira).
+- **Entrada** pequena no topo. **Previsão sai do cabeçalho** e vira o bloco enorme embaixo: **dia grande, mês pequeno e numérico** (`18` `/10`).
+- Número da OS (placa) **no cabeçalho e em cima do QR**.
+- Grade em **linhas de tabela** (**S** = sequência 1–5, depois Produto \| Serviço \| Detalhamento do ajuste). O técnico lê peça a peça. **Detalhamento do ajuste** é o maior campo, fonte **15 px** (~11 pt) — o maior que cabe em 3 linhas no A5 com 5 peças e a prateleira. A coluna S (~7%) deixa ~34 caracteres por linha (**102** no total). Na refação, o **motivo da reprovação** sai nessa coluna, marcado **Refazer**. Na prova, a anotação sai marcada **Prova**, sem apagar o Detalhamento do ajuste. **Sem quantidade e sem preço**.
+- Marca, modelo e série saem **pequenos**, sem destaque, só o que foi preenchido.
+- **Pagar na retirada** ou **Pago** fica no **cabeçalho**. No espaço que era da condição entra o bloco **Retirada** (Nome, Data, Assinatura) para o cliente — ou quem buscar — assinar no bolso da sacola.
+
+## 17. Controle de qualidade peça a peça (07/10/2026)
+
+- Tela **Controle de qualidade**: grade no molde da OS, **sem valores**, com **S** (sequência), Produto, Serviço, Detalhamento do ajuste, marca/modelo/série.
+- O botão da grade é **Revisar**, não Alterar. A reimpressão da OP fica no **⋮** de cada linha, no mesmo padrão da grade da OS, para o caso da impressão falhar.
+- A lista do **Controle de qualidade** mostra só as OP com status **Aguardando controle de qualidade**. **Pegar sacola** mostra só **Aberta** (botão Pegar sacola) e, depois de pegar, **Em produção** (botão Terminei). A lista da OS continua com todos os status.
+- Os passos de chão **não são provisórios**. Ficam na função **Operações → Pegar sacola**: só as OS **Abertas** (Pegar sacola), que passam a **Em produção** (Terminei). Uma sacola por vez. Quem não usa QR no contrato continua por esta tela. O QR, quando existir, dispara o **mesmo passo**.
+- **Abrir revisão** fica no **Controle de qualidade**, não na esteira.
+- Dois botões por peça: **Aprovado** e **Reprovado** (motivo em texto livre).
+- Se **todas** as peças da OS estão aprovadas, o status vai para **Pronto para retirada**.
+- Se uma ou várias são reprovadas, a **OS original permanece em Controle de qualidade**. O sistema imprime uma **nova versão da OP só com as peças reprovadas**, com o **motivo da reprovação** em cada linha para o técnico refazer o ponto exato.
+- Quando a sacola volta, o revisor puxa a **mesma OS**. A tela mostra a versão da refação. Aprova ou reprova de novo. Nova reprovação gera a versão 3, e assim por diante.
+- Isto **não** é a versão da OS (`AAA000001-1`, que é sacola). É versão da **OP** de refação.
+- Leitura de QR no celular e catálogo completo de status (Em produção, Aguardando qualidade) continuam no Ciclo 4.
+
+## 18. Três voltas que não se misturam (08/10/2026)
+
+Confirmado com o André. São caminhos distintos:
+
+1. **Refação (qualidade).** Mesma OS, nova **versão da OP** só com as peças reprovadas. O cliente continua vendo Controle de qualidade. Já existe.
+2. **Prova / pré-preparação.** Mesma OS e versão da OP, status **Aguardando prova**. A técnica em produção usa **Enviar para prova**. **Prova feita** abre **Anotações de prova** (texto opcional por peça) e volta sempre para produção. Se anotou, a mesma OP é reimpressa com o marcador **Prova**. A qualidade só entra no **Terminei**. WhatsApp 3 fica em aberto.
+3. **Cliente voltou (reconserto / garantia).** Depois da **retirada**. Reconserto `AAA000001-R` e garantia `AAA000001-G` na **mesma família**. Cobrada (fora do prazo) ainda abre placa nova. `-1` continua sendo só peças a mais na mesma visita.
+
+Prazos contados da retirada, pelos parâmetros da Conta (`warranty_adjustment_period_days` e `warranty_execution_period_days`). Dentro do ajuste → **Reconserto** sem valor. Depois do ajuste e dentro da execução → **Em garantia** sem valor. Fora dos dois → **cobrada**. Liberação do gerente com motivo fica para depois.
+
+**Retirada (09/10/2026):** botão **Retirada** na OS. Inicia a janela do **Recebi**, aceita foto + **Entregue assinado**, ou **Entregue** pelo atendente. **Cliente voltou** continua depois do status Retirado.
+
+## 19. Número da sacola e letra do processo (09/10/2026)
+
+O André viu o conflito: versão `-G` e garantia com **G na frente** da placa. `GAA000001` já é uma placa válida. Decisão:
+
+1. **Versão de sacola** (mais peças na mesma visita): número. `AAA000001`, `AAA000001-1`, `AAA000001-2`.
+2. **Processo diferenciado**: uma letra depois da placa. **C** refação / reprovado no balcão. **R** reconserto (Cliente voltou no prazo de ajuste). **G** garantia (Cliente voltou no prazo de execução). Sem prefixo `G`.
+3. **Refação no balcão** (Pronto para retirada, cliente prova e recusa): mesma família, letra **C**, motivo do cliente. Não é Cliente voltou e não é prova.
+4. Se o cliente leva parte das peças: a **mãe fica parcial** (não Retirado) enquanto a filha de processo estiver aberta. **Pagar some na mãe**. Pagar a filha quita o **grupo** (as duas linhas saem Pago).
+5. Devolução/reembolso de peça já paga e abandonada fica para depois.

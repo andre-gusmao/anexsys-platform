@@ -15,8 +15,31 @@ export class CreateServiceOrderItemDto {
   @IsString()
   itemType!: string;
 
+  @IsOptional()
+  @IsUUID()
+  productId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string;
+
   @IsString()
   description!: string;
+
+  @IsOptional()
+  @IsString()
+  complement?: string;
+
+  @IsString()
+  brand!: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNo?: string;
 
   @Type(() => Number)
   @IsNumber()

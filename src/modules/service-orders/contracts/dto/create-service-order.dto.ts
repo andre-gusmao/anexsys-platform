@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -17,8 +18,31 @@ export class CreateServiceOrderItemInputDto {
   @IsString()
   itemType!: string;
 
+  @IsOptional()
+  @IsUUID()
+  productId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string;
+
   @IsString()
   description!: string;
+
+  @IsOptional()
+  @IsString()
+  complement?: string;
+
+  @IsString()
+  brand!: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNo?: string;
 
   @Type(() => Number)
   @IsNumber()
@@ -85,6 +109,15 @@ export class CreateServiceOrderDto {
   @IsOptional()
   @IsEnum(DeliveryType)
   deliveryType?: DeliveryType;
+
+  @IsOptional()
+  @IsDateString()
+  promisedDeliveryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/)
+  promisedDeliveryTime?: string;
 
   @IsOptional()
   @IsString()

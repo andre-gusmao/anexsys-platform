@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
@@ -39,16 +39,27 @@ import { TemporaryPickupCodeRepository } from '../../infrastructure/persistence/
 @Injectable()
 export class PickupService {
   constructor(
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(PickupAuthorizationRepository)
     private readonly pickupAuthorizationRepository: PickupAuthorizationRepository,
+    @Inject(PickupTokenRepository)
     private readonly pickupTokenRepository: PickupTokenRepository,
+    @Inject(PickupQrCodeRepository)
     private readonly pickupQrCodeRepository: PickupQrCodeRepository,
+    @Inject(TemporaryPickupCodeRepository)
     private readonly temporaryPickupCodeRepository: TemporaryPickupCodeRepository,
+    @Inject(CommunicationEventRepository)
     private readonly communicationEventRepository: CommunicationEventRepository,
+    @Inject(DigitalApprovalRepository)
     private readonly digitalApprovalRepository: DigitalApprovalRepository,
+    @Inject(CustodyService)
     private readonly custodyService: CustodyService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 

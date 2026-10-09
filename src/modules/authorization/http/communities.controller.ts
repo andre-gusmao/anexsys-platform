@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   Body,
   Controller,
@@ -59,7 +60,10 @@ class UpdateCommunityBody {
 
 @Controller('communities')
 export class CommunitiesController {
-  constructor(private readonly authorizationService: AuthorizationService) {}
+  constructor(
+    @Inject(AuthorizationService)
+    private readonly authorizationService: AuthorizationService,
+  ) {}
 
   @Permissions('communities.read')
   @Get()

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -24,12 +24,19 @@ import { UpdateCustomerDto } from '../../contracts/dto/update-customer.dto';
 @Injectable()
 export class CustomerService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(CustomerRepository)
     private readonly customerRepository: CustomerRepository,
+    @Inject(CustomerContactRepository)
     private readonly customerContactRepository: CustomerContactRepository,
+    @Inject(CustomerInteractionRepository)
     private readonly customerInteractionRepository: CustomerInteractionRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 
@@ -259,6 +266,29 @@ export class CustomerService {
     }
 
     return customer;
+  }
+
+  async remove(id: string, tenantId: string, actorUserId: string): Promise<void> {
+    const customer = await this.getById(id, tenantId);
+    await this.dependencyValidationService.assertCustomerCanDelete(tenantId, id);
+    const previousValues = this.buildAuditSnapshot(customer);
+    customer.isDeleted = true;
+    customer.deletedAt = new Date();
+    customer.deletedBy = actorUserId;
+    customer.updatedBy = actorUserId;
+    await this.customerRepository.save(customer);
+    await this.auditService.record({
+      tenantId,
+      branchId: null,
+      actorUserId,
+      entityType: 'customer',
+      entityId: customer.id,
+      action: 'customer.deleted',
+      eventType: 'crm.write',
+      metadata: { legalName: customer.legalName },
+      previousValues,
+      newValues: this.buildAuditSnapshot(customer),
+    });
   }
 
   async getProfile(tenantId: string, customerId: string): Promise<{

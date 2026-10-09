@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
@@ -71,16 +71,27 @@ export interface UserAccessSummary {
 @Injectable()
 export class AuthorizationService {
   constructor(
+    @Inject(RoleRepository)
     private readonly roleRepository: RoleRepository,
+    @Inject(PermissionRepository)
     private readonly permissionRepository: PermissionRepository,
+    @Inject(RolePermissionRepository)
     private readonly rolePermissionRepository: RolePermissionRepository,
+    @Inject(UserRoleAssignmentRepository)
     private readonly userRoleAssignmentRepository: UserRoleAssignmentRepository,
+    @Inject(UserBranchScopeRepository)
     private readonly userBranchScopeRepository: UserBranchScopeRepository,
+    @Inject(IdentityService)
     private readonly identityService: IdentityService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(CommunityRepository)
     private readonly communityRepository: CommunityRepository,
+    @Inject(CommunityPermissionRepository)
     private readonly communityPermissionRepository: CommunityPermissionRepository,
+    @Inject(UserCommunityRepository)
     private readonly userCommunityRepository: UserCommunityRepository,
   ) {}
 

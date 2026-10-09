@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { AuthorizationService, EffectiveAccessResult } from 'src/modules/authorization/application/authorization/authorization.service';
@@ -42,15 +42,25 @@ type SessionContextResponse = {
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(IdentityService)
     private readonly identityService: IdentityService,
+    @Inject(UserCredentialRepository)
     private readonly userCredentialRepository: UserCredentialRepository,
+    @Inject(UserSessionRepository)
     private readonly userSessionRepository: UserSessionRepository,
+    @Inject(AuthorizationService)
     private readonly authorizationService: AuthorizationService,
+    @Inject(PasswordHasherService)
     private readonly passwordHasherService: PasswordHasherService,
+    @Inject(TokenFactoryService)
     private readonly tokenFactoryService: TokenFactoryService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(FirstAccessTokenRepository)
     private readonly firstAccessTokenRepository: FirstAccessTokenRepository,
   ) {}
 

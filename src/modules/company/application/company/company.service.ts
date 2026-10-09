@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
+import { CompanyStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { CompanyEntity } from '../../infrastructure/persistence/entities/company.entity';
@@ -31,6 +33,11 @@ export type CreateCompanyInput = CompanyFiscalInput & {
   actorUserId: string;
 };
 
+export type UpdateCompanyInput = CompanyFiscalInput & {
+  actorUserId: string;
+  status?: CompanyStatus;
+};
+
 @Injectable()
 export class CompanyService {
   constructor(
@@ -40,6 +47,8 @@ export class CompanyService {
     private readonly tenantService: TenantService,
     @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(DependencyValidationService)
+    private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 
   async create(input: CreateCompanyInput): Promise<CompanyEntity> {
@@ -64,6 +73,7 @@ export class CompanyService {
       ...profile,
       country: profile.country ?? 'BR',
       isDefault: existingCompanies.length === 0,
+      status: CompanyStatus.ACTIVE,
       isDeleted: false,
       deletedAt: null,
       deletedBy: null,
@@ -100,10 +110,12 @@ export class CompanyService {
 
   async getOrCreateDefault(tenantId: string, actorUserId: string): Promise<CompanyEntity> {
     const existing = await this.companyRepository.findDefaultByTenant(tenantId);
-    if (existing) {
+    if (existing && existing.status !== CompanyStatus.INACTIVE) {
       return existing;
     }
-    const listed = await this.companyRepository.findByTenant(tenantId);
+    const listed = (await this.companyRepository.findByTenant(tenantId)).filter(
+      (company) => company.status !== CompanyStatus.INACTIVE,
+    );
     if (listed[0]) {
       return listed[0];
     }
@@ -116,12 +128,9 @@ export class CompanyService {
     });
   }
 
-  async update(
-    id: string,
-    tenantId: string,
-    dto: CompanyFiscalInput & { actorUserId: string },
-  ): Promise<CompanyEntity> {
+  async update(id: string, tenantId: string, dto: UpdateCompanyInput): Promise<CompanyEntity> {
     const company = await this.getById(id, tenantId);
+    const previousStatus = company.status ?? CompanyStatus.ACTIVE;
     if (dto.legalName !== undefined) {
       const legalName = dto.legalName.trim();
       if (!legalName) {
@@ -178,8 +187,62 @@ export class CompanyService {
     if (dto.country !== undefined) {
       company.country = profile.country;
     }
+    if (dto.status !== undefined && dto.status !== previousStatus) {
+      if (dto.status === CompanyStatus.INACTIVE) {
+        await this.assertNotLastActiveCompany(tenantId, company.id);
+        await this.dependencyValidationService.assertCompanyCanInactivate(tenantId, company.id);
+      }
+      company.status = dto.status;
+    }
     company.updatedBy = dto.actorUserId;
-    return this.companyRepository.save(company);
+    const saved = await this.companyRepository.save(company);
+    if (dto.status !== undefined && dto.status !== previousStatus) {
+      await this.auditService.record({
+        tenantId,
+        actorUserId: dto.actorUserId,
+        entityType: 'company',
+        entityId: saved.id,
+        action: saved.status === CompanyStatus.INACTIVE ? 'company.deactivated' : 'company.reactivated',
+        eventType: 'governance.write',
+        metadata: { previousStatus, currentStatus: saved.status },
+      });
+    }
+    return saved;
+  }
+
+  async remove(id: string, tenantId: string, actorUserId: string): Promise<CompanyEntity> {
+    const company = await this.getById(id, tenantId);
+    if ((company.status ?? CompanyStatus.ACTIVE) !== CompanyStatus.INACTIVE) {
+      await this.assertNotLastActiveCompany(tenantId, company.id);
+    }
+    await this.dependencyValidationService.assertCompanyCanDelete(tenantId, company.id);
+    company.isDeleted = true;
+    company.deletedAt = new Date();
+    company.deletedBy = actorUserId;
+    company.updatedBy = actorUserId;
+    const saved = await this.companyRepository.save(company);
+    await this.auditService.record({
+      tenantId,
+      actorUserId,
+      entityType: 'company',
+      entityId: saved.id,
+      action: 'company.deleted',
+      eventType: 'governance.write',
+      metadata: { legalName: saved.legalName, cnpj: saved.cnpj },
+    });
+    return saved;
+  }
+
+  private async assertNotLastActiveCompany(tenantId: string, companyId: string): Promise<void> {
+    const companies = await this.companyRepository.findByTenant(tenantId);
+    const otherActive = companies.filter(
+      (item) => item.id !== companyId && (item.status ?? CompanyStatus.ACTIVE) !== CompanyStatus.INACTIVE,
+    );
+    if (otherActive.length === 0) {
+      throw new DomainValidationError(
+        'A Conta precisa ficar com pelo menos uma Empresa ativa. Cadastre outra Empresa antes de inativar ou excluir esta.',
+      );
+    }
   }
 
   private normalizeFiscalProfile(input: CompanyFiscalInput) {

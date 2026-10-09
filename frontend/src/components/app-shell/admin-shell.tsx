@@ -1,149 +1,42 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { isMeaningfulWorkspaceTab } from "@/components/app-shell/workspace-manager-store";
+import { ActiveContextCombos } from "@/components/app-shell/active-context-combos";
 import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { RoleAwareNav } from "@/components/app-shell/role-aware-nav";
-import { WorkspaceTabsBar, useWorkspaceManager } from "@/components/app-shell/workspace-manager";
+import { TopbarChipTray, WorkspaceTabsBar } from "@/components/app-shell/workspace-manager";
 import { WorkspaceKeepAlive } from "@/components/app-shell/workspace-screens";
-import { branchesOfEmpresa, empresaLabel } from "@/components/providers/session-context";
 import { useSession } from "@/components/providers/session-provider";
 
 export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
-  const router = useRouter();
-  const { session, logout, errorMessage, clearError, selectCompany, selectEmpresa, selectBranch } = useSession();
-  const { currentTab, openWorkspaceInBrowserTab, openWorkspaceInBrowserWindow } = useWorkspaceManager();
+  const { session, logout, errorMessage, clearError } = useSession();
   const { isDesktop, isMobile } = useWorkspaceViewportMode();
-  const [pendingCompanySwitch, setPendingCompanySwitch] = useState(false);
-  const [pendingEmpresaSwitch, setPendingEmpresaSwitch] = useState(false);
-  const [pendingBranchSwitch, setPendingBranchSwitch] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const activeConta = session?.companies.find((company) => company.tenantId === session.tenantId) ?? null;
-  const activeEmpresa = (session?.empresas ?? []).find((empresa) => empresa.id === session?.activeEmpresaId) ?? null;
-  const visibleBranches = branchesOfEmpresa(session?.branches ?? [], session?.activeEmpresaId ?? null);
-  const activeBranch = visibleBranches.find((branch) => branch.id === session?.activeBranchId) ?? session?.branches.find((branch) => branch.id === session?.activeBranchId) ?? null;
-  const busy = pendingCompanySwitch || pendingEmpresaSwitch || pendingBranchSwitch;
   const sidebarVisible = isDesktop || sidebarOpen;
-  const canOpenCurrentWorkspaceExternally = currentTab ? isMeaningfulWorkspaceTab(currentTab) : false;
 
   return (
     <div className="app-shell">
       <aside className={`sidebar${sidebarVisible ? " sidebar--open" : ""}`}>
-        <div className="sidebar__brand">
-          <div className="eyebrow">ANEXSYS</div>
-          <h1>Administrative Portal</h1>
-          <p>Fast access to your company, filial, and daily administrative work.</p>
-        </div>
-
-        <section className="sidebar__context">
-          <div className="eyebrow">Contexto ativo</div>
-          <div className="sidebar__context-summary">
-            <div className="sidebar__context-field">
-              <span>Conta</span>
-              <strong>{activeConta?.displayName ?? "Selecione a Conta"}</strong>
-            </div>
-            <div className="sidebar__context-field">
-              <span>Empresa</span>
-              <strong>{activeEmpresa ? empresaLabel(activeEmpresa) : "Selecione a Empresa"}</strong>
-            </div>
-            <div className="sidebar__context-field">
-              <span>Filial</span>
-              <strong>{activeBranch?.label ?? "Selecione a filial"}</strong>
-            </div>
+        <div className="sidebar__pinned">
+          <div className="sidebar__brand">
+            <div className="eyebrow">ANEXSYS</div>
+            <h1>Administrative Portal</h1>
+            <p>Fast access to your company, filial, and daily administrative work.</p>
           </div>
 
-          {session && session.companies.length > 1 ? (
-            <label className="field sidebar__context-select">
-              <span>Conta</span>
-              <select
-                disabled={busy}
-                value={session.tenantId}
-                onChange={async (event) => {
-                  setPendingCompanySwitch(true);
-                  try {
-                    const resolved = await selectCompany(event.target.value);
-                    if (!resolved) {
-                      router.push("/select-branch");
-                    }
-                  } finally {
-                    setPendingCompanySwitch(false);
-                  }
-                }}
-              >
-                {session.companies.map((company) => (
-                  <option key={company.tenantId} value={company.tenantId}>
-                    {company.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
+          <ActiveContextCombos />
+        </div>
 
-          {session && (session.empresas?.length ?? 0) > 0 ? (
-            <label className="field sidebar__context-select">
-              <span>Empresa</span>
-              <select
-                disabled={busy}
-                value={session.activeEmpresaId ?? ""}
-                onChange={async (event) => {
-                  if (!event.target.value) return;
-                  setPendingEmpresaSwitch(true);
-                  try {
-                    await selectEmpresa(event.target.value);
-                  } finally {
-                    setPendingEmpresaSwitch(false);
-                  }
-                }}
-              >
-                {!session.activeEmpresaId ? <option value="">Selecione a Empresa</option> : null}
-                {session.empresas.map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>
-                    {empresaLabel(empresa)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          {session ? (
-            <label className="field sidebar__context-select">
-              <span>Filial</span>
-              <select
-                disabled={busy}
-                value={session.activeBranchId ?? ""}
-                onChange={async (event) => {
-                  if (!event.target.value) {
-                    router.push("/select-branch");
-                    return;
-                  }
-                  setPendingBranchSwitch(true);
-                  try {
-                    await selectBranch(event.target.value);
-                  } finally {
-                    setPendingBranchSwitch(false);
-                  }
-                }}
-              >
-                {!session.activeBranchId ? <option value="">Selecione a filial</option> : null}
-                {visibleBranches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-        </section>
-
-        <RoleAwareNav onNavigate={() => setSidebarOpen(false)} />
+        <div className="sidebar__nav">
+          <RoleAwareNav onNavigate={() => setSidebarOpen(false)} />
+        </div>
       </aside>
 
       {!isDesktop && sidebarVisible ? <button aria-label="Fechar menu" className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} type="button" /> : null}
 
       <div className="workspace">
         <header className="topbar">
-          <div>
+          <div className="topbar__identity">
             {!isDesktop ? (
               <button className="button-secondary topbar__menu-button" onClick={() => setSidebarOpen((current) => !current)} type="button">
                 {sidebarVisible ? "Fechar menu" : "Abrir menu"}
@@ -158,17 +51,9 @@ export function AdminShell({ children }: Readonly<{ children: ReactNode }>) {
             </div>
           </div>
 
-          <div className="button-row" style={{ alignItems: "center", flexWrap: "wrap" }}>
-            {!isMobile ? (
-              <>
-                <button className="button-secondary" disabled={!canOpenCurrentWorkspaceExternally} onClick={() => openWorkspaceInBrowserTab()} type="button">
-                  Nova aba do navegador
-                </button>
-                <button className="button-secondary" disabled={!canOpenCurrentWorkspaceExternally} onClick={() => openWorkspaceInBrowserWindow()} type="button">
-                  Nova janela
-                </button>
-              </>
-            ) : null}
+          <TopbarChipTray />
+
+          <div className="topbar__actions">
             <button className="button-secondary" onClick={() => void logout()} type="button">
               Logout
             </button>

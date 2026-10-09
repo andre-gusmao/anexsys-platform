@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
@@ -72,7 +72,12 @@ class UpdateCustomerRejectionBody {
 
 @Controller('customer-rejections')
 export class CustomerRejectionsController {
-  constructor(private readonly qualityService: QualityService, private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    @Inject(QualityService)
+    private readonly qualityService: QualityService,
+    @Inject(ServiceOrderService)
+    private readonly serviceOrderService: ServiceOrderService,
+  ) {}
 
   @Permissions('quality.read')
   @Get()

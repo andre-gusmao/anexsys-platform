@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   Body,
   Controller,
@@ -87,8 +88,11 @@ class UpdateTenantBody {
 @Controller('tenants')
 export class TenantsController {
   constructor(
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(DependencyValidationService)
     private readonly dependencyValidationService: DependencyValidationService,
+    @Inject(TenantProvisioningService)
     private readonly tenantProvisioningService: TenantProvisioningService,
   ) {}
 

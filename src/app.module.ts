@@ -1,6 +1,10 @@
-import { MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common';
+import { Inject, MiddlewareConsumer, Module, NestModule, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
+import { DataSource } from 'typeorm';
+import { applyPendingMigrations } from './platform/database/typeorm/apply-pending-migrations';
+import { AuthorizationService } from './modules/authorization/application/authorization/authorization.service';
+import { TokenFactoryService } from './platform/auth/token-factory.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -59,11 +63,17 @@ import { patchPostgresQueryRunnerForRls } from './platform/tenancy/tenant-rls.pa
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useFactory: (
+        reflector: Reflector,
+        tokenFactoryService: TokenFactoryService,
+        authorizationService: AuthorizationService,
+      ) => new JwtAuthGuard(reflector, tokenFactoryService, authorizationService),
+      inject: [Reflector, TokenFactoryService, AuthorizationService],
     },
     {
       provide: APP_GUARD,
-      useClass: PermissionsGuard,
+      useFactory: (reflector: Reflector) => new PermissionsGuard(reflector),
+      inject: [Reflector],
     },
     {
       provide: APP_INTERCEPTOR,
@@ -72,8 +82,15 @@ import { patchPostgresQueryRunnerForRls } from './platform/tenancy/tenant-rls.pa
   ],
 })
 export class AppModule implements NestModule, OnModuleInit {
-  onModuleInit(): void {
+  constructor(@Inject(DataSource) private readonly dataSource: DataSource) {}
+
+  async onModuleInit(): Promise<void> {
     patchPostgresQueryRunnerForRls();
+    try {
+      await applyPendingMigrations(this.dataSource);
+    } catch (error) {
+      console.warn('Não foi possível atualizar o banco da OS na subida.', error);
+    }
   }
 
   configure(consumer: MiddlewareConsumer): void {

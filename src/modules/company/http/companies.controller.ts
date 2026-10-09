@@ -2,18 +2,23 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Inject,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IsEmail, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
+import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { normalizeRequestValue, PlatformRequest } from 'src/platform/http/request-context';
 import { CurrentRequest, CurrentTenantId } from 'src/platform/http/request-context.decorators';
+import { CompanyStatus } from 'src/shared/domain/enums';
 import { CompanyService } from '../application/company/company.service';
 
 function hasText(value: unknown): boolean {
@@ -115,13 +120,21 @@ class UpdateCompanyBody extends CompanyFiscalBody {
   @IsString()
   @MaxLength(200)
   legalName?: string;
+
+  @IsOptional()
+  @IsEnum(CompanyStatus)
+  status?: CompanyStatus;
 }
 
 @Controller('companies')
 export class CompaniesController {
   constructor(
+    @Inject(CompanyService)
     private readonly companyService: CompanyService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(DependencyValidationService)
+    private readonly dependencyValidationService: DependencyValidationService,
   ) {}
 
   @Permissions('companies.read')
@@ -178,5 +191,40 @@ export class CompaniesController {
       throw new UnauthorizedException('Authenticated user is required.');
     }
     return this.companyService.update(companyId, requireTenantId(tenantId, request), { ...body, actorUserId });
+  }
+
+  @Permissions('companies.write')
+  @Get(':companyId/dependency-check')
+  async dependencyCheck(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+    @Query('action') action: string | undefined,
+  ) {
+    const resolvedTenantId = requireTenantId(tenantId, request);
+    if (action && action !== 'inactivate' && action !== 'delete') {
+      throw new BadRequestException(`Unsupported dependency validation action '${action}'.`);
+    }
+    await this.companyService.getById(companyId, resolvedTenantId);
+    return action === 'delete'
+      ? this.dependencyValidationService.validateCompanyDeletion(resolvedTenantId, companyId)
+      : this.dependencyValidationService.validateCompanyInactivation(resolvedTenantId, companyId);
+  }
+
+  @Permissions('companies.write')
+  @Delete(':companyId')
+  async remove(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @CurrentTenantId() tenantId: string | null,
+    @CurrentRequest() request: PlatformRequest,
+  ) {
+    const actorUserId = request.requestContext.authenticatedPrincipal?.userId;
+    if (!actorUserId) {
+      throw new UnauthorizedException('Authenticated user is required.');
+    }
+    const resolvedTenantId = requireTenantId(tenantId, request);
+    await this.companyService.remove(companyId, resolvedTenantId, actorUserId);
+    await this.branchService.archiveByCompany(resolvedTenantId, companyId, actorUserId);
+    return { id: companyId, deleted: true };
   }
 }

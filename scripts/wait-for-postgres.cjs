@@ -1,5 +1,12 @@
+const path = require('node:path');
 const { Client } = require('pg');
 const { applyDatabaseUrlSsl } = require('./postgres-url.cjs');
+
+try {
+  process.loadEnvFile(path.join(__dirname, '..', '.env'));
+} catch {
+  // Sem .env: usa variáveis já exportadas no shell / Render / CI.
+}
 
 applyDatabaseUrlSsl();
 

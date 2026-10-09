@@ -5,39 +5,51 @@ import {
   buildWorkspaceHref,
   clearWorkspaceScopedState,
   cloneWorkspaceTabState,
+  collapseDuplicateDashboardTabs,
+  HOME_WORKSPACE_PATH,
   createEmptyWorkspaceStore,
   createWorkspaceTab,
+  findWorkspaceTabByBasePath,
   getWorkspaceBasePath,
   getWorkspaceScopedState,
   getWorkspaceSearchParams,
+  isDashboardWorkspacePath,
+  listWorkspaceTabsForNavItem,
+  moveWorkspaceTabToFront,
   normalizeWorkspacePathname,
   normalizeWorkspaceStore,
   removeWorkspaceTab,
+  resolveLandingWorkspaceTab,
+  stripHomeWorkspaceTabs,
+  revealWorkspaceTab,
   setActiveWorkspaceTab,
   setWorkspaceScopedState,
+  shouldShowWorkspaceNavSubmenu,
   upsertWorkspaceTab,
 } from '../../frontend/src/components/app-shell/workspace-manager-store';
+import { WORKSPACE_STORAGE_KEY } from '../../frontend/src/components/app-shell/workspace-storage';
 
 test('activates a workspace tab independently of the current route', () => {
   let store = createEmptyWorkspaceStore();
-  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: HOME_WORKSPACE_PATH, label: 'Dashboard' }));
   store = activateWorkspaceTab(store, createWorkspaceTab({ id: 'tab-contas', pathname: '/admin/tenants', label: 'Contas' }));
 
   assert.equal(store.activeTabId, 'tab-contas');
   assert.deepEqual(
     store.tabs.map((tab) => tab.id),
-    ['tab-dashboard', 'tab-contas'],
+    ['tab-contas'],
   );
 
-  store = setActiveWorkspaceTab(store, 'tab-dashboard');
-  assert.equal(store.activeTabId, 'tab-dashboard');
+  store = setActiveWorkspaceTab(store, null);
+  assert.equal(store.activeTabId, null);
 
   store = normalizeWorkspaceStore({
     tabs: store.tabs,
     activeTabId: null,
     stateByTabId: store.stateByTabId,
   });
-  assert.equal(store.activeTabId, 'tab-dashboard');
+  assert.equal(store.activeTabId, null);
+  assert.deepEqual(store.tabs.map((tab) => tab.id), ['tab-contas']);
 });
 
 test('creates, updates, clones, and removes workspace tabs', () => {
@@ -47,6 +59,10 @@ test('creates, updates, clones, and removes workspace tabs', () => {
   store = cloneWorkspaceTabState(store, 'tab-1', 'tab-2');
   store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-2', pathname: '/customers', label: 'Cliente · Maria' }));
 
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-2', 'tab-1'],
+  );
   assert.equal(store.tabs.length, 2);
   assert.equal(getWorkspaceScopedState<string>(store, 'tab-2', 'customers.searchQuery'), 'maria');
 
@@ -101,4 +117,171 @@ test('ignores unnamed or empty workspace tabs', () => {
 
   assert.deepEqual(store.tabs.map((tab) => tab.id), ['tab-1']);
   assert.deepEqual(Object.keys(store.stateByTabId), ['tab-1']);
+});
+
+test('finds the latest workspace tab by menu base path', () => {
+  const dashboard = createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' });
+  const clientes = createWorkspaceTab({ id: 'tab-clientes', pathname: '/customers', label: 'Clientes' });
+  const clienteNovo = createWorkspaceTab({
+    id: 'tab-cliente-novo',
+    pathname: '/customers?workspaceMode=new',
+    label: 'Customer: New',
+  });
+
+  assert.equal(isDashboardWorkspacePath('/dashboard?workspaceTab=abc'), true);
+  assert.equal(findWorkspaceTabByBasePath([clienteNovo, clientes, dashboard], '/customers')?.id, 'tab-cliente-novo');
+  assert.equal(findWorkspaceTabByBasePath([clienteNovo, clientes, dashboard], '/dashboard')?.id, 'tab-dashboard');
+});
+
+test('opens the newest workspace tab on the left and can bring an older tab to the front', () => {
+  let store = createEmptyWorkspaceStore();
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-lista', pathname: '/service-orders', label: 'OS' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-nova', pathname: '/service-orders?workspaceMode=new', label: 'OS: Nova' }));
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-nova', 'tab-lista'],
+  );
+
+  store = revealWorkspaceTab(store, 'tab-lista');
+  assert.equal(store.activeTabId, 'tab-lista');
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-lista', 'tab-nova'],
+  );
+
+  store = moveWorkspaceTabToFront(store, 'tab-lista');
+  assert.equal(store.tabs[0]?.id, 'tab-lista');
+});
+
+test('keeps work tabs on the left without pinning Dashboard in the strip', () => {
+  let store = createEmptyWorkspaceStore();
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-dashboard', pathname: HOME_WORKSPACE_PATH, label: 'Dashboard' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-os', pathname: '/service-orders', label: 'OS' }));
+  store = upsertWorkspaceTab(store, createWorkspaceTab({ id: 'tab-os-nova', pathname: '/service-orders?workspaceMode=new', label: 'OS: Nova' }));
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-os-nova', 'tab-os'],
+  );
+
+  store = revealWorkspaceTab(store, 'tab-os');
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['tab-os', 'tab-os-nova'],
+  );
+  assert.equal(store.tabs.some((tab) => tab.pathname === HOME_WORKSPACE_PATH), false);
+});
+
+test('strips leftover Dashboard tabs from localStorage so home stays a topbar chip', () => {
+  const store = stripHomeWorkspaceTabs({
+    tabs: [
+      createWorkspaceTab({ id: 'dash-1', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'dash-2', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'clientes', pathname: '/customers', label: 'Clientes' }),
+    ],
+    activeTabId: 'dash-2',
+    stateByTabId: {
+      'dash-1': { leftover: true },
+      'dash-2': { keep: true },
+      clientes: { form: true },
+    },
+  });
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['clientes'],
+  );
+  assert.equal(store.activeTabId, null);
+  assert.deepEqual(Object.keys(store.stateByTabId), ['clientes']);
+  assert.deepEqual(
+    collapseDuplicateDashboardTabs(store).tabs.map((tab) => tab.id),
+    ['clientes'],
+  );
+});
+
+test('normalizing the store removes Dashboard tabs from localStorage', () => {
+  const store = normalizeWorkspaceStore({
+    tabs: [
+      createWorkspaceTab({ id: 'dash-1', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'dash-2', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'os-1', pathname: '/service-orders', label: 'OS' }),
+    ],
+    activeTabId: 'dash-1',
+    stateByTabId: {},
+  });
+
+  assert.deepEqual(
+    store.tabs.map((tab) => tab.id),
+    ['os-1'],
+  );
+  assert.equal(store.activeTabId, null);
+});
+
+test('post-login landing on /dashboard goes home without stealing a persisted cadastro tab', () => {
+  const store = {
+    tabs: [
+      createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' }),
+      createWorkspaceTab({ id: 'tab-empresas', pathname: '/admin/companies', label: 'Empresas' }),
+    ],
+    activeTabId: 'tab-empresas',
+    stateByTabId: {},
+  };
+
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', null), {
+    activeTabId: null,
+    goHome: true,
+  });
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', 'tab-empresas'), {
+    activeTabId: 'tab-empresas',
+    goHome: false,
+  });
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/admin/companies', null), {
+    activeTabId: 'tab-empresas',
+    goHome: false,
+  });
+});
+
+test('post-login landing on /dashboard goes home even when no Dashboard tab exists', () => {
+  const store = {
+    tabs: [createWorkspaceTab({ id: 'tab-empresas', pathname: '/admin/companies', label: 'Empresas' })],
+    activeTabId: 'tab-empresas',
+    stateByTabId: {},
+  };
+
+  assert.deepEqual(resolveLandingWorkspaceTab(store, '/dashboard', null), {
+    activeTabId: null,
+    goHome: true,
+  });
+});
+
+test('workspace tabs use a new storage key so stale v1 tabs are ignored', () => {
+  assert.equal(WORKSPACE_STORAGE_KEY, 'anexsys.frontend.workspace-manager.v2');
+});
+
+test('groups open workspace tabs under the matching sidebar item', () => {
+  const dashboard = createWorkspaceTab({ id: 'tab-dashboard', pathname: '/dashboard', label: 'Dashboard' });
+  const clientes = createWorkspaceTab({ id: 'tab-clientes', pathname: '/customers', label: 'Clientes' });
+  const clienteNovo = createWorkspaceTab({
+    id: 'tab-cliente-novo',
+    pathname: '/customers?workspaceMode=new',
+    label: 'Cliente: Novo',
+  });
+  const clienteMaria = createWorkspaceTab({
+    id: 'tab-cliente-maria',
+    pathname: '/customers?focusCustomerId=9',
+    label: 'Cliente: Maria Silva',
+    subtitle: '123.456.789-00',
+  });
+  const empresas = createWorkspaceTab({ id: 'tab-empresas', pathname: '/admin/companies', label: 'Empresas' });
+  const tabs = [dashboard, clientes, clienteNovo, clienteMaria, empresas];
+
+  assert.deepEqual(
+    listWorkspaceTabsForNavItem(tabs, '/customers').map((tab) => tab.id),
+    ['tab-clientes', 'tab-cliente-novo', 'tab-cliente-maria'],
+  );
+  assert.equal(shouldShowWorkspaceNavSubmenu(tabs, '/customers'), true);
+  assert.equal(shouldShowWorkspaceNavSubmenu([dashboard, clientes], '/customers'), false);
+  assert.equal(shouldShowWorkspaceNavSubmenu(tabs, '/admin/companies'), false);
+  assert.equal(shouldShowWorkspaceNavSubmenu(tabs, '/dashboard'), false);
 });

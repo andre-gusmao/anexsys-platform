@@ -21,8 +21,17 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
+      if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
+        response.status(status).json({ message: this.photoTooLargeMessage() });
+        return;
+      }
       const friendlyMessage = this.getFriendlyHttpMessage(status, exception.getResponse(), request);
       response.status(status).json(friendlyMessage ? { message: friendlyMessage } : exception.getResponse());
+      return;
+    }
+
+    if (/entity too large|PayloadTooLarge/i.test(exception instanceof Error ? exception.message : '')) {
+      response.status(HttpStatus.PAYLOAD_TOO_LARGE).json({ message: this.photoTooLargeMessage() });
       return;
     }
 
@@ -47,8 +56,19 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-      message: exception instanceof Error ? exception.message : 'Internal server error',
+      message: this.getFriendlyServerMessage(exception),
     });
+  }
+
+  private getFriendlyServerMessage(exception: unknown): string {
+    const raw = exception instanceof Error ? exception.message : '';
+    if (/getAllAndOverride|assertAllowed|Cannot read properties of undefined/.test(raw)) {
+      return 'O servidor não concluiu a operação. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente de novo.';
+    }
+    if (/coluna .+ não existe|column .+ does not exist/i.test(raw)) {
+      return 'O banco local está incompleto. No VS Code, no terminal do start:dev, aperte Ctrl+C e rode npm run start:dev de novo.';
+    }
+    return raw || 'Internal server error';
   }
 
   private getFriendlyHttpMessage(
@@ -70,5 +90,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
 
     return 'The request could not be completed. Some informed fields are missing or invalid. Review the data and try again.';
+  }
+
+  private photoTooLargeMessage() {
+    return 'A foto ficou grande demais para enviar. O sistema já reduz a imagem; tire outra um pouco mais de perto.';
   }
 }

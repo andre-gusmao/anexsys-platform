@@ -1,17 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
 import { PasswordHasherService } from 'src/platform/auth/password-hasher.service';
-import { UserStatus } from 'src/shared/domain/enums';
+import { SessionStatus, UserStatus } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { EntityNotFoundError } from 'src/shared/errors/entity-not-found.error';
 import { CreateUserDto } from '../../contracts/dto/create-user.dto';
+import { FirstAccessTokenEntity } from '../../infrastructure/persistence/entities/first-access-token.entity';
 import { UserContextPreferenceEntity } from '../../infrastructure/persistence/entities/user-context-preference.entity';
 import { UserCredentialEntity } from '../../infrastructure/persistence/entities/user-credential.entity';
 import { UserIdentityEntity } from '../../infrastructure/persistence/entities/user-identity.entity';
+import { UserSessionEntity } from '../../infrastructure/persistence/entities/user-session.entity';
 import { UserContextPreferenceRepository } from '../../infrastructure/persistence/repositories/user-context-preference.repository';
 import { UserCredentialRepository } from '../../infrastructure/persistence/repositories/user-credential.repository';
 import { UserIdentityRepository } from '../../infrastructure/persistence/repositories/user-identity.repository';
@@ -35,13 +37,21 @@ export interface UpdateUserDto {
 @Injectable()
 export class IdentityService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(UserIdentityRepository)
     private readonly userIdentityRepository: UserIdentityRepository,
+    @Inject(UserCredentialRepository)
     private readonly userCredentialRepository: UserCredentialRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(PasswordHasherService)
     private readonly passwordHasherService: PasswordHasherService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(UserContextPreferenceRepository)
     private readonly userContextPreferenceRepository: UserContextPreferenceRepository,
   ) {}
 
@@ -62,6 +72,9 @@ export class IdentityService {
       email: normalizedEmail,
       displayName: dto.displayName.trim(),
       status: UserStatus.ACTIVE,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -115,6 +128,9 @@ export class IdentityService {
       email: normalizedEmail,
       displayName: dto.displayName.trim(),
       status: UserStatus.INVITED,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
       createdBy: dto.actorUserId,
       updatedBy: dto.actorUserId,
     });
@@ -266,6 +282,54 @@ export class IdentityService {
     });
 
     return saved;
+  }
+
+  async removeUser(id: string, tenantId: string, actorUserId: string): Promise<void> {
+    const user = await this.getById(id);
+    if (user.tenantId !== tenantId) {
+      throw new DomainValidationError('O usuário está fora do contexto da Conta.');
+    }
+    if (user.id === actorUserId) {
+      throw new DomainValidationError('Você não pode excluir o próprio usuário.');
+    }
+
+    const liveCount = await this.userIdentityRepository.countLiveByTenant(tenantId);
+    if (liveCount <= 1) {
+      throw new DomainValidationError('Não é possível excluir o último usuário da Conta.');
+    }
+
+    const now = new Date();
+    user.isDeleted = true;
+    user.deletedAt = now;
+    user.deletedBy = actorUserId;
+    user.updatedBy = actorUserId;
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.save(UserIdentityEntity, user);
+      await manager.update(
+        UserSessionEntity,
+        { userId: user.id, status: SessionStatus.ACTIVE },
+        { status: SessionStatus.REVOKED, revokedAt: now, updatedAt: now, updatedBy: actorUserId },
+      );
+      await manager
+        .createQueryBuilder()
+        .update(FirstAccessTokenEntity)
+        .set({ revokedAt: now, updatedAt: now, updatedBy: actorUserId })
+        .where('user_id = :userId', { userId: user.id })
+        .andWhere('revoked_at IS NULL')
+        .execute();
+    });
+
+    await this.auditService.record({
+      tenantId,
+      branchId: user.defaultBranchId,
+      actorUserId,
+      entityType: 'user_identity',
+      entityId: user.id,
+      action: 'identity.user.deleted',
+      eventType: 'identity.write',
+      metadata: { email: user.email },
+    });
   }
 
   async getContextPreference(normalizedEmail: string): Promise<UserContextPreferenceEntity | null> {

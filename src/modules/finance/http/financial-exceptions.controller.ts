@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UnauthorizedException } from '@nestjs/common';
+import { Inject, Body, Controller, Get, Param, ParseUUIDPipe, Post, UnauthorizedException } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
@@ -37,7 +37,12 @@ class ResolveFinancialExceptionBody {
 
 @Controller('financial-exceptions')
 export class FinancialExceptionsController {
-  constructor(private readonly financeService: FinanceService, private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    @Inject(FinanceService)
+    private readonly financeService: FinanceService,
+    @Inject(ServiceOrderService)
+    private readonly serviceOrderService: ServiceOrderService,
+  ) {}
 
   @Permissions('finance.write')
   @Post()

@@ -51,9 +51,15 @@ import { PickupAuthorizationEntity } from 'src/modules/pickup/infrastructure/per
 import { PickupQrCodeEntity } from 'src/modules/pickup/infrastructure/persistence/entities/pickup-qr-code.entity';
 import { PickupTokenEntity } from 'src/modules/pickup/infrastructure/persistence/entities/pickup-token.entity';
 import { TemporaryPickupCodeEntity } from 'src/modules/pickup/infrastructure/persistence/entities/temporary-pickup-code.entity';
+import { AtelierServiceEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/atelier-service.entity';
 import { BusinessCalendarDayEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/business-calendar-day.entity';
+import { GarmentProductEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/garment-product.entity';
+import { GarmentProductServiceEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/garment-product-service.entity';
 import { ServiceOrderEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order.entity';
 import { ServiceOrderItemEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-item.entity';
+import { ServiceOrderApprovalEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-approval.entity';
+import { ServiceOrderPickupEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-pickup.entity';
+import { ServiceOrderProofNoteEntity } from 'src/modules/service-orders/infrastructure/persistence/entities/service-order-proof-note.entity';
 import { FirstAccessTokenEntity } from 'src/modules/identity/infrastructure/persistence/entities/first-access-token.entity';
 import { UserContextPreferenceEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-context-preference.entity';
 import { UserCredentialEntity } from 'src/modules/identity/infrastructure/persistence/entities/user-credential.entity';
@@ -110,8 +116,14 @@ export const typeOrmEntities = [
   CctvReferenceEntity,
   CameraSnapshotEntity,
   BusinessCalendarDayEntity,
+  GarmentProductEntity,
+  GarmentProductServiceEntity,
+  AtelierServiceEntity,
   ServiceOrderEntity,
   ServiceOrderItemEntity,
+  ServiceOrderProofNoteEntity,
+  ServiceOrderPickupEntity,
+  ServiceOrderApprovalEntity,
   UserIdentityEntity,
   UserCredentialEntity,
   UserSessionEntity,

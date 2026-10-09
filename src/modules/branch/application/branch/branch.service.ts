@@ -7,6 +7,7 @@ import {
   DEFAULT_BRANCH_CODE,
   DEFAULT_BRANCH_DISPLAY_NAME,
   DEFAULT_BRANCH_TIMEZONE,
+  defaultBranchFallbackCode,
 } from 'src/modules/company/application/company.defaults';
 import { DependencyValidationService } from 'src/modules/governance/application/dependency-validation.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
@@ -37,15 +38,15 @@ export class BranchService {
 
   async create(dto: CreateBranchDto): Promise<BranchEntity> {
     await this.tenantService.getById(dto.tenantId);
-    await this.assertParentBranch(dto.tenantId, dto.parentBranchId ?? null);
+    this.rejectParentBranch(dto.parentBranchId);
 
     const companyId = dto.companyId ?? (await this.companyService.getOrCreateDefault(dto.tenantId, dto.actorUserId)).id;
     const company = await this.companyService.getById(companyId, dto.tenantId);
 
     const normalizedCode = dto.code.trim().toUpperCase();
-    const existingBranch = await this.branchRepository.findByTenantAndCode(dto.tenantId, normalizedCode);
+    const existingBranch = await this.branchRepository.findByCompanyAndCode(dto.tenantId, company.id, normalizedCode);
     if (existingBranch) {
-      throw new DomainValidationError(`Branch code '${normalizedCode}' already exists for this tenant.`);
+      throw new DomainValidationError(`Já existe uma Filial com o código ${normalizedCode} nesta Empresa.`);
     }
 
     const siblings = await this.branchRepository.findByCompany(dto.tenantId, company.id);
@@ -59,7 +60,7 @@ export class BranchService {
       legalName: dto.legalName.trim(),
       displayName: dto.displayName.trim(),
       status: BranchStatus.ACTIVE,
-      parentBranchId: dto.parentBranchId ?? null,
+      parentBranchId: null,
       businessCalendarName: dto.businessCalendarName?.trim() || null,
       timezone: dto.timezone?.trim() || DEFAULT_BRANCH_TIMEZONE,
       isDefault,
@@ -107,16 +108,67 @@ export class BranchService {
     if (existing[0]) {
       return existing[0];
     }
-    return this.create({
-      tenantId: params.tenantId,
-      companyId: params.companyId,
-      code: DEFAULT_BRANCH_CODE,
-      legalName: params.legalName,
-      displayName: DEFAULT_BRANCH_DISPLAY_NAME,
-      timezone: DEFAULT_BRANCH_TIMEZONE,
-      isDefault: true,
-      actorUserId: params.actorUserId,
-    });
+
+    try {
+      return await this.create({
+        tenantId: params.tenantId,
+        companyId: params.companyId,
+        code: DEFAULT_BRANCH_CODE,
+        legalName: params.legalName,
+        displayName: DEFAULT_BRANCH_DISPLAY_NAME,
+        timezone: DEFAULT_BRANCH_TIMEZONE,
+        isDefault: true,
+        actorUserId: params.actorUserId,
+      });
+    } catch (error) {
+      if (!this.isDuplicateBranchCodeError(error)) {
+        throw error;
+      }
+      try {
+        return await this.create({
+          tenantId: params.tenantId,
+          companyId: params.companyId,
+          code: defaultBranchFallbackCode(params.companyId),
+          legalName: params.legalName,
+          displayName: DEFAULT_BRANCH_DISPLAY_NAME,
+          timezone: DEFAULT_BRANCH_TIMEZONE,
+          isDefault: true,
+          actorUserId: params.actorUserId,
+        });
+      } catch (retryError) {
+        if (this.isDuplicateBranchCodeError(retryError)) {
+          throw new DomainValidationError(
+            'Não foi possível criar a Filial filha padrão (Matriz) desta Empresa. A Empresa é o pai e a Matriz é a primeira Filial. Rode as migrations e tente de novo.',
+          );
+        }
+        throw retryError;
+      }
+    }
+  }
+
+  async archiveByCompany(tenantId: string, companyId: string, actorUserId: string): Promise<void> {
+    const branches = await this.branchRepository.findByCompany(tenantId, companyId);
+    const deletedAt = new Date();
+    for (const branch of branches) {
+      const previousValues = this.buildAuditSnapshot(branch);
+      branch.isDeleted = true;
+      branch.deletedAt = deletedAt;
+      branch.deletedBy = actorUserId;
+      branch.updatedBy = actorUserId;
+      const saved = await this.branchRepository.save(branch);
+      await this.auditService.record({
+        tenantId: saved.tenantId,
+        branchId: saved.id,
+        actorUserId,
+        entityType: 'branch',
+        entityId: saved.id,
+        action: 'branch.deleted',
+        eventType: 'governance.write',
+        metadata: { companyId, reason: 'company.deleted' },
+        previousValues,
+        newValues: this.buildAuditSnapshot(saved),
+      });
+    }
   }
 
   async getById(id: string): Promise<BranchEntity> {
@@ -131,20 +183,25 @@ export class BranchService {
   async update(id: string, dto: UpdateBranchDto): Promise<BranchEntity> {
     const branch = await this.getById(id);
     const previousValues = this.buildAuditSnapshot(branch);
-    await this.assertParentBranch(branch.tenantId, dto.parentBranchId ?? branch.parentBranchId, id);
+    this.rejectParentBranch(dto.parentBranchId);
 
     if (dto.code && dto.code.trim().toUpperCase() !== branch.code) {
       const normalizedCode = dto.code.trim().toUpperCase();
-      const existingBranch = await this.branchRepository.findByTenantAndCode(branch.tenantId, normalizedCode);
+      const targetCompanyId = dto.companyId ?? branch.companyId;
+      const existingBranch = await this.branchRepository.findByCompanyAndCode(
+        branch.tenantId,
+        targetCompanyId,
+        normalizedCode,
+      );
       if (existingBranch && existingBranch.id !== id) {
-        throw new DomainValidationError(`Branch code '${normalizedCode}' already exists for this tenant.`);
+        throw new DomainValidationError(`Já existe uma Filial com o código ${normalizedCode} nesta Empresa.`);
       }
       branch.code = normalizedCode;
     }
 
     branch.legalName = dto.legalName?.trim() ?? branch.legalName;
     branch.displayName = dto.displayName?.trim() ?? branch.displayName;
-    branch.parentBranchId = dto.parentBranchId === undefined ? branch.parentBranchId : dto.parentBranchId;
+    branch.parentBranchId = null;
     branch.businessCalendarName =
       dto.businessCalendarName === undefined
         ? branch.businessCalendarName
@@ -218,19 +275,35 @@ export class BranchService {
     return saved;
   }
 
-  private async assertParentBranch(tenantId: string, parentBranchId: string | null, branchId?: string): Promise<void> {
-    if (!parentBranchId) {
-      return;
+  private rejectParentBranch(parentBranchId?: string | null): void {
+    if (parentBranchId) {
+      throw new DomainValidationError('Filial não tem Filial pai. O pai é a Empresa.');
     }
+  }
 
-    if (branchId && branchId === parentBranchId) {
-      throw new DomainValidationError('Branch cannot be its own parent.');
+  private isDuplicateBranchCodeError(error: unknown): boolean {
+    if (error instanceof DomainValidationError) {
+      return (
+        /já existe uma filial com o código/i.test(error.message) || /branch code .* already exists/i.test(error.message)
+      );
     }
-
-    const parentBranch = await this.getById(parentBranchId);
-    if (parentBranch.tenantId !== tenantId) {
-      throw new DomainValidationError('Parent branch must belong to the same tenant.');
+    if (!error || typeof error !== 'object') {
+      return false;
     }
+    const candidate = error as {
+      code?: string;
+      constraint?: string;
+      driverError?: { code?: string; constraint?: string };
+    };
+    const pgCode = candidate.code ?? candidate.driverError?.code;
+    if (pgCode !== '23505') {
+      return false;
+    }
+    const constraint = `${candidate.constraint ?? ''} ${candidate.driverError?.constraint ?? ''}`.toLowerCase();
+    if (!constraint.trim()) {
+      return true;
+    }
+    return constraint.includes('code');
   }
 
   private buildAuditSnapshot(branch: BranchEntity) {

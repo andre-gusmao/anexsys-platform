@@ -59,4 +59,217 @@ describe('QualityService', () => {
     assert.equal(reworkCalls[0]?.qualityRecordId, 'quality-1');
     assert.equal(audits[0]?.action, 'quality_record.rework.requested');
   });
+
+  it('approves every piece and moves the OS to ready for pickup', async () => {
+    const records: Array<Record<string, unknown>> = [];
+    const statuses: string[] = [];
+    const details = {
+      productionOrder: { id: 'production-1', productionNo: 'PO-1' },
+      serviceOrder: {
+        id: 'so-1',
+        orderNo: 'AAA000001',
+        status: 'quality',
+        bagClosed: true,
+        openedAt: '2026-10-03T10:00:00.000Z',
+        promisedDeliveryDate: '2026-10-18',
+      },
+      customer: { legalName: 'Sandra', phone: null },
+      items: [
+        { id: 'item-1', itemType: 'Calça', description: 'Bainha', complement: 'teste', brand: 'Zara', model: '', serialNo: '' },
+      ],
+      versions: [],
+    };
+
+    const service = new QualityService(
+      {
+        async findById(id: string) {
+          return records.find((record) => record.id === id) ?? null;
+        },
+        async findByProductionOrder() {
+          return records;
+        },
+        async save(payload: Record<string, unknown>) {
+          const index = records.findIndex((record) => record.id === payload.id);
+          if (index >= 0) records[index] = { ...records[index], ...payload };
+          else records.push(payload);
+          return payload;
+        },
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+      } as never,
+      {} as never,
+      {
+        async getDetails() {
+          return details;
+        },
+        async getDetailsByServiceOrder() {
+          return details;
+        },
+        async getPrintView() {
+          return { items: details.items };
+        },
+      } as never,
+      {
+        async applyQualityStatus(_id: string, _tenant: string, status: string) {
+          statuses.push(status);
+          details.serviceOrder.status = status;
+          return details.serviceOrder;
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      { async create() { return { id: 'rework-1' }; } } as never,
+      {} as never,
+    );
+
+    const response = await service.decideItem('tenant-1', 'so-1', 'item-1', 'user-1', ['branch-1'], 'approved');
+    assert.equal(response.review.phase, 'ready');
+    assert.equal(response.issuedRework, false);
+    assert.ok(statuses.includes('quality'));
+    assert.ok(statuses.includes('ready_for_pickup'));
+  });
+
+  it('issues a rework OP with only rejected pieces and keeps the OS in quality', async () => {
+    const records: Array<Record<string, unknown>> = [];
+    const reworkCalls: Array<Record<string, unknown>> = [];
+    const versions: Array<Record<string, unknown>> = [];
+    const details = {
+      productionOrder: { id: 'production-1', productionNo: 'PO-1' },
+      serviceOrder: {
+        id: 'so-1',
+        orderNo: 'AAA000001',
+        status: 'open',
+        bagClosed: true,
+        openedAt: '2026-10-03T10:00:00.000Z',
+        promisedDeliveryDate: '2026-10-18',
+      },
+      customer: { legalName: 'Sandra', phone: null },
+      items: [
+        { id: 'item-1', itemType: 'Calça', description: 'Bainha', complement: 'ok', brand: 'Zara', model: '', serialNo: '' },
+        { id: 'item-2', itemType: 'Saia', description: 'Barra', complement: 'curta', brand: 'Zara', model: '', serialNo: '' },
+      ],
+      versions,
+    };
+
+    const service = new QualityService(
+      {
+        async findById(id: string) {
+          return records.find((record) => record.id === id) ?? null;
+        },
+        async findByProductionOrder() {
+          return records;
+        },
+        async save(payload: Record<string, unknown>) {
+          const index = records.findIndex((record) => record.id === payload.id);
+          if (index >= 0) records[index] = { ...records[index], ...payload };
+          else records.push(payload);
+          return payload;
+        },
+        create(payload: Record<string, unknown>) {
+          return payload;
+        },
+      } as never,
+      {} as never,
+      {
+        async getDetails() {
+          return details;
+        },
+        async getDetailsByServiceOrder() {
+          return details;
+        },
+        async getPrintView() {
+          return { items: [{ id: 'item-2', itemType: 'Saia' }], version: { versionNo: 2, versionReason: 'rework' } };
+        },
+      } as never,
+      {
+        async applyQualityStatus(_id: string, _tenant: string, status: string) {
+          details.serviceOrder.status = status;
+          return details.serviceOrder;
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      { async record() {}, async listByEntity() { return []; } } as never,
+      {
+        async create(payload: Record<string, unknown>) {
+          reworkCalls.push(payload);
+          versions.push({
+            isActive: true,
+            versionNo: 2,
+            versionReason: 'rework',
+            affectedServiceOrderItemIds: payload.affectedServiceOrderItemIds,
+          });
+          return { id: 'rework-1' };
+        },
+      } as never,
+      {} as never,
+    );
+
+    await service.decideItem('tenant-1', 'so-1', 'item-1', 'user-1', ['branch-1'], 'approved');
+    const response = await service.decideItem('tenant-1', 'so-1', 'item-2', 'user-1', ['branch-1'], 'rejected', 'Barra curta');
+    assert.equal(response.issuedRework, true);
+    assert.equal(response.review.phase, 'rework_issued');
+    assert.deepEqual(reworkCalls[0]?.affectedServiceOrderItemIds, ['item-2']);
+    assert.equal(details.serviceOrder.status, 'quality');
+    assert.equal(response.printView.items[0]?.rejectionReason, 'Barra curta');
+  });
+
+  it('lists only closed bags waiting for quality review', async () => {
+    const detailsById: Record<string, { serviceOrder: Record<string, unknown>; customer: { legalName: string }; productionOrder?: { productionNo: string }; versions: unknown[] }> = {
+      'po-open-bag': {
+        serviceOrder: { id: 'so-draft', orderNo: 'AAA000005', status: 'open', bagClosed: false, promisedDeliveryDate: '2026-10-18' },
+        customer: { legalName: 'Rascunho' },
+        versions: [],
+      },
+      'po-open': {
+        serviceOrder: { id: 'so-open', orderNo: 'AAA000006', status: 'open', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
+        customer: { legalName: 'Regiane' },
+        productionOrder: { productionNo: 'PO-6' },
+        versions: [],
+      },
+      'po-waiting': {
+        serviceOrder: { id: 'so-waiting', orderNo: 'AAA000007', status: 'awaiting_quality', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
+        customer: { legalName: 'Isabel' },
+        productionOrder: { id: 'po-waiting', productionNo: 'PO-7' },
+        versions: [],
+      },
+      'po-ready': {
+        serviceOrder: { id: 'so-ready', orderNo: 'AAA000008', status: 'ready_for_pickup', bagClosed: true, promisedDeliveryDate: '2026-10-18' },
+        customer: { legalName: 'André' },
+        productionOrder: { productionNo: 'PO-8' },
+        versions: [],
+      },
+    };
+    const service = new QualityService(
+      {} as never,
+      {} as never,
+      {
+        async getDetailsByServiceOrder(_tenant: string, serviceOrderId: string) {
+          const match = Object.values(detailsById).find((details) => details.serviceOrder.id === serviceOrderId);
+          return match ?? null;
+        },
+      } as never,
+      {
+        async search() {
+          return [
+            detailsById['po-open-bag'].serviceOrder,
+            detailsById['po-open'].serviceOrder,
+            detailsById['po-waiting'].serviceOrder,
+            detailsById['po-ready'].serviceOrder,
+          ];
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const reviews = await service.searchReviews('tenant-1', { accessibleBranchIds: ['branch-1'] });
+    assert.deepEqual(reviews.map((review) => review.orderNo), ['AAA000007']);
+    assert.equal(reviews[0]?.status, 'awaiting_quality');
+  });
 });

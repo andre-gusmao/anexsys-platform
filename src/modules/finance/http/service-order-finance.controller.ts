@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe, UnauthorizedException } from '@nestjs/common';
+import { Inject, Controller, Get, Param, ParseUUIDPipe, UnauthorizedException } from '@nestjs/common';
 import { ServiceOrderService } from 'src/modules/service-orders/application/service-order/service-order.service';
 import { Permissions } from 'src/platform/auth/permissions.decorator';
 import { PlatformRequest } from 'src/platform/http/request-context';
@@ -7,7 +7,12 @@ import { FinanceService } from '../application/finance/finance.service';
 
 @Controller('service-orders/:serviceOrderId')
 export class ServiceOrderFinanceController {
-  constructor(private readonly financeService: FinanceService, private readonly serviceOrderService: ServiceOrderService) {}
+  constructor(
+    @Inject(FinanceService)
+    private readonly financeService: FinanceService,
+    @Inject(ServiceOrderService)
+    private readonly serviceOrderService: ServiceOrderService,
+  ) {}
 
   @Permissions('finance.read')
   @Get('financial-summary')

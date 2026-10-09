@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   ForbiddenException,
@@ -166,7 +167,10 @@ class UpdateAvailabilityBody {
 
 @Controller('operational-resources')
 export class OperationalResourcesController {
-  constructor(private readonly operationalResourceService: OperationalResourceService) {}
+  constructor(
+    @Inject(OperationalResourceService)
+    private readonly operationalResourceService: OperationalResourceService,
+  ) {}
 
   @Permissions('operational_resources.read')
   @Get()

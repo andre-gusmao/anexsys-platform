@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, Not, Repository } from 'typeorm';
 import { DeliveryType, ServiceOrderStatus } from 'src/shared/domain/enums';
 import { ServiceOrderEntity } from '../entities/service-order.entity';
 
@@ -30,6 +30,56 @@ export class ServiceOrderRepository {
 
   async findById(id: string): Promise<ServiceOrderEntity | null> {
     return this.repository.findOne({ where: { id, isDeleted: false } });
+  }
+
+  async findByPublicToken(publicToken: string): Promise<ServiceOrderEntity | null> {
+    return this.repository.findOne({ where: { publicToken, isDeleted: false } });
+  }
+
+  async findActiveFloorBags(tenantId: string, branchId: string, excludeId: string): Promise<ServiceOrderEntity[]> {
+    return this.repository.find({
+      where: {
+        tenantId,
+        branchId,
+        isDeleted: false,
+        id: Not(excludeId),
+        status: In([ServiceOrderStatus.IN_PRODUCTION, ServiceOrderStatus.IN_REWORK]),
+      },
+      order: { openedAt: 'DESC' },
+    });
+  }
+
+  async findByGroupId(tenantId: string, groupId: string): Promise<ServiceOrderEntity[]> {
+    return this.repository.find({
+      where: { tenantId, groupId, isDeleted: false },
+      order: { versionSuffix: 'ASC', openedAt: 'ASC' },
+    });
+  }
+
+  async findByGroupIds(tenantId: string, groupIds: string[]): Promise<ServiceOrderEntity[]> {
+    if (groupIds.length === 0) {
+      return [];
+    }
+    return this.repository.find({
+      where: { tenantId, groupId: In(groupIds), isDeleted: false },
+      order: { versionSuffix: 'ASC', openedAt: 'ASC' },
+    });
+  }
+
+  async findByOriginServiceOrderId(tenantId: string, originServiceOrderId: string): Promise<ServiceOrderEntity[]> {
+    return this.repository.find({
+      where: { tenantId, originServiceOrderId, isDeleted: false },
+      order: { openedAt: 'DESC', createdAt: 'DESC' },
+    });
+  }
+
+  async nextGroupSeq(tenantId: string): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder('service_order')
+      .select('COALESCE(MAX(service_order.group_seq), 0)', 'maxSeq')
+      .where('service_order.tenant_id = :tenantId', { tenantId })
+      .getRawOne<{ maxSeq: string }>();
+    return Number(result?.maxSeq ?? 0) + 1;
   }
 
   async search(tenantId: string, filters: ServiceOrderSearchFilters): Promise<ServiceOrderEntity[]> {

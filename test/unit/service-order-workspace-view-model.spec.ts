@@ -4,8 +4,25 @@ import {
   addServiceOrderItemGridRow,
   buildCreateServiceOrderItemsPayload,
   buildServiceOrderItemMutationPlan,
+  calculateServiceOrderItemSubtotal,
+  canAddServiceOrderItemGridRow,
+  applyOsMoneyTyping,
+  formatOsMoneyInput,
   mapServiceOrderItemsToGridRows,
+  MAX_SERVICE_ORDER_ITEMS,
+  OS_WORK_CHARS_PER_LINE,
+  OS_WORK_MAX_CHARS,
+  OS_WORK_PRINT_FONT_PX,
+  OS_WORK_PRINT_LINES,
+  osOpHeaderTerm,
+  osPaymentConditionLabel,
+  osReturnKindLabel,
+  osWorkPrintHint,
+  serviceOrderListLoadBinding,
+  parseOsMoney,
+  previewNextLinkedServiceOrderNo,
   removeServiceOrderItemGridRow,
+  runClosedBagCommit,
   updateServiceOrderItemGridRow,
 } from '../../frontend/src/components/service-orders/service-order-workspace-view-model';
 
@@ -15,7 +32,13 @@ test('maps persisted items into visible editable grid rows', () => {
       id: 'item-1',
       itemNo: 1,
       itemType: 'Jeans',
+      productId: 'product-1',
+      serviceId: 'service-1',
       description: 'Original Hem',
+      complement: 'Azul marinho',
+      brand: 'Levi',
+      model: '501',
+      serialNo: 'SN-1',
       quantity: '1.0000',
       unitPrice: '25.00',
       discountValue: '0.00',
@@ -39,10 +62,16 @@ test('maps persisted items into visible editable grid rows', () => {
       persistedItemId: 'item-1',
       itemNo: 1,
       itemType: 'Jeans',
+      productId: 'product-1',
+      serviceId: 'service-1',
       description: 'Original Hem',
-      quantity: '1.0000',
-      unitPrice: '25.00',
-      discountValue: '0.00',
+      complement: 'Azul marinho',
+      brand: 'Levi',
+      model: '501',
+      serialNo: 'SN-1',
+      quantity: '1',
+      unitPrice: '25,00',
+      discountValue: '0,00',
       status: 'open',
       isEditing: false,
       isNew: false,
@@ -55,7 +84,13 @@ test('builds create payload for all visible item rows', () => {
   const rows = addServiceOrderItemGridRow([]);
   const updatedRows = updateServiceOrderItemGridRow(rows, rows[0].localId, {
     itemType: 'Party Dress',
+    productId: 'product-2',
+    serviceId: 'service-2',
     description: 'Hem Adjustment',
+    complement: 'Na lateral',
+    brand: 'Zara',
+    model: 'Festa',
+    serialNo: 'SN-9',
     quantity: '2',
     unitPrice: '80',
     discountValue: '10',
@@ -64,8 +99,14 @@ test('builds create payload for all visible item rows', () => {
   assert.deepEqual(buildCreateServiceOrderItemsPayload(updatedRows), [
     {
       itemType: 'Party Dress',
+      productId: 'product-2',
+      serviceId: 'service-2',
       description: 'Hem Adjustment',
-      quantity: 2,
+      complement: 'Na lateral',
+      brand: 'Zara',
+      model: 'Festa',
+      serialNo: 'SN-9',
+      quantity: 1,
       unitPrice: 80,
       discountValue: 10,
     },
@@ -103,7 +144,13 @@ test('creates update and remove plans for existing rows and create plan for new 
     create: [
       {
         itemType: 'Shirt',
+        productId: undefined,
+        serviceId: undefined,
         description: 'Left cuff only',
+        complement: undefined,
+        brand: '',
+        model: '',
+        serialNo: '',
         quantity: 1,
         unitPrice: undefined,
         discountValue: undefined,
@@ -113,7 +160,13 @@ test('creates update and remove plans for existing rows and create plan for new 
       {
         itemId: 'item-1',
         itemType: 'Jeans',
+        productId: undefined,
+        serviceId: undefined,
         description: 'Keep original appearance',
+        complement: undefined,
+        brand: '',
+        model: '',
+        serialNo: '',
         quantity: 1,
         unitPrice: 25,
         discountValue: 0,
@@ -177,4 +230,134 @@ test('does not emit updates for numerically equivalent values', () => {
     update: [],
     remove: [],
   });
+});
+
+test('caps the visible piece count at five and calculates the line subtotal', () => {
+  let rows = addServiceOrderItemGridRow([]);
+  for (let index = 0; index < MAX_SERVICE_ORDER_ITEMS + 2; index += 1) {
+    rows = addServiceOrderItemGridRow(rows);
+  }
+
+  assert.equal(rows.length, MAX_SERVICE_ORDER_ITEMS);
+  assert.equal(canAddServiceOrderItemGridRow(rows), false);
+  assert.equal(
+    calculateServiceOrderItemSubtotal({ quantity: '2', unitPrice: '40', discountValue: '10' }),
+    70,
+  );
+});
+
+test('respects a parametrized piece limit when adding rows', () => {
+  let rows = addServiceOrderItemGridRow([], 3);
+  rows = addServiceOrderItemGridRow(rows, 3);
+  rows = addServiceOrderItemGridRow(rows, 3);
+  rows = addServiceOrderItemGridRow(rows, 3);
+
+  assert.equal(rows.length, 3);
+  assert.equal(canAddServiceOrderItemGridRow(rows, 3), false);
+  assert.equal(canAddServiceOrderItemGridRow(rows, 5), true);
+});
+
+test('opens the next version even when printing is blocked', async () => {
+  const calls: string[] = [];
+  const result = await runClosedBagCommit({
+    wantsNextVersion: true,
+    async spawnNext() {
+      calls.push('spawn');
+      return { orderNo: 'AAA000001-A' };
+    },
+    async print() {
+      calls.push('print');
+      throw new Error('O navegador bloqueou a janela de impressão.');
+    },
+  });
+
+  assert.deepEqual(calls, ['spawn', 'print']);
+  assert.equal(result.next?.orderNo, 'AAA000001-A');
+  assert.equal(result.printed, null);
+  assert.match(String(result.printError), /bloqueou/);
+});
+
+test('does not spawn a version when the next-version mark is off', async () => {
+  const result = await runClosedBagCommit({
+    wantsNextVersion: false,
+    async spawnNext() {
+      throw new Error('não deveria abrir versão');
+    },
+    async print() {
+      return { productionNo: 'OP-1' };
+    },
+  });
+
+  assert.equal(result.next, null);
+  assert.equal(result.printed?.productionNo, 'OP-1');
+  assert.equal(result.printError, null);
+});
+
+test('labels payment as paid only when the OS is fully settled', () => {
+  assert.equal(osPaymentConditionLabel('paid'), 'Pago');
+  assert.equal(osPaymentConditionLabel('partial'), 'Pagar na retirada');
+  assert.equal(osPaymentConditionLabel('pending'), 'Pagar na retirada');
+  assert.equal(osPaymentConditionLabel(null), 'Pagar na retirada');
+});
+
+test('uses Reconserto or Em garantia on the OP header for in-window returns', () => {
+  assert.equal(osReturnKindLabel('reconserto'), 'Reconserto');
+  assert.equal(osReturnKindLabel('warranty'), 'Em garantia');
+  assert.equal(osOpHeaderTerm({ returnKind: 'reconserto', paymentStatus: 'paid' }), 'Reconserto');
+  assert.equal(osOpHeaderTerm({ returnKind: 'warranty', paymentStatus: 'pending' }), 'Em garantia');
+  assert.equal(osOpHeaderTerm({ returnKind: 'charged', paymentStatus: 'paid' }), 'Pago');
+  assert.equal(osReturnKindLabel('counter'), 'Refação no balcão');
+  assert.equal(osOpHeaderTerm({ returnKind: 'counter', paymentStatus: 'pending' }), 'Refação no balcão');
+});
+
+test('fails the save when print is blocked and no next version was requested', async () => {
+  await assert.rejects(
+    () =>
+      runClosedBagCommit({
+        wantsNextVersion: false,
+        async spawnNext() {
+          return { orderNo: 'AAA000001-A' };
+        },
+        async print() {
+          throw new Error('O navegador bloqueou a janela de impressão.');
+        },
+      }),
+    /bloqueou/,
+  );
+});
+
+test('types valor and desconto as Brazilian money with cents', () => {
+  assert.equal(applyOsMoneyTyping('1'), '0,01');
+  assert.equal(applyOsMoneyTyping('1500000'), '15.000,00');
+  assert.equal(applyOsMoneyTyping('15.000,00'), '15.000,00');
+  assert.equal(formatOsMoneyInput('15000.00'), '15.000,00');
+  assert.equal(parseOsMoney('15.000,00'), 15000);
+  assert.equal(parseOsMoney('15000.00'), 15000);
+  assert.equal(parseOsMoney('25,00'), 25);
+});
+
+test('previews the next linked OS number from the current plate', () => {
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001'), 'AAA000001-1');
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001-1', ['AAA000001', 'AAA000001-1']), 'AAA000001-2');
+  assert.equal(previewNextLinkedServiceOrderNo('00002', ['00002']), '00002-1');
+  assert.equal(previewNextLinkedServiceOrderNo('AAA000001-C', ['AAA000001', 'AAA000001-C']), 'AAA000001-1');
+});
+
+test('does not rebind the open OS when the list refreshes without a preferred id', () => {
+  assert.deepEqual(serviceOrderListLoadBinding(), { bind: false });
+  assert.deepEqual(serviceOrderListLoadBinding(undefined), { bind: false });
+  assert.deepEqual(serviceOrderListLoadBinding(null), { bind: true, activeId: null });
+  assert.deepEqual(serviceOrderListLoadBinding('os-1'), { bind: true, activeId: 'os-1' });
+});
+
+test('keeps Detalhamento do ajuste within the A5 15px / 3-line budget after column S', () => {
+  assert.equal(OS_WORK_PRINT_FONT_PX, 15);
+  assert.equal(OS_WORK_PRINT_LINES, 3);
+  assert.equal(OS_WORK_CHARS_PER_LINE, 34);
+  assert.equal(OS_WORK_MAX_CHARS, 102);
+  assert.equal(osWorkPrintHint('', 1), 'S1 · linha 1 de 3 · 0/34');
+  assert.equal(osWorkPrintHint('abc', 2), 'S2 · linha 1 de 3 · 3/34');
+  assert.equal(osWorkPrintHint('a'.repeat(34), 3), 'S3 · linha 1 de 3 · 34/34');
+  assert.equal(osWorkPrintHint('a'.repeat(35), 4), 'S4 · linha 2 de 3 · 1/34');
+  assert.equal(osWorkPrintHint('a'.repeat(102), 5), 'S5 · linha 3 de 3 · 34/34');
 });

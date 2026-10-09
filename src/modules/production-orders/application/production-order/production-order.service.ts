@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -40,19 +40,33 @@ import { QrEventRepository } from '../../infrastructure/persistence/repositories
 @Injectable()
 export class ProductionOrderService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(ProductionOrderRepository)
     private readonly productionOrderRepository: ProductionOrderRepository,
+    @Inject(ProductionOrderItemLinkRepository)
     private readonly itemLinkRepository: ProductionOrderItemLinkRepository,
+    @Inject(ProductionOrderVersionRepository)
     private readonly versionRepository: ProductionOrderVersionRepository,
+    @Inject(ProductionOrderOperationalAssignmentRepository)
     private readonly assignmentRepository: ProductionOrderOperationalAssignmentRepository,
+    @Inject(QrCodeRepository)
     private readonly qrCodeRepository: QrCodeRepository,
+    @Inject(QrEventRepository)
     private readonly qrEventRepository: QrEventRepository,
+    @Inject(ProductionExecutionEventRepository)
     private readonly executionEventRepository: ProductionExecutionEventRepository,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(MeasurementService)
     private readonly measurementService: MeasurementService,
+    @Inject(OperationalResourceService)
     private readonly operationalResourceService: OperationalResourceService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 
@@ -79,7 +93,9 @@ export class ProductionOrderService {
     const measurements = await this.measurementService.listByCustomer(input.tenantId, serviceOrderDetails.customer.id);
     const measurementsSnapshot = this.buildMeasurementsSnapshot(measurements.latestByLabel);
     const plannedQuantity = serviceOrderDetails.items.reduce((sum, item) => sum + Number(item.quantity), 0);
-    const pieceDescription = serviceOrderDetails.items.map((item) => item.description).join(', ');
+    const pieceDescription = serviceOrderDetails.items
+      .map((item) => [item.itemType, item.description, item.complement].filter(Boolean).join(' · '))
+      .join('; ');
 
     const order = this.productionOrderRepository.create({
       id: randomUUID(),
@@ -99,7 +115,7 @@ export class ProductionOrderService {
       producedQuantity: this.formatQuantity(0),
       scheduledStartAt: null,
       scheduledEndAt: null,
-      instructions: serviceOrderDetails.serviceOrder.commercialNotes,
+      instructions: pieceDescription,
       pieceDescription,
       measurementsSnapshot,
       observations: serviceOrderDetails.serviceOrder.customerNotes,
@@ -175,6 +191,20 @@ export class ProductionOrderService {
     }
 
     return this.productionOrderRepository.search(tenantId, filters);
+  }
+
+  async getByServiceOrder(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {
+    const serviceOrder = await this.serviceOrderService.getById(serviceOrderId, tenantId);
+    this.serviceOrderService.assertBranchAccess(serviceOrder, accessibleBranchIds);
+    return this.productionOrderRepository.findByServiceOrder(serviceOrderId);
+  }
+
+  async getDetailsByServiceOrder(tenantId: string, serviceOrderId: string, accessibleBranchIds: string[]) {
+    const order = await this.getByServiceOrder(tenantId, serviceOrderId, accessibleBranchIds);
+    if (!order) {
+      return null;
+    }
+    return this.getDetails(tenantId, order.id);
   }
 
   async getById(productionOrderId: string, tenantId: string): Promise<ProductionOrderEntity> {
@@ -715,6 +745,11 @@ export class ProductionOrderService {
     const effectivePriority = activeVersion?.operationalPriority ?? details.productionOrder.operationalPriority;
     const delivery = this.buildDeliveryBadge(details.productionOrder.customerDeliveryTargetDate);
     const indicators = this.buildPrintIndicators(effectiveDeliveryType, activeVersion?.versionReason ?? null);
+    const rejectionReasons =
+      activeVersion?.versionReason === ProductionOrderVersionReason.REWORK
+        ? await this.latestRejectionReasons(productionOrderId)
+        : new Map<string, string>();
+    const proofNotes = await this.serviceOrderService.latestProofNotesByItem(details.serviceOrder.id);
 
     return {
       productionOrderId: details.productionOrder.id,
@@ -723,10 +758,22 @@ export class ProductionOrderService {
       serviceOrder: {
         id: details.serviceOrder.id,
         orderNo: details.serviceOrder.orderNo,
+        openedAt: details.serviceOrder.openedAt,
+        promisedDeliveryDate: details.serviceOrder.promisedDeliveryDate,
+        promisedDeliveryTime: details.serviceOrder.promisedDeliveryTime ?? null,
+        returnKind: details.serviceOrder.returnKind ?? null,
       },
       customer: {
         id: details.customer.id,
         legalName: details.customer.legalName,
+        phone: details.customer.phone ?? null,
+        email: details.customer.email ?? null,
+        cpfCnpj: details.customer.cpfCnpj ?? null,
+        street: details.customer.street ?? null,
+        number: details.customer.number ?? null,
+        city: details.customer.city ?? null,
+        state: details.customer.state ?? null,
+        postalCode: details.customer.postalCode ?? null,
       },
       delivery,
       indicators,
@@ -740,12 +787,26 @@ export class ProductionOrderService {
             versionReason: activeVersion.versionReason,
           }
         : null,
-      items: details.items.map((item) => ({
+      items: (activeVersion?.affectedServiceOrderItemIds?.length
+        ? details.items.filter((item) => activeVersion.affectedServiceOrderItemIds?.includes(item.id))
+        : details.items
+      ).map((item) => ({
         id: item.id,
         itemType: item.itemType,
         description: item.description,
-        quantity: item.quantity,
+        complement: item.complement ?? null,
+        brand: item.brand ?? '',
+        model: item.model ?? '',
+        serialNo: item.serialNo ?? '',
+        rejectionReason: rejectionReasons.get(item.id) ?? null,
+        proofNote: proofNotes.get(item.id) ?? null,
       })),
+      qrCode: details.activeQrCode
+        ? {
+            codeValue: details.activeQrCode.codeValue,
+            reissueNo: details.activeQrCode.reissueNo,
+          }
+        : null,
     };
   }
 
@@ -882,6 +943,38 @@ export class ProductionOrderService {
       dayNumber: date.slice(8, 10),
       month,
     };
+  }
+
+  private async latestRejectionReasons(productionOrderId: string): Promise<Map<string, string>> {
+    const reasons = new Map<string, string>();
+    if (typeof this.dataSource.query !== 'function') {
+      return reasons;
+    }
+    try {
+      const rows = (await this.dataSource.query(
+        `
+          SELECT service_order_item_id AS "serviceOrderItemId", notes
+          FROM quality_records
+          WHERE production_order_id = $1
+            AND service_order_item_id IS NOT NULL
+            AND notes IS NOT NULL
+            AND BTRIM(notes) <> ''
+            AND release_decision IN ('rejected', 'rework_requested')
+          ORDER BY inspection_at DESC, created_at DESC
+        `,
+        [productionOrderId],
+      )) as Array<{ serviceOrderItemId?: string; notes?: string }>;
+      for (const row of rows ?? []) {
+        const itemId = row.serviceOrderItemId?.trim();
+        const notes = row.notes?.trim();
+        if (itemId && notes && !reasons.has(itemId)) {
+          reasons.set(itemId, notes);
+        }
+      }
+    } catch {
+      return reasons;
+    }
+    return reasons;
   }
 
   private buildPrintIndicators(deliveryType: DeliveryType, versionReason: ProductionOrderVersionReason | null): string[] {

@@ -1,22 +1,56 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { requireClockTime } from './clock-time';
 import { addDays } from './utils';
 import { BranchHoursService } from 'src/modules/company/application/company/branch-hours.service';
 import { DEFAULT_BRANCH_TIMEZONE } from 'src/modules/company/application/company.defaults';
 import { BranchService } from 'src/modules/branch/application/branch/branch.service';
 import { TenantService } from 'src/modules/tenant/application/tenant/tenant.service';
+import { DeliveryType } from 'src/shared/domain/enums';
 import { DomainValidationError } from 'src/shared/errors/domain-validation.error';
 import { BusinessCalendarDayRepository } from '../../infrastructure/persistence/repositories/business-calendar-day.repository';
+
+export type DeliverySuggestion = {
+  promisedDeliveryDate: string;
+  promisedDeliveryTime: string;
+};
+
+/** Defaults until the parameters panel exists. Homologated 09/10/2026. */
+export const STANDARD_DELIVERY_CALENDAR_DAYS = 7;
+export const PRIORITY_DELIVERY_WORKING_DAYS = 3;
+export const EXPRESS_MINUTES_PER_PIECE = 120;
+
+type HoursDay = {
+  weekday: number;
+  isOpen: boolean;
+  opensAt: string | null;
+  closesAt: string | null;
+  cutoffAt: string | null;
+};
 
 @Injectable()
 export class DeliveryDateService {
   constructor(
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(BusinessCalendarDayRepository)
     private readonly businessCalendarDayRepository: BusinessCalendarDayRepository,
+    @Inject(BranchHoursService)
     private readonly branchHoursService: BranchHoursService,
   ) {}
 
   async suggestDeliveryDate(tenantId: string, branchId: string, sourceAt: Date): Promise<string> {
+    const suggestion = await this.suggestDelivery(tenantId, branchId, sourceAt);
+    return suggestion.promisedDeliveryDate;
+  }
+
+  async suggestDelivery(
+    tenantId: string,
+    branchId: string,
+    sourceAt: Date,
+    options?: { deliveryType?: DeliveryType; itemCount?: number },
+  ): Promise<DeliverySuggestion> {
     await this.tenantService.getById(tenantId);
     const branch = await this.branchService.getById(branchId);
     if (branch.tenantId !== tenantId) {
@@ -25,26 +59,116 @@ export class DeliveryDateService {
 
     const timezone = branch.timezone || DEFAULT_BRANCH_TIMEZONE;
     const hours = await this.branchHoursService.list(tenantId, branchId);
-    let candidate = addDays(this.resolveEffectiveOpenDate(sourceAt, timezone, hours.days), 7);
+    const deliveryType = options?.deliveryType ?? DeliveryType.STANDARD;
+    const itemCount = Math.max(1, options?.itemCount ?? 1);
+    const effectiveDate = this.resolveEffectiveOpenDate(sourceAt, timezone, hours.days);
+
+    if (deliveryType === DeliveryType.EXPRESS) {
+      return this.suggestExpress(tenantId, branchId, sourceAt, timezone, hours.days, effectiveDate, itemCount);
+    }
+
+    if (deliveryType === DeliveryType.PRIORITY) {
+      const promisedDeliveryDate = await this.addWorkingDays(
+        tenantId,
+        branchId,
+        hours.days,
+        effectiveDate,
+        PRIORITY_DELIVERY_WORKING_DAYS,
+      );
+      return { promisedDeliveryDate, promisedDeliveryTime: this.closingTime(hours.days, promisedDeliveryDate) };
+    }
+
+    const promisedDeliveryDate = await this.nextValidCalendarDate(
+      tenantId,
+      branchId,
+      hours.days,
+      addDays(effectiveDate, STANDARD_DELIVERY_CALENDAR_DAYS),
+    );
+    return { promisedDeliveryDate, promisedDeliveryTime: this.closingTime(hours.days, promisedDeliveryDate) };
+  }
+
+  private async suggestExpress(
+    tenantId: string,
+    branchId: string,
+    sourceAt: Date,
+    timezone: string,
+    days: HoursDay[],
+    effectiveDate: string,
+    itemCount: number,
+  ): Promise<DeliverySuggestion> {
+    const local = this.toZonedParts(sourceAt, timezone);
+    const sourceDate = `${local.year}-${local.month}-${local.day}`;
+    const opensAt = this.openingTime(days, effectiveDate);
+    let currentDate = effectiveDate;
+    let currentMinutes =
+      sourceDate === effectiveDate && this.toMinutes(local.time) >= this.toMinutes(opensAt)
+        ? this.toMinutes(local.time)
+        : this.toMinutes(opensAt);
+    let remaining = EXPRESS_MINUTES_PER_PIECE * itemCount;
+
+    for (let guard = 0; guard < 366 && remaining > 0; guard += 1) {
+      const closeMinutes = this.toMinutes(this.closingTime(days, currentDate));
+      if (currentMinutes < this.toMinutes(this.openingTime(days, currentDate))) {
+        currentMinutes = this.toMinutes(this.openingTime(days, currentDate));
+      }
+      const available = Math.max(0, closeMinutes - currentMinutes);
+      if (remaining <= available) {
+        currentMinutes += remaining;
+        remaining = 0;
+        break;
+      }
+      remaining -= available;
+      currentDate = await this.addWorkingDays(tenantId, branchId, days, currentDate, 1);
+      currentMinutes = this.toMinutes(this.openingTime(days, currentDate));
+    }
+
+    if (remaining > 0) {
+      throw new DomainValidationError('Unable to calculate a valid promised delivery date.');
+    }
+
+    return { promisedDeliveryDate: currentDate, promisedDeliveryTime: this.fromMinutes(currentMinutes) };
+  }
+
+  private async nextValidCalendarDate(tenantId: string, branchId: string, days: HoursDay[], start: string): Promise<string> {
+    let candidate = start;
     for (let guard = 0; guard < 366; guard += 1) {
-      const rules = await this.businessCalendarDayRepository.findApplicable(tenantId, branchId, candidate);
-      const hasExplicitNonWorkingRule = rules.some((rule) => rule.isWorkingDay === false);
-      const hasExplicitWorkingRule = rules.some((rule) => rule.isWorkingDay === true);
-      const isDefaultBusinessDay = this.isOpenDay(candidate, hours.days);
-      if (!hasExplicitNonWorkingRule && (hasExplicitWorkingRule || isDefaultBusinessDay)) {
+      if (await this.isWorkingCalendarDay(tenantId, branchId, days, candidate)) {
         return candidate;
       }
       candidate = addDays(candidate, 1);
     }
-
     throw new DomainValidationError('Unable to calculate a valid promised delivery date.');
   }
 
-  private resolveEffectiveOpenDate(
-    sourceAt: Date,
-    timezone: string,
-    days: Array<{ weekday: number; isOpen: boolean; cutoffAt: string | null; closesAt: string | null }>,
-  ): string {
+  private async addWorkingDays(
+    tenantId: string,
+    branchId: string,
+    days: HoursDay[],
+    start: string,
+    count: number,
+  ): Promise<string> {
+    let candidate = start;
+    let remaining = count;
+    for (let guard = 0; guard < 366 && remaining > 0; guard += 1) {
+      candidate = addDays(candidate, 1);
+      if (await this.isWorkingCalendarDay(tenantId, branchId, days, candidate)) {
+        remaining -= 1;
+      }
+    }
+    if (remaining > 0) {
+      throw new DomainValidationError('Unable to calculate a valid promised delivery date.');
+    }
+    return candidate;
+  }
+
+  private async isWorkingCalendarDay(tenantId: string, branchId: string, days: HoursDay[], candidate: string): Promise<boolean> {
+    const rules = await this.businessCalendarDayRepository.findApplicable(tenantId, branchId, candidate);
+    const hasExplicitNonWorkingRule = rules.some((rule) => rule.isWorkingDay === false);
+    const hasExplicitWorkingRule = rules.some((rule) => rule.isWorkingDay === true);
+    return !hasExplicitNonWorkingRule && (hasExplicitWorkingRule || this.isOpenDay(candidate, days));
+  }
+
+  private resolveEffectiveOpenDate(sourceAt: Date, timezone: string, days: HoursDay[]): string {
     const local = this.toZonedParts(sourceAt, timezone);
     let dateOnly = `${local.year}-${local.month}-${local.day}`;
     const cutoff = this.branchHoursService.resolveCutoff(days, local.weekday);
@@ -60,12 +184,33 @@ export class DeliveryDateService {
     return dateOnly;
   }
 
-  private isOpenDay(
-    value: string,
-    days: Array<{ weekday: number; isOpen: boolean }>,
-  ): boolean {
+  private isOpenDay(value: string, days: HoursDay[]): boolean {
     const weekday = new Date(`${value}T12:00:00.000Z`).getUTCDay();
     return this.branchHoursService.isOpenOnWeekday(days, weekday);
+  }
+
+  private dayHours(days: HoursDay[], dateOnly: string): HoursDay | undefined {
+    const weekday = new Date(`${dateOnly}T12:00:00.000Z`).getUTCDay();
+    return days.find((day) => day.weekday === weekday);
+  }
+
+  private openingTime(days: HoursDay[], dateOnly: string): string {
+    return requireClockTime(this.dayHours(days, dateOnly)?.opensAt, '09:30');
+  }
+
+  private closingTime(days: HoursDay[], dateOnly: string): string {
+    return requireClockTime(this.dayHours(days, dateOnly)?.closesAt, '18:00');
+  }
+
+  private toMinutes(value: string): number {
+    const [hours, minutes] = value.split(':').map((part) => Number(part));
+    return hours * 60 + minutes;
+  }
+
+  private fromMinutes(value: number): string {
+    const hours = String(Math.floor(value / 60)).padStart(2, '0');
+    const minutes = String(value % 60).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
   private toZonedParts(value: Date, timeZone: string): { year: string; month: string; day: string; time: string; weekday: number } {

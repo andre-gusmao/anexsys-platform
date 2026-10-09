@@ -8,8 +8,32 @@ export class UpdateServiceOrderItemDto {
   itemType?: string;
 
   @IsOptional()
+  @IsUUID()
+  productId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string | null;
+
+  @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  complement?: string | null;
+
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNo?: string;
 
   @Type(() => Number)
   @IsOptional()

@@ -1,12 +1,33 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import {
+  accessStatusLabel,
+  applyAccessCommunityListFilters,
+  applyAccessPermissionListFilters,
+  applyAccessRoleListFilters,
+  applyAccessUserListFilters,
+  buildAccessCommunityExcelCsv,
+  buildAccessPermissionExcelCsv,
+  buildAccessRoleExcelCsv,
+  buildAccessUserEmailCsv,
+  buildAccessUserExcelCsv,
+  userStatusLabel,
+  type AccessCommunityListRecord,
+  type AccessPermissionListRecord,
+  type AccessRoleListRecord,
+  type AccessUserListRecord,
+} from "@/components/admin/access-list";
+import { useWorkspaceManager, useWorkspaceRegistration, useWorkspaceScopedState } from "@/components/app-shell/workspace-manager";
+import { useWorkspaceSearchParams } from "@/components/app-shell/workspace-pane";
+import { useWorkspaceViewportMode } from "@/components/app-shell/workspace-responsive";
 import { useSession } from "@/components/providers/session-provider";
+import { CadastroListPanel } from "@/components/ui/cadastro-list-panel";
 import {
   MasterDataDuplicateGuard,
   normalizeEmailValue,
 } from "@/components/ui/master-data-duplicate-guard";
+import { WorkspaceFlash, describeWorkspaceError } from "@/components/ui/workspace-flash";
 import { SmartLookup, type SmartLookupOption } from "@/components/ui/smart-lookup";
 
 type BranchRecord = {
@@ -174,14 +195,45 @@ function mapCommunityToForm(community: CommunityRecord): CommunityForm {
   };
 }
 
-function matchesSearch(values: Array<string | null | undefined>, query: string) {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
-  return values.some((value) => (value ?? "").toLowerCase().includes(normalized));
+function accessTabLabel(tab: AccessTab) {
+  if (tab === "roles") return "Papéis";
+  if (tab === "permissions") return "Permissões";
+  if (tab === "communities") return "Comunidades";
+  return "Usuários";
 }
 
 export function AccessWorkspace() {
-  const { hasAnyPermission, apiJson } = useSession();
+  const searchParams = useWorkspaceSearchParams();
+  const { isMobile } = useWorkspaceViewportMode();
+  const workspaceMode = searchParams.get("workspaceMode");
+  const accessTabParam = searchParams.get("accessTab");
+  const focusUserId = searchParams.get("focusUserId");
+  const focusRoleId = searchParams.get("focusRoleId");
+  const focusPermissionId = searchParams.get("focusPermissionId");
+  const focusCommunityId = searchParams.get("focusCommunityId");
+  const prefillName = searchParams.get("prefillName") ?? "";
+  const formDomain: AccessTab | null = focusRoleId
+    ? "roles"
+    : focusPermissionId
+      ? "permissions"
+      : focusCommunityId
+        ? "communities"
+        : focusUserId
+          ? "users"
+          : workspaceMode === "new"
+            ? accessTabParam === "roles" || accessTabParam === "permissions" || accessTabParam === "communities"
+              ? accessTabParam
+              : "users"
+            : null;
+  const isFormWorkspace = formDomain !== null;
+  const isUserFormWorkspace = formDomain === "users";
+  const isRoleFormWorkspace = formDomain === "roles";
+  const isPermissionFormWorkspace = formDomain === "permissions";
+  const isCommunityFormWorkspace = formDomain === "communities";
+  const isListWorkspace = !isFormWorkspace;
+  const { closeWorkspace } = useWorkspaceManager();
+  const { hasAnyPermission, apiJson, session } = useSession();
+  const currentUserId = session?.user?.id ?? null;
   const canReadUsers = hasAnyPermission("users.read");
   const canWriteUsers = hasAnyPermission("users.write");
   const canReadRoles = hasAnyPermission("roles.read");
@@ -197,7 +249,10 @@ export function AccessWorkspace() {
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
   const [communities, setCommunities] = useState<CommunityRecord[]>([]);
   const [activeTab, setActiveTab] = useWorkspaceScopedState<AccessTab>("access.activeTab", "users");
-  const [searchQuery, setSearchQuery] = useWorkspaceScopedState("access.searchQuery", "");
+  const listTab: AccessTab =
+    accessTabParam === "roles" || accessTabParam === "permissions" || accessTabParam === "communities" || accessTabParam === "users"
+      ? accessTabParam
+      : activeTab;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -230,33 +285,85 @@ export function AccessWorkspace() {
   const [assignBranchScopeId, setAssignBranchScopeId] = useState("");
   const [assignBranchScopeType, setAssignBranchScopeType] = useState<"member" | "manager" | "admin">("member");
 
-  const filteredUsers = useMemo(
-    () => users.filter((user) => matchesSearch([user.displayName, user.email, user.status], searchQuery)),
-    [searchQuery, users],
+  const userListRecords = useMemo<AccessUserListRecord[]>(
+    () =>
+      users.map((user) => ({
+        ...user,
+        defaultBranchLabel: branches.find((branch) => branch.id === user.defaultBranchId)?.displayName,
+      })),
+    [branches, users],
   );
-  const filteredRoles = useMemo(
-    () => roles.filter((role) => matchesSearch([role.displayName, role.code, role.description], searchQuery)),
-    [roles, searchQuery],
+  const userLookupOptions = useMemo(
+    () => users.map((user) => ({ id: user.id, label: user.displayName, hint: user.email })),
+    [users],
   );
-  const filteredPermissions = useMemo(
-    () => permissions.filter((permission) => matchesSearch([permission.displayName, permission.code, permission.description], searchQuery)),
-    [permissions, searchQuery],
+  const roleLookupOptions = useMemo(
+    () => roles.map((role) => ({ id: role.id, label: role.displayName, hint: role.code })),
+    [roles],
   );
-  const filteredCommunities = useMemo(
-    () => communities.filter((community) => matchesSearch([community.displayName, community.code, community.description], searchQuery)),
-    [communities, searchQuery],
+  const permissionLookupOptions = useMemo(
+    () => permissions.map((permission) => ({ id: permission.id, label: permission.displayName, hint: permission.code })),
+    [permissions],
+  );
+  const communityLookupOptions = useMemo(
+    () => communities.map((community) => ({ id: community.id, label: community.displayName, hint: community.code })),
+    [communities],
   );
 
-  const activeUser = useMemo(() => users.find((record) => record.id === activeUserId) ?? null, [activeUserId, users]);
-  const activeRole = useMemo(() => roles.find((record) => record.id === activeRoleId) ?? null, [activeRoleId, roles]);
+  const activeUser = useMemo(
+    () => users.find((record) => record.id === (focusUserId || activeUserId)) ?? null,
+    [activeUserId, focusUserId, users],
+  );
+  const activeRole = useMemo(
+    () => roles.find((record) => record.id === (focusRoleId || activeRoleId)) ?? null,
+    [activeRoleId, focusRoleId, roles],
+  );
   const activePermission = useMemo(
-    () => permissions.find((record) => record.id === activePermissionId) ?? null,
-    [activePermissionId, permissions],
+    () => permissions.find((record) => record.id === (focusPermissionId || activePermissionId)) ?? null,
+    [activePermissionId, focusPermissionId, permissions],
   );
   const activeCommunity = useMemo(
-    () => communities.find((record) => record.id === activeCommunityId) ?? null,
-    [activeCommunityId, communities],
+    () => communities.find((record) => record.id === (focusCommunityId || activeCommunityId)) ?? null,
+    [activeCommunityId, communities, focusCommunityId],
   );
+  const { currentTabId, navigateWithinWorkspace, openWorkspaceInNewTab } = useWorkspaceRegistration({
+    label:
+      formDomain === "roles"
+        ? workspaceMode === "new"
+          ? "Papel: Novo"
+          : activeRole
+            ? `Papel: ${activeRole.displayName}`
+            : "Papéis"
+        : formDomain === "permissions"
+          ? workspaceMode === "new"
+            ? "Permissão: Nova"
+            : activePermission
+              ? `Permissão: ${activePermission.displayName}`
+              : "Permissões"
+          : formDomain === "communities"
+            ? workspaceMode === "new"
+              ? "Comunidade: Nova"
+              : activeCommunity
+                ? `Comunidade: ${activeCommunity.displayName}`
+                : "Comunidades"
+            : workspaceMode === "new"
+              ? "Usuário: Novo"
+              : activeUser && isUserFormWorkspace
+                ? `Usuário: ${activeUser.displayName}`
+                : "Usuários e Acessos",
+    subtitle:
+      workspaceMode === "new"
+        ? "Novo cadastro"
+        : formDomain === "roles"
+          ? activeRole?.code ?? null
+          : formDomain === "permissions"
+            ? activePermission?.code ?? null
+            : formDomain === "communities"
+              ? activeCommunity?.code ?? null
+              : isUserFormWorkspace
+                ? activeUser?.email ?? null
+                : null,
+  });
 
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
@@ -268,12 +375,12 @@ export function AccessWorkspace() {
         canReadPermissions ? apiJson<PermissionRecord[]>("/permissions") : Promise.resolve([]),
         canReadCommunities ? apiJson<CommunityRecord[]>("/communities") : Promise.resolve([]),
       ]);
-      const resolvedActiveUser = userRecords.find((record) => record.id === activeUserId) ?? userRecords[0] ?? null;
-      const resolvedActiveRole = roleRecords.find((record) => record.id === activeRoleId) ?? roleRecords[0] ?? null;
+      const resolvedActiveUser = userRecords.find((record) => record.id === (focusUserId || activeUserId)) ?? null;
+      const resolvedActiveRole = roleRecords.find((record) => record.id === (focusRoleId || activeRoleId)) ?? null;
       const resolvedActivePermission =
-        permissionRecords.find((record) => record.id === activePermissionId) ?? permissionRecords[0] ?? null;
+        permissionRecords.find((record) => record.id === (focusPermissionId || activePermissionId)) ?? null;
       const resolvedActiveCommunity =
-        communityRecords.find((record) => record.id === activeCommunityId) ?? communityRecords[0] ?? null;
+        communityRecords.find((record) => record.id === (focusCommunityId || activeCommunityId)) ?? null;
       setBranches(branchRecords);
       setUsers(userRecords);
       setRoles(roleRecords);
@@ -297,29 +404,33 @@ export function AccessWorkspace() {
       }
       setMessage(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Usuários e acessos não puderam ser carregados.");
+      setMessage(describeWorkspaceError(error, "Usuários e acessos não puderam ser carregados."));
     } finally {
       setLoading(false);
     }
   }, [
+    activeCommunityId,
+    activePermissionId,
+    activeRoleId,
+    activeUserId,
     apiJson,
     canReadCommunities,
     canReadPermissions,
     canReadRoles,
     canReadUsers,
+    focusCommunityId,
+    focusPermissionId,
+    focusRoleId,
+    focusUserId,
     hasAnyPermission,
-    showCreateCommunity,
-    showCreatePermission,
-    showCreateRole,
-    showCreateUser,
-    activeCommunityId,
-    activePermissionId,
-    activeRoleId,
-    activeUserId,
     setActiveCommunityId,
     setActivePermissionId,
     setActiveRoleId,
     setActiveUserId,
+    showCreateCommunity,
+    showCreatePermission,
+    showCreateRole,
+    showCreateUser,
   ]);
 
   const loadUserSummary = useCallback(
@@ -359,12 +470,317 @@ export function AccessWorkspace() {
     setUserDuplicateMatch(null);
   }, []);
 
-  const handleSelectUser = useCallback((user: UserRecord) => {
-    setActiveUserId(user.id);
+  const openCreateWorkspace = useCallback(
+    (name?: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (name?.trim()) {
+        params.set("prefillName", name.trim());
+      }
+      const targetPath = `/admin/access?${params.toString()}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, "Usuário: Novo", { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openEditWorkspace = useCallback(
+    (user: Pick<UserRecord, "id" | "displayName" | "email">) => {
+      const targetPath = `/admin/access?focusUserId=${encodeURIComponent(user.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, `Usuário: ${user.displayName}`, {
+        cloneCurrent: false,
+        subtitle: user.email || null,
+      });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const listHrefFor = useCallback((tab: AccessTab) => (tab === "users" ? "/admin/access" : `/admin/access?accessTab=${tab}`), []);
+
+  const closeFormWorkspace = useCallback(() => {
+    const listHref = listHrefFor(formDomain ?? listTab);
+    const listLabel =
+      formDomain === "roles" || listTab === "roles"
+        ? "Papéis"
+        : formDomain === "permissions" || listTab === "permissions"
+          ? "Permissões"
+          : formDomain === "communities" || listTab === "communities"
+            ? "Comunidades"
+            : "Usuários e Acessos";
+    if (!currentTabId || isMobile) {
+      navigateWithinWorkspace(listHref);
+      return;
+    }
+    const closingTabId = currentTabId;
+    openWorkspaceInNewTab(listHref, listLabel, { cloneCurrent: false });
+    window.setTimeout(() => {
+      closeWorkspace(closingTabId);
+    }, 0);
+  }, [closeWorkspace, currentTabId, formDomain, isMobile, listHrefFor, listTab, navigateWithinWorkspace, openWorkspaceInNewTab]);
+
+  const openAccessCreateWorkspace = useCallback(
+    (tab: AccessTab, name?: string) => {
+      const params = new URLSearchParams();
+      params.set("workspaceMode", "new");
+      if (tab !== "users") {
+        params.set("accessTab", tab);
+      }
+      if (name?.trim()) {
+        params.set("prefillName", name.trim());
+      }
+      const targetPath = `/admin/access?${params.toString()}`;
+      const label = tab === "roles" ? "Papel: Novo" : tab === "permissions" ? "Permissão: Nova" : tab === "communities" ? "Comunidade: Nova" : "Usuário: Novo";
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, label, { cloneCurrent: false, subtitle: "Novo cadastro" });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openRoleEditWorkspace = useCallback(
+    (role: Pick<RoleRecord, "id" | "displayName" | "code">) => {
+      const targetPath = `/admin/access?accessTab=roles&focusRoleId=${encodeURIComponent(role.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, `Papel: ${role.displayName}`, { cloneCurrent: false, subtitle: role.code });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openPermissionEditWorkspace = useCallback(
+    (permission: Pick<PermissionRecord, "id" | "displayName" | "code">) => {
+      const targetPath = `/admin/access?accessTab=permissions&focusPermissionId=${encodeURIComponent(permission.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, `Permissão: ${permission.displayName}`, { cloneCurrent: false, subtitle: permission.code });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const openCommunityEditWorkspace = useCallback(
+    (community: Pick<CommunityRecord, "id" | "displayName" | "code">) => {
+      const targetPath = `/admin/access?accessTab=communities&focusCommunityId=${encodeURIComponent(community.id)}`;
+      if (isMobile) {
+        navigateWithinWorkspace(targetPath);
+        return;
+      }
+      openWorkspaceInNewTab(targetPath, `Comunidade: ${community.displayName}`, { cloneCurrent: false, subtitle: community.code });
+    },
+    [isMobile, navigateWithinWorkspace, openWorkspaceInNewTab],
+  );
+
+  const handleInactivateUser = useCallback(
+    async (user: AccessUserListRecord) => {
+      if (user.status === "inactive") {
+        return;
+      }
+      if (!window.confirm(`Inativar ${user.displayName}? O usuário deixa de entrar no sistema.`)) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const updated = await apiJson<UserRecord>(`/users/${user.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "inactive" }),
+        });
+        setUsers((current) => current.map((record) => (record.id === updated.id ? updated : record)));
+        setMessage(`${user.displayName} foi inativado.`);
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, "O usuário não pôde ser inativado."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson],
+  );
+
+  const handleDeleteUser = useCallback(
+    async (user: AccessUserListRecord, options: { skipConfirm?: boolean } = {}) => {
+      if (user.id === currentUserId) {
+        setMessage("Você não pode excluir o próprio usuário.");
+        return false;
+      }
+      if (
+        !options.skipConfirm &&
+        !window.confirm(`Excluir ${user.displayName}? O usuário some da lista e deixa de entrar no sistema.`)
+      ) {
+        return false;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        await apiJson(`/users/${user.id}`, { method: "DELETE" });
+        setUsers((current) => current.filter((record) => record.id !== user.id));
+        setMessage(`${user.displayName} foi excluído da lista.`);
+        return true;
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, "O usuário não pôde ser excluído."));
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson, currentUserId],
+  );
+
+  const handleDeleteUsers = useCallback(
+    async (selected: AccessUserListRecord[]) => {
+      if (selected.length === 0) {
+        return;
+      }
+      if (!window.confirm(`Excluir ${selected.length} usuário(s) selecionado(s)? Eles somem da lista e deixam de entrar.`)) {
+        return;
+      }
+      let deleted = 0;
+      for (const user of selected) {
+        const ok = await handleDeleteUser(user, { skipConfirm: true });
+        if (ok) {
+          deleted += 1;
+        } else {
+          break;
+        }
+      }
+      if (deleted > 1) {
+        setMessage(`${deleted} usuário(s) foram excluídos da lista.`);
+      }
+    },
+    [handleDeleteUser],
+  );
+
+  const handleInactivateRole = useCallback(
+    async (role: AccessRoleListRecord) => {
+      if (role.status === "inactive" || role.isSystemManaged) {
+        return;
+      }
+      if (!window.confirm(`Inativar ${role.displayName}? O papel deixa de ser atribuído a novos usuários.`)) {
+        return;
+      }
+      setSaving(true);
+      setMessage(null);
+      try {
+        const updated = await apiJson<RoleRecord>(`/roles/${role.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "inactive" }),
+        });
+        setRoles((current) => current.map((record) => (record.id === updated.id ? updated : record)));
+        setMessage(`${role.displayName} foi inativado.`);
+      } catch (error) {
+        setMessage(describeWorkspaceError(error, "O papel não pôde ser inativado."));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [apiJson],
+  );
+
+  useEffect(() => {
+    if (workspaceMode !== "new") {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      const name = prefillName.trim();
+      if (formDomain === "roles") {
+        setShowCreateRole(true);
+        setActiveRoleId(null);
+        setRoleForm({ ...emptyRoleForm(), displayName: name });
+        return;
+      }
+      if (formDomain === "permissions") {
+        setShowCreatePermission(true);
+        setActivePermissionId(null);
+        setPermissionForm({ ...emptyPermissionForm(), displayName: name });
+        return;
+      }
+      if (formDomain === "communities") {
+        setShowCreateCommunity(true);
+        setActiveCommunityId(null);
+        setCommunityForm({ ...emptyCommunityForm(), displayName: name });
+        return;
+      }
+      setShowCreateUser(true);
+      setActiveUserId(null);
+      setUserForm({ ...emptyUserForm(), displayName: name });
+      clearUserDuplicate();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [clearUserDuplicate, formDomain, prefillName, setActiveCommunityId, setActivePermissionId, setActiveRoleId, setActiveUserId, workspaceMode]);
+
+  useEffect(() => {
+    if (!focusUserId || workspaceMode === "new") {
+      return;
+    }
+    const user = users.find((item) => item.id === focusUserId);
+    if (!user) {
+      return;
+    }
     setShowCreateUser(false);
+    setActiveUserId(user.id);
     setUserForm(mapUserToForm(user));
     clearUserDuplicate();
-  }, [clearUserDuplicate, setActiveUserId]);
+  }, [clearUserDuplicate, focusUserId, setActiveUserId, users, workspaceMode]);
+
+  useEffect(() => {
+    if (!focusRoleId || workspaceMode === "new") {
+      return;
+    }
+    const role = roles.find((item) => item.id === focusRoleId);
+    if (!role) {
+      return;
+    }
+    setShowCreateRole(false);
+    setActiveRoleId(role.id);
+    setRoleForm(mapRoleToForm(role));
+  }, [focusRoleId, roles, setActiveRoleId, workspaceMode]);
+
+  useEffect(() => {
+    if (!focusPermissionId || workspaceMode === "new") {
+      return;
+    }
+    const permission = permissions.find((item) => item.id === focusPermissionId);
+    if (!permission) {
+      return;
+    }
+    setShowCreatePermission(false);
+    setActivePermissionId(permission.id);
+    setPermissionForm(mapPermissionToForm(permission));
+  }, [focusPermissionId, permissions, setActivePermissionId, workspaceMode]);
+
+  useEffect(() => {
+    if (!focusCommunityId || workspaceMode === "new") {
+      return;
+    }
+    const community = communities.find((item) => item.id === focusCommunityId);
+    if (!community) {
+      return;
+    }
+    setShowCreateCommunity(false);
+    setActiveCommunityId(community.id);
+    setCommunityForm(mapCommunityToForm(community));
+  }, [communities, focusCommunityId, setActiveCommunityId, workspaceMode]);
+
+  useEffect(() => {
+    if (!isListWorkspace) {
+      return;
+    }
+    setShowCreateUser(false);
+    setShowCreateRole(false);
+    setShowCreatePermission(false);
+    setShowCreateCommunity(false);
+  }, [isListWorkspace]);
 
   const handleUserEmailBlur = useCallback(() => {
     const normalizedEmail = normalizeEmailValue(userForm.email);
@@ -403,9 +819,10 @@ export function AccessWorkspace() {
       setActiveUserId(created.id);
       setShowCreateUser(false);
       setUserForm(mapUserToForm(created));
+      navigateWithinWorkspace(`/admin/access?focusUserId=${encodeURIComponent(created.id)}`);
       setMessage("Usuário criado com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "O usuário não pôde ser criado.");
+      setMessage(describeWorkspaceError(error, "O usuário não pôde ser criado."));
     } finally {
       setSaving(false);
     }
@@ -435,7 +852,7 @@ export function AccessWorkspace() {
       setMessage("Usuário atualizado com sucesso.");
       await loadUserSummary(updated.id);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "O usuário não pôde ser atualizado.");
+      setMessage(describeWorkspaceError(error, "O usuário não pôde ser atualizado."));
     } finally {
       setSaving(false);
     }
@@ -455,9 +872,10 @@ export function AccessWorkspace() {
       setActiveRoleId(created.id);
       setShowCreateRole(false);
       setRoleForm(mapRoleToForm(created));
-      setMessage("Role criada com sucesso.");
+      navigateWithinWorkspace(`/admin/access?accessTab=roles&focusRoleId=${encodeURIComponent(created.id)}`);
+      setMessage("Papel criado com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A role não pôde ser criada.");
+      setMessage(describeWorkspaceError(error, "O papel não pôde ser criado."));
     } finally {
       setSaving(false);
     }
@@ -475,9 +893,9 @@ export function AccessWorkspace() {
       });
       setRoles((current) => current.map((record) => (record.id === updated.id ? updated : record)));
       setRoleForm(mapRoleToForm(updated));
-      setMessage("Role atualizada com sucesso.");
+      setMessage("Papel atualizado com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A role não pôde ser atualizada.");
+      setMessage(describeWorkspaceError(error, "O papel não pôde ser atualizado."));
     } finally {
       setSaving(false);
     }
@@ -497,9 +915,10 @@ export function AccessWorkspace() {
       setActivePermissionId(created.id);
       setShowCreatePermission(false);
       setPermissionForm(mapPermissionToForm(created));
+      navigateWithinWorkspace(`/admin/access?accessTab=permissions&focusPermissionId=${encodeURIComponent(created.id)}`);
       setMessage("Permissão criada com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser criada.");
+      setMessage(describeWorkspaceError(error, "A permissão não pôde ser criada."));
     } finally {
       setSaving(false);
     }
@@ -519,7 +938,7 @@ export function AccessWorkspace() {
       setPermissionForm(mapPermissionToForm(updated));
       setMessage("Permissão atualizada com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser atualizada.");
+      setMessage(describeWorkspaceError(error, "A permissão não pôde ser atualizada."));
     } finally {
       setSaving(false);
     }
@@ -539,9 +958,10 @@ export function AccessWorkspace() {
       setActiveCommunityId(created.id);
       setShowCreateCommunity(false);
       setCommunityForm(mapCommunityToForm(created));
-      setMessage("Community criada com sucesso.");
+      navigateWithinWorkspace(`/admin/access?accessTab=communities&focusCommunityId=${encodeURIComponent(created.id)}`);
+      setMessage("Comunidade criada com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A community não pôde ser criada.");
+      setMessage(describeWorkspaceError(error, "A comunidade não pôde ser criada."));
     } finally {
       setSaving(false);
     }
@@ -559,9 +979,9 @@ export function AccessWorkspace() {
       });
       setCommunities((current) => current.map((record) => (record.id === updated.id ? updated : record)));
       setCommunityForm(mapCommunityToForm(updated));
-      setMessage("Community atualizada com sucesso.");
+      setMessage("Comunidade atualizada com sucesso.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A community não pôde ser atualizada.");
+      setMessage(describeWorkspaceError(error, "A comunidade não pôde ser atualizada."));
     } finally {
       setSaving(false);
     }
@@ -587,7 +1007,7 @@ export function AccessWorkspace() {
       setMessage("Papel vinculado ao usuário.");
       await loadUserSummary(activeUser.id);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A role não pôde ser vinculada.");
+      setMessage(error instanceof Error ? error.message : "O papel não pôde ser vinculado.");
     } finally {
       setSaving(false);
     }
@@ -625,10 +1045,10 @@ export function AccessWorkspace() {
         body: JSON.stringify({ userId: activeUser.id }),
       });
       setAssignCommunityId("");
-      setMessage("Community vinculada ao usuário.");
+      setMessage("Comunidade vinculada ao usuário.");
       await loadUserSummary(activeUser.id);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A community não pôde ser vinculada ao usuário.");
+      setMessage(error instanceof Error ? error.message : "A comunidade não pôde ser vinculada ao usuário.");
     } finally {
       setSaving(false);
     }
@@ -645,9 +1065,9 @@ export function AccessWorkspace() {
         body: JSON.stringify({ permissionId: assignPermissionToRoleId }),
       });
       setAssignPermissionToRoleId("");
-      setMessage("Permissão vinculada à role.");
+      setMessage("Permissão vinculada ao papel.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada à role.");
+      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada ao papel.");
     } finally {
       setSaving(false);
     }
@@ -664,9 +1084,9 @@ export function AccessWorkspace() {
         body: JSON.stringify({ permissionId: assignPermissionToCommunityId }),
       });
       setAssignPermissionToCommunityId("");
-      setMessage("Permissão vinculada à community.");
+      setMessage("Permissão vinculada à comunidade.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada à community.");
+      setMessage(error instanceof Error ? error.message : "A permissão não pôde ser vinculada à comunidade.");
     } finally {
       setSaving(false);
     }
@@ -684,97 +1104,75 @@ export function AccessWorkspace() {
 
   return (
     <>
-      <section className="hero-card">
-        <div className="eyebrow">Administração</div>
-        <h1 className="title">Usuários e Acessos</h1>
-        <p>Administre usuários, roles, permissions e communities sem sair do fluxo operacional.</p>
-      </section>
-
-      {message ? (
-        <section className="mini-card">
-          <p>{message}</p>
+      {isFormWorkspace ? (
+        <section className="hero-card">
+          <div className="eyebrow">Administração</div>
+          <h1 className="title">
+            {workspaceMode === "new"
+              ? formDomain === "roles"
+                ? "Novo papel"
+                : formDomain === "permissions"
+                  ? "Nova permissão"
+                  : formDomain === "communities"
+                    ? "Nova comunidade"
+                    : "Novo usuário"
+              : formDomain === "roles"
+                ? activeRole?.displayName ?? "Papel"
+                : formDomain === "permissions"
+                  ? activePermission?.displayName ?? "Permissão"
+                  : formDomain === "communities"
+                    ? activeCommunity?.displayName ?? "Comunidade"
+                    : activeUser?.displayName ?? "Usuário"}
+          </h1>
+          <p>
+            {workspaceMode === "new"
+              ? "Cadastre em uma aba interna. A lista permanece aberta."
+              : "Altere o cadastro sem perder a lista."}
+          </p>
         </section>
       ) : null}
 
-      <section className="mini-card">
-        <div className="workspace-toolbar">
-          <div className="workspace-toolbar__copy">
-            <h3>Navegação operacional</h3>
-            <p>Escolha o domínio de administração e trabalhe no mesmo contexto.</p>
-          </div>
-          <div className="button-row">
-            {(["users", "roles", "permissions", "communities"] as AccessTab[]).map((tab) => (
-              <button
-                key={tab}
-                className={activeTab === tab ? "button" : "button-secondary"}
-                onClick={() => setActiveTab(tab)}
-                type="button"
-              >
-                {tab === "users" ? "Usuários" : tab === "roles" ? "Roles" : tab === "permissions" ? "Permissions" : "Communities"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="filters-grid">
-          <label className="field">
-            <span>Pesquisar</span>
-            <input placeholder="Digite para localizar" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
-          </label>
-        </div>
-      </section>
+      {message ? <WorkspaceFlash message={message} /> : null}
 
-      {activeTab === "users" ? (
-        <section className="workspace-split">
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Usuários</h3>
-                <p>{loading ? "Carregando…" : `${filteredUsers.length} registro(s)`}</p>
-              </div>
-              {canWriteUsers ? (
+      {isListWorkspace ? (
+        <section className="mini-card">
+          <div className="workspace-toolbar">
+            <div className="workspace-toolbar__copy">
+              <h3>Navegação operacional</h3>
+              <p>Escolha o domínio de administração e trabalhe no mesmo contexto.</p>
+            </div>
+            <div className="button-row">
+              {(["users", "roles", "permissions", "communities"] as AccessTab[]).map((tab) => (
                 <button
-                  className="button"
+                  key={tab}
+                  className={listTab === tab ? "button" : "button-secondary"}
                   onClick={() => {
-                    setShowCreateUser(true);
-                    setUserForm(emptyUserForm());
-                    clearUserDuplicate();
+                    setActiveTab(tab);
+                    navigateWithinWorkspace(listHrefFor(tab));
                   }}
                   type="button"
                 >
-                  Novo usuário
+                  {accessTabLabel(tab)}
                 </button>
-              ) : null}
+              ))}
             </div>
-            <ListTable
-              columns={["Usuário", "Status", "Filial padrão"]}
-              emptyMessage="Nenhum usuário encontrado."
-              rows={filteredUsers.map((user) => ({
-                id: user.id,
-                active: user.id === activeUserId,
-                cells: [
-                  <div key={`${user.id}-summary`}>
-                    <strong>{user.displayName}</strong>
-                    <div className="table-subtle">{user.email}</div>
-                  </div>,
-                  <span key={`${user.id}-status`} className={`status-chip status-chip--${user.status === "inactive" ? "inactive" : "active"}`}>
-                    {user.status}
-                  </span>,
-                  branches.find((branch) => branch.id === user.defaultBranchId)?.displayName ?? "—",
-                ],
-                onClick: () => {
-                  handleSelectUser(user);
-                },
-              }))}
-            />
-          </article>
+          </div>
+        </section>
+      ) : null}
 
-          <article className="mini-card">
+      {isUserFormWorkspace ? (
+        <section className="workspace-stack">
+          <article className="mini-card cadastro-form">
             <div className="workspace-toolbar__copy">
-              <h3>{showCreateUser ? "Criar usuário" : "Visualizar / editar usuário"}</h3>
-              <p>{showCreateUser ? "Cadastre o usuário e retorne ao mesmo fluxo." : "Visualize e ajuste o usuário selecionado."}</p>
+              <h3>{showCreateUser || workspaceMode === "new" ? "Novo usuário" : activeUser?.displayName ?? "Alterar usuário"}</h3>
+              <p>
+                {showCreateUser || workspaceMode === "new"
+                  ? "Cadastre o usuário e retorne à lista."
+                  : "Visualize e ajuste o usuário selecionado."}
+              </p>
             </div>
 
-            {showCreateUser ? (
+            {showCreateUser || workspaceMode === "new" ? (
               <form className="form-grid" onSubmit={handleCreateUser}>
                 <UserFormFields
                   duplicateGuard={
@@ -793,8 +1191,8 @@ export function AccessWorkspace() {
                         setUserForm((current) => ({ ...current, email: "" }));
                         clearUserDuplicate();
                       }}
-                      onEdit={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
-                      onView={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                      onEdit={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
+                      onView={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
                       status={userDuplicateStatus}
                     />
                   }
@@ -811,9 +1209,9 @@ export function AccessWorkspace() {
                 />
                 <div className="button-row">
                   <button className="button" disabled={saving || userDuplicateStatus !== "idle"} type="submit">
-                    {saving ? "Salvando…" : "Salvar usuário"}
+                    {saving ? "Salvando…" : "Salvar"}
                   </button>
-                  <button className="button-secondary" onClick={() => setShowCreateUser(false)} type="button">
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
                     Cancelar
                   </button>
                 </div>
@@ -853,8 +1251,8 @@ export function AccessWorkspace() {
                           setUserForm((current) => ({ ...current, email: activeUser.email }));
                           clearUserDuplicate();
                         }}
-                        onEdit={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
-                        onView={userDuplicateMatch ? () => handleSelectUser(userDuplicateMatch) : undefined}
+                        onEdit={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
+                        onView={userDuplicateMatch ? () => openEditWorkspace(userDuplicateMatch) : undefined}
                         status={userDuplicateStatus}
                       />
                     }
@@ -872,14 +1270,17 @@ export function AccessWorkspace() {
                     <button className="button" disabled={saving || !canWriteUsers || userDuplicateStatus !== "idle"} type="submit">
                       {saving ? "Salvando…" : "Salvar alterações"}
                     </button>
+                    <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                      Cancelar
+                    </button>
                   </div>
                 </form>
 
                 <div className="mini-section">
-                  <h4>Vincular role</h4>
+                  <h4>Vincular papel</h4>
                   <form className="inline-form" onSubmit={handleAssignRole}>
                     <select value={assignRoleId} onChange={(event) => setAssignRoleId(event.target.value)}>
-                      <option value="">Selecione a role</option>
+                      <option value="">Selecione o papel</option>
                       {roles.map((role) => (
                         <option key={role.id} value={role.id}>
                           {role.displayName}
@@ -922,9 +1323,9 @@ export function AccessWorkspace() {
                       ))}
                     </select>
                     <select value={assignBranchScopeType} onChange={(event) => setAssignBranchScopeType(event.target.value as "member" | "manager" | "admin")}>
-                      <option value="member">Member</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
+                      <option value="member">Membro</option>
+                      <option value="manager">Gerente</option>
+                      <option value="admin">Administrador</option>
                     </select>
                     <button className="button-secondary" disabled={saving || !canWriteUsers} type="submit">
                       Vincular
@@ -933,10 +1334,10 @@ export function AccessWorkspace() {
                 </div>
 
                 <div className="mini-section">
-                  <h4>Vincular community</h4>
+                  <h4>Vincular comunidade</h4>
                   <form className="inline-form" onSubmit={handleAssignCommunity}>
                     <select value={assignCommunityId} onChange={(event) => setAssignCommunityId(event.target.value)}>
-                      <option value="">Selecione a community</option>
+                      <option value="">Selecione a comunidade</option>
                       {communities.map((community) => (
                         <option key={community.id} value={community.id}>
                           {community.displayName}
@@ -955,8 +1356,8 @@ export function AccessWorkspace() {
                     <div className="empty-state">Carregando resumo…</div>
                   ) : userSummary ? (
                     <div className="workspace-stack">
-                      <TokenBlock title="Roles" values={userSummary.roles.map((item) => `${item.displayName}${item.assignedBranchLabel ? ` · ${item.assignedBranchLabel}` : ""}`)} />
-                      <TokenBlock title="Communities" values={userSummary.communities.map((item) => item.displayName)} />
+                      <TokenBlock title="Papéis" values={userSummary.roles.map((item) => `${item.displayName}${item.assignedBranchLabel ? ` · ${item.assignedBranchLabel}` : ""}`)} />
+                      <TokenBlock title="Comunidades" values={userSummary.communities.map((item) => item.displayName)} />
                       <TokenBlock title="Escopos de filial" values={userSummary.branchScopes.map((item) => `${item.branchLabel} · ${item.scopeType}`)} />
                       <TokenBlock title="Permissões efetivas" values={userSummary.effectiveAccess.permissions} />
                     </div>
@@ -966,92 +1367,119 @@ export function AccessWorkspace() {
                 </div>
               </div>
             ) : (
-              <div className="empty-state">Selecione um usuário para visualizar os detalhes.</div>
+              <div className="empty-state">O usuário desta aba não foi encontrado.</div>
             )}
           </article>
         </section>
+      ) : isListWorkspace && listTab === "users" ? (
+        <CadastroListPanel
+          applyFilters={applyAccessUserListFilters}
+          buildEmailCsv={buildAccessUserEmailCsv}
+          buildExcelCsv={buildAccessUserExcelCsv}
+          canInactivate={(row) => row.status !== "inactive"}
+          canWrite={canWriteUsers}
+          columnStorageKey="anexsys.frontend.access-users.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "Nome",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.displayName}</strong>
+                  <div className="table-subtle">{row.email}</div>
+                </>
+              ),
+            },
+            { id: "email", label: "E-mail", render: (row) => row.email },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => (
+                <span className={`status-chip status-chip--${row.status === "inactive" ? "inactive" : "active"}`}>
+                  {userStatusLabel(row.status)}
+                </span>
+              ),
+            },
+            { id: "branch", label: "Filial padrão", render: (row) => row.defaultBranchLabel ?? "—" },
+          ]}
+          defaultColumnIds={["name", "status", "branch"]}
+          emailFileName="usuarios-emails.csv"
+          emptyFilters={{ name: "", email: "", status: "" }}
+          emptyMessage="Nenhum usuário encontrado para os filtros informados."
+          excelFileName="usuarios.csv"
+          filterFields={[
+            { id: "name", label: "Nome", lookup: true, placeholder: "Nome já cadastrado" },
+            { id: "email", label: "E-mail", placeholder: "E-mail já cadastrado" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "active", label: "Ativo" },
+                { value: "invited", label: "Convidado" },
+                { value: "inactive", label: "Inativo" },
+              ],
+            },
+          ]}
+          loading={loading}
+          onCreate={openCreateWorkspace}
+          onDelete={(row) => {
+            void handleDeleteUser(row);
+          }}
+          onDeleteMany={(rows) => {
+            void handleDeleteUsers(rows);
+          }}
+          onEdit={openEditWorkspace}
+          onInactivate={(row) => {
+            void handleInactivateUser(row);
+          }}
+          records={userListRecords}
+          rowLabel={(row) => row.displayName}
+          searchKey="name"
+          searchOptions={userLookupOptions}
+          searchPlaceholder="Buscar por nome"
+          title="Usuários"
+        />
       ) : null}
 
-      {activeTab === "roles" ? (
-        <section className="workspace-split">
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Roles</h3>
-                <p>{loading ? "Carregando…" : `${filteredRoles.length} registro(s)`}</p>
-              </div>
-              {canWriteRoles ? (
-                <button
-                  className="button"
-                  onClick={() => {
-                    setShowCreateRole(true);
-                    setRoleForm(emptyRoleForm());
-                  }}
-                  type="button"
-                >
-                  Nova role
-                </button>
-              ) : null}
+      {isRoleFormWorkspace ? (
+        <section className="workspace-stack">
+          <article className="mini-card cadastro-form">
+            <div className="workspace-toolbar__copy">
+              <h3>{showCreateRole || workspaceMode === "new" ? "Novo papel" : activeRole?.displayName ?? "Alterar papel"}</h3>
+              <p>
+                {showCreateRole || workspaceMode === "new"
+                  ? "Cadastre o papel e retorne à lista."
+                  : "Visualize e ajuste o papel selecionado."}
+              </p>
             </div>
-            <ListTable
-              columns={["Role", "Status", "Sistema"]}
-              emptyMessage="Nenhuma role encontrada."
-              rows={filteredRoles.map((role) => ({
-                id: role.id,
-                active: role.id === activeRoleId,
-                cells: [
-                  <div key={`${role.id}-summary`}>
-                    <strong>{role.displayName}</strong>
-                    <div className="table-subtle">{role.code}</div>
-                  </div>,
-                  <span key={`${role.id}-status`} className={`status-chip status-chip--${role.status}`}>
-                    {role.status}
-                  </span>,
-                  role.isSystemManaged ? "Sim" : "Não",
-                ],
-                onClick: () => {
-                  setActiveRoleId(role.id);
-                  setShowCreateRole(false);
-                  setRoleForm(mapRoleToForm(role));
-                },
-              }))}
-            />
-          </article>
-          <article className="mini-card">
-            {showCreateRole ? (
-              <EntityForm
-                form={
-                  <>
-                    <RoleFormFields form={roleForm} setForm={setRoleForm} />
-                    <div className="button-row">
-                      <button className="button" disabled={saving} type="submit">
-                        {saving ? "Salvando…" : "Salvar role"}
-                      </button>
-                      <button className="button-secondary" onClick={() => setShowCreateRole(false)} type="button">
-                        Cancelar
-                      </button>
-                    </div>
-                  </>
-                }
-                onSubmit={handleCreateRole}
-                title="Criar role"
-              />
+            {showCreateRole || workspaceMode === "new" ? (
+              <form className="form-grid" onSubmit={handleCreateRole}>
+                <RoleFormFields form={roleForm} setForm={setRoleForm} />
+                <div className="button-row">
+                  <button className="button" disabled={saving} type="submit">
+                    {saving ? "Salvando…" : "Salvar"}
+                  </button>
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
             ) : activeRole ? (
               <div className="detail-stack">
-                <EntityForm
-                  form={
-                    <>
-                      <RoleFormFields form={roleForm} setForm={setRoleForm} />
-                      <div className="button-row">
-                        <button className="button" disabled={saving || !canWriteRoles} type="submit">
-                          {saving ? "Salvando…" : "Salvar alterações"}
-                        </button>
-                      </div>
-                    </>
-                  }
-                  onSubmit={handleUpdateRole}
-                  title="Visualizar / editar role"
-                />
+                <form className="form-grid" onSubmit={handleUpdateRole}>
+                  <RoleFormFields form={roleForm} setForm={setRoleForm} />
+                  <div className="button-row">
+                    <button className="button" disabled={saving || !canWriteRoles} type="submit">
+                      {saving ? "Salvando…" : "Salvar alterações"}
+                    </button>
+                    <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
                 <div className="mini-section">
                   <h4>Vincular permissão</h4>
                   <form className="inline-form" onSubmit={handleAssignPermissionToRole}>
@@ -1070,251 +1498,246 @@ export function AccessWorkspace() {
                 </div>
               </div>
             ) : (
-              <div className="empty-state">Selecione uma role para visualizar os detalhes.</div>
+              <div className="empty-state">O papel desta aba não foi encontrado.</div>
             )}
           </article>
         </section>
-      ) : null}
-
-      {activeTab === "permissions" ? (
-        <section className="workspace-split">
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Permissions</h3>
-                <p>{loading ? "Carregando…" : `${filteredPermissions.length} registro(s)`}</p>
-              </div>
-              {canWritePermissions ? (
-                <button
-                  className="button"
-                  onClick={() => {
-                    setShowCreatePermission(true);
-                    setPermissionForm(emptyPermissionForm());
-                  }}
-                  type="button"
-                >
-                  Nova permission
-                </button>
-              ) : null}
+      ) : isPermissionFormWorkspace ? (
+        <section className="workspace-stack">
+          <article className="mini-card cadastro-form">
+            <div className="workspace-toolbar__copy">
+              <h3>{showCreatePermission || workspaceMode === "new" ? "Nova permissão" : activePermission?.displayName ?? "Alterar permissão"}</h3>
+              <p>
+                {showCreatePermission || workspaceMode === "new"
+                  ? "Cadastre a permissão e retorne à lista."
+                  : "Visualize e ajuste a permissão selecionada."}
+              </p>
             </div>
-            <ListTable
-              columns={["Permission", "Nome"]}
-              emptyMessage="Nenhuma permission encontrada."
-              rows={filteredPermissions.map((permission) => ({
-                id: permission.id,
-                active: permission.id === activePermissionId,
-                cells: [<div key={`${permission.id}-code`}><strong>{permission.code}</strong></div>, permission.displayName],
-                onClick: () => {
-                  setActivePermissionId(permission.id);
-                  setShowCreatePermission(false);
-                  setPermissionForm(mapPermissionToForm(permission));
-                },
-              }))}
-            />
-          </article>
-          <article className="mini-card">
-            {showCreatePermission ? (
-              <EntityForm
-                form={
-                  <>
-                    <PermissionFormFields form={permissionForm} setForm={setPermissionForm} />
-                    <div className="button-row">
-                      <button className="button" disabled={saving} type="submit">
-                        {saving ? "Salvando…" : "Salvar permission"}
-                      </button>
-                      <button className="button-secondary" onClick={() => setShowCreatePermission(false)} type="button">
-                        Cancelar
-                      </button>
-                    </div>
-                  </>
-                }
-                onSubmit={handleCreatePermission}
-                title="Criar permission"
-              />
-            ) : activePermission ? (
-              <EntityForm
-                form={
-                  <>
-                    <PermissionFormFields form={permissionForm} setForm={setPermissionForm} />
-                    <div className="button-row">
-                      <button className="button" disabled={saving || !canWritePermissions} type="submit">
-                        {saving ? "Salvando…" : "Salvar alterações"}
-                      </button>
-                    </div>
-                  </>
-                }
-                onSubmit={handleUpdatePermission}
-                title="Visualizar / editar permission"
-              />
-            ) : (
-              <div className="empty-state">Selecione uma permission para visualizar os detalhes.</div>
-            )}
-          </article>
-        </section>
-      ) : null}
-
-      {activeTab === "communities" ? (
-        <section className="workspace-split">
-          <article className="mini-card">
-            <div className="workspace-toolbar">
-              <div className="workspace-toolbar__copy">
-                <h3>Comunidades</h3>
-                <p>Congeladas: não concedem permissão. A permissão vem só do papel e do escopo.</p>
-              </div>
-              {canWriteCommunities ? (
-                <button
-                  className="button"
-                  onClick={() => {
-                    setShowCreateCommunity(true);
-                    setCommunityForm(emptyCommunityForm());
-                  }}
-                  type="button"
-                >
-                  Nova community
-                </button>
-              ) : null}
-            </div>
-            <ListTable
-              columns={["Community", "Status"]}
-              emptyMessage="Nenhuma community encontrada."
-              rows={filteredCommunities.map((community) => ({
-                id: community.id,
-                active: community.id === activeCommunityId,
-                cells: [
-                  <div key={`${community.id}-summary`}>
-                    <strong>{community.displayName}</strong>
-                    <div className="table-subtle">{community.code}</div>
-                  </div>,
-                  <span key={`${community.id}-status`} className={`status-chip status-chip--${community.status}`}>
-                    {community.status}
-                  </span>,
-                ],
-                onClick: () => {
-                  setActiveCommunityId(community.id);
-                  setShowCreateCommunity(false);
-                  setCommunityForm(mapCommunityToForm(community));
-                },
-              }))}
-            />
-          </article>
-          <article className="mini-card">
-            {showCreateCommunity ? (
-              <EntityForm
-                form={
-                  <>
-                    <CommunityFormFields form={communityForm} setForm={setCommunityForm} />
-                    <div className="button-row">
-                      <button className="button" disabled={saving} type="submit">
-                        {saving ? "Salvando…" : "Salvar community"}
-                      </button>
-                      <button className="button-secondary" onClick={() => setShowCreateCommunity(false)} type="button">
-                        Cancelar
-                      </button>
-                    </div>
-                  </>
-                }
-                onSubmit={handleCreateCommunity}
-                title="Criar community"
-              />
-            ) : activeCommunity ? (
-              <div className="detail-stack">
-                <EntityForm
-                  form={
-                    <>
-                      <CommunityFormFields form={communityForm} setForm={setCommunityForm} />
-                      <div className="button-row">
-                        <button className="button" disabled={saving || !canWriteCommunities} type="submit">
-                          {saving ? "Salvando…" : "Salvar alterações"}
-                        </button>
-                      </div>
-                    </>
-                  }
-                  onSubmit={handleUpdateCommunity}
-                  title="Visualizar / editar community"
-                />
-                <div className="mini-section">
-                  <h4>Vincular permissão</h4>
-                  <form className="inline-form" onSubmit={handleAssignPermissionToCommunity}>
-                    <select value={assignPermissionToCommunityId} onChange={(event) => setAssignPermissionToCommunityId(event.target.value)}>
-                      <option value="">Selecione a permissão</option>
-                      {permissions.map((permission) => (
-                        <option key={permission.id} value={permission.id}>
-                          {permission.code}
-                        </option>
-                      ))}
-                    </select>
-                    <button className="button-secondary" disabled={saving || !canWriteCommunities} type="submit">
-                      Vincular
-                    </button>
-                  </form>
+            {showCreatePermission || workspaceMode === "new" ? (
+              <form className="form-grid" onSubmit={handleCreatePermission}>
+                <PermissionFormFields form={permissionForm} setForm={setPermissionForm} />
+                <div className="button-row">
+                  <button className="button" disabled={saving} type="submit">
+                    {saving ? "Salvando…" : "Salvar"}
+                  </button>
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                    Cancelar
+                  </button>
                 </div>
-              </div>
+              </form>
+            ) : activePermission ? (
+              <form className="form-grid" onSubmit={handleUpdatePermission}>
+                <PermissionFormFields form={permissionForm} setForm={setPermissionForm} />
+                <div className="button-row">
+                  <button className="button" disabled={saving || !canWritePermissions} type="submit">
+                    {saving ? "Salvando…" : "Salvar alterações"}
+                  </button>
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
             ) : (
-              <div className="empty-state">Selecione uma community para visualizar os detalhes.</div>
+              <div className="empty-state">A permissão desta aba não foi encontrada.</div>
             )}
           </article>
         </section>
+      ) : isCommunityFormWorkspace ? (
+        <section className="workspace-stack">
+          <article className="mini-card cadastro-form">
+            <div className="workspace-toolbar__copy">
+              <h3>{showCreateCommunity || workspaceMode === "new" ? "Nova comunidade" : activeCommunity?.displayName ?? "Alterar comunidade"}</h3>
+              <p>Comunidades estão congeladas: não concedem permissão. A permissão vem só do papel e do escopo.</p>
+            </div>
+            {showCreateCommunity || workspaceMode === "new" ? (
+              <form className="form-grid" onSubmit={handleCreateCommunity}>
+                <CommunityFormFields form={communityForm} setForm={setCommunityForm} />
+                <div className="button-row">
+                  <button className="button" disabled={saving || !canWriteCommunities} type="submit">
+                    {saving ? "Salvando…" : "Salvar"}
+                  </button>
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : activeCommunity ? (
+              <form className="form-grid" onSubmit={handleUpdateCommunity}>
+                <CommunityFormFields form={communityForm} setForm={setCommunityForm} />
+                <div className="button-row">
+                  <button className="button" disabled={saving || !canWriteCommunities} type="submit">
+                    {saving ? "Salvando…" : "Salvar alterações"}
+                  </button>
+                  <button className="button-secondary" onClick={closeFormWorkspace} type="button">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="empty-state">A comunidade desta aba não foi encontrada.</div>
+            )}
+          </article>
+        </section>
+      ) : isListWorkspace && listTab === "roles" ? (
+        <CadastroListPanel
+          applyFilters={applyAccessRoleListFilters}
+          buildExcelCsv={buildAccessRoleExcelCsv}
+          canInactivate={(row) => row.status !== "inactive" && !row.isSystemManaged}
+          canWrite={canWriteRoles}
+          columnStorageKey="anexsys.frontend.access-roles.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "Nome",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.displayName}</strong>
+                  <div className="table-subtle">{row.code}</div>
+                </>
+              ),
+            },
+            { id: "code", label: "Código", render: (row) => row.code },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => (
+                <span className={`status-chip status-chip--${row.status === "inactive" ? "inactive" : "active"}`}>
+                  {accessStatusLabel(row.status)}
+                </span>
+              ),
+            },
+            { id: "system", label: "Sistema", render: (row) => (row.isSystemManaged ? "Sim" : "Não") },
+          ]}
+          defaultColumnIds={["name", "code", "status", "system"]}
+          emptyFilters={{ name: "", code: "", status: "" }}
+          emptyMessage="Nenhum papel encontrado para os filtros informados."
+          excelFileName="papeis.csv"
+          filterFields={[
+            { id: "name", label: "Nome", lookup: true, placeholder: "Nome já cadastrado" },
+            { id: "code", label: "Código" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "active", label: "Ativo" },
+                { value: "inactive", label: "Inativo" },
+              ],
+            },
+          ]}
+          loading={loading}
+          onCreate={(name) => openAccessCreateWorkspace("roles", name)}
+          onEdit={openRoleEditWorkspace}
+          onInactivate={(row) => {
+            void handleInactivateRole(row);
+          }}
+          records={roles}
+          rowLabel={(row) => row.displayName}
+          searchKey="name"
+          searchOptions={roleLookupOptions}
+          searchPlaceholder="Buscar por nome"
+          title="Papéis"
+        />
+      ) : isListWorkspace && listTab === "permissions" ? (
+        <CadastroListPanel
+          applyFilters={applyAccessPermissionListFilters}
+          buildExcelCsv={buildAccessPermissionExcelCsv}
+          canWrite={canWritePermissions}
+          columnStorageKey="anexsys.frontend.access-permissions.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "Nome",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.displayName}</strong>
+                  <div className="table-subtle">{row.code}</div>
+                </>
+              ),
+            },
+            { id: "code", label: "Código", render: (row) => row.code },
+            { id: "description", label: "Descrição", render: (row) => row.description || "—" },
+          ]}
+          defaultColumnIds={["name", "code"]}
+          emptyFilters={{ name: "", code: "" }}
+          emptyMessage="Nenhuma permissão encontrada para os filtros informados."
+          excelFileName="permissoes.csv"
+          filterFields={[
+            { id: "name", label: "Nome", lookup: true, placeholder: "Nome já cadastrado" },
+            { id: "code", label: "Código" },
+          ]}
+          loading={loading}
+          onCreate={(name) => openAccessCreateWorkspace("permissions", name)}
+          onEdit={openPermissionEditWorkspace}
+          records={permissions}
+          rowLabel={(row) => row.displayName}
+          searchKey="name"
+          searchOptions={permissionLookupOptions}
+          searchPlaceholder="Buscar por nome"
+          title="Permissões"
+        />
+      ) : isListWorkspace && listTab === "communities" ? (
+        <CadastroListPanel
+          applyFilters={applyAccessCommunityListFilters}
+          buildExcelCsv={buildAccessCommunityExcelCsv}
+          canWrite={canWriteCommunities}
+          columnStorageKey="anexsys.frontend.access-communities.grid-columns.v1"
+          columns={[
+            {
+              id: "name",
+              label: "Nome",
+              locked: true,
+              render: (row) => (
+                <>
+                  <strong>{row.displayName}</strong>
+                  <div className="table-subtle">{row.code}</div>
+                </>
+              ),
+            },
+            { id: "code", label: "Código", render: (row) => row.code },
+            {
+              id: "status",
+              label: "Status",
+              render: (row) => (
+                <span className={`status-chip status-chip--${row.status === "inactive" ? "inactive" : "active"}`}>
+                  {accessStatusLabel(row.status)}
+                </span>
+              ),
+            },
+          ]}
+          defaultColumnIds={["name", "code", "status"]}
+          emptyFilters={{ name: "", code: "", status: "" }}
+          emptyMessage="Nenhuma comunidade encontrada para os filtros informados."
+          excelFileName="comunidades.csv"
+          filterFields={[
+            { id: "name", label: "Nome", lookup: true, placeholder: "Nome já cadastrado" },
+            { id: "code", label: "Código" },
+            {
+              id: "status",
+              kind: "select",
+              label: "Status",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "active", label: "Ativo" },
+                { value: "inactive", label: "Inativo" },
+              ],
+            },
+          ]}
+          loading={loading}
+          onCreate={(name) => openAccessCreateWorkspace("communities", name)}
+          onEdit={openCommunityEditWorkspace}
+          records={communities}
+          rowLabel={(row) => row.displayName}
+          searchKey="name"
+          searchOptions={communityLookupOptions}
+          searchPlaceholder="Buscar por nome"
+          title="Comunidades"
+        />
       ) : null}
     </>
-  );
-}
-
-function EntityForm({
-  title,
-  onSubmit,
-  form,
-}: {
-  title: string;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void> | void;
-  form: ReactNode;
-}) {
-  return (
-    <form className="form-grid" onSubmit={onSubmit}>
-      <div className="workspace-toolbar__copy">
-        <h3>{title}</h3>
-      </div>
-      {form}
-    </form>
-  );
-}
-
-function ListTable({
-  columns,
-  rows,
-  emptyMessage,
-}: {
-  columns: string[];
-  rows: Array<{ id: string; active?: boolean; cells: ReactNode[]; onClick: () => void }>;
-  emptyMessage: string;
-}) {
-  return (
-    <div className="data-table-wrapper">
-      <table className="data-table">
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column}>{column}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr className={row.active ? "data-table__row--active" : undefined} key={row.id} onClick={row.onClick}>
-              {row.cells.map((cell, index) => (
-                <td key={`${row.id}-${index}`}>{cell}</td>
-              ))}
-            </tr>
-          ))}
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length}>
-                <div className="empty-state">{emptyMessage}</div>
-              </td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
@@ -1416,7 +1839,7 @@ function UserFormFields({
         <SmartLookup
           allowClear
           canCreate={canQuickCreateBranch}
-          createLabel="Criar nova filial"
+          createLabel="Cadastrar"
           disabled={saving}
           entityType="branches"
           label="Filial padrão"
@@ -1466,7 +1889,7 @@ function QuickCreateBranch({
 
   return (
     <div className="form-grid">
-      <h4>Quick create</h4>
+      <h4>Cadastro rápido</h4>
       <label className="field">
         <span>Código</span>
         <input required value={code} onChange={(event) => setCode(event.target.value)} />
@@ -1532,7 +1955,7 @@ function RoleFormFields({ form, setForm }: { form: RoleForm; setForm: Dispatch<S
         </select>
       </label>
       <label className="field field--checkbox">
-        <span>System managed</span>
+        <span>Gerenciado pelo sistema</span>
         <input checked={form.isSystemManaged} onChange={(event) => setForm((current) => ({ ...current, isSystemManaged: event.target.checked }))} type="checkbox" />
       </label>
     </>

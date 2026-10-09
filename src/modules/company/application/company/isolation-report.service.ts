@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { TenantContext } from 'src/platform/tenancy/tenant-context';
 
@@ -12,7 +12,10 @@ export type IsolationTableReport = {
 
 @Injectable()
 export class IsolationReportService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @Inject(DataSource)
+    private readonly dataSource: DataSource,
+  ) {}
 
   async buildReport(): Promise<{ tables: IsolationTableReport[]; unprotected: string[]; allProtected: boolean }> {
     return TenantContext.run({ tenantId: null, bypass: true }, async () => {

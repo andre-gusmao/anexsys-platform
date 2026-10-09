@@ -1,8 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { clearPersistedWorkspaceStore } from "@/components/app-shell/workspace-storage";
 import {
   branchesOfEmpresa,
+  isEmpresaActiveForCombo,
   resolveActiveEmpresaId,
   type BranchOption,
   type EmpresaOption,
@@ -109,6 +111,7 @@ type EmpresaResponse = {
   legalName?: string;
   tradeName?: string | null;
   isDefault?: boolean;
+  status?: string;
 };
 
 const STORAGE_KEY = "anexsys.frontend.session.v2";
@@ -270,7 +273,7 @@ function mapEmpresas(input: EmpresaResponse[] | null): EmpresaOption[] {
   if (!input) return [];
   return input
     .filter((empresa): empresa is Required<Pick<EmpresaResponse, "id" | "legalName">> & EmpresaResponse => {
-      return typeof empresa.id === "string" && typeof empresa.legalName === "string";
+      return typeof empresa.id === "string" && typeof empresa.legalName === "string" && isEmpresaActiveForCombo(empresa.status);
     })
     .map((empresa) => ({
       id: empresa.id,
@@ -539,22 +542,33 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
   const login = useCallback(
     async ({ email, password }: LoginInput) => {
       setErrorMessage(null);
+      clearPersistedWorkspaceStore();
       const loginEmail = email.trim().toLowerCase();
-      const result = await requestJson<AuthResponse>("/auth/login/password", {
-        method: "POST",
-        body: JSON.stringify({ email: loginEmail, password }),
-      });
+      try {
+        const result = await requestJson<AuthResponse>("/auth/login/password", {
+          method: "POST",
+          body: JSON.stringify({ email: loginEmail, password }),
+        });
 
-      const baseSession = createPendingHydrationSession({
-        tenantId: result.tenantId,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-        sessionId: result.sessionId,
-        permissions: result.permissions,
-        branchIds: result.branchIds,
-      });
+        const baseSession = createPendingHydrationSession({
+          tenantId: result.tenantId,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          sessionId: result.sessionId,
+          permissions: result.permissions,
+          branchIds: result.branchIds,
+        });
 
-      await hydrateSession(baseSession);
+        await hydrateSession(baseSession);
+      } catch (error) {
+        const raw = error instanceof Error ? error.message : "";
+        setStatus("anonymous");
+        setErrorMessage(
+          /getAllAndOverride|assertAllowed|internal server error/i.test(raw)
+            ? "O servidor não concluiu o login. Pare o processo da porta 3000, rode npm run start:dev outra vez e tente entrar de novo."
+            : raw || "Não foi possível entrar.",
+        );
+      }
     },
     [hydrateSession],
   );
@@ -570,6 +584,7 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     }
 
     writeStoredSession(null);
+    clearPersistedWorkspaceStore();
     sessionRef.current = null;
     setSession(null);
     setStatus("anonymous");
@@ -680,29 +695,18 @@ export function SessionProvider({ children }: Readonly<{ children: ReactNode }>)
     if (!currentSession) return;
 
     try {
-      const result = await authenticatedRequest<EmpresaResponse[]>(currentSession, "/companies", { method: "GET" }, { branchId: null });
-      const empresas = mapEmpresas(result.data);
-      const nextSession = {
-        ...currentSession,
-        accessToken: result.session.accessToken,
-        refreshToken: result.session.refreshToken,
-        sessionId: result.session.sessionId,
-        empresas,
-        activeEmpresaId: resolveActiveEmpresaId(
-          empresas,
-          currentSession.branches,
-          currentSession.activeBranchId,
-          preferredEmpresaId ?? currentSession.activeEmpresaId,
-        ),
-      };
-      sessionRef.current = nextSession;
-      setSession(nextSession);
+      const resolved = await hydrateSession(
+        currentSession,
+        undefined,
+        preferredEmpresaId ?? currentSession.activeEmpresaId,
+      );
+      sessionRef.current = resolved;
     } catch (error) {
       if (error instanceof HttpError && [401, 403].includes(error.status)) {
         throw error;
       }
     }
-  }, []);
+  }, [hydrateSession]);
 
   const hasAnyPermission = useCallback(
     (...permissions: string[]) => {

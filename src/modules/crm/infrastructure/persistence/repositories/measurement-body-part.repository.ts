@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { MeasurementCatalogStatus } from 'src/shared/domain/enums';
 import { MeasurementBodyPartEntity } from '../entities/measurement-body-part.entity';
 
 @Injectable()
@@ -26,8 +27,20 @@ export class MeasurementBodyPartRepository {
     return this.repository.findOne({ where: { id, isDeleted: false } });
   }
 
-  async findActiveByTenant(tenantId: string): Promise<MeasurementBodyPartEntity[]> {
+  async findListedByTenant(tenantId: string): Promise<MeasurementBodyPartEntity[]> {
     return this.repository.find({ where: { tenantId, isDeleted: false }, order: { sortOrder: 'ASC', displayName: 'ASC' } });
+  }
+
+  async findActiveByTenant(tenantId: string): Promise<MeasurementBodyPartEntity[]> {
+    return this.repository.find({
+      where: { tenantId, isDeleted: false, status: MeasurementCatalogStatus.ACTIVE },
+      order: { sortOrder: 'ASC', displayName: 'ASC' },
+    });
+  }
+
+  async findCodesByTenant(tenantId: string): Promise<string[]> {
+    const rows = await this.repository.find({ where: { tenantId }, select: { code: true } });
+    return rows.map((row) => row.code);
   }
 
   async findByTenantAndCode(tenantId: string, code: string): Promise<MeasurementBodyPartEntity | null> {
@@ -36,6 +49,8 @@ export class MeasurementBodyPartRepository {
 
   async findByIds(tenantId: string, ids: string[]): Promise<MeasurementBodyPartEntity[]> {
     if (ids.length === 0) return [];
-    return this.repository.find({ where: { tenantId, id: In(ids), isDeleted: false } });
+    return this.repository.find({
+      where: { tenantId, id: In(ids), isDeleted: false, status: MeasurementCatalogStatus.ACTIVE },
+    });
   }
 }

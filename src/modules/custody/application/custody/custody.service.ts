@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DataSource, EntityManager } from 'typeorm';
 import { AuditService } from 'src/modules/audit/application/audit/audit.service';
@@ -33,18 +33,31 @@ import { StorageLocationRepository } from '../../infrastructure/persistence/repo
 @Injectable()
 export class CustodyService {
   constructor(
+    @Inject(DataSource)
     private readonly dataSource: DataSource,
+    @Inject(TenantService)
     private readonly tenantService: TenantService,
+    @Inject(BranchService)
     private readonly branchService: BranchService,
+    @Inject(ServiceOrderService)
     private readonly serviceOrderService: ServiceOrderService,
+    @Inject(ProductionOrderService)
     private readonly productionOrderService: ProductionOrderService,
+    @Inject(OperationalResourceService)
     private readonly operationalResourceService: OperationalResourceService,
+    @Inject(StorageLocationRepository)
     private readonly storageLocationRepository: StorageLocationRepository,
+    @Inject(StorageLocationAssignmentRepository)
     private readonly storageLocationAssignmentRepository: StorageLocationAssignmentRepository,
+    @Inject(PhysicalBagSupportContextRepository)
     private readonly bagSupportContextRepository: PhysicalBagSupportContextRepository,
+    @Inject(CustodyEventRepository)
     private readonly custodyEventRepository: CustodyEventRepository,
+    @Inject(CctvReferenceRepository)
     private readonly cctvReferenceRepository: CctvReferenceRepository,
+    @Inject(CameraSnapshotRepository)
     private readonly cameraSnapshotRepository: CameraSnapshotRepository,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
   ) {}
 
