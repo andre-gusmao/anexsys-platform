@@ -251,7 +251,7 @@ Fonte: respostas do André às perguntas complementares da segunda rodada. Esta 
 ### 11.2 Retirada
 
 - **Dois caminhos, mais um escape.** Digital: o cliente aperta **Recebi** no **mesmo link** da OS, só depois que a atendente **inicia a retirada** (janela de 10 min). Papel: foto da OP assinada + **Entregue assinado**. Se o cliente não clicou, a atendente pode **Entregue** (baixa do atendente, não é assinatura do cliente).
-- A API oficial do WhatsApp e a página pública do link entram depois. O servidor já grava método, janela, foto, número e texto aceito.
+- A API oficial do WhatsApp entra depois. **Homologado em 09/10:** o envio hoje é pelo **WhatsApp Web** (mensagem certa). O link público existe; o microformulário ainda não abre no celular e os botões novos (Concordo, etc.) ficam para a próxima fase desse formulário.
 
 ### 11.3 Entrega em domicílio
 

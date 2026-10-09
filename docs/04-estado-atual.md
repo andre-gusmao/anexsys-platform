@@ -3,7 +3,9 @@
 **Atualizado em:** 09/10/2026
 **Substitui:** `PROJECT_IMPLEMENTATION_STATUS`, `CURRENT_APPLICATION_STATUS`, `CURRENT_REPOSITORY_STATUS`, `REPOSITORY_CODE_AUDIT_V1` e os relatórios de sprint (todos em `docs/arquivo/`), que se contradizem.
 
-**Como ler:** cada item diz se algo foi **demonstrado numa tela**, **testado com banco de dados** e **aceito pelo André**. Hoje **nada foi aceito formalmente** pelo André como pronto; essa coluna começa vazia.
+**Como ler:** cada item diz se algo foi **demonstrado numa tela**, **testado com banco de dados** e **aceito pelo André**.
+
+**Aceite em 09/10/2026:** o envio pelo **WhatsApp Web** (mensagem certa, como no sistema atual) e o **link copiado na OS** estão validados. O microformulário do cliente existe, **ainda não abre no celular** (localhost); os botões (**Concordo**, etc.) entram depois, no mesmo endereço.
 
 ## 1. O que existe
 
@@ -11,16 +13,16 @@
 |---|---|---|---|---|
 | Login e acesso (Conta, Empresa, Filial, usuários, papéis, permissões) | Existe | Existe: login, escolha de Conta e Filial, **Contas / Empresas / Filiais**, horário da Filial, comunidades congeladas | Unitários passam; integração **43/43** (39 do Ciclo 0 + 4 do espelho no Ciclo 1) | Só o André cria Contas. Usuário novo sem Filial. Isolamento no banco (D2). **Dashboard** é chip fixo na barra superior, não aba |
 | Clientes e medidas | Existe | Existe | Unitários e integração passam | WhatsApp obrigatório; endereço (incluindo CEP) obrigatório no cadastro; sem consentimento ainda |
-| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Formulário compacto: **Cliente** primeiro; bloco da OS em caixas (identificação, previsão, responsáveis). Sem Empresa/Filial na ficha. **Status**, Entrada e Saída na mesma linha. Bloco **Pagamento** com condição, já pago e em aberto. Marca obrigatória; modelo e série opcionais. Valor/desconto no formato de dinheiro. **Salvar** aberto = rascunho; fechado = imprime OP. **Abrir nova versão** só na grade. Faltam aprovar e recalcular prazo na tela |
+| Ordem de Serviço (lista, formulário, vários itens, detalhe) | Existe | Existe | Unitários e integração passam | Formulário compacto: **Cliente** primeiro; bloco da OS em caixas (identificação, previsão, responsáveis). Sem Empresa/Filial na ficha. **Status**, Entrada e Saída na mesma linha. Bloco **Pagamento** com condição, já pago e em aberto. Marca obrigatória; modelo e série opcionais. Valor/desconto no formato de dinheiro. **Salvar** aberto = rascunho; fechado = imprime OP. **Abrir nova versão** só na grade. **Recalcular prazo** na previsão. Falta **aprovação no balcão/papel** (o Concordo do link entra depois) |
 | Pegar sacola (esteira manual) | Existe (`POST /service-orders/:id/floor-advance`) | Existe: **Operações → Pegar sacola** | Unitários passam | Lista só **Aberta** (Pegar sacola) e **Em produção** (Terminei). Uma sacola por vez. QR futuro dispara o mesmo passo |
-| Motor de data de entrega | Existe (domingo fechado por padrão) | Parcial | Unitários passam | Falta Normal/Expresso/Urgente |
+| Motor de data de entrega | Existe (domingo fechado por padrão) | Existe: tipo Normal/Expresso/Urgente e **Recalcular prazo** | Unitários passam | Normal = mesma weekday da semana seguinte; Urgente = 3 dias úteis; Expresso = 2 h por peça. Atendente pode ajustar |
 | Ordem de Produção, QR por ordem, diário | Existe | Impressão A5 a partir da OS | Unitários passam | Papel A5: placa no cabeçalho e no QR; Pago ou Pagar na retirada no cabeçalho; tabela S / Produto / Serviço / Serviço a realizar (fonte 15 px, 3 linhas); bloco Retirada (Nome, Data, Assinatura); marca/modelo/série pequenos; previsão enorme na prateleira. Reprovação sai como **Refazer**; anotação de prova sai como **Prova**, sem sobrescrever o Serviço a realizar. Sem preço e sem quantidade. Tela de OP ainda não existe |
 | Qualidade, retrabalho, garantia | Existe | Tela **Controle de qualidade**; na OS: **Retirada**, **Cliente voltou**, **Enviar para prova** e **Prova feita** | Unitários passam | Qualidade: lista só **Aguardando controle de qualidade**. Botão **Revisar**. Reimpressão da OP no **⋮**. Revisão peça a peça; OS permanece em qualidade se houver reprovação; OP de refação só com as peças reprovadas. **Prova** usa a mesma OS e a mesma OP; **Prova feita** abre **Anotações de prova**. **Retirada** abre janela de 10 min (gancho do **Recebi**), aceita foto + **Entregue assinado**, ou **Entregue** do atendente. **Cliente voltou** cria OS filha depois do status Retirado. WhatsApp oficial ainda não |
 | Financeiro | Existe | **Não existe** | Idem | Maquininha só como interface, sem integração real |
 | Fiscal | Só esqueleto | **Não existe** | Idem | Nenhum adaptador real |
 | Retirada por terceiros e custódia | Existe | **Não existe** | Idem | Aviso "enviado" é só um registro, não envio |
-| Concierge e portal do cliente | Existe | Página pública `/os/{token}` | Unitários passam | Sem login: **microformulário** no celular (status, peças, valores, **Recebi**). Via impressa é opcional. WhatsApp oficial ainda não envia o link; no computador o endereço é localhost e no celular do cliente só abre quando houver domínio |
-| **WhatsApp** | **Não existe** | **Não existe** | n/a | Só há o campo de telefone. Registros marcados como "enviado" **não foram enviados** |
+| Concierge e portal do cliente | Existe | Página pública `/os/{token}` | Unitários passam | **Validado em parte (09/10):** o link é copiado na OS. Microformulário (status, peças, **Recebi**) ainda não abre no celular (localhost). **Concordo** e novos botões no mesmo endereço, depois |
+| **WhatsApp** | Envio via **WhatsApp Web** (`wa.me`) | Menu **Por WhatsApp** na OS | Unitários passam | **Validado pelo André (09/10):** conecta no WhatsApp Web e manda a mensagem certa, como no sistema atual. API oficial da Meta fica para depois |
 | Migração/importação de dados | **Não existe** | **Não existe** | n/a | |
 | LGPD (consentimento, retenção) | **Não existe** | **Não existe** | n/a | |
 | Cobrança do ANEXSYS | **Não existe** | **Não existe** | n/a | |

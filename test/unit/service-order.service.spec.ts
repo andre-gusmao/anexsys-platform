@@ -250,6 +250,47 @@ describe('ServiceOrderService', () => {
     assert.equal('commercialNotes' in printView, false);
   });
 
+  it('recalculates the promised delivery from the current type without changing status', async () => {
+    const source = {
+      id: 'so-1',
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      status: 'open',
+      deliveryType: DeliveryType.PRIORITY,
+      deliveryCommitmentSourceAt: '2026-10-03T10:00:00.000Z',
+      promisedDeliveryDate: '2026-10-14',
+      promisedDeliveryTime: '18:00',
+      orderNo: 'AAA000001',
+    };
+    const service = new ServiceOrderService(
+      buildDataSource() as never,
+      {
+        async findById() {
+          return source;
+        },
+        async save(payload: Record<string, unknown>) {
+          Object.assign(source, payload);
+          return source;
+        },
+      } as never,
+      {} as never,
+      { async getById() { return { id: 'tenant-1' }; } } as never,
+      { async getById() { return { id: 'branch-1', tenantId: 'tenant-1' }; } } as never,
+      {} as never,
+      {} as never,
+      { async suggestDelivery() { return { promisedDeliveryDate: '2026-10-08', promisedDeliveryTime: '18:00' }; } } as never,
+      { async record() {} } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const result = await service.recalculateDeliveryDate('so-1', 'tenant-1', 'user-1');
+    assert.equal(result.promisedDeliveryDate, '2026-10-08');
+    assert.equal(result.promisedDeliveryTime, '18:00');
+    assert.equal(result.status, 'open');
+  });
+
   it('rejects more than five pieces on a service order', async () => {
     const service = new ServiceOrderService(
       buildDataSource() as never,

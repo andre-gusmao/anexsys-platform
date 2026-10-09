@@ -755,11 +755,73 @@ export function ServiceOrdersWorkspace() {
     const url = `${window.location.origin}/os/${token}`;
     try {
       await navigator.clipboard.writeText(url);
-      setMessage(`Link do cliente copiado: ${url}`);
+      setMessage(`Link copiado para colar no WhatsApp Web: ${url}`);
     } catch {
       setMessage(url);
     }
   }, [selectedOrder?.publicToken]);
+
+  const handleRecalculateDelivery = useCallback(async () => {
+    if (!canWrite) {
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      if (showCreateForm) {
+        if (!session?.activeBranchId) {
+          throw new Error("Selecione a Filial para recalcular o prazo.");
+        }
+        const params = new URLSearchParams({
+          branchId: session.activeBranchId,
+          deliveryType: headerForm.deliveryType,
+          itemCount: String(visibleItemRows.length || 1),
+        });
+        const suggestion = await apiJson<{ promisedDeliveryDate: string; promisedDeliveryTime: string }>(
+          `/service-orders/delivery-preview?${params.toString()}`,
+        );
+        setHeaderForm((current) => ({
+          ...current,
+          promisedDeliveryDate: suggestion.promisedDeliveryDate,
+          promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
+        }));
+        setMessage(
+          `Previsão sugerida: ${formatDate(suggestion.promisedDeliveryDate)} ${toTimeInput(suggestion.promisedDeliveryTime)}. Você pode ajustar.`,
+        );
+        return;
+      }
+      if (!selectedOrder) {
+        return;
+      }
+      const saved = await apiJson<{ orderNo: string; promisedDeliveryDate: string; promisedDeliveryTime?: string | null }>(
+        `/service-orders/${selectedOrder.id}/delivery-date/recalculate`,
+        { method: "POST" },
+      );
+      setHeaderForm((current) => ({
+        ...current,
+        promisedDeliveryDate: toDateInput(saved.promisedDeliveryDate),
+        promisedDeliveryTime: toTimeInput(saved.promisedDeliveryTime),
+      }));
+      await loadOrders(isListWorkspace ? undefined : selectedOrder.id);
+      setMessage(
+        `Previsão da OS ${saved.orderNo} recalculada para ${formatDate(saved.promisedDeliveryDate)} ${toTimeInput(saved.promisedDeliveryTime)}. Você pode ajustar.`,
+      );
+    } catch (error) {
+      setMessage(formatWorkspaceMessage(error, "O prazo não pôde ser recalculado."));
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    apiJson,
+    canWrite,
+    headerForm.deliveryType,
+    isListWorkspace,
+    loadOrders,
+    selectedOrder,
+    session?.activeBranchId,
+    showCreateForm,
+    visibleItemRows.length,
+  ]);
 
   const handleStartPickup = useCallback(async () => {
     if (!canWrite || !selectedOrder) {
@@ -1045,7 +1107,7 @@ export function ServiceOrdersWorkspace() {
           setHeaderForm((current) => ({
             ...current,
             promisedDeliveryDate: suggestion.promisedDeliveryDate,
-            promisedDeliveryTime: current.promisedDeliveryTime || nowTimeInput(),
+            promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime) || current.promisedDeliveryTime,
           }));
         } catch {
           /* a atendente ainda pode preencher a saída na mão */
@@ -1727,7 +1789,7 @@ export function ServiceOrdersWorkspace() {
               </p>
               {!showCreateForm && selectedOrder?.publicToken ? (
                 <p className="table-subtle">
-                  Link do cliente (sem WhatsApp ainda):{" "}
+                  Link para colar no WhatsApp Web:{" "}
                   <button className="button-ghost" onClick={() => void copyPublicLink()} type="button">
                     Copiar link
                   </button>
@@ -1955,7 +2017,7 @@ export function ServiceOrdersWorkspace() {
                                   setHeaderForm((current) => ({
                                     ...current,
                                     promisedDeliveryDate: suggestion.promisedDeliveryDate,
-                                    promisedDeliveryTime: current.promisedDeliveryTime || nowTimeInput(),
+                                    promisedDeliveryTime: toTimeInput(suggestion.promisedDeliveryTime),
                                   }));
                                 })
                                 .catch(() => undefined);
@@ -2005,6 +2067,17 @@ export function ServiceOrdersWorkspace() {
                           }
                         />
                       </label>
+                      <div className="field">
+                        <span>Prazo</span>
+                        <button
+                          className="button-secondary"
+                          disabled={saving || !canWrite || (!showCreateForm && !canEditSelectedOrder)}
+                          onClick={() => void handleRecalculateDelivery()}
+                          type="button"
+                        >
+                          Recalcular prazo
+                        </button>
+                      </div>
                     </div>
                   </div>
 
