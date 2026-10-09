@@ -75,7 +75,7 @@ export function OsPayPanel({ orderNo, summary, onClose, onPaid }: Props) {
   return (
     <form className="os-pay-panel" onSubmit={handleSubmit}>
       <div className="workspace-toolbar__copy">
-        <h4>Pagar OS {orderNo}</h4>
+        <h4 id="os-pay-title">Pagar OS {orderNo}</h4>
         <p>Registra o que já entrou no caixa. Não cobra na maquininha e não abre Pix daqui.</p>
       </div>
       {osShowsFaltaPagamento(summary) ? (

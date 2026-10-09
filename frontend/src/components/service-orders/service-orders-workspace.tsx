@@ -40,7 +40,7 @@ import { approvalMethodLabel, canRecordOsApproval, formatOsInstant, type Approva
 import { OsPickupPanel } from "@/components/service-orders/os-pickup-panel";
 import { pickupMethodLabel, type PickupSummary } from "@/components/service-orders/os-pickup";
 import { OsPayPanel, type OsFinancialSummary } from "@/components/service-orders/os-pay-panel";
-import { osPaymentMethodLabel, osShowsFaltaPagamento } from "@/components/service-orders/os-payment";
+import { osCanOpenPay, osPaymentMethodLabel, osShowsFaltaPagamento } from "@/components/service-orders/os-payment";
 import { RowOverflowMenu, type RowMenuItem } from "@/components/ui/row-overflow-menu";
 import {
   addServiceOrderItemGridRow,
@@ -93,6 +93,9 @@ type ServiceOrderRecord = {
   originServiceOrderId?: string | null;
   returnKind?: string | null;
   hasAttachments?: boolean;
+  paymentStatus?: "pending" | "partial" | "paid";
+  outstandingBalance?: string | null;
+  amountPaid?: string | null;
 };
 
 type ActorSummary = {
@@ -1357,17 +1360,20 @@ export function ServiceOrdersWorkspace() {
   }, [apiJson, details?.approval?.photoAvailable, details?.serviceOrder.id]);
 
   useEffect(() => {
-    if (!anexoViewer) {
+    if (!anexoViewer && !payTarget) {
       return;
     }
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         setAnexoViewer(null);
+        if (isListWorkspace) {
+          setPayTarget(null);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [anexoViewer]);
+  }, [anexoViewer, isListWorkspace, payTarget]);
 
   useEffect(() => {
     if (!isListWorkspace) {
@@ -1912,7 +1918,7 @@ export function ServiceOrdersWorkspace() {
             { id: "value", label: "Valor", render: (row) => row.totalValue ?? "—" },
           ]}
           defaultColumnIds={["name", "delivery", "status"]}
-          emptyFilters={{ name: "", status: "", deliveryType: "" }}
+          emptyFilters={{ name: "", status: "", deliveryType: "", payment: "" }}
           emptyMessage="Nenhuma OS encontrada para os filtros informados."
           excelFileName="ordens-de-servico.csv"
           filterFields={[
@@ -1946,6 +1952,16 @@ export function ServiceOrdersWorkspace() {
                 { value: "Express", label: "Expresso" },
               ],
             },
+            {
+              id: "payment",
+              kind: "select",
+              label: "Pagamento",
+              options: [
+                { value: "", label: "Todos" },
+                { value: "open", label: "Em aberto" },
+                { value: "paid", label: "Pago" },
+              ],
+            },
           ]}
           loading={loading}
           onCreate={openCreateWorkspace}
@@ -1957,7 +1973,7 @@ export function ServiceOrdersWorkspace() {
                 }
               : undefined
           }
-          canPay={(row) => row.status !== "cancelled"}
+          canPay={(row) => osCanOpenPay(row)}
           extraActions={(row) => (
             <OsAnexoButton
               disabled={Boolean(anexoViewer?.loading)}
@@ -1978,23 +1994,43 @@ export function ServiceOrdersWorkspace() {
       ) : null}
 
       {isListWorkspace && payTarget ? (
-        <article className="mini-card cadastro-form">
-          <OsPayPanel
-            orderNo={payTarget.orderNo}
-            summary={payTarget.summary}
-            onClose={() => setPayTarget(null)}
-            onPaid={(summary) => {
-              setPayTarget({ orderNo: payTarget.orderNo, summary });
-              setPaymentSummary(summary);
-              setMessage(
-                Number(summary.outstandingBalance) <= 0
-                  ? `Pagamento da OS ${payTarget.orderNo} registrado. A OS está quitada.`
-                  : `Pagamento parcial da OS ${payTarget.orderNo} registrado.`,
-              );
-              void loadOrders();
-            }}
+        <div aria-labelledby="os-pay-title" aria-modal="true" className="os-anexo-lightbox" role="dialog">
+          <button
+            aria-label="Fechar pagamento"
+            className="os-anexo-lightbox__backdrop"
+            onClick={() => setPayTarget(null)}
+            type="button"
           />
-        </article>
+          <div className="os-anexo-lightbox__card">
+            <OsPayPanel
+              orderNo={payTarget.orderNo}
+              summary={payTarget.summary}
+              onClose={() => setPayTarget(null)}
+              onPaid={(summary) => {
+                const paid = Number(summary.outstandingBalance) <= 0;
+                setPayTarget(paid ? null : { orderNo: payTarget.orderNo, summary });
+                setPaymentSummary(summary);
+                setOrders((current) =>
+                  current.map((order) =>
+                    order.id === summary.serviceOrderId
+                      ? {
+                          ...order,
+                          paymentStatus: summary.paymentStatus,
+                          outstandingBalance: summary.outstandingBalance,
+                          amountPaid: summary.amountPaid,
+                        }
+                      : order,
+                  ),
+                );
+                setMessage(
+                  paid
+                    ? `Pagamento da OS ${payTarget.orderNo} registrado. A OS está quitada.`
+                    : `Pagamento parcial da OS ${payTarget.orderNo} registrado.`,
+                );
+              }}
+            />
+          </div>
+        </div>
       ) : null}
 
         {!isListWorkspace ? (
@@ -2762,7 +2798,10 @@ export function ServiceOrdersWorkspace() {
                     {canWriteFinance && selectedOrder ? (
                       <button
                         className="button"
-                        disabled={saving || selectedOrder.status === "cancelled"}
+                        disabled={
+                          saving ||
+                          !osCanOpenPay({ status: selectedOrder.status, paymentStatus: paymentSummary?.paymentStatus })
+                        }
                         onClick={() => {
                           void openPay(selectedOrder);
                         }}
@@ -2794,13 +2833,10 @@ export function ServiceOrdersWorkspace() {
                     summary={payTarget.summary}
                     onClose={() => setPayTarget(null)}
                     onPaid={(summary) => {
-                      setPayTarget({ orderNo: selectedOrder.orderNo, summary });
+                      const paid = Number(summary.outstandingBalance) <= 0;
+                      setPayTarget(paid ? null : { orderNo: selectedOrder.orderNo, summary });
                       setPaymentSummary(summary);
-                      setMessage(
-                        Number(summary.outstandingBalance) <= 0
-                          ? "Pagamento registrado. A OS está quitada."
-                          : "Pagamento parcial registrado.",
-                      );
+                      setMessage(paid ? "Pagamento registrado. A OS está quitada." : "Pagamento parcial registrado.");
                     }}
                   />
                 ) : null}

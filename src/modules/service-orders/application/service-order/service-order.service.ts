@@ -62,6 +62,7 @@ import {
   pickupWindowExpiresAt,
   type PickupMethod,
 } from './service-order-pickup';
+import { osListPaymentFromTotals } from './service-order-finance';
 import { publicCustomerFirstName, publicOsStatusLabel } from './service-order-public';
 import { buildClientReturnPreview, osReturnKindLabel, todayDateOnly } from './service-order-return';
 import { TenantContext } from 'src/platform/tenancy/tenant-context';
@@ -294,7 +295,13 @@ export class ServiceOrderService {
       this.pickupRepository?.findIdsWithPhoto?.(ids) ?? [],
     ]);
     const withPhoto = new Set([...approvalPhotoIds, ...pickupPhotoIds]);
-    return orders.map((order) => Object.assign(order, { hasAttachments: withPhoto.has(order.id) }));
+    const paidById = await this.readPaidByOrderIds(ids);
+    return orders.map((order) =>
+      Object.assign(order, {
+        hasAttachments: withPhoto.has(order.id),
+        ...osListPaymentFromTotals(order.totalValue, paidById.get(order.id) ?? 0),
+      }),
+    );
   }
 
   async getById(id: string, tenantId: string): Promise<ServiceOrderEntity> {
@@ -1386,6 +1393,31 @@ export class ServiceOrderService {
       mimeType: pickup.photoMimeType,
       contentBase64: pickup.photoBase64,
     };
+  }
+
+  private async readPaidByOrderIds(orderIds: string[]): Promise<Map<string, number>> {
+    const paidById = new Map<string, number>();
+    if (orderIds.length === 0 || typeof this.dataSource?.query !== 'function') {
+      return paidById;
+    }
+    const placeholders = orderIds.map((_, index) => `$${index + 1}`).join(', ');
+    const rows = (await this.dataSource.query(
+      `SELECT service_order_id AS id, COALESCE(SUM(CASE
+          WHEN status IN ('failed', 'reversed') THEN 0
+          WHEN payment_direction = 'outbound' THEN -payment_amount
+          ELSE payment_amount
+        END), 0) AS paid
+       FROM payment_records
+       WHERE service_order_id IN (${placeholders})
+       GROUP BY service_order_id`,
+      orderIds,
+    )) as Array<{ id?: string; paid?: string | number }>;
+    for (const row of rows) {
+      if (row.id) {
+        paidById.set(row.id, Number(row.paid ?? 0));
+      }
+    }
+    return paidById;
   }
 
   private async assertPickupPaymentAllowed(tenantId: string, serviceOrder: ServiceOrderEntity) {

@@ -20,6 +20,9 @@ export type OsListRecord = {
   status: string;
   totalValue: string | null;
   hasAttachments?: boolean;
+  paymentStatus?: "pending" | "partial" | "paid";
+  outstandingBalance?: string | null;
+  amountPaid?: string | null;
 };
 
 export function osDeliveryTypeLabel(type: string) {
@@ -48,6 +51,7 @@ export function applyOsListFilters(orders: OsListRecord[], filters: Record<strin
   const nameQuery = (filters.name ?? "").trim().toLowerCase();
   const statusQuery = (filters.status ?? "").trim();
   const deliveryQuery = (filters.deliveryType ?? "").trim();
+  const paymentQuery = (filters.payment ?? "").trim();
 
   return orders.filter((order) => {
     if (
@@ -64,18 +68,25 @@ export function applyOsListFilters(orders: OsListRecord[], filters: Record<strin
     if (deliveryQuery && order.deliveryType !== deliveryQuery) {
       return false;
     }
+    if (paymentQuery === "paid" && order.paymentStatus !== "paid") {
+      return false;
+    }
+    if (paymentQuery === "open" && order.paymentStatus === "paid") {
+      return false;
+    }
     return true;
   });
 }
 
 export function buildOsExcelCsv(orders: OsListRecord[]) {
-  const header = ["Número", "Entrega", "Tipo", "Prioridade", "Status", "Valor"];
+  const header = ["Número", "Entrega", "Tipo", "Prioridade", "Status", "Pagamento", "Valor"];
   const rows = orders.map((order) => [
     order.orderNo,
     order.promisedDeliveryDate,
     osDeliveryTypeLabel(order.deliveryType),
     order.operationalPriority ?? "",
     osStatusLabel(order.status),
+    order.paymentStatus === "paid" ? "Pago" : "Em aberto",
     order.totalValue ?? "",
   ]);
   return [header, ...rows].map((row) => row.map((cell) => csvCell(cell)).join(";")).join("\n");

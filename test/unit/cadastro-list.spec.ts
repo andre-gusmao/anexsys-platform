@@ -45,6 +45,12 @@ test('filters OS by number and status', () => {
   assert.deepEqual(applyOsListFilters(orders, { name: 'os-200', status: '', deliveryType: '' }).map((item) => item.id), ['2']);
   assert.deepEqual(applyOsListFilters(orders, { name: '', status: 'open', deliveryType: '' }).map((item) => item.id), ['1']);
   assert.deepEqual(applyOsListFilters(orders, { name: '', status: '', deliveryType: 'Express' }).map((item) => item.id), ['2']);
+  const withPayment = [
+    { ...orders[0], paymentStatus: 'pending' as const },
+    { ...orders[1], paymentStatus: 'paid' as const },
+  ];
+  assert.deepEqual(applyOsListFilters(withPayment, { name: '', status: '', deliveryType: '', payment: 'open' }).map((item) => item.id), ['1']);
+  assert.deepEqual(applyOsListFilters(withPayment, { name: '', status: '', deliveryType: '', payment: 'paid' }).map((item) => item.id), ['2']);
   assert.match(buildOsExcelCsv([orders[0]]), /OS-100/);
   assert.match(buildOsExcelCsv([orders[0]]), /Normal/);
   assert.match(buildOsExcelCsv([orders[0]]), /Aberta/);
